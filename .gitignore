@@ -40,3 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 !.env.sample
+
+# My_own_files
+Plan.md
+Createdfiles.md
