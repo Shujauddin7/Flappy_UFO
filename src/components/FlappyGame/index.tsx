@@ -49,10 +49,10 @@ const PLANETS = [
     'Neptune.jpg', 'Saturn.jpg', 'Uranus.jpg', 'Venus.jpg'
 ];
 
-export default function FlappyGame({ 
-    gameMode, 
-    onGameEnd 
-}: { 
+export default function FlappyGame({
+    gameMode,
+    onGameEnd
+}: {
     gameMode: 'practice' | 'tournament' | null;
     onGameEnd: (score: number, coins: number) => void;
 }) {
@@ -125,14 +125,14 @@ export default function FlappyGame({
         // Place planets at BOTH ENDS of the invisible pipes
         const topPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
         const bottomPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
-        
+
         const planetSize = 70 + Math.random() * 30; // 70-100px varied sizes
 
         // Top planet (at the end of top pipe)
         const topPlanetY = gapY - planetSize - 10;
         const shouldTopMove = Math.random() > 0.7; // 30% chance to move
         obstacles.push({
-            x: pipeX + pipeWidth/2 - planetSize/2,
+            x: pipeX + pipeWidth / 2 - planetSize / 2,
             y: topPlanetY,
             width: planetSize,
             height: planetSize,
@@ -147,7 +147,7 @@ export default function FlappyGame({
         const bottomPlanetY = gapY + gapSize + 10;
         const shouldBottomMove = Math.random() > 0.7; // 30% chance to move
         obstacles.push({
-            x: pipeX + pipeWidth/2 - planetSize/2,
+            x: pipeX + pipeWidth / 2 - planetSize / 2,
             y: bottomPlanetY,
             width: planetSize,
             height: planetSize,
@@ -163,11 +163,11 @@ export default function FlappyGame({
         for (let i = 0; i < decorationPlanets; i++) {
             const decorPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
             const decorSize = 40 + Math.random() * 30; // Smaller decoration planets
-            
+
             // Place far from the main path
             const decorX = pipeX + (Math.random() > 0.5 ? 150 + Math.random() * 100 : -150 - Math.random() * 100);
             const decorY = Math.random() * (canvasHeight - decorSize);
-            
+
             const shouldDecorMove = Math.random() > 0.5; // 50% chance to move
             obstacles.push({
                 x: decorX,
@@ -185,8 +185,8 @@ export default function FlappyGame({
         // Coin in the gap for bonus (sometimes)
         if (Math.random() > 0.3) { // 70% chance, more generous
             obstacles.push({
-                x: pipeX + pipeWidth/2 - 12,
-                y: gapY + gapSize/2 - 12,
+                x: pipeX + pipeWidth / 2 - 12,
+                y: gapY + gapSize / 2 - 12,
                 width: 24,
                 height: 24,
                 type: 'coin'
@@ -195,7 +195,7 @@ export default function FlappyGame({
 
         // Scoring trigger (invisible)
         obstacles.push({
-            x: pipeX + pipeWidth/2,
+            x: pipeX + pipeWidth / 2,
             y: 0,
             width: 2,
             height: canvasHeight,
@@ -312,7 +312,7 @@ export default function FlappyGame({
                     Math.pow((ufo.x + 30) - (obstacle.x + obstacle.width / 2), 2) +
                     Math.pow((ufo.y + 25) - (obstacle.y + obstacle.height / 2), 2)
                 );
-                
+
                 if (distance < (obstacle.width / 2 + 20)) { // Generous collision radius
                     return true; // Collision with planet
                 }
@@ -352,7 +352,7 @@ export default function FlappyGame({
                 // Move planets up and down if they have movement
                 if (obstacle.type === 'planet' && obstacle.moveSpeed && obstacle.moveSpeed > 0 && obstacle.baseY !== undefined) {
                     obstacle.y += obstacle.moveDirection! * obstacle.moveSpeed;
-                    
+
                     // Bounce at boundaries (keep within reasonable limits)
                     if (obstacle.y < obstacle.baseY - 30 || obstacle.y > obstacle.baseY + 30) {
                         obstacle.moveDirection! *= -1;
@@ -528,7 +528,7 @@ export default function FlappyGame({
         domeGradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
         domeGradient.addColorStop(0.5, 'rgba(135, 206, 235, 0.6)');
         domeGradient.addColorStop(1, 'rgba(70, 130, 180, 0.3)');
-        
+
         ctx.fillStyle = domeGradient;
         ctx.beginPath();
         ctx.ellipse(0, -6, 20, 15, 0, 0, Math.PI);
@@ -545,7 +545,7 @@ export default function FlappyGame({
         const bottomGradient = ctx.createLinearGradient(0, 8, 0, 15);
         bottomGradient.addColorStop(0, '#4682B4');
         bottomGradient.addColorStop(1, '#1C1C1C');
-        
+
         ctx.fillStyle = bottomGradient;
         ctx.beginPath();
         ctx.ellipse(0, 10, 30, 8, 0, 0, Math.PI * 2);
@@ -562,7 +562,7 @@ export default function FlappyGame({
             const intensity = 0.7 + Math.sin(time * 3 + i) * 0.3;
             const colors = ['#00FF41', '#FF6B00', '#0080FF', '#FF00FF'];
             const color = colors[i % colors.length];
-            
+
             ctx.fillStyle = color;
             ctx.shadowColor = color;
             ctx.shadowBlur = 8 + intensity * 4;
@@ -579,7 +579,7 @@ export default function FlappyGame({
         beamGradient.addColorStop(0, '#00FFFF');
         beamGradient.addColorStop(0.5, '#0080FF');
         beamGradient.addColorStop(1, 'rgba(0, 128, 255, 0)');
-        
+
         ctx.fillStyle = beamGradient;
         ctx.beginPath();
         ctx.arc(0, 15, 12, 0, Math.PI * 2);
