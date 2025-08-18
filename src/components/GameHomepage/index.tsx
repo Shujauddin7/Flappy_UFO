@@ -100,6 +100,7 @@ export default function GameHomepage() {
         }
 
         function onResize() {
+            if (!canvas) return;
             width = window.innerWidth;
             height = window.innerHeight;
             canvas.width = width;
