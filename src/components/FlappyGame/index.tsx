@@ -1,0 +1,851 @@
+"use client";
+
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { Page } from '@/components/PageLayout';
+
+interface GameObject {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    type: 'planet' | 'coin' | 'trigger' | 'invisible-wall';
+    planetType?: string;
+    scored?: boolean;
+    moveSpeed?: number;
+    moveDirection?: number;
+    baseY?: number;
+}
+
+interface UFO {
+    x: number;
+    y: number;
+    velocity: number;
+    rotation: number;
+}
+
+interface Particle {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    life: number;
+    maxLife: number;
+    size: number;
+}
+
+interface GameState {
+    ufo: UFO;
+    obstacles: GameObject[];
+    particles: Particle[];
+    score: number;
+    coins: number;
+    gameStatus: 'ready' | 'playing' | 'gameOver';
+    playButtonBounds?: { x: number; y: number; width: number; height: number };
+    closeButtonBounds?: { x: number; y: number; width: number; height: number };
+}
+
+const PLANETS = [
+    'Earth.jpg', 'Jupiter.jpg', 'Mercury.jpg',
+    'Neptune.jpg', 'Saturn.jpg', 'Uranus.jpg', 'Venus.jpg'
+];
+
+export default function FlappyGame({ 
+    gameMode, 
+    onGameEnd 
+}: { 
+    gameMode: 'practice' | 'tournament' | null;
+    onGameEnd: (score: number, coins: number) => void;
+}) {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const gameStateRef = useRef<GameState>({
+        ufo: { x: 100, y: 300, velocity: 0, rotation: 0 },
+        obstacles: [],
+        particles: [],
+        score: 0,
+        coins: 0,
+        gameStatus: 'ready'
+    });
+
+    const [, setGameState] = useState(gameStateRef.current);
+    const gameLoopRef = useRef<number | undefined>(undefined);
+    const planetImagesRef = useRef<{ [key: string]: HTMLImageElement }>({});
+
+    // Load planet images
+    useEffect(() => {
+        PLANETS.forEach(planet => {
+            const img = new Image();
+            img.src = `/${planet}`;
+            planetImagesRef.current[planet] = img;
+        });
+    }, []);
+
+    // Create space obstacles with floating planets and invisible walls
+    const createObstacles = useCallback((x: number, currentScore: number) => {
+        const obstacles: GameObject[] = [];
+        const canvas = canvasRef.current;
+        if (!canvas) return obstacles;
+
+        const canvasHeight = canvas.height;
+
+        // Progressive difficulty with more randomization
+        let gapSize = 280 + Math.random() * 40 - 20; // Random variation: 260-300
+        if (currentScore > 3) gapSize = 250 + Math.random() * 30 - 15; // 235-265  
+        if (currentScore > 8) gapSize = 220 + Math.random() * 20 - 10; // 210-230
+        if (currentScore > 15) gapSize = 200 + Math.random() * 20 - 10; // 190-210
+        if (currentScore > 25) gapSize = 180 + Math.random() * 20 - 10; // 170-190
+
+        // More randomized gap position
+        const minGapY = 80 + Math.random() * 40; // 80-120
+        const maxGapY = canvasHeight - gapSize - 80 - Math.random() * 40; // More varied
+        const gapY = minGapY + Math.random() * (maxGapY - minGapY);
+
+        // Randomize pipe width and position slightly for more variation
+        const pipeWidth = 70 + Math.random() * 20; // 70-90px wide
+        const pipeX = x + Math.random() * 20 - 10; // Slight X variation
+
+        // Create invisible collision walls (the actual pipes)
+        // Top invisible wall
+        obstacles.push({
+            x: pipeX,
+            y: 0,
+            width: pipeWidth,
+            height: gapY - 5, // Small gap from planet
+            type: 'invisible-wall'
+        });
+
+        // Bottom invisible wall  
+        obstacles.push({
+            x: pipeX,
+            y: gapY + gapSize + 5, // Small gap from planet
+            width: pipeWidth,
+            height: canvasHeight - (gapY + gapSize + 5),
+            type: 'invisible-wall'
+        });
+
+        // Place planets at BOTH ENDS of the invisible pipes
+        const topPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
+        const bottomPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
+        
+        const planetSize = 70 + Math.random() * 30; // 70-100px varied sizes
+
+        // Top planet (at the end of top pipe)
+        const topPlanetY = gapY - planetSize - 10;
+        const shouldTopMove = Math.random() > 0.7; // 30% chance to move
+        obstacles.push({
+            x: pipeX + pipeWidth/2 - planetSize/2,
+            y: topPlanetY,
+            width: planetSize,
+            height: planetSize,
+            type: 'planet',
+            planetType: topPlanet,
+            moveSpeed: shouldTopMove ? 0.3 + Math.random() * 0.7 : 0, // 0.3-1.0
+            moveDirection: shouldTopMove ? (Math.random() > 0.5 ? 1 : -1) : 0,
+            baseY: topPlanetY
+        });
+
+        // Bottom planet (at the end of bottom pipe)  
+        const bottomPlanetY = gapY + gapSize + 10;
+        const shouldBottomMove = Math.random() > 0.7; // 30% chance to move
+        obstacles.push({
+            x: pipeX + pipeWidth/2 - planetSize/2,
+            y: bottomPlanetY,
+            width: planetSize,
+            height: planetSize,
+            type: 'planet',
+            planetType: bottomPlanet,
+            moveSpeed: shouldBottomMove ? 0.3 + Math.random() * 0.7 : 0,
+            moveDirection: shouldBottomMove ? (Math.random() > 0.5 ? 1 : -1) : 0,
+            baseY: bottomPlanetY
+        });
+
+        // Randomly add 1-2 floating decoration planets (not blocking path)
+        const decorationPlanets = Math.random() > 0.5 ? 1 : (Math.random() > 0.7 ? 2 : 0);
+        for (let i = 0; i < decorationPlanets; i++) {
+            const decorPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
+            const decorSize = 40 + Math.random() * 30; // Smaller decoration planets
+            
+            // Place far from the main path
+            const decorX = pipeX + (Math.random() > 0.5 ? 150 + Math.random() * 100 : -150 - Math.random() * 100);
+            const decorY = Math.random() * (canvasHeight - decorSize);
+            
+            const shouldDecorMove = Math.random() > 0.5; // 50% chance to move
+            obstacles.push({
+                x: decorX,
+                y: decorY,
+                width: decorSize,
+                height: decorSize,
+                type: 'planet',
+                planetType: decorPlanet,
+                moveSpeed: shouldDecorMove ? 0.2 + Math.random() * 0.5 : 0,
+                moveDirection: shouldDecorMove ? (Math.random() > 0.5 ? 1 : -1) : 0,
+                baseY: decorY
+            });
+        }
+
+        // Coin in the gap for bonus (sometimes)
+        if (Math.random() > 0.3) { // 70% chance, more generous
+            obstacles.push({
+                x: pipeX + pipeWidth/2 - 12,
+                y: gapY + gapSize/2 - 12,
+                width: 24,
+                height: 24,
+                type: 'coin'
+            });
+        }
+
+        // Scoring trigger (invisible)
+        obstacles.push({
+            x: pipeX + pipeWidth/2,
+            y: 0,
+            width: 2,
+            height: canvasHeight,
+            type: 'trigger',
+            scored: false
+        });
+
+        return obstacles;
+    }, []);
+
+    // Create particles for effects
+    const createParticles = useCallback((x: number, y: number, count: number) => {
+        const particles: Particle[] = [];
+        for (let i = 0; i < count; i++) {
+            particles.push({
+                x,
+                y,
+                vx: (Math.random() - 0.5) * 6,
+                vy: (Math.random() - 0.5) * 6,
+                life: 40,
+                maxLife: 40,
+                size: 2 + Math.random() * 3
+            });
+        }
+        return particles;
+    }, []);
+
+    // UFO controls
+    const handleJump = useCallback(() => {
+        if (gameStateRef.current.gameStatus === 'ready') {
+            gameStateRef.current.gameStatus = 'playing';
+        }
+        if (gameStateRef.current.gameStatus === 'playing') {
+            gameStateRef.current.ufo.velocity = -8; // Balanced jump strength
+            gameStateRef.current.ufo.rotation = -20; // Visual feedback
+
+            // Jump particles
+            const jumpParticles = createParticles(
+                gameStateRef.current.ufo.x - 5,
+                gameStateRef.current.ufo.y + 15,
+                4
+            );
+            gameStateRef.current.particles.push(...jumpParticles);
+        }
+    }, [createParticles]);
+
+    // Handle modal clicks
+    const handleModalClick = useCallback((x: number, y: number) => {
+        const state = gameStateRef.current;
+
+        if (state.gameStatus === 'gameOver') {
+            // Check play again button
+            if (state.playButtonBounds &&
+                x >= state.playButtonBounds.x &&
+                x <= state.playButtonBounds.x + state.playButtonBounds.width &&
+                y >= state.playButtonBounds.y &&
+                y <= state.playButtonBounds.y + state.playButtonBounds.height) {
+
+                // Restart game
+                state.ufo = { x: 100, y: 300, velocity: 0, rotation: 0 };
+                state.obstacles = [];
+                state.particles = [];
+                state.score = 0;
+                state.coins = 0;
+                state.gameStatus = 'ready';
+                return;
+            }
+
+            // Check home button
+            if (state.closeButtonBounds &&
+                x >= state.closeButtonBounds.x &&
+                x <= state.closeButtonBounds.x + state.closeButtonBounds.width &&
+                y >= state.closeButtonBounds.y &&
+                y <= state.closeButtonBounds.y + state.closeButtonBounds.height) {
+
+                // Return to menu
+                onGameEnd(state.score, state.coins);
+                return;
+            }
+        }
+    }, [onGameEnd]);
+
+    // Collision detection - fair and forgiving
+    const checkCollisions = useCallback(() => {
+        const { ufo, obstacles } = gameStateRef.current;
+        const canvas = canvasRef.current;
+        if (!canvas) return false;
+
+        // Ground and ceiling collision (adjusted for larger UFO)
+        if (ufo.y <= 30 || ufo.y >= canvas.height - 80) {
+            return true;
+        }
+
+        // Check collisions with different obstacle types
+        for (const obstacle of obstacles) {
+            if (obstacle.type === 'coin') {
+                // Coin collection (adjusted for larger UFO)
+                if (ufo.x + 15 < obstacle.x + obstacle.width &&
+                    ufo.x + 45 > obstacle.x &&
+                    ufo.y + 15 < obstacle.y + obstacle.height &&
+                    ufo.y + 35 > obstacle.y) {
+
+                    gameStateRef.current.coins += 1;
+                    const coinParticles = createParticles(obstacle.x, obstacle.y, 6);
+                    gameStateRef.current.particles.push(...coinParticles);
+
+                    // Remove collected coin
+                    const index = gameStateRef.current.obstacles.indexOf(obstacle);
+                    gameStateRef.current.obstacles.splice(index, 1);
+                }
+            } else if (obstacle.type === 'planet') {
+                // Planet collision - generous UFO hitbox (adjusted for larger UFO)
+                const distance = Math.sqrt(
+                    Math.pow((ufo.x + 30) - (obstacle.x + obstacle.width / 2), 2) +
+                    Math.pow((ufo.y + 25) - (obstacle.y + obstacle.height / 2), 2)
+                );
+                
+                if (distance < (obstacle.width / 2 + 20)) { // Generous collision radius
+                    return true; // Collision with planet
+                }
+            } else if (obstacle.type === 'invisible-wall') {
+                // Invisible wall collision - adjusted for larger UFO
+                if (ufo.x + 20 < obstacle.x + obstacle.width &&
+                    ufo.x + 40 > obstacle.x &&
+                    ufo.y + 20 < obstacle.y + obstacle.height &&
+                    ufo.y + 30 > obstacle.y) {
+
+                    return true; // Collision with invisible barrier
+                }
+            }
+        }
+
+        return false;
+    }, [createParticles]);    // Main game loop
+    const gameLoop = useCallback(() => {
+        const canvas = canvasRef.current;
+        const ctx = canvas?.getContext('2d');
+        if (!canvas || !ctx) return;
+
+        const state = gameStateRef.current;
+
+        if (state.gameStatus === 'playing') {
+            // UFO physics - balanced and smooth
+            state.ufo.velocity += 0.5; // Gentle gravity
+            state.ufo.y += state.ufo.velocity;
+
+            // Rotation based on velocity
+            state.ufo.rotation = Math.max(-30, Math.min(30, state.ufo.velocity * 2));
+
+            // Move obstacles
+            state.obstacles = state.obstacles.filter(obstacle => {
+                obstacle.x -= 3; // Consistent scroll speed
+
+                // Move planets up and down if they have movement
+                if (obstacle.type === 'planet' && obstacle.moveSpeed && obstacle.moveSpeed > 0 && obstacle.baseY !== undefined) {
+                    obstacle.y += obstacle.moveDirection! * obstacle.moveSpeed;
+                    
+                    // Bounce at boundaries (keep within reasonable limits)
+                    if (obstacle.y < obstacle.baseY - 30 || obstacle.y > obstacle.baseY + 30) {
+                        obstacle.moveDirection! *= -1;
+                    }
+                }
+
+                // Score when passing trigger
+                if (obstacle.type === 'trigger' &&
+                    obstacle.x + obstacle.width < state.ufo.x &&
+                    !obstacle.scored) {
+                    state.score += 1;
+                    obstacle.scored = true;
+
+                    // Score particles
+                    const scoreParticles = createParticles(state.ufo.x, state.ufo.y, 4);
+                    state.particles.push(...scoreParticles);
+                }
+
+                return obstacle.x > -150; // Remove off-screen obstacles
+            });
+
+            // Generate new obstacles
+            if (state.obstacles.length === 0 ||
+                state.obstacles[state.obstacles.length - 1].x < canvas.width - 350) {
+                const newObstacles = createObstacles(canvas.width + 100, state.score);
+                state.obstacles.push(...newObstacles);
+            }
+
+            // Update particles
+            state.particles = state.particles.filter(particle => {
+                particle.x += particle.vx;
+                particle.y += particle.vy;
+                particle.vx *= 0.95;
+                particle.vy *= 0.95;
+                particle.life--;
+                return particle.life > 0;
+            });
+
+            // Check collisions
+            if (checkCollisions()) {
+                state.gameStatus = 'gameOver';
+
+                // Explosion particles
+                const explosionParticles = createParticles(state.ufo.x, state.ufo.y, 15);
+                state.particles.push(...explosionParticles);
+            }
+        }
+
+        // Clear canvas with beautiful space background
+        const backgroundGradient = ctx.createRadialGradient(
+            canvas.width / 2, canvas.height / 2, 0,
+            canvas.width / 2, canvas.height / 2, Math.max(canvas.width, canvas.height)
+        );
+        backgroundGradient.addColorStop(0, '#0B1426');
+        backgroundGradient.addColorStop(0.5, '#1E2A4A');
+        backgroundGradient.addColorStop(1, '#0A0A0A');
+
+        ctx.fillStyle = backgroundGradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Animated starfield
+        ctx.globalAlpha = 1;
+        for (let i = 0; i < 100; i++) {
+            const x = ((i * 150 + Date.now() * 0.02) % (canvas.width + 100)) - 50;
+            const y = (i * 234) % canvas.height;
+            const size = Math.random() * 2;
+            const twinkle = 0.4 + Math.sin(Date.now() * 0.003 + i) * 0.6;
+
+            ctx.fillStyle = '#ffffff';
+            ctx.globalAlpha = twinkle;
+            ctx.fillRect(x, y, size, size);
+        }
+        ctx.globalAlpha = 1;
+
+        // Draw planets and coins (not invisible walls)
+        state.obstacles.forEach(obstacle => {
+            if (obstacle.type === 'planet' && obstacle.planetType) {
+                const img = planetImagesRef.current[obstacle.planetType];
+                const centerX = obstacle.x + obstacle.width / 2;
+                const centerY = obstacle.y + obstacle.height / 2;
+                const radius = obstacle.width / 2;
+
+                // Planet glow
+                ctx.save();
+                ctx.shadowColor = '#4A90E2';
+                ctx.shadowBlur = 15;
+                ctx.globalAlpha = 0.9;
+
+                // Create circular clip for the planet image
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.clip();
+
+                if (img && img.complete) {
+                    // Draw the image within the circular clip
+                    ctx.drawImage(img, obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                } else {
+                    // Fallback gradient circle
+                    const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+                    gradient.addColorStop(0, '#4A90E2');
+                    gradient.addColorStop(0.7, '#1E3A5F');
+                    gradient.addColorStop(1, '#0A1A2E');
+                    ctx.fillStyle = gradient;
+                    ctx.fill();
+                }
+
+                ctx.restore();
+
+                // Add a subtle ring around the planet
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(74, 144, 226, 0.3)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+            } else if (obstacle.type === 'coin') {
+                // Animated coin
+                const time = Date.now() * 0.005;
+                const scale = 1 + Math.sin(time) * 0.2;
+
+                ctx.save();
+                ctx.translate(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2);
+                ctx.scale(scale, scale);
+
+                ctx.fillStyle = '#FFD700';
+                ctx.shadowColor = '#FFD700';
+                ctx.shadowBlur = 10;
+
+                // Star shape
+                ctx.beginPath();
+                for (let i = 0; i < 5; i++) {
+                    const angle = (i * Math.PI * 2) / 5 - Math.PI / 2;
+                    const x = Math.cos(angle) * 10;
+                    const y = Math.sin(angle) * 10;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+
+                    const innerAngle = ((i + 0.5) * Math.PI * 2) / 5 - Math.PI / 2;
+                    const innerX = Math.cos(innerAngle) * 5;
+                    const innerY = Math.sin(innerAngle) * 5;
+                    ctx.lineTo(innerX, innerY);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+                ctx.shadowBlur = 0;
+            }
+        });
+
+        // Draw realistic 3D UFO
+        ctx.save();
+        ctx.translate(state.ufo.x + 30, state.ufo.y + 25);
+        ctx.rotate(state.ufo.rotation * Math.PI / 180);
+
+        // Main UFO glow
+        ctx.shadowColor = '#00BFFF';
+        ctx.shadowBlur = 20;
+
+        // Main saucer body (larger and more detailed)
+        const mainBodyGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, 35);
+        mainBodyGradient.addColorStop(0, '#F0F8FF');
+        mainBodyGradient.addColorStop(0.3, '#B0E0E6');
+        mainBodyGradient.addColorStop(0.6, '#4682B4');
+        mainBodyGradient.addColorStop(1, '#1E3A5F');
+
+        ctx.fillStyle = mainBodyGradient;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 35, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Top dome (more realistic)
+        const domeGradient = ctx.createRadialGradient(0, -6, 0, 0, -6, 20);
+        domeGradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+        domeGradient.addColorStop(0.5, 'rgba(135, 206, 235, 0.6)');
+        domeGradient.addColorStop(1, 'rgba(70, 130, 180, 0.3)');
+        
+        ctx.fillStyle = domeGradient;
+        ctx.beginPath();
+        ctx.ellipse(0, -6, 20, 15, 0, 0, Math.PI);
+        ctx.fill();
+
+        // Metal rim around the middle
+        ctx.strokeStyle = '#C0C0C0';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 35, 12, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Bottom section with 3D effect
+        const bottomGradient = ctx.createLinearGradient(0, 8, 0, 15);
+        bottomGradient.addColorStop(0, '#4682B4');
+        bottomGradient.addColorStop(1, '#1C1C1C');
+        
+        ctx.fillStyle = bottomGradient;
+        ctx.beginPath();
+        ctx.ellipse(0, 10, 30, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Animated lights around the rim (more realistic)
+        const time = Date.now() * 0.003;
+        for (let i = 0; i < 12; i++) {
+            const angle = (i / 12) * Math.PI * 2 + time;
+            const lightX = Math.cos(angle) * 28;
+            const lightY = Math.sin(angle) * 8;
+
+            // Alternating light colors with pulsing effect
+            const intensity = 0.7 + Math.sin(time * 3 + i) * 0.3;
+            const colors = ['#00FF41', '#FF6B00', '#0080FF', '#FF00FF'];
+            const color = colors[i % colors.length];
+            
+            ctx.fillStyle = color;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 8 + intensity * 4;
+            ctx.globalAlpha = intensity;
+
+            ctx.beginPath();
+            ctx.arc(lightX, lightY, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Central beam/engine glow at bottom
+        ctx.globalAlpha = 0.6 + Math.sin(time * 4) * 0.3;
+        const beamGradient = ctx.createRadialGradient(0, 15, 0, 0, 15, 15);
+        beamGradient.addColorStop(0, '#00FFFF');
+        beamGradient.addColorStop(0.5, '#0080FF');
+        beamGradient.addColorStop(1, 'rgba(0, 128, 255, 0)');
+        
+        ctx.fillStyle = beamGradient;
+        ctx.beginPath();
+        ctx.arc(0, 15, 12, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Small antenna on top
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = '#C0C0C0';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, -20);
+        ctx.lineTo(0, -25);
+        ctx.stroke();
+
+        // Antenna tip light
+        ctx.fillStyle = '#FF0000';
+        ctx.shadowColor = '#FF0000';
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.arc(0, -25, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+
+        // Draw particles
+        state.particles.forEach(particle => {
+            const alpha = particle.life / particle.maxLife;
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = '#00BFFF';
+            ctx.fillRect(particle.x, particle.y, particle.size, particle.size);
+        });
+        ctx.globalAlpha = 1;
+
+        // UI
+        ctx.font = 'bold 24px Arial, sans-serif';
+        ctx.fillStyle = '#00BFFF';
+        ctx.shadowColor = '#00BFFF';
+        ctx.shadowBlur = 8;
+        ctx.fillText(`Score: ${state.score}`, 20, 50);
+
+        ctx.fillStyle = '#FFD700';
+        ctx.shadowColor = '#FFD700';
+        ctx.fillText(`⭐ ${state.coins}`, 20, 80);
+        ctx.shadowBlur = 0;
+
+        // Game status
+        if (state.gameStatus === 'ready') {
+            ctx.font = 'bold 32px Arial, sans-serif';
+            ctx.fillStyle = '#FFFFFF';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = '#FFFFFF';
+            ctx.shadowBlur = 8;
+            ctx.fillText('TAP TO START', canvas.width / 2, canvas.height / 2);
+            ctx.shadowBlur = 0;
+            ctx.textAlign = 'left';
+        }
+
+        if (state.gameStatus === 'gameOver') {
+            // Dark overlay
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Game Over modal
+            const modalWidth = Math.min(380, canvas.width - 40);
+            const modalHeight = 320;
+            const modalX = (canvas.width - modalWidth) / 2;
+            const modalY = (canvas.height - modalHeight) / 2;
+
+            // Modal background
+            const modalGradient = ctx.createLinearGradient(modalX, modalY, modalX, modalY + modalHeight);
+            modalGradient.addColorStop(0, '#1E293B');
+            modalGradient.addColorStop(1, '#0F172A');
+            ctx.fillStyle = modalGradient;
+            ctx.roundRect(modalX, modalY, modalWidth, modalHeight, 12);
+            ctx.fill();
+
+            ctx.strokeStyle = '#00BFFF';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Title
+            ctx.font = 'bold 32px Arial, sans-serif';
+            ctx.fillStyle = '#FF4444';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = '#FF4444';
+            ctx.shadowBlur = 8;
+            ctx.fillText('GAME OVER', canvas.width / 2, modalY + 60);
+
+            // Scores
+            ctx.font = 'bold 20px Arial, sans-serif';
+            ctx.fillStyle = '#00BFFF';
+            ctx.shadowColor = '#00BFFF';
+            ctx.shadowBlur = 6;
+            ctx.fillText(`Score: ${state.score}`, canvas.width / 2, modalY + 100);
+
+            ctx.fillStyle = '#FFD700';
+            ctx.shadowColor = '#FFD700';
+            ctx.fillText(`⭐ Coins: ${state.coins}`, canvas.width / 2, modalY + 130);
+
+            // Buttons - show Play Again only in practice mode
+            const buttonWidth = 140;
+            const buttonHeight = 40;
+            const playButtonX = canvas.width / 2 - buttonWidth / 2;
+            let currentY = modalY + 170;
+
+            // Play Again button (only in practice mode)
+            if (gameMode === 'practice') {
+                const playGradient = ctx.createLinearGradient(playButtonX, currentY, playButtonX, currentY + buttonHeight);
+                playGradient.addColorStop(0, '#10B981');
+                playGradient.addColorStop(1, '#059669');
+                ctx.fillStyle = playGradient;
+                ctx.roundRect(playButtonX, currentY, buttonWidth, buttonHeight, 8);
+                ctx.fill();
+
+                ctx.font = 'bold 16px Arial, sans-serif';
+                ctx.fillStyle = '#FFFFFF';
+                ctx.shadowBlur = 0;
+                ctx.fillText('PLAY AGAIN', canvas.width / 2, currentY + 25);
+
+                // Store play button bounds
+                state.playButtonBounds = {
+                    x: playButtonX,
+                    y: currentY,
+                    width: buttonWidth,
+                    height: buttonHeight
+                };
+
+                currentY += 60; // Move next button down
+            } else {
+                // Clear play button bounds in tournament mode
+                state.playButtonBounds = undefined;
+            }
+
+            // Home button (always show)
+            const homeGradient = ctx.createLinearGradient(playButtonX, currentY, playButtonX, currentY + buttonHeight);
+            homeGradient.addColorStop(0, '#DC2626');
+            homeGradient.addColorStop(1, '#991B1B');
+            ctx.fillStyle = homeGradient;
+            ctx.roundRect(playButtonX, currentY, buttonWidth, buttonHeight, 8);
+            ctx.fill();
+
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText('GO HOME', canvas.width / 2, currentY + 25);
+
+            ctx.textAlign = 'left';
+            ctx.shadowBlur = 0;
+
+            // Store home button bounds
+            state.closeButtonBounds = {
+                x: playButtonX,
+                y: currentY,
+                width: buttonWidth,
+                height: buttonHeight
+            };
+        }
+
+        setGameState({ ...state });
+        gameLoopRef.current = requestAnimationFrame(gameLoop);
+    }, [checkCollisions, createObstacles, createParticles, gameMode]);
+
+    // Input handlers
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const handleTouch = (e: TouchEvent) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const x = e.touches[0].clientX - rect.left;
+            const y = e.touches[0].clientY - rect.top;
+
+            if (gameStateRef.current.gameStatus === 'gameOver') {
+                handleModalClick(x, y);
+            } else {
+                handleJump();
+            }
+        };
+
+        const handleClick = (e: MouseEvent) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            if (gameStateRef.current.gameStatus === 'gameOver') {
+                handleModalClick(x, y);
+            } else {
+                handleJump();
+            }
+        };
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                e.preventDefault();
+                if (gameStateRef.current.gameStatus === 'gameOver') {
+                    // Reset game
+                    const state = gameStateRef.current;
+                    state.ufo = { x: 100, y: 300, velocity: 0, rotation: 0 };
+                    state.obstacles = [];
+                    state.particles = [];
+                    state.score = 0;
+                    state.coins = 0;
+                    state.gameStatus = 'ready';
+                } else {
+                    handleJump();
+                }
+            }
+
+            if (e.code === 'Escape' && gameStateRef.current.gameStatus === 'gameOver') {
+                onGameEnd(gameStateRef.current.score, gameStateRef.current.coins);
+            }
+        };
+
+        canvas.addEventListener('touchstart', handleTouch, { passive: false });
+        canvas.addEventListener('click', handleClick);
+        window.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            canvas.removeEventListener('touchstart', handleTouch);
+            canvas.removeEventListener('click', handleClick);
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [handleJump, handleModalClick, onGameEnd]);
+
+    // Start game loop
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const handleResize = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        };
+
+        window.addEventListener('resize', handleResize);
+        gameLoopRef.current = requestAnimationFrame(gameLoop);
+
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            if (gameLoopRef.current) {
+                cancelAnimationFrame(gameLoopRef.current);
+            }
+        };
+    }, [gameLoop]);
+
+    return (
+        <Page>
+            <canvas
+                ref={canvasRef}
+                className="game-canvas"
+                style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    width: '100vw',
+                    height: '100vh',
+                    background: '#0B1426',
+                    touchAction: 'none',
+                    zIndex: 10
+                }}
+            />
+        </Page>
+    );
+}

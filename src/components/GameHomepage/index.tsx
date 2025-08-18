@@ -2,6 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Page } from '@/components/PageLayout';
+import dynamic from 'next/dynamic';
+
+// Dynamically import FlappyGame to avoid SSR issues
+const FlappyGame = dynamic(() => import('@/components/FlappyGame'), {
+    ssr: false
+});
 
 interface Star {
     x: number;
@@ -13,9 +19,29 @@ interface Star {
     draw(ctx: CanvasRenderingContext2D, width: number, height: number): void;
 }
 
+type GameMode = 'practice' | 'tournament';
+
 export default function GameHomepage() {
-    const [currentScreen, setCurrentScreen] = useState<'home' | 'gameSelect'>('home');
+    const [currentScreen, setCurrentScreen] = useState<'home' | 'gameSelect' | 'playing'>('home');
+    const [gameMode, setGameMode] = useState<GameMode | null>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    // Handle game start
+    const handleGameStart = (mode: GameMode) => {
+        setGameMode(mode);
+        setCurrentScreen('playing');
+    };
+
+    // Handle game end
+    const handleGameEnd = (score: number, coins: number) => {
+        // Show results based on game mode
+        const modeText = gameMode === 'practice' ? 'Practice' : 'Tournament';
+        alert(`${modeText} Complete!\nScore: ${score}\nCoins: ${coins}`);
+
+        // Return to game select
+        setCurrentScreen('gameSelect');
+        setGameMode(null);
+    };
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -134,6 +160,11 @@ export default function GameHomepage() {
         };
     }, []);
 
+    // Render the FlappyGame when playing
+    if (currentScreen === 'playing') {
+        return <FlappyGame gameMode={gameMode} onGameEnd={handleGameEnd} />;
+    }
+
     if (currentScreen === 'home') {
         return (
             <Page>
@@ -210,7 +241,7 @@ export default function GameHomepage() {
                             </div>
                             <button
                                 className="mode-button practice-button"
-                                onClick={() => alert('Practice Mode Loading...')}
+                                onClick={() => handleGameStart('practice')}
                             >
                                 ENTER TRAINING
                             </button>
@@ -229,7 +260,7 @@ export default function GameHomepage() {
                             </div>
                             <button
                                 className="mode-button tournament-button"
-                                onClick={() => alert('Tournament Loading...')}
+                                onClick={() => handleGameStart('tournament')}
                             >
                                 JOIN BATTLE
                             </button>
