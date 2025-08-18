@@ -656,6 +656,34 @@ export default function FlappyGame({
         ctx.ellipse(0, -8, 18, 12, 0, Math.PI, 0, true);
         ctx.stroke();
 
+        // --- Small Cockpit Window (semi-circular) ---
+        const cockpitGradient = ctx.createLinearGradient(0, -15, 0, -5);
+        cockpitGradient.addColorStop(0, "rgba(100, 200, 255, 0.8)"); // light blue glass
+        cockpitGradient.addColorStop(0.3, "rgba(50, 150, 255, 0.6)"); // medium blue
+        cockpitGradient.addColorStop(0.7, "rgba(30, 100, 200, 0.4)"); // darker blue
+        cockpitGradient.addColorStop(1, "rgba(20, 50, 100, 0.2)"); // very dark blue
+
+        ctx.fillStyle = cockpitGradient;
+        ctx.beginPath();
+        ctx.ellipse(0, -12, 10, 6, 0, Math.PI, 0, true); // Small semi-circle on top
+        ctx.fill();
+
+        // --- Cockpit window frame ---
+        ctx.strokeStyle = "rgba(200, 220, 255, 0.6)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.ellipse(0, -12, 10, 6, 0, Math.PI, 0, true);
+        ctx.stroke();
+
+        // --- Cockpit glass reflection ---
+        ctx.globalAlpha = 0.4;
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.ellipse(0, -12, 8, 4, 0, Math.PI * 1.2, Math.PI * 1.8);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+
         // --- Chrome reflections on layers ---
         ctx.globalAlpha = 0.4;
         ctx.strokeStyle = "#ffffff";
