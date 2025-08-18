@@ -79,7 +79,7 @@ export default function FlappyGame({
         });
     }, []);
 
-    // Create space obstacles with floating planets and invisible walls
+    // Create simple space obstacles - back to basics
     const createObstacles = useCallback((x: number, currentScore: number) => {
         const obstacles: GameObject[] = [];
         const canvas = canvasRef.current;
@@ -122,38 +122,39 @@ export default function FlappyGame({
             type: 'invisible-wall'
         });
 
-        // Place planets at BOTH ENDS of the invisible pipes
+        // Place planets at BOTH ENDS of the invisible pipes (always 2 planets)
         const topPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
         const bottomPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
 
-        const planetSize = 70 + Math.random() * 30; // 70-100px varied sizes
+        const topPlanetSize = 60 + Math.random() * 20; // 60-80px for consistency
+        const bottomPlanetSize = 60 + Math.random() * 20; // 60-80px for consistency
 
-        // Top planet (at the end of top pipe)
-        const topPlanetY = gapY - planetSize - 10;
-        const shouldTopMove = Math.random() > 0.7; // 30% chance to move
+        // Top planet (at the end of top pipe) - ensure it's always visible
+        const topPlanetY = Math.max(20, gapY - topPlanetSize - 15);
+        const shouldTopMove = Math.random() > 0.8; // 20% chance to move (less chaotic)
         obstacles.push({
-            x: pipeX + pipeWidth / 2 - planetSize / 2,
+            x: pipeX + pipeWidth / 2 - topPlanetSize / 2,
             y: topPlanetY,
-            width: planetSize,
-            height: planetSize,
+            width: topPlanetSize,
+            height: topPlanetSize,
             type: 'planet',
             planetType: topPlanet,
-            moveSpeed: shouldTopMove ? 0.3 + Math.random() * 0.7 : 0, // 0.3-1.0
+            moveSpeed: shouldTopMove ? 0.4 + Math.random() * 0.4 : 0, // 0.4-0.8 slower movement
             moveDirection: shouldTopMove ? (Math.random() > 0.5 ? 1 : -1) : 0,
             baseY: topPlanetY
         });
 
-        // Bottom planet (at the end of bottom pipe)  
-        const bottomPlanetY = gapY + gapSize + 10;
-        const shouldBottomMove = Math.random() > 0.7; // 30% chance to move
+        // Bottom planet (at the end of bottom pipe) - ensure it's always visible  
+        const bottomPlanetY = Math.min(canvasHeight - bottomPlanetSize - 20, gapY + gapSize + 15);
+        const shouldBottomMove = Math.random() > 0.8; // 20% chance to move (less chaotic)
         obstacles.push({
-            x: pipeX + pipeWidth / 2 - planetSize / 2,
+            x: pipeX + pipeWidth / 2 - bottomPlanetSize / 2,
             y: bottomPlanetY,
-            width: planetSize,
-            height: planetSize,
+            width: bottomPlanetSize,
+            height: bottomPlanetSize,
             type: 'planet',
             planetType: bottomPlanet,
-            moveSpeed: shouldBottomMove ? 0.3 + Math.random() * 0.7 : 0,
+            moveSpeed: shouldBottomMove ? 0.4 + Math.random() * 0.4 : 0, // 0.4-0.8 slower movement
             moveDirection: shouldBottomMove ? (Math.random() > 0.5 ? 1 : -1) : 0,
             baseY: bottomPlanetY
         });
@@ -338,16 +339,16 @@ export default function FlappyGame({
         const state = gameStateRef.current;
 
         if (state.gameStatus === 'playing') {
-            // UFO physics - balanced and smooth
-            state.ufo.velocity += 0.5; // Gentle gravity
+            // UFO physics - balanced and smooth (make it faster)
+            state.ufo.velocity += 0.5; // Gentle gravity - keep constant
             state.ufo.y += state.ufo.velocity;
 
             // Rotation based on velocity
             state.ufo.rotation = Math.max(-30, Math.min(30, state.ufo.velocity * 2));
 
-            // Move obstacles
+            // Move obstacles at consistent speed (make it faster)
             state.obstacles = state.obstacles.filter(obstacle => {
-                obstacle.x -= 3; // Consistent scroll speed
+                obstacle.x -= 4.5; // Faster speed for better gameplay feel
 
                 // Move planets up and down if they have movement
                 if (obstacle.type === 'planet' && obstacle.moveSpeed && obstacle.moveSpeed > 0 && obstacle.baseY !== undefined) {
@@ -435,11 +436,38 @@ export default function FlappyGame({
                 const centerY = obstacle.y + obstacle.height / 2;
                 const radius = obstacle.width / 2;
 
-                // Planet glow
+                // Get planet-specific glow color
+                const getPlanetGlow = (planetName: string): string => {
+                    const planetGlows: { [key: string]: string } = {
+                        'Earth.jpg': '#4A90E2', // Blue glow
+                        'Mars.jpg': '#FF6B35', // Red-orange glow  
+                        'Jupiter.jpg': '#FFB347', // Orange-yellow glow
+                        'Saturn.jpg': '#F4D03F', // Golden glow
+                        'Venus.jpg': '#FFC300', // Bright yellow glow
+                        'Neptune.jpg': '#3498DB', // Deep blue glow
+                        'Uranus.jpg': '#85C1E9', // Light blue glow
+                        'Mercury.jpg': '#D7DBDD', // Gray-white glow
+                    };
+                    return planetGlows[planetName] || '#FFFFFF'; // Default white glow
+                };
+
+                const glowColor = getPlanetGlow(obstacle.planetType);
+
+                // Planet glow with planet-specific color
                 ctx.save();
-                ctx.shadowColor = '#4A90E2';
-                ctx.shadowBlur = 15;
-                ctx.globalAlpha = 0.9;
+
+                // Outer glow effect
+                ctx.globalAlpha = 0.6;
+                ctx.shadowColor = glowColor;
+                ctx.shadowBlur = 20;
+                const outerGlow = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius * 1.3);
+                outerGlow.addColorStop(0, `${glowColor}60`);
+                outerGlow.addColorStop(1, 'transparent');
+                ctx.fillStyle = outerGlow;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius * 1.3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
 
                 // Create circular clip for the planet image
                 ctx.beginPath();
@@ -450,23 +478,33 @@ export default function FlappyGame({
                     // Draw the image within the circular clip
                     ctx.drawImage(img, obstacle.x, obstacle.y, obstacle.width, obstacle.height);
                 } else {
-                    // Fallback gradient circle
+                    // Fallback gradient circle with planet color
                     const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
-                    gradient.addColorStop(0, '#4A90E2');
-                    gradient.addColorStop(0.7, '#1E3A5F');
-                    gradient.addColorStop(1, '#0A1A2E');
+                    gradient.addColorStop(0, glowColor);
+                    gradient.addColorStop(0.7, `${glowColor}80`);
+                    gradient.addColorStop(1, `${glowColor}20`);
                     ctx.fillStyle = gradient;
                     ctx.fill();
                 }
 
                 ctx.restore();
 
-                // Add a subtle ring around the planet
+                // Add planet-specific atmospheric ring
                 ctx.beginPath();
                 ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-                ctx.strokeStyle = 'rgba(74, 144, 226, 0.3)';
+                ctx.strokeStyle = `${glowColor}50`;
                 ctx.lineWidth = 2;
                 ctx.stroke();
+
+                // Gas giant atmospheric rings
+                const isGasGiant = ['Jupiter.jpg', 'Saturn.jpg', 'Uranus.jpg', 'Neptune.jpg'].includes(obstacle.planetType);
+                if (isGasGiant) {
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, radius * 1.1, 0, Math.PI * 2);
+                    ctx.strokeStyle = `${glowColor}30`;
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
 
             } else if (obstacle.type === 'coin') {
                 // Animated coin
@@ -502,109 +540,145 @@ export default function FlappyGame({
             }
         });
 
-        // Draw realistic 3D UFO
+        // Draw ultra-premium multi-layered chrome UFO with glowing rings
         ctx.save();
         ctx.translate(state.ufo.x + 30, state.ufo.y + 25);
         ctx.rotate(state.ufo.rotation * Math.PI / 180);
 
-        // Main UFO glow
-        ctx.shadowColor = '#00BFFF';
-        ctx.shadowBlur = 20;
+        const time = Date.now() * 0.003;
+        const pulse = 0.6 + Math.sin(time * 2) * 0.4;
 
-        // Main saucer body (larger and more detailed)
-        const mainBodyGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, 35);
-        mainBodyGradient.addColorStop(0, '#F0F8FF');
-        mainBodyGradient.addColorStop(0.3, '#B0E0E6');
-        mainBodyGradient.addColorStop(0.6, '#4682B4');
-        mainBodyGradient.addColorStop(1, '#1E3A5F');
-
-        ctx.fillStyle = mainBodyGradient;
+        // --- Tractor Beam (subtle cone) ---
+        ctx.globalAlpha = 0.25 + pulse * 0.15;
+        const beamGradient = ctx.createLinearGradient(0, 20, 0, 80);
+        beamGradient.addColorStop(0, "#00e5ff44");
+        beamGradient.addColorStop(1, "transparent");
+        ctx.fillStyle = beamGradient;
         ctx.beginPath();
-        ctx.ellipse(0, 0, 35, 12, 0, 0, Math.PI * 2);
+        ctx.moveTo(-15, 20);
+        ctx.lineTo(-35, 80);
+        ctx.lineTo(35, 80);
+        ctx.lineTo(15, 20);
+        ctx.closePath();
         ctx.fill();
+        ctx.globalAlpha = 1;
 
-        // Top dome (more realistic)
-        const domeGradient = ctx.createRadialGradient(0, -6, 0, 0, -6, 20);
-        domeGradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
-        domeGradient.addColorStop(0.5, 'rgba(135, 206, 235, 0.6)');
-        domeGradient.addColorStop(1, 'rgba(70, 130, 180, 0.3)');
-
-        ctx.fillStyle = domeGradient;
-        ctx.beginPath();
-        ctx.ellipse(0, -6, 20, 15, 0, 0, Math.PI);
-        ctx.fill();
-
-        // Metal rim around the middle
-        ctx.strokeStyle = '#C0C0C0';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 35, 12, 0, 0, Math.PI * 2);
-        ctx.stroke();
-
-        // Bottom section with 3D effect
-        const bottomGradient = ctx.createLinearGradient(0, 8, 0, 15);
-        bottomGradient.addColorStop(0, '#4682B4');
-        bottomGradient.addColorStop(1, '#1C1C1C');
+        // --- Bottom Layer (largest metallic ring) ---
+        const bottomGradient = ctx.createLinearGradient(-50, 15, 50, 15);
+        bottomGradient.addColorStop(0, "#374151"); // dark edge
+        bottomGradient.addColorStop(0.2, "#d1d5db"); // bright silver
+        bottomGradient.addColorStop(0.5, "#f3f4f6"); // chrome highlight
+        bottomGradient.addColorStop(0.8, "#d1d5db"); // silver
+        bottomGradient.addColorStop(1, "#374151"); // dark edge
 
         ctx.fillStyle = bottomGradient;
         ctx.beginPath();
-        ctx.ellipse(0, 10, 30, 8, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, 15, 50, 12, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Animated lights around the rim (more realistic)
-        const time = Date.now() * 0.003;
-        for (let i = 0; i < 12; i++) {
-            const angle = (i / 12) * Math.PI * 2 + time;
-            const lightX = Math.cos(angle) * 28;
-            const lightY = Math.sin(angle) * 8;
-
-            // Alternating light colors with pulsing effect
-            const intensity = 0.7 + Math.sin(time * 3 + i) * 0.3;
-            const colors = ['#00FF41', '#FF6B00', '#0080FF', '#FF00FF'];
-            const color = colors[i % colors.length];
-
-            ctx.fillStyle = color;
-            ctx.shadowColor = color;
-            ctx.shadowBlur = 8 + intensity * 4;
-            ctx.globalAlpha = intensity;
-
-            ctx.beginPath();
-            ctx.arc(lightX, lightY, 2.5, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        // Central beam/engine glow at bottom
-        ctx.globalAlpha = 0.6 + Math.sin(time * 4) * 0.3;
-        const beamGradient = ctx.createRadialGradient(0, 15, 0, 0, 15, 15);
-        beamGradient.addColorStop(0, '#00FFFF');
-        beamGradient.addColorStop(0.5, '#0080FF');
-        beamGradient.addColorStop(1, 'rgba(0, 128, 255, 0)');
-
-        ctx.fillStyle = beamGradient;
+        // --- Bottom Glowing Ring ---
+        ctx.globalAlpha = pulse * 0.8;
+        ctx.strokeStyle = "#00e5ff";
+        ctx.lineWidth = 3;
+        ctx.shadowColor = "#00e5ff";
+        ctx.shadowBlur = 12;
         ctx.beginPath();
-        ctx.arc(0, 15, 12, 0, Math.PI * 2);
+        ctx.ellipse(0, 15, 45, 10, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur = 0;
+
+        // --- Middle Layer (medium metallic ring) ---
+        const middleGradient = ctx.createLinearGradient(-40, 8, 40, 8);
+        middleGradient.addColorStop(0, "#4b5563"); // dark edge
+        middleGradient.addColorStop(0.3, "#e5e7eb"); // bright silver
+        middleGradient.addColorStop(0.5, "#ffffff"); // chrome highlight
+        middleGradient.addColorStop(0.7, "#e5e7eb"); // silver
+        middleGradient.addColorStop(1, "#4b5563"); // dark edge
+
+        ctx.fillStyle = middleGradient;
+        ctx.beginPath();
+        ctx.ellipse(0, 8, 40, 10, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Small antenna on top
+        // --- Middle Glowing Ring ---
+        ctx.globalAlpha = pulse * 0.9;
+        ctx.strokeStyle = "#00bcd4";
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = "#00bcd4";
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.ellipse(0, 8, 36, 8, 0, 0, Math.PI * 2);
+        ctx.stroke();
         ctx.globalAlpha = 1;
-        ctx.strokeStyle = '#C0C0C0';
+        ctx.shadowBlur = 0;
+
+        // --- Top Layer (smaller metallic ring) ---
+        const topGradient = ctx.createLinearGradient(-30, 0, 30, 0);
+        topGradient.addColorStop(0, "#6b7280"); // dark edge
+        topGradient.addColorStop(0.4, "#f3f4f6"); // bright silver
+        topGradient.addColorStop(0.5, "#ffffff"); // chrome highlight
+        topGradient.addColorStop(0.6, "#f3f4f6"); // silver
+        topGradient.addColorStop(1, "#6b7280"); // dark edge
+
+        ctx.fillStyle = topGradient;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 30, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // --- Top Glowing Ring ---
+        ctx.globalAlpha = pulse;
+        ctx.strokeStyle = "#26c6da";
+        ctx.lineWidth = 2;
+        ctx.shadowColor = "#26c6da";
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 27, 6, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur = 0;
+
+        // --- Dark Cockpit Dome ---
+        const domeGradient = ctx.createRadialGradient(0, -8, 2, 0, -12, 20);
+        domeGradient.addColorStop(0, "#1f2937"); // dark center
+        domeGradient.addColorStop(0.7, "#111827"); // darker edge
+        domeGradient.addColorStop(1, "#000000"); // black rim
+
+        ctx.fillStyle = domeGradient;
+        ctx.beginPath();
+        ctx.ellipse(0, -8, 18, 12, 0, Math.PI, 0, true);
+        ctx.fill();
+
+        // --- Dome highlight rim ---
+        ctx.strokeStyle = "rgba(255,255,255,0.3)";
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(0, -20);
-        ctx.lineTo(0, -25);
+        ctx.ellipse(0, -8, 18, 12, 0, Math.PI, 0, true);
         ctx.stroke();
 
-        // Antenna tip light
-        ctx.fillStyle = '#FF0000';
-        ctx.shadowColor = '#FF0000';
-        ctx.shadowBlur = 6;
+        // --- Chrome reflections on layers ---
+        ctx.globalAlpha = 0.4;
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 1;
+
+        // Bottom layer highlight
         ctx.beginPath();
-        ctx.arc(0, -25, 1.5, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.ellipse(0, 15, 48, 11, 0, Math.PI * 1.3, Math.PI * 1.7);
+        ctx.stroke();
+
+        // Middle layer highlight
+        ctx.beginPath();
+        ctx.ellipse(0, 8, 38, 9, 0, Math.PI * 1.3, Math.PI * 1.7);
+        ctx.stroke();
+
+        // Top layer highlight
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 28, 7, 0, Math.PI * 1.3, Math.PI * 1.7);
+        ctx.stroke();
+
+        ctx.globalAlpha = 1;
 
         ctx.restore();
-        ctx.shadowBlur = 0;
-        ctx.globalAlpha = 1;
 
         // Draw particles
         state.particles.forEach(particle => {
@@ -615,7 +689,7 @@ export default function FlappyGame({
         });
         ctx.globalAlpha = 1;
 
-        // UI
+        // UI (remove environment indicator)
         ctx.font = 'bold 24px Arial, sans-serif';
         ctx.fillStyle = '#00BFFF';
         ctx.shadowColor = '#00BFFF';
@@ -644,9 +718,9 @@ export default function FlappyGame({
             ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Game Over modal
+            // Game Over modal (larger to accommodate play again button)
             const modalWidth = Math.min(380, canvas.width - 40);
-            const modalHeight = 320;
+            const modalHeight = gameMode === 'practice' ? 380 : 320; // Larger for practice mode
             const modalX = (canvas.width - modalWidth) / 2;
             const modalY = (canvas.height - modalHeight) / 2;
 
@@ -681,17 +755,18 @@ export default function FlappyGame({
             ctx.shadowColor = '#FFD700';
             ctx.fillText(`⭐ Coins: ${state.coins}`, canvas.width / 2, modalY + 130);
 
-            // Buttons - show Play Again only in practice mode
+            // Show Play Again button in practice mode
             const buttonWidth = 140;
             const buttonHeight = 40;
             const playButtonX = canvas.width / 2 - buttonWidth / 2;
             let currentY = modalY + 170;
 
-            // Play Again button (only in practice mode)
+            // Play Again button (only show in practice mode)
             if (gameMode === 'practice') {
                 const playGradient = ctx.createLinearGradient(playButtonX, currentY, playButtonX, currentY + buttonHeight);
                 playGradient.addColorStop(0, '#10B981');
                 playGradient.addColorStop(1, '#059669');
+
                 ctx.fillStyle = playGradient;
                 ctx.roundRect(playButtonX, currentY, buttonWidth, buttonHeight, 8);
                 ctx.fill();
@@ -710,9 +785,6 @@ export default function FlappyGame({
                 };
 
                 currentY += 60; // Move next button down
-            } else {
-                // Clear play button bounds in tournament mode
-                state.playButtonBounds = undefined;
             }
 
             // Home button (always show)
