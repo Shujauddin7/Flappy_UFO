@@ -1,26 +1,427 @@
 @import 'tailwindcss';
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@400;600;700;800;900&display=swap');
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #000000;
+  --foreground: #ffffff;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+html, body {
+  height: 100vh;
+  overflow: hidden;
+  background: #000000;
+  color: #ffffff;
+  font-family: 'Exo 2', Arial, sans-serif;
+  touch-action: none;
+  margin: 0;
+  padding: 0;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+.starfield-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #000000;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.main-container, .game-select-screen {
+  position: relative;
+  z-index: 10;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+}
+
+.main-container > *, .game-select-screen > * {
+  pointer-events: auto;
+}
+
+/* HOME SCREEN */
+.header-section {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  position: relative;
+  margin-top: 2.7rem;
+}
+
+.game-title {
+  font-family: 'Orbitron', monospace;
+  font-weight: 900;
+  font-size: clamp(2.2rem, 7vw, 3.2rem);
+  text-align: center;
+  margin: 0;
+  line-height: 1.1;
+  letter-spacing: 0.03em;
+}
+
+.flappy-text {
+  color: #00F5FF;
+  text-shadow: 0 0 12px #00F5FF, 0 0 24px #00F5FF;
+  margin-right: 0.1em;
+}
+
+.ufo-text {
+  color: #9333EA;
+  text-shadow: 0 0 12px #9333EA, 0 0 24px #9333EA;
+  margin-left: 0.1em;
+}
+
+.ufo-icon {
+  font-size: 1.2em;
+  vertical-align: middle;
+  margin: 0 0.05em;
+  filter: drop-shadow(0 0 8px #00F5FF);
+}
+
+.info-btn {
+  position: absolute;
+  top: -0.4rem;
+  right: -2.7rem;
+  background: rgba(0,245,255,0.15);
+  border: 1.7px solid rgba(0,245,255,0.25);
+  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  color: #fff;
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 12px rgba(0,245,255,0.2);
+  backdrop-filter: blur(6px);
+}
+
+.info-btn:hover {
+  background: rgba(0,245,255,0.3);
+  border-color: #00F5FF;
+  transform: scale(1.05);
+}
+
+.play-section {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.custom-play-btn {
+  background: linear-gradient(45deg, #00F5FF, #1D4ED8, #9333EA);
+  border: none;
+  padding: 1.1rem 2.6rem;
+  border-radius: 50px;
+  font-family: 'Orbitron', monospace;
+  font-weight: 700;
+  font-size: 1.3rem;
+  color: #0B0C10;
+  text-shadow: none;
+  box-shadow: 0 0 18px rgba(0,245,255,0.6), 0 8px 18px rgba(0,245,255,0.2);
+  transition: transform 0.18s, box-shadow 0.18s;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.custom-play-btn:hover {
+  transform: scale(1.04);
+  box-shadow: 0 0 26px rgba(0,245,255,0.8), 0 8px 22px rgba(0,245,255,0.3);
+}
+
+/* GAME SELECT SCREEN */
+.game-select-screen {
+  padding: 2rem 1rem 1.5rem;
+}
+
+.epic-title-section {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.epic-title {
+  font-family: 'Orbitron', monospace;
+  font-weight: 900;
+  margin: 0 0 0.8rem;
+  line-height: 0.9;
+}
+
+.choose-word {
+  display: block;
+  font-size: clamp(1.6rem, 5vw, 2.2rem);
+  color: #00F5FF;
+  text-shadow: 0 0 15px #00F5FF, 0 0 30px #00F5FF;
+  animation: glow-blue 3s ease-in-out infinite alternate;
+}
+
+.destiny-word {
+  display: block;
+  font-size: clamp(2rem, 6vw, 2.8rem);
+  color: #9333EA;
+  text-shadow: 0 0 20px #9333EA, 0 0 40px #9333EA;
+  animation: glow-purple 3s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes glow-blue {
+  0% { text-shadow: 0 0 10px #00F5FF, 0 0 20px #00F5FF; }
+  100% { text-shadow: 0 0 20px #00F5FF, 0 0 40px #00F5FF; }
+}
+
+@keyframes glow-purple {
+  0% { text-shadow: 0 0 15px #9333EA, 0 0 30px #9333EA; }
+  100% { text-shadow: 0 0 25px #9333EA, 0 0 50px #9333EA; }
+}
+
+.epic-subtitle {
+  font-size: 1rem;
+  color: rgba(255,255,255,0.8);
+  font-weight: 500;
+  letter-spacing: 1px;
+}
+
+.game-modes {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  width: 100%;
+  max-width: 350px;
+  align-items: center;
+  justify-content: center;
+}
+
+.mode-card {
+  position: relative;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px;
+  padding: 1.5rem;
+  width: 100%;
+  backdrop-filter: blur(20px);
+  transition: all 0.4s ease;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.mode-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  border-color: rgba(255,255,255,0.3);
+}
+
+.cosmic-aura {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0.1;
+  border-radius: 20px;
+  transition: opacity 0.4s;
+}
+
+.practice-aura {
+  background: radial-gradient(circle at 70% 30%, #00F5FF, transparent 70%);
+}
+
+.tournament-aura {
+  background: radial-gradient(circle at 70% 30%, #9333EA, transparent 70%);
+}
+
+.mode-card:hover .cosmic-aura {
+  opacity: 0.2;
+  animation: aura-pulse 2s ease-in-out infinite;
+}
+
+@keyframes aura-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.mode-content {
+  position: relative;
+  z-index: 2;
+  text-align: left;
+}
+
+.mode-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.8rem;
+  display: block;
+  filter: drop-shadow(0 0 15px currentColor);
+}
+
+.practice-mode .mode-icon {
+  color: #00F5FF;
+  animation: icon-bounce 2s ease-in-out infinite;
+}
+
+.tournament-mode .mode-icon {
+  color: #9333EA;
+  animation: icon-shine 3s ease-in-out infinite;
+}
+
+@keyframes icon-bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1) translateY(-3px); }
+}
+
+@keyframes icon-shine {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.05) rotate(5deg); }
+}
+
+.mode-name {
+  font-family: 'Orbitron', monospace;
+  font-weight: 800;
+  font-size: 1.4rem;
+  margin: 0 0 0.3rem;
+  color: #ffffff;
+  letter-spacing: 2px;
+}
+
+.mode-desc {
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.7);
+  margin: 0 0 1rem;
+  font-weight: 500;
+  font-style: italic;
+}
+
+.mode-features {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 1.5rem;
+}
+
+.feature {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.8);
+  font-weight: 500;
+}
+
+.mode-button {
+  position: relative;
+  background: linear-gradient(45deg, #00F5FF, #1D4ED8);
+  border: none;
+  border-radius: 15px;
+  padding: 1rem 2rem;
+  width: 100%;
+  font-family: 'Orbitron', monospace;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #000;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 8px 25px rgba(0,245,255,0.4);
+  overflow: hidden;
+}
+
+.tournament-button {
+  background: linear-gradient(45deg, #9333EA, #EC4899);
+  box-shadow: 0 8px 25px rgba(147,51,234,0.4);
+}
+
+.mode-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 35px rgba(0,245,255,0.6);
+}
+
+.tournament-button:hover {
+  box-shadow: 0 12px 35px rgba(147,51,234,0.6);
+}
+
+.mode-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: button-shine 3s ease-in-out infinite;
+}
+
+@keyframes button-shine {
+  0% { left: -100%; }
+  50% { left: 100%; }
+  100% { left: 100%; }
+}
+
+.bottom-actions {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 1rem;
+}
+
+.action-btn {
+  background: linear-gradient(135deg, #00F5FF 70%, #9333EA 100%);
+  border: 1.5px solid rgba(255,255,255,0.17);
+  border-radius: 50%;
+  width: 45px;
+  height: 45px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.35rem;
+  box-shadow: 0 0 11px rgba(0,245,255,0.2), 0 10px 26px rgba(0,0,0,0.4);
+  color: #0B0C10;
+  transition: all 0.17s;
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+}
+
+.action-btn:hover {
+  transform: scale(1.15) translateY(-4px);
+  box-shadow: 0 0 24px rgba(0,245,255,0.5), 0 10px 32px rgba(0,0,0,0.7);
+}
+
+/* Mobile responsive */
+@media (max-width: 500px) {
+  .game-select-screen { 
+    padding: 1.5rem 1rem 1rem; 
+  }
+  .game-modes { 
+    gap: 1rem; 
+    max-width: 320px; 
+  }
+  .mode-card { 
+    padding: 1.2rem; 
+  }
+  .mode-icon { 
+    font-size: 2rem; 
+  }
+  .choose-word { 
+    font-size: 1.4rem; 
+  }
+  .destiny-word { 
+    font-size: 1.8rem; 
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@media (max-height: 700px) {
+  .game-select-screen { 
+    padding: 1rem; 
+  }
+  .epic-title-section { 
+    margin-bottom: 1rem; 
+  }
+  .mode-card { 
+    padding: 1rem; 
+  }
+  .mode-features { 
+    margin-bottom: 1rem; 
+  }
 }
