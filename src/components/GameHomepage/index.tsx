@@ -172,9 +172,10 @@ export default function GameHomepage() {
                 <Page.Main className="main-container">
                     <div className="header-section">
                         <h1 className="game-title">
-                            <span className="flappy-text">Flappy</span>{' '}
                             <span className="ufo-icon">🛸</span>
+                            <span className="flappy-text">Flappy</span>{''}
                             <span className="ufo-text">UFO</span>
+                            <span className="ufo-icon">🛸</span>
                         </h1>
                         <button
                             className="info-btn"
@@ -193,21 +194,25 @@ export default function GameHomepage() {
                             Tap To Play
                         </button>
                     </div>
-                    <div className="bottom-actions">
-                        <button
-                            className="action-btn"
-                            onClick={() => alert('Home')}
-                            aria-label="Home"
-                        >
-                            🏠
-                        </button>
-                        <button
-                            className="action-btn"
-                            onClick={() => alert('Prizes & Leaderboard')}
-                            aria-label="Prizes"
-                        >
-                            🏆
-                        </button>
+                    <div className="bottom-nav-container">
+                        <div className="space-nav-icons">
+                            <button
+                                className="space-nav-btn home-nav"
+                                onClick={() => alert('Launch Pad - Home Base')}
+                                aria-label="Launch Pad"
+                            >
+                                <div className="space-icon">🏠</div>
+
+                            </button>
+                            <button
+                                className="space-nav-btn prizes-nav"
+                                onClick={() => alert('Galactic Leaderboard & Cosmic Prizes')}
+                                aria-label="Cosmic Prizes"
+                            >
+                                <div className="space-icon">🏆</div>
+
+                            </button>
+                        </div>
                     </div>
                 </Page.Main>
             </Page>
@@ -269,21 +274,25 @@ export default function GameHomepage() {
 
                 </div>
 
-                <div className="bottom-actions">
-                    <button
-                        className="action-btn"
-                        onClick={() => setCurrentScreen('home')}
-                        aria-label="Home"
-                    >
-                        🏠
-                    </button>
-                    <button
-                        className="action-btn"
-                        onClick={() => alert('Leaderboard & Prizes')}
-                        aria-label="Prizes"
-                    >
-                        🏆
-                    </button>
+                <div className="bottom-nav-container">
+                    <div className="space-nav-icons">
+                        <button
+                            className="space-nav-btn home-nav"
+                            onClick={() => setCurrentScreen('home')}
+                            aria-label="Launch Pad"
+                        >
+                            <div className="space-icon">🏠</div>
+                           
+                        </button>
+                        <button
+                            className="space-nav-btn prizes-nav"
+                            onClick={() => alert('Galactic Leaderboard & Cosmic Prizes')}
+                            aria-label="Cosmic Prizes"
+                        >
+                            <div className="space-icon">🏆</div>
+                            
+                        </button>
+                    </div>
                 </div>
 
             </Page.Main>
