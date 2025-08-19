@@ -1,4 +1,3 @@
-import { auth } from '@/auth';
 import ClientProviders from '@/providers';
 import '@worldcoin/mini-apps-ui-kit-react/styles.css';
 import type { Metadata, Viewport } from 'next';
@@ -29,12 +28,13 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await auth();
+  // Remove automatic authentication - session will be null for public routes
+  const session = null;
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
