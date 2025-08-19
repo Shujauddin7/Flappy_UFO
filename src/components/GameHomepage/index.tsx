@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Page } from '@/components/PageLayout';
 import dynamic from 'next/dynamic';
+import { TournamentEntryModal } from '@/components/TournamentEntryModal';
 
 // Dynamically import FlappyGame to avoid SSR issues
 const FlappyGame = dynamic(() => import('@/components/FlappyGame'), {
@@ -24,12 +25,32 @@ type GameMode = 'practice' | 'tournament';
 export default function GameHomepage() {
     const [currentScreen, setCurrentScreen] = useState<'home' | 'gameSelect' | 'playing'>('home');
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
+    const [showTournamentModal, setShowTournamentModal] = useState(false);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     // Handle game start
     const handleGameStart = (mode: GameMode) => {
         setGameMode(mode);
         setCurrentScreen('playing');
+    };
+
+    // Handle tournament button click - show modal instead of starting game
+    const handleTournamentClick = () => {
+        setShowTournamentModal(true);
+    };
+
+    // Handle tournament entry selection from modal
+    const handleTournamentEntry = (entryType: 'verified' | 'standard') => {
+        setShowTournamentModal(false);
+        // For now, just start the tournament game (logic will be added later)
+        setGameMode('tournament');
+        setCurrentScreen('playing');
+        console.log(`Selected entry type: ${entryType}`);
+    };
+
+    // Handle modal close
+    const handleModalClose = () => {
+        setShowTournamentModal(false);
     };
 
     // Handle game end
@@ -265,7 +286,7 @@ export default function GameHomepage() {
                             </div>
                             <button
                                 className="mode-button tournament-button"
-                                onClick={() => handleGameStart('tournament')}
+                                onClick={handleTournamentClick}
                             >
                                 JOIN BATTLE
                             </button>
@@ -296,6 +317,13 @@ export default function GameHomepage() {
                 </div>
 
             </Page.Main>
+            
+            {/* Tournament Entry Modal */}
+            <TournamentEntryModal
+                isOpen={showTournamentModal}
+                onClose={handleModalClose}
+                onEntrySelect={handleTournamentEntry}
+            />
         </Page>
     );
 }
