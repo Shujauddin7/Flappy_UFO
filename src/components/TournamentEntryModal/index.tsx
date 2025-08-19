@@ -18,7 +18,7 @@ export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                
+
                 <div className="epic-title-section">
                     <h1 className="epic-title">
                         <span className="choose-word">Choose Your</span>
@@ -28,7 +28,7 @@ export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
                 </div>
 
                 <div className="game-modes">
-                    
+
                     {/* Verified Entry Card */}
                     <div className="mode-card verified-entry-mode">
                         <div className="cosmic-aura verified-aura"></div>

@@ -317,7 +317,7 @@ export default function GameHomepage() {
                 </div>
 
             </Page.Main>
-            
+
             {/* Tournament Entry Modal */}
             <TournamentEntryModal
                 isOpen={showTournamentModal}
