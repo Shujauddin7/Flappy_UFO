@@ -3,9 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Page } from '@/components/PageLayout';
 import dynamic from 'next/dynamic';
-import { useMiniKit } from '@worldcoin/minikit-js/minikit-provider';
-import { useSession } from 'next-auth/react';
-import { AuthButton } from '@/components/AuthButton';
 
 // Dynamically import FlappyGame to avoid SSR issues
 const FlappyGame = dynamic(() => import('@/components/FlappyGame'), {
@@ -28,10 +25,6 @@ export default function GameHomepage() {
     const [currentScreen, setCurrentScreen] = useState<'home' | 'gameSelect' | 'playing'>('home');
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    
-    // World App / MiniKit detection
-    const { isInstalled } = useMiniKit();
-    const { data: session, status } = useSession();
 
     // Handle game start
     const handleGameStart = (mode: GameMode) => {
@@ -172,49 +165,6 @@ export default function GameHomepage() {
         return <FlappyGame gameMode={gameMode} onGameEnd={handleGameEnd} />;
     }
 
-    // If user is in World App but not authenticated, show auth screen
-    if (isInstalled && status === 'unauthenticated') {
-        return (
-            <Page>
-                <canvas ref={canvasRef} className="starfield-canvas" />
-                <Page.Main className="main-container">
-                    <div className="header-section">
-                        <h1 className="game-title">
-                            <span className="ufo-icon">🛸</span>
-                            <span className="flappy-text">Flappy</span>{''}
-                            <span className="ufo-text">UFO</span>
-                            <span className="ufo-icon">🛸</span>
-                        </h1>
-                        <p style={{ color: '#E5E7EB', textAlign: 'center', marginTop: '1rem' }}>
-                            Welcome to World App! Please sign in to play.
-                        </p>
-                    </div>
-                    <div className="play-section">
-                        <AuthButton />
-                    </div>
-                    <div className="bottom-nav-container">
-                        <div className="space-nav-icons">
-                            <button
-                                className="space-nav-btn home-nav"
-                                onClick={() => alert('Launch Pad - Home Base')}
-                                aria-label="Launch Pad"
-                            >
-                                <div className="space-icon">🏠</div>
-                            </button>
-                            <button
-                                className="space-nav-btn prizes-nav"
-                                onClick={() => alert('Galactic Leaderboard & Cosmic Prizes')}
-                                aria-label="Cosmic Prizes"
-                            >
-                                <div className="space-icon">🏆</div>
-                            </button>
-                        </div>
-                    </div>
-                </Page.Main>
-            </Page>
-        );
-    }
-
     if (currentScreen === 'home') {
         return (
             <Page>
@@ -227,11 +177,6 @@ export default function GameHomepage() {
                             <span className="ufo-text">UFO</span>
                             <span className="ufo-icon">🛸</span>
                         </h1>
-                        {isInstalled && session && (
-                            <p style={{ color: '#00F5FF', textAlign: 'center', fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                                🌍 Playing in World App • Welcome {session.user?.username || 'Player'}!
-                            </p>
-                        )}
                         <button
                             className="info-btn"
                             onClick={() => alert('Game Rules:\n• Tap to navigate your UFO\n• Avoid obstacles\n• Win WLD tournaments!')}
@@ -337,7 +282,7 @@ export default function GameHomepage() {
                             aria-label="Launch Pad"
                         >
                             <div className="space-icon">🏠</div>
-                           
+
                         </button>
                         <button
                             className="space-nav-btn prizes-nav"
@@ -345,7 +290,7 @@ export default function GameHomepage() {
                             aria-label="Cosmic Prizes"
                         >
                             <div className="space-icon">🏆</div>
-                            
+
                         </button>
                     </div>
                 </div>
