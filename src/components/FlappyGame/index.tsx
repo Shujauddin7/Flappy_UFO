@@ -540,171 +540,17 @@ export default function FlappyGame({
             }
         });
 
-        // Draw ultra-premium multi-layered chrome UFO with glowing rings
+        // Draw simple UFO emoji
         ctx.save();
         ctx.translate(state.ufo.x + 30, state.ufo.y + 25);
         ctx.rotate(state.ufo.rotation * Math.PI / 180);
 
-        const time = Date.now() * 0.003;
-        const pulse = 0.6 + Math.sin(time * 2) * 0.4;
-
-        // --- Tractor Beam (subtle cone) ---
-        ctx.globalAlpha = 0.25 + pulse * 0.15;
-        const beamGradient = ctx.createLinearGradient(0, 20, 0, 80);
-        beamGradient.addColorStop(0, "#00e5ff44");
-        beamGradient.addColorStop(1, "transparent");
-        ctx.fillStyle = beamGradient;
-        ctx.beginPath();
-        ctx.moveTo(-15, 20);
-        ctx.lineTo(-35, 80);
-        ctx.lineTo(35, 80);
-        ctx.lineTo(15, 20);
-        ctx.closePath();
-        ctx.fill();
-        ctx.globalAlpha = 1;
-
-        // --- Bottom Layer (largest metallic ring) ---
-        const bottomGradient = ctx.createLinearGradient(-50, 15, 50, 15);
-        bottomGradient.addColorStop(0, "#374151"); // dark edge
-        bottomGradient.addColorStop(0.2, "#d1d5db"); // bright silver
-        bottomGradient.addColorStop(0.5, "#f3f4f6"); // chrome highlight
-        bottomGradient.addColorStop(0.8, "#d1d5db"); // silver
-        bottomGradient.addColorStop(1, "#374151"); // dark edge
-
-        ctx.fillStyle = bottomGradient;
-        ctx.beginPath();
-        ctx.ellipse(0, 15, 50, 12, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // --- Bottom Glowing Ring ---
-        ctx.globalAlpha = pulse * 0.8;
-        ctx.strokeStyle = "#00e5ff";
-        ctx.lineWidth = 3;
-        ctx.shadowColor = "#00e5ff";
-        ctx.shadowBlur = 12;
-        ctx.beginPath();
-        ctx.ellipse(0, 15, 45, 10, 0, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-        ctx.shadowBlur = 0;
-
-        // --- Middle Layer (medium metallic ring) ---
-        const middleGradient = ctx.createLinearGradient(-40, 8, 40, 8);
-        middleGradient.addColorStop(0, "#4b5563"); // dark edge
-        middleGradient.addColorStop(0.3, "#e5e7eb"); // bright silver
-        middleGradient.addColorStop(0.5, "#ffffff"); // chrome highlight
-        middleGradient.addColorStop(0.7, "#e5e7eb"); // silver
-        middleGradient.addColorStop(1, "#4b5563"); // dark edge
-
-        ctx.fillStyle = middleGradient;
-        ctx.beginPath();
-        ctx.ellipse(0, 8, 40, 10, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // --- Middle Glowing Ring ---
-        ctx.globalAlpha = pulse * 0.9;
-        ctx.strokeStyle = "#00bcd4";
-        ctx.lineWidth = 2.5;
-        ctx.shadowColor = "#00bcd4";
-        ctx.shadowBlur = 10;
-        ctx.beginPath();
-        ctx.ellipse(0, 8, 36, 8, 0, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-        ctx.shadowBlur = 0;
-
-        // --- Top Layer (smaller metallic ring) ---
-        const topGradient = ctx.createLinearGradient(-30, 0, 30, 0);
-        topGradient.addColorStop(0, "#6b7280"); // dark edge
-        topGradient.addColorStop(0.4, "#f3f4f6"); // bright silver
-        topGradient.addColorStop(0.5, "#ffffff"); // chrome highlight
-        topGradient.addColorStop(0.6, "#f3f4f6"); // silver
-        topGradient.addColorStop(1, "#6b7280"); // dark edge
-
-        ctx.fillStyle = topGradient;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 30, 8, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // --- Top Glowing Ring ---
-        ctx.globalAlpha = pulse;
-        ctx.strokeStyle = "#26c6da";
-        ctx.lineWidth = 2;
-        ctx.shadowColor = "#26c6da";
-        ctx.shadowBlur = 8;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 27, 6, 0, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-        ctx.shadowBlur = 0;
-
-        // --- Dark Cockpit Dome ---
-        const domeGradient = ctx.createRadialGradient(0, -8, 2, 0, -12, 20);
-        domeGradient.addColorStop(0, "#1f2937"); // dark center
-        domeGradient.addColorStop(0.7, "#111827"); // darker edge
-        domeGradient.addColorStop(1, "#000000"); // black rim
-
-        ctx.fillStyle = domeGradient;
-        ctx.beginPath();
-        ctx.ellipse(0, -8, 18, 12, 0, Math.PI, 0, true);
-        ctx.fill();
-
-        // --- Dome highlight rim ---
-        ctx.strokeStyle = "rgba(255,255,255,0.3)";
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.ellipse(0, -8, 18, 12, 0, Math.PI, 0, true);
-        ctx.stroke();
-
-        // --- Small Cockpit Window (semi-circular) ---
-        const cockpitGradient = ctx.createLinearGradient(0, -15, 0, -5);
-        cockpitGradient.addColorStop(0, "rgba(100, 200, 255, 0.8)"); // light blue glass
-        cockpitGradient.addColorStop(0.3, "rgba(50, 150, 255, 0.6)"); // medium blue
-        cockpitGradient.addColorStop(0.7, "rgba(30, 100, 200, 0.4)"); // darker blue
-        cockpitGradient.addColorStop(1, "rgba(20, 50, 100, 0.2)"); // very dark blue
-
-        ctx.fillStyle = cockpitGradient;
-        ctx.beginPath();
-        ctx.ellipse(0, -12, 10, 6, 0, Math.PI, 0, true); // Small semi-circle on top
-        ctx.fill();
-
-        // --- Cockpit window frame ---
-        ctx.strokeStyle = "rgba(200, 220, 255, 0.6)";
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.ellipse(0, -12, 10, 6, 0, Math.PI, 0, true);
-        ctx.stroke();
-
-        // --- Cockpit glass reflection ---
-        ctx.globalAlpha = 0.4;
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 0.5;
-        ctx.beginPath();
-        ctx.ellipse(0, -12, 8, 4, 0, Math.PI * 1.2, Math.PI * 1.8);
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-
-        // --- Chrome reflections on layers ---
-        ctx.globalAlpha = 0.4;
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 1;
-
-        // Bottom layer highlight
-        ctx.beginPath();
-        ctx.ellipse(0, 15, 48, 11, 0, Math.PI * 1.3, Math.PI * 1.7);
-        ctx.stroke();
-
-        // Middle layer highlight
-        ctx.beginPath();
-        ctx.ellipse(0, 8, 38, 9, 0, Math.PI * 1.3, Math.PI * 1.7);
-        ctx.stroke();
-
-        // Top layer highlight
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 28, 7, 0, Math.PI * 1.3, Math.PI * 1.7);
-        ctx.stroke();
-
-        ctx.globalAlpha = 1;
+        // UFO emoji
+        ctx.font = '60px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText('🛸', 0, 0);
 
         ctx.restore();
 
@@ -722,7 +568,7 @@ export default function FlappyGame({
         ctx.fillStyle = '#00BFFF';
         ctx.shadowColor = '#00BFFF';
         ctx.shadowBlur = 8;
-        ctx.fillText(`Score: ${state.score}`, 20, 50);
+        ctx.fillText(`🛸 Score: ${state.score}`, 20, 50);
 
         ctx.fillStyle = '#FFD700';
         ctx.shadowColor = '#FFD700';
