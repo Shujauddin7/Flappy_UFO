@@ -1,4 +1,5 @@
 import { hashNonce } from '@/auth/wallet/client-helpers';
+import { supabase } from '@/lib/supabase';
 import {
   MiniAppWalletAuthSuccessPayload,
   MiniKit,
@@ -63,12 +64,39 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           console.log('Invalid final payload');
           return null;
         }
-        // Optionally, fetch the user info from your own database
+
+        const walletAddress = result.siweMessageData.address;
+        
+        // Get user info from MiniKit
         const userInfo = await MiniKit.getUserInfo(finalPayload.address);
+
+        // Store/update user in Supabase (according to Plan.md)
+        try {
+          const { error } = await supabase
+            .from('users')
+            .upsert({
+              wallet: walletAddress,
+              username: userInfo?.username || null
+            }, {
+              onConflict: 'wallet',
+              ignoreDuplicates: false
+            })
+            .select()
+            .single();
+
+          if (error) {
+            console.error('Supabase user creation error:', error);
+            // Continue with auth even if Supabase fails (graceful degradation)
+          }
+        } catch (supabaseError) {
+          console.error('Supabase connection error:', supabaseError);
+          // Continue with auth even if Supabase fails
+        }
 
         return {
           id: finalPayload.address,
           ...userInfo,
+          walletAddress, // Override with verified wallet address
         };
       },
     }),

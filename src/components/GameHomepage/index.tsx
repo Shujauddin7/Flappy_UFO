@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { Page } from '@/components/PageLayout';
+import { SignInAuthButton } from '@/components/SignInAuthButton';
 import dynamic from 'next/dynamic';
 import { TournamentEntryModal } from '@/components/TournamentEntryModal';
 
@@ -23,10 +25,31 @@ interface Star {
 type GameMode = 'practice' | 'tournament';
 
 export default function GameHomepage() {
+    const { data: session, status } = useSession();
     const [currentScreen, setCurrentScreen] = useState<'home' | 'gameSelect' | 'playing'>('home');
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
     const [showTournamentModal, setShowTournamentModal] = useState(false);
+    const [showSignInModal, setShowSignInModal] = useState(false);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    // Handle tap to play - check sign-in status
+    const handleTapToPlay = () => {
+        if (status === 'loading') return; // Wait for session check
+        
+        if (session?.user) {
+            // User is signed in, go to game selection
+            setCurrentScreen('gameSelect');
+        } else {
+            // User not signed in, show sign-in modal
+            setShowSignInModal(true);
+        }
+    };
+
+    // Handle successful sign-in
+    const handleSignInSuccess = () => {
+        setShowSignInModal(false);
+        setCurrentScreen('gameSelect');
+    };
 
     // Handle game start
     const handleGameStart = (mode: GameMode) => {
@@ -209,7 +232,7 @@ export default function GameHomepage() {
                     <div className="play-section">
                         <button
                             className="custom-play-btn"
-                            onClick={() => setCurrentScreen('gameSelect')}
+                            onClick={handleTapToPlay}
                             aria-label="Tap to Play"
                         >
                             Tap To Play
@@ -324,6 +347,35 @@ export default function GameHomepage() {
                 onClose={handleModalClose}
                 onEntrySelect={handleTournamentEntry}
             />
+
+            {/* Sign-In Modal */}
+            {showSignInModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content sign-in-modal">
+                        <div className="modal-header">
+                            <h2 className="modal-title">🛸 Welcome to Flappy UFO</h2>
+                            <button 
+                                className="modal-close-btn" 
+                                onClick={() => setShowSignInModal(false)}
+                                aria-label="Close"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <div className="modal-body">
+                            <p className="sign-in-description">
+                                Sign in with your World App wallet to access Tournament Mode and compete for WLD prizes!
+                            </p>
+                            <div className="auth-button-container">
+                                <SignInAuthButton onSuccess={handleSignInSuccess} />
+                            </div>
+                            <p className="sign-in-note">
+                                Don&apos;t have World App? <a href="https://worldcoin.org/download" target="_blank" rel="noopener noreferrer">Download here</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </Page>
     );
 }

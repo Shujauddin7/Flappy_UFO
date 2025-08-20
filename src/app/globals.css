@@ -834,3 +834,35 @@ body {
     padding: 0.7rem 1.2rem;
   }
 }
+
+/* Sign-In Modal Styles */
+.sign-in-modal {
+  max-width: 400px;
+  text-align: center;
+}
+
+.sign-in-description {
+  margin: 1rem 0 1.5rem;
+  color: #E5E7EB;
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
+.auth-button-container {
+  margin: 1.5rem 0;
+}
+
+.sign-in-note {
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: #9CA3AF;
+}
+
+.sign-in-note a {
+  color: #00F5FF;
+  text-decoration: none;
+}
+
+.sign-in-note a:hover {
+  text-decoration: underline;
+}
