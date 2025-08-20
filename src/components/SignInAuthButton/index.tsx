@@ -22,15 +22,14 @@ export const SignInAuthButton = ({ onSuccess }: SignInAuthButtonProps) => {
         setIsPending(true);
         try {
             await walletAuth();
-            // Auth successful, trigger callback
+            setIsPending(false);
+            // Auth successful, trigger callback after clearing pending state
             onSuccess?.();
         } catch (error) {
             console.error('Wallet authentication button error', error);
             setIsPending(false);
             return;
         }
-
-        setIsPending(false);
     }, [isInstalled, isPending, onSuccess]);
 
     return (

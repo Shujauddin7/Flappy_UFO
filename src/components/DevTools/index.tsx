@@ -14,8 +14,13 @@ interface ExtendedUser {
 export default function DevTools() {
     const { data: session, status } = useSession();
 
-    // Only show when explicitly enabled via environment variable
-    if (process.env.NEXT_PUBLIC_SHOW_DEV_TOOLS !== 'true') {
+    // Show dev tools if explicitly enabled OR on dev URLs
+    const showDevTools = process.env.NEXT_PUBLIC_SHOW_DEV_TOOLS === 'true' ||
+        (typeof window !== 'undefined' &&
+            (window.location.hostname.includes('flappyufo-git-dev') ||
+                window.location.hostname.includes('localhost')))
+
+    if (!showDevTools) {
         return null;
     }
 
@@ -39,6 +44,10 @@ export default function DevTools() {
 
             <div style={{ marginBottom: '8px' }}>
                 <strong>Status:</strong> {status}
+            </div>
+
+            <div style={{ marginBottom: '8px', fontSize: '10px', color: '#aaa' }}>
+                URL: {typeof window !== 'undefined' ? window.location.hostname : 'server'}
             </div>
 
             {session?.user ? (
@@ -66,14 +75,20 @@ export default function DevTools() {
                             padding: '5px 10px',
                             cursor: 'pointer',
                             fontSize: '11px',
-                            width: '100%'
+                            width: '100%',
+                            marginBottom: '5px'
                         }}
                     >
                         🚪 Sign Out
                     </button>
                 </>
             ) : (
-                <div>❌ Not signed in</div>
+                <>
+                    <div style={{ marginBottom: '8px' }}>❌ Not signed in</div>
+                    <div style={{ fontSize: '10px', marginBottom: '5px', color: '#aaa' }}>
+                        Status: {status}
+                    </div>
+                </>
             )}
         </div>
     );
