@@ -41,7 +41,7 @@ export default function GameHomepage() {
     // Handle game start - both modes require sign-in first
     const handleGameStart = (mode: GameMode) => {
         if (status === 'loading') return; // Wait for session check
-        
+
         if (session?.user) {
             // User is already signed in, start the game
             if (mode === 'tournament') {
@@ -60,7 +60,7 @@ export default function GameHomepage() {
     // Handle successful sign-in - start the previously selected game mode
     const handleSignInSuccess = () => {
         setShowSignInModal(false);
-        
+
         if (gameMode === 'tournament') {
             setShowTournamentModal(true);
         } else if (gameMode === 'practice') {
@@ -364,8 +364,8 @@ export default function GameHomepage() {
                     <div className="modal-content sign-in-modal">
                         <div className="modal-header">
                             <h2 className="modal-title">🛸 Sign In Required</h2>
-                            <button 
-                                className="modal-close-btn" 
+                            <button
+                                className="modal-close-btn"
                                 onClick={() => setShowSignInModal(false)}
                                 aria-label="Close"
                             >

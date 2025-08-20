@@ -66,7 +66,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         const walletAddress = result.siweMessageData.address;
-        
+
         // Get user info from MiniKit
         const userInfo = await MiniKit.getUserInfo(finalPayload.address);
 

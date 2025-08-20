@@ -2,6 +2,15 @@
 
 import { useSession, signOut } from 'next-auth/react';
 
+interface ExtendedUser {
+    id?: string;
+    name?: string;
+    email?: string;
+    image?: string;
+    wallet_address?: string;
+    world_id?: string;
+}
+
 export default function DevTools() {
     const { data: session, status } = useSession();
 
@@ -27,21 +36,25 @@ export default function DevTools() {
             <div style={{ marginBottom: '5px', fontWeight: 'bold' }}>
                 🛠️ DEV TOOLS
             </div>
-            
+
             <div style={{ marginBottom: '8px' }}>
                 <strong>Status:</strong> {status}
             </div>
-            
+
             {session?.user ? (
                 <>
                     <div style={{ marginBottom: '8px' }}>
                         <strong>User:</strong> {session.user.name || 'Unknown'}
                     </div>
                     <div style={{ marginBottom: '8px' }}>
-                        <strong>World ID:</strong> {session.user.id?.slice(0, 8)}...
+                        <strong>World ID:</strong> {session.user.id?.slice(0, 8) || 'N/A'}...
                     </div>
                     <div style={{ marginBottom: '8px' }}>
-                        <strong>Wallet:</strong> {session.user.wallet?.slice(0, 6)}...{session.user.wallet?.slice(-4)}
+                        <strong>Wallet:</strong> {(() => {
+                            const walletAddr = (session.user as ExtendedUser)?.wallet_address;
+                            if (!walletAddr) return 'N/A';
+                            return `${walletAddr.slice(0, 6)}...${walletAddr.slice(-4)}`;
+                        })()}
                     </div>
                     <button
                         onClick={() => signOut()}
