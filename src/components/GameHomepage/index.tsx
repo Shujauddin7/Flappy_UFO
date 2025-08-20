@@ -32,34 +32,39 @@ export default function GameHomepage() {
     const [showSignInModal, setShowSignInModal] = useState(false);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
-    // Handle tap to play - check sign-in status
+    // Handle tap to play - go directly to mode selection screen (no sign-in yet)
     const handleTapToPlay = () => {
+        setCurrentScreen('gameSelect');
+    };
+
+    // Handle game start - both modes require sign-in first
+    const handleGameStart = (mode: GameMode) => {
         if (status === 'loading') return; // Wait for session check
         
         if (session?.user) {
-            // User is signed in, go to game selection
-            setCurrentScreen('gameSelect');
+            // User is already signed in, start the game
+            if (mode === 'tournament') {
+                setShowTournamentModal(true);
+            } else {
+                setGameMode(mode);
+                setCurrentScreen('playing');
+            }
         } else {
-            // User not signed in, show sign-in modal
+            // User not signed in, show sign-in modal first
+            setGameMode(mode); // Remember which mode they want
             setShowSignInModal(true);
         }
     };
 
-    // Handle successful sign-in
+    // Handle successful sign-in - start the previously selected game mode
     const handleSignInSuccess = () => {
         setShowSignInModal(false);
-        setCurrentScreen('gameSelect');
-    };
-
-    // Handle game start
-    const handleGameStart = (mode: GameMode) => {
-        setGameMode(mode);
-        setCurrentScreen('playing');
-    };
-
-    // Handle tournament button click - show modal instead of starting game
-    const handleTournamentClick = () => {
-        setShowTournamentModal(true);
+        
+        if (gameMode === 'tournament') {
+            setShowTournamentModal(true);
+        } else if (gameMode === 'practice') {
+            setCurrentScreen('playing');
+        }
     };
 
     // Handle tournament entry selection from modal
@@ -309,7 +314,7 @@ export default function GameHomepage() {
                             </div>
                             <button
                                 className="mode-button tournament-button"
-                                onClick={handleTournamentClick}
+                                onClick={() => handleGameStart('tournament')}
                             >
                                 JOIN BATTLE
                             </button>
@@ -364,7 +369,7 @@ export default function GameHomepage() {
                         </div>
                         <div className="modal-body">
                             <p className="sign-in-description">
-                                Sign in with your World App wallet to access Tournament Mode and compete for WLD prizes!
+                                Sign in with your World App wallet to access {gameMode === 'tournament' ? 'Tournament Mode and compete for WLD prizes' : 'Practice Mode and improve your skills'}!
                             </p>
                             <div className="auth-button-container">
                                 <SignInAuthButton onSuccess={handleSignInSuccess} />
