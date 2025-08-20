@@ -68,8 +68,8 @@ export const useAuth = () => {
                 return { success: false, error: 'Authentication cancelled or failed' }
             }
 
-            // Get wallet address from the auth result
-            const walletAddress = result.finalPayload.wallet_address
+            // Get wallet address from the auth result  
+            const walletAddress = result.finalPayload.address
 
             if (!walletAddress) {
                 setAuthState(prev => ({ ...prev, isLoading: false }))
@@ -121,13 +121,6 @@ export const useAuth = () => {
             wallet: null,
             isVerifiedToday: false
         })
-    }
-
-    // Check verification status for current tournament (placeholder for now)
-    const checkVerificationStatus = async (_userId: string): Promise<boolean> => {
-        // TODO: Implement tournament verification check
-        // For now, return false
-        return false
     }
 
     // Refresh authentication state
