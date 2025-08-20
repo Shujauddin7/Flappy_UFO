@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { Page } from '@/components/PageLayout';
 import { SignInAuthButton } from '@/components/SignInAuthButton';
+import DevTools from '@/components/DevTools';
 import dynamic from 'next/dynamic';
 import { TournamentEntryModal } from '@/components/TournamentEntryModal';
 
@@ -217,6 +218,7 @@ export default function GameHomepage() {
     if (currentScreen === 'home') {
         return (
             <Page>
+                <DevTools />
                 <canvas ref={canvasRef} className="starfield-canvas" />
                 <Page.Main className="main-container">
                     <div className="header-section">
@@ -226,13 +228,15 @@ export default function GameHomepage() {
                             <span className="ufo-text">UFO</span>
                             <span className="ufo-icon">🛸</span>
                         </h1>
-                        <button
-                            className="info-btn"
-                            onClick={() => alert('Game Rules:\n• Tap to navigate your UFO\n• Avoid obstacles\n• Win WLD tournaments!')}
-                            aria-label="Game Info"
-                        >
-                            ℹ️
-                        </button>
+                        <div className="header-buttons">
+                            <button
+                                className="info-btn"
+                                onClick={() => alert('Game Rules:\n• Tap to navigate your UFO\n• Avoid obstacles\n• Win WLD tournaments!')}
+                                aria-label="Game Info"
+                            >
+                                ℹ️
+                            </button>
+                        </div>
                     </div>
                     <div className="play-section">
                         <button
@@ -270,6 +274,7 @@ export default function GameHomepage() {
 
     return (
         <Page>
+            <DevTools />
             <canvas ref={canvasRef} className="starfield-canvas" />
             <Page.Main className="game-select-screen">
 
@@ -353,12 +358,12 @@ export default function GameHomepage() {
                 onEntrySelect={handleTournamentEntry}
             />
 
-            {/* Sign-In Modal */}
+            {/* Sign-In Modal - Direct MiniKit Sign-In */}
             {showSignInModal && (
                 <div className="modal-overlay">
                     <div className="modal-content sign-in-modal">
                         <div className="modal-header">
-                            <h2 className="modal-title">🛸 Welcome to Flappy UFO</h2>
+                            <h2 className="modal-title">🛸 Sign In Required</h2>
                             <button 
                                 className="modal-close-btn" 
                                 onClick={() => setShowSignInModal(false)}
@@ -368,15 +373,9 @@ export default function GameHomepage() {
                             </button>
                         </div>
                         <div className="modal-body">
-                            <p className="sign-in-description">
-                                Sign in with your World App wallet to access {gameMode === 'tournament' ? 'Tournament Mode and compete for WLD prizes' : 'Practice Mode and improve your skills'}!
-                            </p>
                             <div className="auth-button-container">
                                 <SignInAuthButton onSuccess={handleSignInSuccess} />
                             </div>
-                            <p className="sign-in-note">
-                                Don&apos;t have World App? <a href="https://worldcoin.org/download" target="_blank" rel="noopener noreferrer">Download here</a>
-                            </p>
                         </div>
                     </div>
                 </div>
