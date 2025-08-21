@@ -61,6 +61,7 @@ export const createServerSupabaseClient = () => {
 export interface User {
     id: string
     wallet: string
+    world_id: string
     username?: string
     last_verified_date?: string
     last_verified_tournament_id?: string

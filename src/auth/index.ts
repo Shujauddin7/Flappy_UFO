@@ -103,6 +103,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             .from('users')
             .upsert({
               wallet: walletAddress,
+              world_id: finalPayload.address, // Store World ID from MiniKit payload
               username: userInfo?.username || null
             }, {
               onConflict: 'wallet',
