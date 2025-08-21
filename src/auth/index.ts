@@ -58,9 +58,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         const finalPayload: MiniAppWalletAuthSuccessPayload =
           JSON.parse(finalPayloadJson);
-        
+
         console.log('🔍 Full MiniKit payload:', JSON.stringify(finalPayload, null, 2));
-        
+
         const result = await verifySiweMessage(finalPayload, nonce);
 
         if (!result.isValid || !result.siweMessageData.address) {
@@ -69,7 +69,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         const walletAddress = result.siweMessageData.address;
-        
+
         // NOTE: Wallet Auth only provides wallet address, NOT World ID
         // World ID (nullifier_hash) is only available through the verify command
         // For now, we use wallet address as primary identifier
