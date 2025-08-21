@@ -2,6 +2,8 @@
 
 # Database schema files (keep locally for documentation)
 supabase-*.sql
+complete-database-schema.sql
+
 
 # dependencies
 /node_modules
@@ -48,4 +50,5 @@ next-env.d.ts
 Plan.md
 Createdfiles.md
 toself.md
+
 
