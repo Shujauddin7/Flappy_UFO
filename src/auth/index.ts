@@ -68,7 +68,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const walletAddress = result.siweMessageData.address;
 
         // Get user info from MiniKit
-        const userInfo = await MiniKit.getUserInfo(finalPayload.address);
+        let userInfo: { username?: string; profilePictureUrl?: string } | null = null;
+        try {
+          console.log('🔍 Getting user info from MiniKit for address:', finalPayload.address);
+          userInfo = await MiniKit.getUserInfo(finalPayload.address);
+          console.log('📋 MiniKit user info received:', userInfo);
+        } catch (userInfoError) {
+          console.error('⚠️ Failed to get user info from MiniKit:', userInfoError);
+          // Continue without user info - we still have wallet address
+        }
 
         // Store/update user in Supabase (according to Plan.md)
         try {
@@ -102,11 +110,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           // Continue with auth even if Supabase fails
         }
 
-        return {
-          id: finalPayload.address,
-          ...userInfo,
-          walletAddress, // Override with verified wallet address
+        // Return user object with verified wallet address
+        const returnUser = {
+          id: walletAddress, // Use wallet address as primary ID
+          walletAddress: walletAddress, // Verified wallet address
+          username: userInfo?.username || null,
+          name: userInfo?.username || `User ${walletAddress.slice(0, 6)}`, // Fallback name
+          profilePictureUrl: userInfo?.profilePictureUrl || null,
         };
+
+        console.log('👤 Returning user object:', returnUser);
+        return returnUser;
       },
     }),
   ],

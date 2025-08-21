@@ -7,8 +7,9 @@ interface ExtendedUser {
     name?: string;
     email?: string;
     image?: string;
+    username?: string;
+    walletAddress?: string;
     wallet_address?: string;
-    world_id?: string;
 }
 
 export default function DevTools() {
@@ -54,14 +55,15 @@ export default function DevTools() {
             {session?.user ? (
                 <>
                     <div style={{ marginBottom: '8px' }}>
-                        <strong>User:</strong> {session.user.name || 'Unknown'}
+                        <strong>User:</strong> {session.user.username || session.user.name || 'Unknown'}
                     </div>
                     <div style={{ marginBottom: '8px' }}>
                         <strong>World ID:</strong> {session.user.id?.slice(0, 8) || 'N/A'}...
                     </div>
                     <div style={{ marginBottom: '8px' }}>
                         <strong>Wallet:</strong> {(() => {
-                            const walletAddr = (session.user as ExtendedUser)?.wallet_address;
+                            const extendedUser = session.user as ExtendedUser;
+                            const walletAddr = extendedUser?.walletAddress || extendedUser?.wallet_address;
                             if (!walletAddr) return 'N/A';
                             return `${walletAddr.slice(0, 6)}...${walletAddr.slice(-4)}`;
                         })()}
@@ -82,6 +84,22 @@ export default function DevTools() {
                     >
                         🚪 Sign Out
                     </button>
+                    
+                    <details style={{ fontSize: '10px', marginTop: '8px' }}>
+                        <summary style={{ cursor: 'pointer', color: '#aaa' }}>🔍 Debug Session</summary>
+                        <pre style={{ 
+                            background: 'rgba(255,255,255,0.1)', 
+                            padding: '5px', 
+                            marginTop: '5px', 
+                            borderRadius: '3px',
+                            fontSize: '9px',
+                            overflow: 'auto',
+                            maxHeight: '200px',
+                            whiteSpace: 'pre-wrap'
+                        }}>
+                            {JSON.stringify(session, null, 2)}
+                        </pre>
+                    </details>
                 </>
             ) : (
                 <>
