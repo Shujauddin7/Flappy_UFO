@@ -28,20 +28,21 @@ const getSupabaseConfig = () => {
         env,
         hostname: typeof window !== 'undefined' ? window.location.hostname : 'server',
         VERCEL_URL: process.env.VERCEL_URL,
-        NEXT_PUBLIC_ENV: process.env.NEXT_PUBLIC_ENV
+        NEXT_PUBLIC_ENV: process.env.NEXT_PUBLIC_ENV,
+        finalUrl: env === 'production' ? 'https://kvbenqwjhxzxxqhokneh.supabase.co' : 'https://zavalkmnyhkoswtwohfw.supabase.co'
     });
 
     if (env === 'production') {
         return {
-            url: 'https://kvbenqwjhxzxxqhokneh.supabase.co',
-            anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2YmVucXdqaHh6eHhxaG9rbmVoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU3MDA4ODcsImV4cCI6MjA3MTI3Njg4N30.oEaVE_4y2nOD2hY8KS4k2X8HJTf4qMp5sYmUlaTIDj4',
+            url: process.env.SUPABASE_PROD_URL || 'https://kvbenqwjhxzxxqhokneh.supabase.co',
+            anonKey: process.env.SUPABASE_PROD_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2YmVucXdqaHh6eHhxaG9rbmVoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU3MDA4ODcsImV4cCI6MjA3MTI3Njg4N30.oEaVE_4y2nOD2hY8KS4k2X8HJTf4qMp5sYmUlaTIDj4',
             serviceKey: process.env.SUPABASE_PROD_SERVICE_KEY || 'your-prod-service-key-here'
         }
     } else {
         return {
-            url: process.env.SUPABASE_DEV_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://zavalkmnyhkoswtwohfw.supabase.co',
-            anonKey: process.env.SUPABASE_DEV_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InphdmFsa21ueWhrb3N3dHdvaGZ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2NzgzMDYsImV4cCI6MjA3MTI1NDMwNn0.1gjcsHcaKiBP4oa_bg13jglDLlXdsxYKoMZZLSXTfXM',
-            serviceKey: process.env.SUPABASE_DEV_SERVICE_KEY || process.env.SUPABASE_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InphdmFsa21ueWhrb3N3dHdvaGZ3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTY3ODMwNiwiZXhwIjoyMDcxMjU0MzA2fQ.iKM4gkk0fXVr4V7bHhfQYWAFhjSWQDOZdsanopNu3Yo'
+            url: process.env.SUPABASE_DEV_URL || 'https://zavalkmnyhkoswtwohfw.supabase.co',
+            anonKey: process.env.SUPABASE_DEV_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InphdmFsa21ueWhrb3N3dHdvaGZ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2NzgzMDYsImV4cCI6MjA3MTI1NDMwNn0.1gjcsHcaKiBP4oa_bg13jglDLlXdsxYKoMZZLSXTfXM',
+            serviceKey: process.env.SUPABASE_DEV_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InphdmFsa21ueWhrb3N3dHdvaGZ3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTY3ODMwNiwiZXhwIjoyMDcxMjU0MzA2fQ.iKM4gkk0fXVr4V7bHhfQYWAFhjSWQDOZdsanopNu3Yo'
         }
     }
 }
