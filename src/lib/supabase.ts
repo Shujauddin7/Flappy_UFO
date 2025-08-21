@@ -13,7 +13,7 @@ const getSupabaseConfig = () => {
             env = 'dev'
         }
     }
-    
+
     // Server-side detection
     if (process.env.VERCEL_URL) {
         if (process.env.VERCEL_URL.includes('flappyufo.vercel.app')) {
@@ -21,7 +21,7 @@ const getSupabaseConfig = () => {
         } else if (process.env.VERCEL_URL.includes('flappyufo-git-dev-shujauddin')) {
             env = 'dev'
         }
-    }    if (env === 'production') {
+    } if (env === 'production') {
         return {
             url: process.env.SUPABASE_PROD_URL || process.env.NEXT_PUBLIC_SUPABASE_URL!,
             anonKey: process.env.SUPABASE_PROD_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

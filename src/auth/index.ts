@@ -77,7 +77,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             username: userInfo?.username || null,
             userInfo: userInfo
           });
-          
+
           const { data, error } = await supabase
             .from('users')
             .upsert({

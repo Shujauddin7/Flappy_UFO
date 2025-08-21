@@ -115,7 +115,7 @@ export default function GameHomepage() {
         if (session?.user && gameMode && status === 'authenticated') {
             // Clear any sign-in modal that might be showing
             setShowSignInModal(false);
-            
+
             // Start the selected game mode
             if (gameMode === 'tournament') {
                 setShowTournamentModal(true);
