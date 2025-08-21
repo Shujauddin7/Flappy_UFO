@@ -84,7 +84,7 @@ export default function DevTools() {
                     >
                         🚪 Sign Out
                     </button>
-                    
+
                     <button
                         onClick={async () => {
                             const { supabase } = await import('@/lib/supabase');
@@ -100,7 +100,7 @@ export default function DevTools() {
                                         onConflict: 'wallet'
                                     })
                                     .select();
-                                
+
                                 if (error) {
                                     console.error('❌ Insert test failed:', error);
                                     alert('❌ Insert failed: ' + error.message);
