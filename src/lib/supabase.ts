@@ -46,7 +46,7 @@ export const createServerSupabaseClient = () => {
     return createClient(config.url, config.serviceKey)
 }
 
-// Database Types (based on Plan.md schema)
+// Database Types (based on Plan.md Section 3 schema)
 export interface User {
     id: string
     wallet: string
@@ -78,4 +78,27 @@ export interface Entry {
     world_id_proof?: Record<string, unknown>
     created_at: string
     updated_at: string
+}
+
+export interface Prize {
+    id: string
+    user_id: string
+    tournament_id: string
+    tournament_day: string
+    final_rank: number
+    prize_amount: number
+    transaction_hash?: string
+    sent_at: string
+}
+
+export interface PendingPrize {
+    id: string
+    user_id: string
+    tournament_id: string
+    tournament_day: string
+    final_rank: number
+    prize_amount: number
+    attempt_count: number
+    last_attempt_at: string
+    created_at: string
 }
