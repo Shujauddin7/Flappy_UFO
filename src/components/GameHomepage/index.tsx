@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSessionPersistence } from '@/hooks/useSessionPersistence';
 import { Page } from '@/components/PageLayout';
 import { SignInAuthButton } from '@/components/SignInAuthButton';
 import dynamic from 'next/dynamic';
@@ -35,7 +35,7 @@ interface Star {
 type GameMode = 'practice' | 'tournament';
 
 export default function GameHomepage() {
-    const { data: session, status } = useSession();
+    const { session, status, isSessionReady, isSignedIn } = useSessionPersistence();
     const [currentScreen, setCurrentScreen] = useState<'home' | 'gameSelect' | 'playing'>('home');
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
     const [showTournamentModal, setShowTournamentModal] = useState(false);
@@ -52,7 +52,7 @@ export default function GameHomepage() {
     const handleGameStart = (mode: GameMode) => {
         if (status === 'loading' || isAuthenticating) return; // Wait for session check and prevent multiple clicks
 
-        if (session?.user) {
+        if (isSignedIn && session?.user) {
             // User is already signed in, start the game
             if (mode === 'tournament') {
                 setShowTournamentModal(true);
@@ -125,6 +125,15 @@ export default function GameHomepage() {
 
     // Auto-start game after successful sign-in
     useEffect(() => {
+        // Log session status for debugging
+        console.log('🔍 GameHomepage session check:', {
+            status,
+            isSignedIn,
+            userWallet: session?.user?.walletAddress,
+            userName: session?.user?.username,
+            gameMode
+        });
+
         // Only trigger if we have a valid session and a game mode was selected
         if (session?.user && gameMode && status === 'authenticated') {
             // Clear any sign-in modal that might be showing
@@ -137,7 +146,7 @@ export default function GameHomepage() {
                 setCurrentScreen('playing');
             }
         }
-    }, [session?.user, gameMode, status]); // Dependencies: session, gameMode, status
+    }, [session?.user, gameMode, status, isSignedIn]); // Dependencies: session, gameMode, status, isSignedIn
 
     useEffect(() => {
         const canvas = canvasRef.current;

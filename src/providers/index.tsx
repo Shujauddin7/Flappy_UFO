@@ -35,7 +35,13 @@ export default function ClientProviders({
   return (
     <ErudaProvider>
       <MiniKitProvider>
-        <SessionProvider session={session}>{children}</SessionProvider>
+        <SessionProvider 
+          session={session}
+          refetchInterval={0} // Disable periodic session fetching
+          refetchOnWindowFocus={true} // Re-fetch when window regains focus (useful for World App)
+        >
+          {children}
+        </SessionProvider>
       </MiniKitProvider>
     </ErudaProvider>
   );

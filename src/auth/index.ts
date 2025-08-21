@@ -30,7 +30,23 @@ declare module 'next-auth' {
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.AUTH_SECRET,
   basePath: '/api/auth',
-  session: { strategy: 'jwt' },
+  session: { 
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days (permanent as per Plan.md)
+    updateAge: 24 * 60 * 60, // 24 hours
+  },
+  cookies: {
+    sessionToken: {
+      name: 'next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 30 * 24 * 60 * 60, // 30 days
+      }
+    }
+  },
   providers: [
     Credentials({
       name: 'World App Wallet',
@@ -146,21 +162,35 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
   callbacks: {
     async jwt({ token, user }) {
+      // Persist user data in the token for permanent sessions
       if (user) {
         token.userId = user.id;
         token.walletAddress = user.walletAddress;
         token.username = user.username;
         token.profilePictureUrl = user.profilePictureUrl;
+        
+        console.log('🔐 JWT token created/updated:', {
+          userId: token.userId,
+          walletAddress: token.walletAddress,
+          username: token.username
+        });
       }
 
       return token;
     },
     session: async ({ session, token }) => {
+      // Ensure session always has user data from the persistent token
       if (token.userId) {
         session.user.id = token.userId as string;
         session.user.walletAddress = token.walletAddress as string;
         session.user.username = token.username as string;
         session.user.profilePictureUrl = token.profilePictureUrl as string;
+        
+        console.log('👤 Session retrieved from token:', {
+          id: session.user.id,
+          walletAddress: session.user.walletAddress,
+          username: session.user.username
+        });
       }
 
       return session;
