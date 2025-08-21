@@ -84,13 +84,13 @@ export default function DevTools() {
                     >
                         🚪 Sign Out
                     </button>
-                    
+
                     <details style={{ fontSize: '10px', marginTop: '8px' }}>
                         <summary style={{ cursor: 'pointer', color: '#aaa' }}>🔍 Debug Session</summary>
-                        <pre style={{ 
-                            background: 'rgba(255,255,255,0.1)', 
-                            padding: '5px', 
-                            marginTop: '5px', 
+                        <pre style={{
+                            background: 'rgba(255,255,255,0.1)',
+                            padding: '5px',
+                            marginTop: '5px',
                             borderRadius: '3px',
                             fontSize: '9px',
                             overflow: 'auto',
