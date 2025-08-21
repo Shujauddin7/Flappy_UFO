@@ -2,30 +2,40 @@ import { createClient } from '@supabase/supabase-js'
 
 // Environment-based database configuration (Plan.md Section 6.1)
 const getSupabaseConfig = () => {
-    // Auto-detect environment based on URL or explicit env var
+    // Start with explicit env var if set
     let env = process.env.NEXT_PUBLIC_ENV || 'dev'
 
-    // Auto-detect from Vercel URL
+    // Auto-detect from Vercel URL - PRODUCTION FIRST!
     if (typeof window !== 'undefined') {
-        if (window.location.hostname.includes('flappyufo.vercel.app')) {
+        const hostname = window.location.hostname;
+        if (hostname === 'flappyufo.vercel.app') {
             env = 'production'
-        } else if (window.location.hostname.includes('flappyufo-git-dev-shujauddin')) {
+        } else if (hostname.includes('flappyufo-git-dev-shujauddin')) {
             env = 'dev'
         }
     }
 
-    // Server-side detection
+    // Server-side detection - PRODUCTION FIRST!
     if (process.env.VERCEL_URL) {
-        if (process.env.VERCEL_URL.includes('flappyufo.vercel.app')) {
+        if (process.env.VERCEL_URL === 'flappyufo.vercel.app') {
             env = 'production'
         } else if (process.env.VERCEL_URL.includes('flappyufo-git-dev-shujauddin')) {
             env = 'dev'
         }
-    } if (env === 'production') {
+    }
+
+    console.log('🔍 Supabase Environment Detection:', {
+        env,
+        hostname: typeof window !== 'undefined' ? window.location.hostname : 'server',
+        VERCEL_URL: process.env.VERCEL_URL,
+        NEXT_PUBLIC_ENV: process.env.NEXT_PUBLIC_ENV
+    });
+
+    if (env === 'production') {
         return {
-            url: process.env.SUPABASE_PROD_URL || process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            anonKey: process.env.SUPABASE_PROD_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            serviceKey: process.env.SUPABASE_PROD_SERVICE_KEY || process.env.SUPABASE_SERVICE_KEY!
+            url: 'https://kvbenqwjhxzxxqhokneh.supabase.co',
+            anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2YmVucXdqaHh6eHhxaG9rbmVoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU3MDA4ODcsImV4cCI6MjA3MTI3Njg4N30.oEaVE_4y2nOD2hY8KS4k2X8HJTf4qMp5sYmUlaTIDj4',
+            serviceKey: process.env.SUPABASE_PROD_SERVICE_KEY || 'your-prod-service-key-here'
         }
     } else {
         return {
