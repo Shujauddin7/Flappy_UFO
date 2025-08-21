@@ -403,6 +403,33 @@ body {
   box-shadow: 0 12px 35px rgba(147, 51, 234, 0.6);
 }
 
+/* Authenticating state styles */
+.mode-button:disabled,
+.mode-button.authenticating {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: 0 4px 15px rgba(0, 245, 255, 0.2) !important;
+}
+
+.tournament-button:disabled,
+.tournament-button.authenticating {
+  box-shadow: 0 4px 15px rgba(147, 51, 234, 0.2) !important;
+}
+
+.mode-button.authenticating::before {
+  animation: authenticating-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes authenticating-pulse {
+  0%, 100% {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  }
+  50% {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  }
+}
+
 .mode-button::before {
   content: '';
   position: absolute;

@@ -40,6 +40,7 @@ export default function GameHomepage() {
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
     const [showTournamentModal, setShowTournamentModal] = useState(false);
     const [showSignInModal, setShowSignInModal] = useState(false);
+    const [isAuthenticating, setIsAuthenticating] = useState(false);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     // Handle tap to play - go directly to mode selection screen (no sign-in yet)
@@ -49,7 +50,7 @@ export default function GameHomepage() {
 
     // Handle game start - both modes require sign-in first
     const handleGameStart = (mode: GameMode) => {
-        if (status === 'loading') return; // Wait for session check
+        if (status === 'loading' || isAuthenticating) return; // Wait for session check and prevent multiple clicks
 
         if (session?.user) {
             // User is already signed in, start the game
@@ -62,6 +63,7 @@ export default function GameHomepage() {
         } else {
             // User not signed in - directly trigger World App sign-in (no intermediate modal)
             setGameMode(mode); // Remember which mode they want
+            setIsAuthenticating(true); // Prevent multiple clicks
             // Directly trigger the World App authentication flow
             triggerWorldAppSignIn();
         }
@@ -79,12 +81,15 @@ export default function GameHomepage() {
             console.error('Direct wallet authentication error', error);
             // If direct auth fails, fallback to showing the sign-in modal
             setShowSignInModal(true);
+        } finally {
+            setIsAuthenticating(false); // Re-enable buttons
         }
     };
 
     // Handle successful sign-in - start the previously selected game mode
     const handleSignInSuccess = () => {
         setShowSignInModal(false);
+        setIsAuthenticating(false); // Re-enable buttons
 
         if (gameMode === 'tournament') {
             setShowTournamentModal(true);
@@ -342,10 +347,11 @@ export default function GameHomepage() {
                                 <span className="feature">⭐ Perfect your skills</span>
                             </div>
                             <button
-                                className="mode-button practice-button"
+                                className={`mode-button practice-button ${isAuthenticating ? 'authenticating' : ''}`}
                                 onClick={() => handleGameStart('practice')}
+                                disabled={isAuthenticating}
                             >
-                                ENTER TRAINING
+                                {isAuthenticating && gameMode === 'practice' ? 'SIGNING IN...' : 'ENTER TRAINING'}
                             </button>
                         </div>
                     </div>
@@ -361,10 +367,11 @@ export default function GameHomepage() {
                                 <span className="feature">🏆 Daily challenges</span>
                             </div>
                             <button
-                                className="mode-button tournament-button"
+                                className={`mode-button tournament-button ${isAuthenticating ? 'authenticating' : ''}`}
                                 onClick={() => handleGameStart('tournament')}
+                                disabled={isAuthenticating}
                             >
-                                JOIN BATTLE
+                                {isAuthenticating && gameMode === 'tournament' ? 'SIGNING IN...' : 'JOIN BATTLE'}
                             </button>
                         </div>
                     </div>
