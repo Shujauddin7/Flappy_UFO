@@ -58,7 +58,7 @@ export default function DevTools() {
                         <strong>User:</strong> {session.user.username || session.user.name || 'Unknown'}
                     </div>
                     <div style={{ marginBottom: '8px' }}>
-                        <strong>World ID:</strong> {session.user.id?.slice(0, 8) || 'N/A'}...
+                        <strong>User ID:</strong> {session.user.id?.slice(0, 8) || 'N/A'}...
                     </div>
                     <div style={{ marginBottom: '8px' }}>
                         <strong>Wallet:</strong> {(() => {

@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { Page } from '@/components/PageLayout';
 import { SignInAuthButton } from '@/components/SignInAuthButton';
 import DevTools from '@/components/DevTools';
+import MobileDebugConsole from '@/components/MobileDebugConsole';
 import dynamic from 'next/dynamic';
 import { TournamentEntryModal } from '@/components/TournamentEntryModal';
 
@@ -251,6 +252,7 @@ export default function GameHomepage() {
         return (
             <Page>
                 <DevTools />
+                <MobileDebugConsole />
                 <canvas ref={canvasRef} className="starfield-canvas" />
                 <Page.Main className="main-container">
                     <div className="header-section">
@@ -307,6 +309,7 @@ export default function GameHomepage() {
     return (
         <Page>
             <DevTools />
+            <MobileDebugConsole />
             <canvas ref={canvasRef} className="starfield-canvas" />
             <Page.Main className="game-select-screen">
 
