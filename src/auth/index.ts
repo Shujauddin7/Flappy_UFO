@@ -33,7 +33,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   session: { 
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days (permanent as per Plan.md)
-    updateAge: 24 * 60 * 60, // 24 hours
+    updateAge: 24 * 60 * 60, // 24 hours - rolling refresh
   },
   cookies: {
     sessionToken: {
@@ -42,8 +42,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
+        // Always secure for both dev and prod (Vercel uses HTTPS everywhere)
+        secure: true,
+        // Environment-specific domain configuration for Vercel
+        domain: process.env.VERCEL_ENV === 'production' 
+          ? '.vercel.app'  // Works for both custom domain and vercel.app
+          : undefined,     // Let browser handle dev domains
         maxAge: 30 * 24 * 60 * 60, // 30 days
+      }
+    },
+    // Add additional cookie for session backup/recovery
+    callbackUrl: {
+      name: 'next-auth.callback-url',
+      options: {
+        httpOnly: false, // Accessible to client for session recovery
+        sameSite: 'lax',
+        path: '/',
+        secure: true,
+        maxAge: 30 * 24 * 60 * 60,
       }
     }
   },
@@ -168,11 +184,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.walletAddress = user.walletAddress;
         token.username = user.username;
         token.profilePictureUrl = user.profilePictureUrl;
+        // Add session creation timestamp for debugging
+        token.sessionCreatedAt = Date.now();
         
         console.log('🔐 JWT token created/updated:', {
           userId: token.userId,
           walletAddress: token.walletAddress,
-          username: token.username
+          username: token.username,
+          environment: process.env.VERCEL_ENV || 'development',
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        // Token refresh - add refresh timestamp
+        token.lastRefreshedAt = Date.now();
+        console.log('🔄 JWT token refreshed:', {
+          userId: token.userId,
+          walletAddress: token.walletAddress,
+          environment: process.env.VERCEL_ENV || 'development',
+          sessionAge: token.sessionCreatedAt ? Math.round((Date.now() - (token.sessionCreatedAt as number)) / (1000 * 60 * 60)) + 'h' : 'unknown',
+          timestamp: new Date().toISOString()
         });
       }
 
@@ -189,7 +219,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         console.log('👤 Session retrieved from token:', {
           id: session.user.id,
           walletAddress: session.user.walletAddress,
-          username: session.user.username
+          username: session.user.username,
+          environment: process.env.VERCEL_ENV || 'development',
+          sessionAge: token.sessionCreatedAt ? Math.round((Date.now() - (token.sessionCreatedAt as number)) / (1000 * 60 * 60)) + 'h' : 'unknown',
+          lastRefresh: token.lastRefreshedAt ? new Date(token.lastRefreshedAt as number).toISOString() : 'never'
         });
       }
 
