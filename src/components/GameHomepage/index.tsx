@@ -35,7 +35,7 @@ interface Star {
 type GameMode = 'practice' | 'tournament';
 
 export default function GameHomepage() {
-    const { session, status, isSessionReady, isSignedIn } = useSessionPersistence();
+    const { session, status, isSignedIn } = useSessionPersistence();
     const [currentScreen, setCurrentScreen] = useState<'home' | 'gameSelect' | 'playing'>('home');
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
     const [showTournamentModal, setShowTournamentModal] = useState(false);
