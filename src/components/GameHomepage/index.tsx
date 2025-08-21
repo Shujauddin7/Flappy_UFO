@@ -4,18 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { Page } from '@/components/PageLayout';
 import { SignInAuthButton } from '@/components/SignInAuthButton';
+import DevTools from '@/components/DevTools';
+import MobileDebugConsole from '@/components/MobileDebugConsole';
 import dynamic from 'next/dynamic';
 import { TournamentEntryModal } from '@/components/TournamentEntryModal';
-
-// Dynamically import dev tools only in development
-const DevTools = dynamic(() => import('@/components/DevTools'), {
-    ssr: false,
-    loading: () => null
-});
-const MobileDebugConsole = dynamic(() => import('@/components/MobileDebugConsole'), {
-    ssr: false,
-    loading: () => null
-});
 
 // Dynamically import FlappyGame to avoid SSR issues
 const FlappyGame = dynamic(() => import('@/components/FlappyGame'), {
@@ -259,8 +251,8 @@ export default function GameHomepage() {
     if (currentScreen === 'home') {
         return (
             <Page>
-                {process.env.NEXT_PUBLIC_SHOW_DEV_TOOLS === 'true' && <DevTools />}
-                {process.env.NEXT_PUBLIC_SHOW_DEV_TOOLS === 'true' && <MobileDebugConsole />}
+                <DevTools />
+                <MobileDebugConsole />
                 <canvas ref={canvasRef} className="starfield-canvas" />
                 <Page.Main className="main-container">
                     <div className="header-section">
@@ -316,8 +308,8 @@ export default function GameHomepage() {
 
     return (
         <Page>
-            {process.env.NEXT_PUBLIC_SHOW_DEV_TOOLS === 'true' && <DevTools />}
-            {process.env.NEXT_PUBLIC_SHOW_DEV_TOOLS === 'true' && <MobileDebugConsole />}
+            <DevTools />
+            <MobileDebugConsole />
             <canvas ref={canvasRef} className="starfield-canvas" />
             <Page.Main className="game-select-screen">
 
