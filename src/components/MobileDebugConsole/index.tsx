@@ -29,10 +29,10 @@ export default function MobileDebugConsole() {
 
         console.log = (...args: unknown[]) => {
             originalLog.apply(console, args);
-            const message = args.map(arg => 
+            const message = args.map(arg =>
                 typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
             ).join(' ');
-            
+
             if (message.includes('🔍') || message.includes('✅') || message.includes('❌') || message.includes('📋')) {
                 setLogs(prev => [...prev.slice(-9), {
                     timestamp: new Date().toLocaleTimeString(),
@@ -44,10 +44,10 @@ export default function MobileDebugConsole() {
 
         console.error = (...args: unknown[]) => {
             originalError.apply(console, args);
-            const message = args.map(arg => 
+            const message = args.map(arg =>
                 typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
             ).join(' ');
-            
+
             setLogs(prev => [...prev.slice(-9), {
                 timestamp: new Date().toLocaleTimeString(),
                 type: 'error',
@@ -57,10 +57,10 @@ export default function MobileDebugConsole() {
 
         console.warn = (...args: unknown[]) => {
             originalWarn.apply(console, args);
-            const message = args.map(arg => 
+            const message = args.map(arg =>
                 typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
             ).join(' ');
-            
+
             setLogs(prev => [...prev.slice(-9), {
                 timestamp: new Date().toLocaleTimeString(),
                 type: 'warning',
@@ -137,27 +137,27 @@ export default function MobileDebugConsole() {
                             Clear
                         </button>
                     </div>
-                    
+
                     {logs.length === 0 ? (
                         <div style={{ color: '#aaa', fontStyle: 'italic' }}>
                             No debug logs yet. Sign in to see authentication logs.
                         </div>
                     ) : (
                         logs.map((log, index) => (
-                            <div 
+                            <div
                                 key={index}
                                 style={{
                                     marginBottom: '8px',
                                     padding: '4px',
                                     borderRadius: '3px',
                                     background: log.type === 'error' ? 'rgba(255, 68, 68, 0.2)' :
-                                               log.type === 'warning' ? 'rgba(255, 165, 0, 0.2)' :
-                                               log.type === 'success' ? 'rgba(68, 255, 68, 0.2)' :
-                                               'rgba(255, 255, 255, 0.1)',
+                                        log.type === 'warning' ? 'rgba(255, 165, 0, 0.2)' :
+                                            log.type === 'success' ? 'rgba(68, 255, 68, 0.2)' :
+                                                'rgba(255, 255, 255, 0.1)',
                                     border: `1px solid ${log.type === 'error' ? '#ff4444' :
-                                                       log.type === 'warning' ? '#ffa500' :
-                                                       log.type === 'success' ? '#44ff44' :
-                                                       '#666'}`
+                                        log.type === 'warning' ? '#ffa500' :
+                                            log.type === 'success' ? '#44ff44' :
+                                                '#666'}`
                                 }}
                             >
                                 <div style={{ fontSize: '10px', color: '#aaa' }}>
