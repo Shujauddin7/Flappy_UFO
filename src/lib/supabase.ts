@@ -9,7 +9,7 @@ const getSupabaseConfig = () => {
     if (typeof window !== 'undefined') {
         const hostname = window.location.hostname;
         const fullUrl = window.location.href;
-        
+
         if (hostname === 'flappyufo.vercel.app' || fullUrl.includes('flappyufo.vercel.app')) {
             env = 'production'
         } else if (hostname.includes('flappyufo-git-dev-shujauddin') || fullUrl.includes('flappyufo-git-dev-shujauddin')) {
