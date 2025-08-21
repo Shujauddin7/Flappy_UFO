@@ -58,6 +58,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         const finalPayload: MiniAppWalletAuthSuccessPayload =
           JSON.parse(finalPayloadJson);
+        
+        console.log('🔍 Full MiniKit payload:', JSON.stringify(finalPayload, null, 2));
+        
         const result = await verifySiweMessage(finalPayload, nonce);
 
         if (!result.isValid || !result.siweMessageData.address) {
@@ -66,12 +69,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         const walletAddress = result.siweMessageData.address;
+        
+        // Extract World ID from the payload - check multiple possible locations
+        const worldId = finalPayload.user_id || 
+                       finalPayload.worldId || 
+                       finalPayload.world_id ||
+                       finalPayload.sub ||
+                       walletAddress; // fallback to wallet if World ID not found
+        
+        console.log('🆔 Extracted World ID:', worldId);
+        console.log('💳 Wallet Address:', walletAddress);
 
         // Get user info from MiniKit
         let userInfo: { username?: string; profilePictureUrl?: string } | null = null;
         try {
-          console.log('🔍 Getting user info from MiniKit for address:', finalPayload.address);
-          userInfo = await MiniKit.getUserInfo(finalPayload.address);
+          console.log('🔍 Getting user info from MiniKit for address:', walletAddress);
+          userInfo = await MiniKit.getUserInfo(walletAddress);
           console.log('📋 MiniKit user info received:', userInfo);
         } catch (userInfoError) {
           console.error('⚠️ Failed to get user info from MiniKit:', userInfoError);
@@ -103,7 +116,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             .from('users')
             .upsert({
               wallet: walletAddress,
-              world_id: finalPayload.address, // Store World ID from MiniKit payload
+              world_id: worldId, // Use the extracted World ID
               username: userInfo?.username || null
             }, {
               onConflict: 'wallet',
