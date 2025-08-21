@@ -8,29 +8,29 @@ const getSupabaseConfig = () => {
     // Auto-detect from Vercel URL - PRODUCTION FIRST!
     if (typeof window !== 'undefined') {
         const hostname = window.location.hostname;
-        if (hostname === 'flappyufo.vercel.app') {
+        const fullUrl = window.location.href;
+        
+        if (hostname === 'flappyufo.vercel.app' || fullUrl.includes('flappyufo.vercel.app')) {
             env = 'production'
-        } else if (hostname.includes('flappyufo-git-dev-shujauddin')) {
+        } else if (hostname.includes('flappyufo-git-dev-shujauddin') || fullUrl.includes('flappyufo-git-dev-shujauddin')) {
             env = 'dev'
         }
     }
 
     // Server-side detection - PRODUCTION FIRST!
     if (process.env.VERCEL_URL) {
-        if (process.env.VERCEL_URL === 'flappyufo.vercel.app') {
+        if (process.env.VERCEL_URL.includes('flappyufo.vercel.app')) {
             env = 'production'
         } else if (process.env.VERCEL_URL.includes('flappyufo-git-dev-shujauddin')) {
             env = 'dev'
         }
     }
 
-    console.log('🔍 Supabase Environment Detection:', {
-        env,
-        hostname: typeof window !== 'undefined' ? window.location.hostname : 'server',
-        VERCEL_URL: process.env.VERCEL_URL,
-        NEXT_PUBLIC_ENV: process.env.NEXT_PUBLIC_ENV,
-        finalUrl: env === 'production' ? 'https://kvbenqwjhxzxxqhokneh.supabase.co' : 'https://zavalkmnyhkoswtwohfw.supabase.co'
-    });
+    // Also check VERCEL_ENV which is more reliable
+    // Also check VERCEL_ENV which is more reliable
+    if (process.env.VERCEL_ENV === 'production') {
+        env = 'production'
+    }
 
     if (env === 'production') {
         return {
