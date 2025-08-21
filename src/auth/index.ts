@@ -70,17 +70,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         const walletAddress = result.siweMessageData.address;
         
-        // Extract World ID from the payload - safely check for properties using bracket notation
-        const payloadObj = finalPayload as Record<string, unknown>;
-        const worldId = (payloadObj['user_id'] as string) || 
-                       (payloadObj['worldId'] as string) || 
-                       (payloadObj['world_id'] as string) ||
-                       (payloadObj['sub'] as string) ||
-                       finalPayload.address || // Try the address field from payload
-                       walletAddress; // fallback to wallet if World ID not found
-        
-        console.log('🆔 Extracted World ID:', worldId);
-        console.log('💳 Wallet Address:', walletAddress);
+        // NOTE: Wallet Auth only provides wallet address, NOT World ID
+        // World ID (nullifier_hash) is only available through the verify command
+        // For now, we use wallet address as primary identifier
+        console.log('💳 Wallet Address (primary ID):', walletAddress);
+        console.log('ℹ️ World ID will be captured during verification step (if needed)');
 
         // Get user info from MiniKit
         let userInfo: { username?: string; profilePictureUrl?: string } | null = null;
@@ -97,8 +91,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         try {
           console.log('🔍 Attempting to save user to Supabase:', {
             walletAddress,
-            username: userInfo?.username || null,
-            userInfo: userInfo
+            username: userInfo?.username || null
           });
 
           // Test Supabase connection first
@@ -118,7 +111,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             .from('users')
             .upsert({
               wallet: walletAddress,
-              world_id: worldId, // Use the extracted World ID
+              world_id: null, // World ID will be set later during verification step
               username: userInfo?.username || null
             }, {
               onConflict: 'wallet',
