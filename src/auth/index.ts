@@ -98,7 +98,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           } else {
             console.log('✅ Supabase connection successful');
           }
-          
+
           const { data, error } = await supabase
             .from('users')
             .upsert({
