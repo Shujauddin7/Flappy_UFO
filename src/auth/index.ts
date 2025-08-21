@@ -70,11 +70,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         const walletAddress = result.siweMessageData.address;
         
-        // Extract World ID from the payload - check multiple possible locations
-        const worldId = finalPayload.user_id || 
-                       finalPayload.worldId || 
-                       finalPayload.world_id ||
-                       finalPayload.sub ||
+        // Extract World ID from the payload - safely check for properties using bracket notation
+        const payloadObj = finalPayload as Record<string, unknown>;
+        const worldId = (payloadObj['user_id'] as string) || 
+                       (payloadObj['worldId'] as string) || 
+                       (payloadObj['world_id'] as string) ||
+                       (payloadObj['sub'] as string) ||
+                       finalPayload.address || // Try the address field from payload
                        walletAddress; // fallback to wallet if World ID not found
         
         console.log('🆔 Extracted World ID:', worldId);
