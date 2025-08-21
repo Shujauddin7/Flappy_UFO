@@ -4,6 +4,12 @@
 supabase-*.sql
 complete-database-schema.sql
 
+# Development tools (exclude from production)
+src/components/DevTools/
+src/components/MobileDebugConsole/
+STEP-BY-STEP-SIGNIN.md
+URGENT_WORLD_PORTAL_UPDATE.md
+
 
 # dependencies
 /node_modules
