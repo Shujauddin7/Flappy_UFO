@@ -1,8 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { Page } from '@/components/PageLayout';
+import { SignInAuthButton } from '@/components/SignInAuthButton';
 import dynamic from 'next/dynamic';
+import { TournamentEntryModal } from '@/components/TournamentEntryModal';
+
+// Conditionally import dev tools only in development
+const DevTools = dynamic(() => import('@/components/DevTools'), {
+    ssr: false,
+    loading: () => null
+});
+const MobileDebugConsole = dynamic(() => import('@/components/MobileDebugConsole'), {
+    ssr: false,
+    loading: () => null
+});
 
 // Dynamically import FlappyGame to avoid SSR issues
 const FlappyGame = dynamic(() => import('@/components/FlappyGame'), {
@@ -22,14 +35,76 @@ interface Star {
 type GameMode = 'practice' | 'tournament';
 
 export default function GameHomepage() {
+    const { data: session, status } = useSession();
     const [currentScreen, setCurrentScreen] = useState<'home' | 'gameSelect' | 'playing'>('home');
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
+    const [showTournamentModal, setShowTournamentModal] = useState(false);
+    const [showSignInModal, setShowSignInModal] = useState(false);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
-    // Handle game start
+    // Handle tap to play - go directly to mode selection screen (no sign-in yet)
+    const handleTapToPlay = () => {
+        setCurrentScreen('gameSelect');
+    };
+
+    // Handle game start - both modes require sign-in first
     const handleGameStart = (mode: GameMode) => {
-        setGameMode(mode);
+        if (status === 'loading') return; // Wait for session check
+
+        if (session?.user) {
+            // User is already signed in, start the game
+            if (mode === 'tournament') {
+                setShowTournamentModal(true);
+            } else {
+                setGameMode(mode);
+                setCurrentScreen('playing');
+            }
+        } else {
+            // User not signed in - directly trigger World App sign-in (no intermediate modal)
+            setGameMode(mode); // Remember which mode they want
+            // Directly trigger the World App authentication flow
+            triggerWorldAppSignIn();
+        }
+    };
+
+    // Function to directly trigger World App sign-in
+    const triggerWorldAppSignIn = async () => {
+        try {
+            // Import walletAuth dynamically to avoid issues
+            const { walletAuth } = await import('@/auth/wallet');
+            await walletAuth();
+            // After successful sign-in, continue with the selected game mode
+            // The session will be updated and handleSignInSuccess will be triggered
+        } catch (error) {
+            console.error('Direct wallet authentication error', error);
+            // If direct auth fails, fallback to showing the sign-in modal
+            setShowSignInModal(true);
+        }
+    };
+
+    // Handle successful sign-in - start the previously selected game mode
+    const handleSignInSuccess = () => {
+        setShowSignInModal(false);
+
+        if (gameMode === 'tournament') {
+            setShowTournamentModal(true);
+        } else if (gameMode === 'practice') {
+            setCurrentScreen('playing');
+        }
+    };
+
+    // Handle tournament entry selection from modal
+    const handleTournamentEntry = (entryType: 'verified' | 'standard') => {
+        setShowTournamentModal(false);
+        // For now, just start the tournament game (logic will be added later)
+        setGameMode('tournament');
         setCurrentScreen('playing');
+        console.log(`Selected entry type: ${entryType}`);
+    };
+
+    // Handle modal close
+    const handleModalClose = () => {
+        setShowTournamentModal(false);
     };
 
     // Handle game end
@@ -42,6 +117,22 @@ export default function GameHomepage() {
         setCurrentScreen('gameSelect');
         setGameMode(null);
     };
+
+    // Auto-start game after successful sign-in
+    useEffect(() => {
+        // Only trigger if we have a valid session and a game mode was selected
+        if (session?.user && gameMode && status === 'authenticated') {
+            // Clear any sign-in modal that might be showing
+            setShowSignInModal(false);
+
+            // Start the selected game mode
+            if (gameMode === 'tournament') {
+                setShowTournamentModal(true);
+            } else if (gameMode === 'practice') {
+                setCurrentScreen('playing');
+            }
+        }
+    }, [session?.user, gameMode, status]); // Dependencies: session, gameMode, status
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -168,46 +259,55 @@ export default function GameHomepage() {
     if (currentScreen === 'home') {
         return (
             <Page>
+                {process.env.NEXT_PUBLIC_SHOW_DEV_TOOLS === 'true' && <DevTools />}
+                {process.env.NEXT_PUBLIC_SHOW_DEV_TOOLS === 'true' && <MobileDebugConsole />}
                 <canvas ref={canvasRef} className="starfield-canvas" />
                 <Page.Main className="main-container">
                     <div className="header-section">
                         <h1 className="game-title">
-                            <span className="flappy-text">Flappy</span>{' '}
                             <span className="ufo-icon">🛸</span>
+                            <span className="flappy-text">Flappy</span>{''}
                             <span className="ufo-text">UFO</span>
+                            <span className="ufo-icon">🛸</span>
                         </h1>
-                        <button
-                            className="info-btn"
-                            onClick={() => alert('Game Rules:\n• Tap to navigate your UFO\n• Avoid obstacles\n• Win WLD tournaments!')}
-                            aria-label="Game Info"
-                        >
-                            ℹ️
-                        </button>
+                        <div className="header-buttons">
+                            <button
+                                className="info-btn"
+                                onClick={() => alert('Game Rules:\n• Tap to navigate your UFO\n• Avoid obstacles\n• Win WLD tournaments!')}
+                                aria-label="Game Info"
+                            >
+                                ℹ️
+                            </button>
+                        </div>
                     </div>
                     <div className="play-section">
                         <button
                             className="custom-play-btn"
-                            onClick={() => setCurrentScreen('gameSelect')}
+                            onClick={handleTapToPlay}
                             aria-label="Tap to Play"
                         >
                             Tap To Play
                         </button>
                     </div>
-                    <div className="bottom-actions">
-                        <button
-                            className="action-btn"
-                            onClick={() => alert('Home')}
-                            aria-label="Home"
-                        >
-                            🏠
-                        </button>
-                        <button
-                            className="action-btn"
-                            onClick={() => alert('Prizes & Leaderboard')}
-                            aria-label="Prizes"
-                        >
-                            🏆
-                        </button>
+                    <div className="bottom-nav-container">
+                        <div className="space-nav-icons">
+                            <button
+                                className="space-nav-btn home-nav"
+                                onClick={() => alert('Launch Pad - Home Base')}
+                                aria-label="Launch Pad"
+                            >
+                                <div className="space-icon">🏠</div>
+
+                            </button>
+                            <button
+                                className="space-nav-btn prizes-nav"
+                                onClick={() => alert('Galactic Leaderboard & Cosmic Prizes')}
+                                aria-label="Cosmic Prizes"
+                            >
+                                <div className="space-icon">🏆</div>
+
+                            </button>
+                        </div>
                     </div>
                 </Page.Main>
             </Page>
@@ -216,6 +316,8 @@ export default function GameHomepage() {
 
     return (
         <Page>
+            {process.env.NEXT_PUBLIC_SHOW_DEV_TOOLS === 'true' && <DevTools />}
+            {process.env.NEXT_PUBLIC_SHOW_DEV_TOOLS === 'true' && <MobileDebugConsole />}
             <canvas ref={canvasRef} className="starfield-canvas" />
             <Page.Main className="game-select-screen">
 
@@ -269,24 +371,58 @@ export default function GameHomepage() {
 
                 </div>
 
-                <div className="bottom-actions">
-                    <button
-                        className="action-btn"
-                        onClick={() => setCurrentScreen('home')}
-                        aria-label="Home"
-                    >
-                        🏠
-                    </button>
-                    <button
-                        className="action-btn"
-                        onClick={() => alert('Leaderboard & Prizes')}
-                        aria-label="Prizes"
-                    >
-                        🏆
-                    </button>
+                <div className="bottom-nav-container">
+                    <div className="space-nav-icons">
+                        <button
+                            className="space-nav-btn home-nav"
+                            onClick={() => setCurrentScreen('home')}
+                            aria-label="Launch Pad"
+                        >
+                            <div className="space-icon">🏠</div>
+
+                        </button>
+                        <button
+                            className="space-nav-btn prizes-nav"
+                            onClick={() => alert('Galactic Leaderboard & Cosmic Prizes')}
+                            aria-label="Cosmic Prizes"
+                        >
+                            <div className="space-icon">🏆</div>
+
+                        </button>
+                    </div>
                 </div>
 
             </Page.Main>
+
+            {/* Tournament Entry Modal */}
+            <TournamentEntryModal
+                isOpen={showTournamentModal}
+                onClose={handleModalClose}
+                onEntrySelect={handleTournamentEntry}
+            />
+
+            {/* Sign-In Modal - Direct MiniKit Sign-In */}
+            {showSignInModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content sign-in-modal">
+                        <div className="modal-header">
+                            <h2 className="modal-title">🛸 Sign In Required</h2>
+                            <button
+                                className="modal-close-btn"
+                                onClick={() => setShowSignInModal(false)}
+                                aria-label="Close"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <div className="modal-body">
+                            <div className="auth-button-container">
+                                <SignInAuthButton onSuccess={handleSignInSuccess} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </Page>
     );
 }

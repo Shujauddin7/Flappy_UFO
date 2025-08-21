@@ -1,4 +1,5 @@
 import { hashNonce } from '@/auth/wallet/client-helpers';
+import { supabase } from '@/lib/supabase';
 import {
   MiniAppWalletAuthSuccessPayload,
   MiniKit,
@@ -27,7 +28,8 @@ declare module 'next-auth' {
 // For more information on each option (and a full list of options) go to
 // https://authjs.dev/getting-started/authentication/credentials
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.AUTH_SECRET,
+  basePath: '/api/auth',
   session: { strategy: 'jwt' },
   providers: [
     Credentials({
@@ -62,13 +64,74 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           console.log('Invalid final payload');
           return null;
         }
-        // Optionally, fetch the user info from your own database
-        const userInfo = await MiniKit.getUserInfo(finalPayload.address);
 
-        return {
-          id: finalPayload.address,
-          ...userInfo,
+        const walletAddress = result.siweMessageData.address;
+
+        // Get user info from MiniKit
+        let userInfo: { username?: string; profilePictureUrl?: string } | null = null;
+        try {
+          console.log('🔍 Getting user info from MiniKit for address:', finalPayload.address);
+          userInfo = await MiniKit.getUserInfo(finalPayload.address);
+          console.log('📋 MiniKit user info received:', userInfo);
+        } catch (userInfoError) {
+          console.error('⚠️ Failed to get user info from MiniKit:', userInfoError);
+          // Continue without user info - we still have wallet address
+        }
+
+        // Store/update user in Supabase (according to Plan.md)
+        try {
+          console.log('🔍 Attempting to save user to Supabase:', {
+            walletAddress,
+            username: userInfo?.username || null,
+            userInfo: userInfo
+          });
+
+          // Test Supabase connection first
+          console.log('🔍 Testing Supabase connection...');
+          const { error: testError } = await supabase
+            .from('users')
+            .select('count')
+            .limit(1);
+
+          if (testError) {
+            console.error('❌ Supabase connection test failed:', testError);
+          } else {
+            console.log('✅ Supabase connection successful');
+          }
+
+          const { data, error } = await supabase
+            .from('users')
+            .upsert({
+              wallet: walletAddress,
+              username: userInfo?.username || null
+            }, {
+              onConflict: 'wallet',
+              ignoreDuplicates: false
+            })
+            .select()
+            .single();
+
+          if (error) {
+            console.error('❌ Supabase user creation error:', error);
+            console.error('Error details:', JSON.stringify(error, null, 2));
+            // Continue with auth even if Supabase fails (graceful degradation)
+          } else {
+            console.log('✅ Successfully saved user to Supabase:', data);
+          }
+        } catch (supabaseError) {
+          console.error('❌ Supabase connection error:', supabaseError);
+          // Continue with auth even if Supabase fails
+        }        // Return user object with verified wallet address
+        const returnUser = {
+          id: walletAddress, // Use wallet address as primary ID
+          walletAddress: walletAddress, // Verified wallet address
+          username: userInfo?.username || null,
+          name: userInfo?.username || `User ${walletAddress.slice(0, 6)}`, // Fallback name
+          profilePictureUrl: userInfo?.profilePictureUrl || null,
         };
+
+        console.log('👤 Returning user object:', returnUser);
+        return returnUser;
       },
     }),
   ],
@@ -86,7 +149,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     session: async ({ session, token }) => {
       if (token.userId) {
         session.user.id = token.userId as string;
-        session.user.walletAddress = token.address as string;
+        session.user.walletAddress = token.walletAddress as string;
         session.user.username = token.username as string;
         session.user.profilePictureUrl = token.profilePictureUrl as string;
       }

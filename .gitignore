@@ -4,6 +4,10 @@
 supabase-*.sql
 complete-database-schema.sql
 
+# Development tools (exclude from production)
+src/components/DevTools/
+src/components/MobileDebugConsole/
+
 # Development documentation (exclude from production)  
 toself.md
 STEP-BY-STEP-SIGNIN.md
@@ -53,4 +57,6 @@ next-env.d.ts
 # My_own_files
 Plan.md
 Createdfiles.md
+toself.md
+
 
