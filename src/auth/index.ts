@@ -72,7 +72,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         // Store/update user in Supabase (according to Plan.md)
         try {
-          const { error } = await supabase
+          console.log('🔍 Attempting to save user to Supabase:', {
+            walletAddress,
+            username: userInfo?.username || null,
+            userInfo: userInfo
+          });
+          
+          const { data, error } = await supabase
             .from('users')
             .upsert({
               wallet: walletAddress,
@@ -85,11 +91,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             .single();
 
           if (error) {
-            console.error('Supabase user creation error:', error);
+            console.error('❌ Supabase user creation error:', error);
+            console.error('Error details:', JSON.stringify(error, null, 2));
             // Continue with auth even if Supabase fails (graceful degradation)
+          } else {
+            console.log('✅ Successfully saved user to Supabase:', data);
           }
         } catch (supabaseError) {
-          console.error('Supabase connection error:', supabaseError);
+          console.error('❌ Supabase connection error:', supabaseError);
           // Continue with auth even if Supabase fails
         }
 

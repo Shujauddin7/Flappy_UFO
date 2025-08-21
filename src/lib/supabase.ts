@@ -9,21 +9,19 @@ const getSupabaseConfig = () => {
     if (typeof window !== 'undefined') {
         if (window.location.hostname.includes('flappyufo.vercel.app')) {
             env = 'production'
-        } else if (window.location.hostname.includes('flappyufo-git-dev')) {
+        } else if (window.location.hostname.includes('flappyufo-git-dev-shujauddin')) {
             env = 'dev'
         }
     }
-
+    
     // Server-side detection
     if (process.env.VERCEL_URL) {
         if (process.env.VERCEL_URL.includes('flappyufo.vercel.app')) {
             env = 'production'
-        } else if (process.env.VERCEL_URL.includes('flappyufo-git-dev')) {
+        } else if (process.env.VERCEL_URL.includes('flappyufo-git-dev-shujauddin')) {
             env = 'dev'
         }
-    }
-
-    if (env === 'production') {
+    }    if (env === 'production') {
         return {
             url: process.env.SUPABASE_PROD_URL || process.env.NEXT_PUBLIC_SUPABASE_URL!,
             anonKey: process.env.SUPABASE_PROD_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

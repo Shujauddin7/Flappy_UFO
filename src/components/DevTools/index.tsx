@@ -17,9 +17,9 @@ export default function DevTools() {
     // Show dev tools only on dev URLs (no localhost as per Plan.md - Dev = Prod Build)
     const showDevTools = process.env.NEXT_PUBLIC_SHOW_DEV_TOOLS === 'true' ||
         (typeof window !== 'undefined' &&
-            (window.location.hostname.includes('flappyufo-git-dev') ||
+            (window.location.hostname.includes('flappyufo-git-dev-shujauddin') ||
                 window.location.hostname.includes('msshuj') ||
-                window.location.href.includes('git-dev')))
+                window.location.href.includes('git-dev-shujauddin')))
 
     if (!showDevTools) {
         return null;

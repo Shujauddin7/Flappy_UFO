@@ -51,8 +51,24 @@ export default function GameHomepage() {
                 setCurrentScreen('playing');
             }
         } else {
-            // User not signed in, show sign-in modal first
+            // User not signed in - directly trigger World App sign-in (no intermediate modal)
             setGameMode(mode); // Remember which mode they want
+            // Directly trigger the World App authentication flow
+            triggerWorldAppSignIn();
+        }
+    };
+
+    // Function to directly trigger World App sign-in
+    const triggerWorldAppSignIn = async () => {
+        try {
+            // Import walletAuth dynamically to avoid issues
+            const { walletAuth } = await import('@/auth/wallet');
+            await walletAuth();
+            // After successful sign-in, continue with the selected game mode
+            // The session will be updated and handleSignInSuccess will be triggered
+        } catch (error) {
+            console.error('Direct wallet authentication error', error);
+            // If direct auth fails, fallback to showing the sign-in modal
             setShowSignInModal(true);
         }
     };
@@ -92,6 +108,22 @@ export default function GameHomepage() {
         setCurrentScreen('gameSelect');
         setGameMode(null);
     };
+
+    // Auto-start game after successful sign-in
+    useEffect(() => {
+        // Only trigger if we have a valid session and a game mode was selected
+        if (session?.user && gameMode && status === 'authenticated') {
+            // Clear any sign-in modal that might be showing
+            setShowSignInModal(false);
+            
+            // Start the selected game mode
+            if (gameMode === 'tournament') {
+                setShowTournamentModal(true);
+            } else if (gameMode === 'practice') {
+                setCurrentScreen('playing');
+            }
+        }
+    }, [session?.user, gameMode, status]); // Dependencies: session, gameMode, status
 
     useEffect(() => {
         const canvas = canvasRef.current;
