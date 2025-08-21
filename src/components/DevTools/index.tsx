@@ -84,6 +84,49 @@ export default function DevTools() {
                     >
                         🚪 Sign Out
                     </button>
+                    
+                    <button
+                        onClick={async () => {
+                            const { supabase } = await import('@/lib/supabase');
+                            console.log('🔍 Testing user insert...');
+                            try {
+                                const testWallet = '0x1234567890123456789012345678901234567890';
+                                const { data, error } = await supabase
+                                    .from('users')
+                                    .upsert({
+                                        wallet: testWallet,
+                                        username: 'test_user_' + Date.now()
+                                    }, {
+                                        onConflict: 'wallet'
+                                    })
+                                    .select();
+                                
+                                if (error) {
+                                    console.error('❌ Insert test failed:', error);
+                                    alert('❌ Insert failed: ' + error.message);
+                                } else {
+                                    console.log('✅ Insert test successful:', data);
+                                    alert('✅ Test user created! Check Supabase table.');
+                                }
+                            } catch (err) {
+                                console.error('❌ Insert test error:', err);
+                                alert('❌ Insert error: ' + String(err));
+                            }
+                        }}
+                        style={{
+                            background: '#44ff44',
+                            color: 'black',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '5px 10px',
+                            cursor: 'pointer',
+                            fontSize: '11px',
+                            width: '100%',
+                            marginBottom: '5px'
+                        }}
+                    >
+                        🧪 Test Insert
+                    </button>
 
                     <details style={{ fontSize: '10px', marginTop: '8px' }}>
                         <summary style={{ cursor: 'pointer', color: '#aaa' }}>🔍 Debug Session</summary>
