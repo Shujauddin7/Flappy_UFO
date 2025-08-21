@@ -35,7 +35,7 @@ export default function ClientProviders({
   return (
     <ErudaProvider>
       <MiniKitProvider>
-        <SessionProvider 
+        <SessionProvider
           session={session}
           refetchInterval={0} // Disable periodic session fetching - JWT handles persistence
           refetchOnWindowFocus={false} // Disable refetch on focus for permanent sessions

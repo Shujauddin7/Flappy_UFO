@@ -30,7 +30,7 @@ declare module 'next-auth' {
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.AUTH_SECRET,
   basePath: '/api/auth',
-  session: { 
+  session: {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days (permanent as per Plan.md)
     updateAge: 24 * 60 * 60, // 24 hours - rolling refresh
@@ -45,7 +45,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // Always secure for both dev and prod (Vercel uses HTTPS everywhere)
         secure: true,
         // Environment-specific domain configuration for Vercel
-        domain: process.env.VERCEL_ENV === 'production' 
+        domain: process.env.VERCEL_ENV === 'production'
           ? '.vercel.app'  // Works for both custom domain and vercel.app
           : undefined,     // Let browser handle dev domains
         maxAge: 30 * 24 * 60 * 60, // 30 days
@@ -186,7 +186,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.profilePictureUrl = user.profilePictureUrl;
         // Add session creation timestamp for debugging
         token.sessionCreatedAt = Date.now();
-        
+
         console.log('🔐 JWT token created/updated:', {
           userId: token.userId,
           walletAddress: token.walletAddress,
@@ -215,7 +215,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.walletAddress = token.walletAddress as string;
         session.user.username = token.username as string;
         session.user.profilePictureUrl = token.profilePictureUrl as string;
-        
+
         console.log('👤 Session retrieved from token:', {
           id: session.user.id,
           walletAddress: session.user.walletAddress,
