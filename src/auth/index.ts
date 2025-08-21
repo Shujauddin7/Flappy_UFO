@@ -86,6 +86,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             userInfo: userInfo
           });
 
+          // Test Supabase connection first
+          console.log('🔍 Testing Supabase connection...');
+          const { error: testError } = await supabase
+            .from('users')
+            .select('count')
+            .limit(1);
+
+          if (testError) {
+            console.error('❌ Supabase connection test failed:', testError);
+          } else {
+            console.log('✅ Supabase connection successful');
+          }
+          
           const { data, error } = await supabase
             .from('users')
             .upsert({
@@ -108,9 +121,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         } catch (supabaseError) {
           console.error('❌ Supabase connection error:', supabaseError);
           // Continue with auth even if Supabase fails
-        }
-
-        // Return user object with verified wallet address
+        }        // Return user object with verified wallet address
         const returnUser = {
           id: walletAddress, // Use wallet address as primary ID
           walletAddress: walletAddress, // Verified wallet address
