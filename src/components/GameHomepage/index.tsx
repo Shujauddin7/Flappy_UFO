@@ -5,6 +5,11 @@ import { Page } from '@/components/PageLayout';
 import { useGameAuth } from '@/hooks/useGameAuth';
 import dynamic from 'next/dynamic';
 
+// Dev-only sign out button
+const DevSignOut = dynamic(() => import('@/components/DevSignOut').then(mod => ({ default: mod.DevSignOut })), {
+    ssr: false
+});
+
 // Dynamically import FlappyGame to avoid SSR issues
 const FlappyGame = dynamic(() => import('@/components/FlappyGame'), {
     ssr: false
@@ -186,6 +191,7 @@ export default function GameHomepage() {
         return (
             <Page>
                 <canvas ref={canvasRef} className="starfield-canvas" />
+                <DevSignOut />
                 <Page.Main className="main-container">
                     <div className="header-section">
                         <h1 className="game-title">
@@ -239,6 +245,7 @@ export default function GameHomepage() {
     return (
         <Page>
             <canvas ref={canvasRef} className="starfield-canvas" />
+            <DevSignOut />
             <Page.Main className="game-select-screen">
 
                 <div className="epic-title-section">
