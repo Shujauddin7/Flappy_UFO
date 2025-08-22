@@ -11,6 +11,11 @@ const FlappyGame = dynamic(() => import('@/components/FlappyGame'), {
     ssr: false
 });
 
+// Dynamically import DevSignOut only in development
+const DevSignOut = dynamic(() => import('@/components/DevSignOut'), {
+    ssr: false
+});
+
 interface Star {
     x: number;
     y: number;
@@ -258,6 +263,7 @@ export default function GameHomepage() {
                         >
                             Tap To Play
                         </button>
+                        <DevSignOut />
                     </div>
                     <div className="bottom-nav-container">
                         <div className="space-nav-icons">
