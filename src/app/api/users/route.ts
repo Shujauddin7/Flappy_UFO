@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
 export async function POST(request: NextRequest) {
     try {
@@ -10,8 +11,16 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Wallet address is required' }, { status: 400 });
         }
 
-        // Dynamic import to avoid build-time issues
-        const { supabase } = await import('@/lib/supabase');
+        // Create Supabase client directly in the API route
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+        if (!supabaseUrl || !supabaseAnonKey) {
+            console.error('❌ Missing Supabase environment variables');
+            return NextResponse.json({ error: 'Database configuration error' }, { status: 500 });
+        }
+
+        const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
         // Try to insert new user or update existing one
         const { data, error } = await supabase
