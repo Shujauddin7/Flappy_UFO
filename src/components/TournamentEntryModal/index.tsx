@@ -5,7 +5,7 @@ import { Page } from '@/components/PageLayout';
 
 interface TournamentEntryModalProps {
     onBack: () => void;
-    onEntrySelect: (entryType: 'verified' | 'standard') => void;
+    onEntrySelect: (entryType: 'verify' | 'standard') => void;
     isAuthenticating: boolean;
 }
 
@@ -14,9 +14,9 @@ export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
     onEntrySelect,
     isAuthenticating
 }) => {
-    const [selectedEntry, setSelectedEntry] = useState<'verified' | 'standard' | null>(null);
+    const [selectedEntry, setSelectedEntry] = useState<'verify' | 'standard' | null>(null);
 
-    const handleEntrySelect = (entryType: 'verified' | 'standard') => {
+    const handleEntrySelect = (entryType: 'verify' | 'standard') => {
         setSelectedEntry(entryType);
         onEntrySelect(entryType);
     };
@@ -45,10 +45,10 @@ export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
                         </div>
                         <button
                             className="mode-button verify-button"
-                            onClick={() => handleEntrySelect('verified')}
+                            onClick={() => handleEntrySelect('verify')}
                             disabled={isAuthenticating}
                         >
-                            {isAuthenticating && selectedEntry === 'verified'
+                            {isAuthenticating && selectedEntry === 'verify'
                                 ? 'VERIFYING...'
                                 : 'GET VERIFIED & PLAY'
                             }

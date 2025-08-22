@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { Page } from '@/components/PageLayout';
 import { useGameAuth } from '@/hooks/useGameAuth';
 import dynamic from 'next/dynamic';
 import { TournamentEntryModal } from '@/components/TournamentEntryModal';
+import { MiniKit, VerificationLevel } from '@worldcoin/minikit-js';
 
 // Dynamically import FlappyGame to avoid SSR issues
 const FlappyGame = dynamic(() => import('@/components/FlappyGame'), {
@@ -34,6 +36,9 @@ export default function GameHomepage() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const { isAuthenticating, authenticate } = useGameAuth();
 
+    // Import useSession to get user wallet
+    const { data: session } = useSession();
+
     // Handle game start with authentication
     const handleGameStart = async (mode: GameMode) => {
         try {
@@ -62,25 +67,113 @@ export default function GameHomepage() {
     };
 
     // Handle tournament entry selection
-    const handleTournamentEntrySelect = async (entryType: 'verified' | 'standard') => {
+    const handleTournamentEntrySelect = async (entryType: 'verify' | 'standard') => {
         try {
-            // For now, just simulate the entry process and start the game
-            // In future implementation, this will handle payment processing
             console.log(`Selected tournament entry type: ${entryType}`);
 
-            // TODO: Implement actual tournament entry logic here
-            // - Handle payment (0.9 WLD for verified, 1.0 WLD for standard)
-            // - Process World ID verification if needed
-            // - Create tournament entry record
-
-            // For now, just start the tournament game
-            setGameMode('tournament');
-            setCurrentScreen('playing');
+            if (entryType === 'verify') {
+                // Handle World ID verification first
+                await handleWorldIDVerification();
+            } else {
+                // Standard entry - proceed directly to payment
+                await handleStandardEntry();
+            }
 
         } catch (error) {
             console.error('Error during tournament entry:', error);
             alert('Tournament entry failed. Please try again.');
         }
+    };
+
+    // Handle World ID verification for verified entry
+    const handleWorldIDVerification = async () => {
+        try {
+            // Use MiniKit to verify World ID with Orb verification level
+            const result = await MiniKit.commandsAsync.verify({
+                action: 'tournament-entry-verification', // This needs to be created in World ID developer portal
+                verification_level: VerificationLevel.Orb, // Require Orb verification for discount
+            });
+
+            console.log('World ID verification result:', result.finalPayload);
+
+            // Send proof to backend for verification
+            const response = await fetch('/api/verify-proof', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    payload: result.finalPayload,
+                    action: 'tournament-entry-verification',
+                }),
+            });
+
+            const verificationData = await response.json();
+
+            if (verificationData.success) {
+                console.log('✅ World ID verification successful');
+                // Update user's verification status in database
+                await updateUserVerificationStatus(verificationData.nullifier_hash);
+                // Proceed with 0.9 WLD entry
+                await handleVerifiedEntry();
+            } else {
+                throw new Error(verificationData.error || 'Verification failed');
+            }
+
+        } catch (error) {
+            console.error('World ID verification error:', error);
+            alert('World ID verification failed. Please try again or use Standard Entry.');
+        }
+    };
+
+    // Update user verification status in database
+    const updateUserVerificationStatus = async (nullifierHash: string) => {
+        try {
+            if (!session?.user?.walletAddress) {
+                throw new Error('No wallet address found in session');
+            }
+
+            const response = await fetch('/api/users/update-verification', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    nullifier_hash: nullifierHash,
+                    verification_date: new Date().toISOString(),
+                    wallet: session.user.walletAddress, // Pass wallet address
+                }),
+            });
+
+            const responseData = await response.json();
+
+            if (!response.ok) {
+                throw new Error(responseData.error || 'Failed to update verification status');
+            }
+
+            console.log('✅ User verification status updated:', responseData.data);
+            return responseData;
+        } catch (error) {
+            console.error('Error updating verification status:', error);
+            // Don't block the flow if verification status update fails
+            return null;
+        }
+    };
+
+    // Handle verified entry (0.9 WLD)
+    const handleVerifiedEntry = async () => {
+        // TODO: Implement payment processing for 0.9 WLD
+        console.log('Processing verified entry payment: 0.9 WLD');
+
+        // For now, just start the tournament game
+        setGameMode('tournament');
+        setCurrentScreen('playing');
+    };
+
+    // Handle standard entry (1.0 WLD)
+    const handleStandardEntry = async () => {
+        // TODO: Implement payment processing for 1.0 WLD
+        console.log('Processing standard entry payment: 1.0 WLD');
+
+        // For now, just start the tournament game
+        setGameMode('tournament');
+        setCurrentScreen('playing');
     };
 
     // Handle going back from tournament entry screen
