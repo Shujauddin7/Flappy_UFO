@@ -57,14 +57,14 @@ export default function GameHomepage() {
     };
 
     // Handle tournament entry selection
-    const handleTournamentEntrySelect = async (entryType: 'verify' | 'standard') => {
+    const handleTournamentEntrySelect = async (entryType: 'verified' | 'standard') => {
         try {
             // For now, just simulate the entry process and start the game
             // In future implementation, this will handle payment processing
             console.log(`Selected tournament entry type: ${entryType}`);
 
             // TODO: Implement actual tournament entry logic here
-            // - Handle payment (0.9 WLD for verify, 1.0 WLD for standard)
+            // - Handle payment (0.9 WLD for verified, 1.0 WLD for standard)
             // - Process World ID verification if needed
             // - Create tournament entry record
 
@@ -219,14 +219,14 @@ export default function GameHomepage() {
     // Render tournament entry screen
     if (currentScreen === 'tournamentEntry') {
         return (
-            <>
+            <Page>
                 <canvas ref={canvasRef} className="starfield-canvas" />
                 <TournamentEntryModal
                     onBack={handleTournamentEntryBack}
                     onEntrySelect={handleTournamentEntrySelect}
                     isAuthenticating={isAuthenticating}
                 />
-            </>
+            </Page>
         );
     }
 
