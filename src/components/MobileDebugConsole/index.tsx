@@ -12,23 +12,22 @@ export default function MobileDebugConsole() {
     const [logs, setLogs] = useState<DebugLog[]>([]);
     const [isVisible, setIsVisible] = useState(false);
 
-    // Only show debug console in development, never in production
-    const isProduction = typeof window !== 'undefined' && 
-        (window.location.hostname === 'flappyufo.vercel.app' || 
-         window.location.hostname.includes('vercel.app') ||
-         process.env.NODE_ENV === 'production');
-    
-    const showDebugConsole = !isProduction && 
-        (process.env.NEXT_PUBLIC_SHOW_DEV_TOOLS === 'true' ||
-        (typeof window !== 'undefined' &&
-            (window.location.hostname.includes('flappyufo-git-dev-shujauddin') ||
-                window.location.hostname.includes('msshuj') ||
-                window.location.href.includes('git-dev-shujauddin'))));
+    // Show debug console in development OR on dev deployment URLs, never in production
+    const isLocalDev = process.env.NODE_ENV === 'development';
+    const isDevDeployment = typeof window !== 'undefined' &&
+        (window.location.hostname.includes('flappyufo-git-dev-shujauddin') ||
+            window.location.hostname.includes('msshuj') ||
+            window.location.href.includes('git-dev-shujauddin'));
+    const isProductionDeployment = typeof window !== 'undefined' &&
+        window.location.hostname === 'flappyufo.vercel.app';
+
+    // Show if: (local dev OR dev deployment) AND not production deployment
+    const showDebugConsole = (isLocalDev || isDevDeployment) &&
+        !isProductionDeployment &&
+        process.env.NEXT_PUBLIC_SHOW_DEV_TOOLS !== 'false';
 
     useEffect(() => {
-        if (!showDebugConsole) return;
-
-        // Override console methods to capture logs
+        if (!showDebugConsole) return;        // Override console methods to capture logs
         const originalLog = console.log;
         const originalError = console.error;
         const originalWarn = console.warn;
