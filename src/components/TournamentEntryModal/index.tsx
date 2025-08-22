@@ -49,8 +49,8 @@ export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
                                 onClick={() => handleEntrySelect('verified')}
                                 disabled={isAuthenticating}
                             >
-                                {isAuthenticating && selectedEntry === 'verified' 
-                                    ? 'VERIFYING...' 
+                                {isAuthenticating && selectedEntry === 'verified'
+                                    ? 'VERIFYING...'
                                     : 'GET VERIFIED & PLAY'
                                 }
                             </button>
@@ -73,8 +73,8 @@ export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
                                 onClick={() => handleEntrySelect('standard')}
                                 disabled={isAuthenticating}
                             >
-                                {isAuthenticating && selectedEntry === 'standard' 
-                                    ? 'PROCESSING...' 
+                                {isAuthenticating && selectedEntry === 'standard'
+                                    ? 'PROCESSING...'
                                     : 'STANDARD ENTRY'
                                 }
                             </button>

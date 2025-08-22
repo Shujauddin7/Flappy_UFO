@@ -67,16 +67,16 @@ export default function GameHomepage() {
             // For now, just simulate the entry process and start the game
             // In future implementation, this will handle payment processing
             console.log(`Selected tournament entry type: ${entryType}`);
-            
+
             // TODO: Implement actual tournament entry logic here
             // - Handle payment (0.9 WLD for verified, 1.0 WLD for standard)
             // - Process World ID verification if needed
             // - Create tournament entry record
-            
+
             // For now, just start the tournament game
             setGameMode('tournament');
             setCurrentScreen('playing');
-            
+
         } catch (error) {
             console.error('Error during tournament entry:', error);
             alert('Tournament entry failed. Please try again.');
