@@ -215,6 +215,7 @@ export default function GameHomepage() {
                         >
                             Tap To Play
                         </button>
+                        <DevSignOut />
                     </div>
                     <div className="bottom-nav-container">
                         <div className="space-nav-icons">
@@ -320,7 +321,6 @@ export default function GameHomepage() {
                 </div>
 
             </Page.Main>
-            <DevSignOut />
         </Page>
     );
 }

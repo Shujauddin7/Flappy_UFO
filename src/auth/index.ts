@@ -69,20 +69,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // Optionally, fetch the user info from your own database
         const userInfo = await MiniKit.getUserInfo(finalPayload.address);
 
-        // Save user data to Supabase database (only in runtime)
-        if (typeof window === 'undefined') { // Server-side only
-          try {
-            const { createOrUpdateUser } = await import('@/lib/database');
-            await createOrUpdateUser({
-              wallet: finalPayload.address,
-              username: userInfo.username || undefined,
-            });
-            console.log('✅ User saved to database:', finalPayload.address);
-          } catch (error) {
-            console.error('❌ Failed to save user to database:', error);
-            // Continue with auth even if database save fails
-          }
-        }
+        // TODO: Database integration will be added after deployment
+        console.log('✅ User authenticated:', finalPayload.address, userInfo.username || 'No username');
 
         return {
           id: finalPayload.address,
