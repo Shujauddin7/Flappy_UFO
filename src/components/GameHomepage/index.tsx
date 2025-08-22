@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Page } from '@/components/PageLayout';
 import { useGameAuth } from '@/hooks/useGameAuth';
-import { DevButtons } from '@/components/DevButtons';
 import dynamic from 'next/dynamic';
 
 // Dynamically import FlappyGame to avoid SSR issues
@@ -187,7 +186,6 @@ export default function GameHomepage() {
         return (
             <Page>
                 <canvas ref={canvasRef} className="starfield-canvas" />
-                <DevButtons />
                 <Page.Main className="main-container">
                     <div className="header-section">
                         <h1 className="game-title">
@@ -241,7 +239,6 @@ export default function GameHomepage() {
     return (
         <Page>
             <canvas ref={canvasRef} className="starfield-canvas" />
-            <DevButtons />
             <Page.Main className="game-select-screen">
 
                 <div className="epic-title-section">
