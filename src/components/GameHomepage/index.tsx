@@ -90,7 +90,7 @@ export default function GameHomepage() {
         try {
             // Use MiniKit to verify World ID with Orb verification level
             const result = await MiniKit.commandsAsync.verify({
-                action: 'tournament-entry-verification', // This needs to be created in World ID developer portal
+                action: 'flappy-ufo', // World ID app identifier from developer portal
                 verification_level: VerificationLevel.Orb, // Require Orb verification for discount
             });
 
@@ -102,7 +102,7 @@ export default function GameHomepage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     payload: result.finalPayload,
-                    action: 'tournament-entry-verification',
+                    action: 'flappy-ufo', // Updated to match World ID app
                 }),
             });
 
