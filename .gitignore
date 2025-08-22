@@ -38,7 +38,6 @@ yarn-error.log*
 /src/lib/database.ts
 /src/app/api/users/
 /src/components/DevButtons/
-/src/components/DevSignOut/
 .env.local
 .env.development
 .env.production
