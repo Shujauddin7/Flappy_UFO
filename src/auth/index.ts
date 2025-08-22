@@ -29,7 +29,10 @@ declare module 'next-auth' {
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.AUTH_SECRET,
   basePath: '/api/auth',
-  session: { strategy: 'jwt' },
+  session: {
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
+  },
   providers: [
     Credentials({
       name: 'World App Wallet',

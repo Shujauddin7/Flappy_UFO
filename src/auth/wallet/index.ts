@@ -31,15 +31,17 @@ export const walletAuth = async () => {
       'Wallet authentication failed',
       result.finalPayload.error_code,
     );
-    return;
+    throw new Error(`Authentication failed: ${result.finalPayload.error_code}`);
   } else {
     console.log(result.finalPayload);
   }
 
-  await signIn('credentials', {
-    redirectTo: '/home',
+  const signInResult = await signIn('credentials', {
+    redirect: false,
     nonce,
     signedNonce,
     finalPayloadJson: JSON.stringify(result.finalPayload),
   });
+
+  return signInResult;
 };

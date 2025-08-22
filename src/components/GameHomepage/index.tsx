@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Page } from '@/components/PageLayout';
+import { useGameAuth } from '@/hooks/useGameAuth';
 import dynamic from 'next/dynamic';
 
 // Dynamically import FlappyGame to avoid SSR issues
@@ -25,11 +26,27 @@ export default function GameHomepage() {
     const [currentScreen, setCurrentScreen] = useState<'home' | 'gameSelect' | 'playing'>('home');
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const { isAuthenticating, authenticate } = useGameAuth();
 
-    // Handle game start
-    const handleGameStart = (mode: GameMode) => {
-        setGameMode(mode);
-        setCurrentScreen('playing');
+    // Handle game start with authentication
+    const handleGameStart = async (mode: GameMode) => {
+        try {
+            // Always attempt authentication to ensure session is valid
+            const authSuccess = await authenticate();
+
+            if (authSuccess) {
+                // Authentication successful, start the game
+                setGameMode(mode);
+                setCurrentScreen('playing');
+            } else {
+                // Authentication failed
+                console.error('Failed to authenticate user');
+                alert('Authentication required to play. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error during game start:', error);
+            alert('Something went wrong. Please try again.');
+        }
     };
 
     // Handle game end
@@ -247,8 +264,9 @@ export default function GameHomepage() {
                             <button
                                 className="mode-button practice-button"
                                 onClick={() => handleGameStart('practice')}
+                                disabled={isAuthenticating}
                             >
-                                ENTER TRAINING
+                                {isAuthenticating ? 'AUTHENTICATING...' : 'ENTER TRAINING'}
                             </button>
                         </div>
                     </div>
@@ -266,8 +284,9 @@ export default function GameHomepage() {
                             <button
                                 className="mode-button tournament-button"
                                 onClick={() => handleGameStart('tournament')}
+                                disabled={isAuthenticating}
                             >
-                                JOIN BATTLE
+                                {isAuthenticating ? 'AUTHENTICATING...' : 'JOIN BATTLE'}
                             </button>
                         </div>
                     </div>

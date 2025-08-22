@@ -399,8 +399,33 @@ body {
   box-shadow: 0 12px 35px rgba(0, 245, 255, 0.6);
 }
 
+.mode-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  animation: pulse-auth 2s ease-in-out infinite;
+}
+
+@keyframes pulse-auth {
+
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+}
+
 .tournament-button:hover {
   box-shadow: 0 12px 35px rgba(147, 51, 234, 0.6);
+}
+
+.tournament-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .mode-button::before {
