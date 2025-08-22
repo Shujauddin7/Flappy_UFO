@@ -224,14 +224,14 @@ export default function GameHomepage() {
     // Render tournament entry screen
     if (currentScreen === 'tournamentEntry') {
         return (
-            <>
+            <Page>
                 <canvas ref={canvasRef} className="starfield-canvas" />
                 <TournamentEntryModal
                     onBack={handleTournamentEntryBack}
                     onEntrySelect={handleTournamentEntrySelect}
                     isAuthenticating={isAuthenticating}
                 />
-            </>
+            </Page>
         );
     }
 
