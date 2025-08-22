@@ -47,9 +47,20 @@ function DevSignOut() {
         }
     };
 
-    // Show in development OR when SHOW_DEV_SIGNOUT is enabled
-    const showDevSignOut = process.env.NODE_ENV === 'development' ||
+    // Only show in development - NEVER in production
+    const showDevSignOut = process.env.NODE_ENV === 'development' && 
         process.env.NEXT_PUBLIC_SHOW_DEV_SIGNOUT === 'true';
+
+    // Double safety check - never show if hostname contains production URLs
+    if (typeof window !== 'undefined') {
+        const hostname = window.location.hostname;
+        if (hostname === 'flappyufo.vercel.app' || 
+            hostname.includes('flappyufo.vercel.app') ||
+            hostname.includes('vercel.app')) {
+            console.log('DevSignOut: Hidden in production environment');
+            return null;
+        }
+    }
 
     if (!showDevSignOut) {
         console.log('DevSignOut: Hidden (dev sign out not enabled)');
