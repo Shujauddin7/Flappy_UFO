@@ -16,17 +16,17 @@ export default function DevTools() {
     const { data: session, status } = useSession();
 
     // Only show dev tools in development environment, never in production
-    const isProduction = typeof window !== 'undefined' && 
-        (window.location.hostname === 'flappyufo.vercel.app' || 
-         window.location.hostname.includes('vercel.app') ||
-         process.env.NODE_ENV === 'production');
-    
-    const showDevTools = !isProduction && 
+    const isProduction = typeof window !== 'undefined' &&
+        (window.location.hostname === 'flappyufo.vercel.app' ||
+            window.location.hostname.includes('vercel.app') ||
+            process.env.NODE_ENV === 'production');
+
+    const showDevTools = !isProduction &&
         (process.env.NEXT_PUBLIC_SHOW_DEV_TOOLS === 'true' ||
-        (typeof window !== 'undefined' &&
-            (window.location.hostname.includes('flappyufo-git-dev-shujauddin') ||
-                window.location.hostname.includes('msshuj') ||
-                window.location.href.includes('git-dev-shujauddin'))))
+            (typeof window !== 'undefined' &&
+                (window.location.hostname.includes('flappyufo-git-dev-shujauddin') ||
+                    window.location.hostname.includes('msshuj') ||
+                    window.location.href.includes('git-dev-shujauddin'))))
 
     if (!showDevTools) {
         return null;

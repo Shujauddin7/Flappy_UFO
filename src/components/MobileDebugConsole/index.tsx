@@ -13,17 +13,17 @@ export default function MobileDebugConsole() {
     const [isVisible, setIsVisible] = useState(false);
 
     // Only show debug console in development, never in production
-    const isProduction = typeof window !== 'undefined' && 
-        (window.location.hostname === 'flappyufo.vercel.app' || 
-         window.location.hostname.includes('vercel.app') ||
-         process.env.NODE_ENV === 'production');
-    
-    const showDebugConsole = !isProduction && 
+    const isProduction = typeof window !== 'undefined' &&
+        (window.location.hostname === 'flappyufo.vercel.app' ||
+            window.location.hostname.includes('vercel.app') ||
+            process.env.NODE_ENV === 'production');
+
+    const showDebugConsole = !isProduction &&
         (process.env.NEXT_PUBLIC_SHOW_DEV_TOOLS === 'true' ||
-        (typeof window !== 'undefined' &&
-            (window.location.hostname.includes('flappyufo-git-dev-shujauddin') ||
-                window.location.hostname.includes('msshuj') ||
-                window.location.href.includes('git-dev-shujauddin'))));
+            (typeof window !== 'undefined' &&
+                (window.location.hostname.includes('flappyufo-git-dev-shujauddin') ||
+                    window.location.hostname.includes('msshuj') ||
+                    window.location.href.includes('git-dev-shujauddin'))));
 
     useEffect(() => {
         if (!showDebugConsole) return;

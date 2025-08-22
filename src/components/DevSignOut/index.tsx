@@ -48,13 +48,13 @@ function DevSignOut() {
     };
 
     // Only show in development - NEVER in production
-    const showDevSignOut = process.env.NODE_ENV === 'development' && 
+    const showDevSignOut = process.env.NODE_ENV === 'development' &&
         process.env.NEXT_PUBLIC_SHOW_DEV_SIGNOUT === 'true';
 
     // Double safety check - never show if hostname contains production URLs
     if (typeof window !== 'undefined') {
         const hostname = window.location.hostname;
-        if (hostname === 'flappyufo.vercel.app' || 
+        if (hostname === 'flappyufo.vercel.app' ||
             hostname.includes('flappyufo.vercel.app') ||
             hostname.includes('vercel.app')) {
             console.log('DevSignOut: Hidden in production environment');
