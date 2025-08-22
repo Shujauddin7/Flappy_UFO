@@ -458,6 +458,66 @@ body {
   }
 }
 
+/* TOURNAMENT ENTRY SCREEN - Reuses game-select-screen styles */
+.tournament-entry-screen {
+  padding: 2rem 1rem 1.5rem;
+}
+
+/* Tournament Entry Specific Mode Cards */
+.verify-mode:hover {
+  box-shadow: 0 25px 50px rgba(34, 197, 94, 0.2), 0 0 30px rgba(34, 197, 94, 0.1);
+}
+
+.standard-mode:hover {
+  box-shadow: 0 25px 50px rgba(251, 191, 36, 0.2), 0 0 30px rgba(251, 191, 36, 0.1);
+}
+
+.verify-aura {
+  background: radial-gradient(circle at 70% 30%, #22c55e, transparent 70%);
+}
+
+.standard-aura {
+  background: radial-gradient(circle at 70% 30%, #fbbf24, transparent 70%);
+}
+
+.verify-mode .mode-icon {
+  color: #22c55e;
+  animation: icon-bounce 2s ease-in-out infinite;
+}
+
+.standard-mode .mode-icon {
+  color: #fbbf24;
+  animation: icon-shine 3s ease-in-out infinite;
+}
+
+.verify-button {
+  background: linear-gradient(45deg, #22c55e, #16a34a);
+  box-shadow: 0 8px 25px rgba(34, 197, 94, 0.4);
+}
+
+.standard-button {
+  background: linear-gradient(45deg, #fbbf24, #f59e0b);
+  box-shadow: 0 8px 25px rgba(251, 191, 36, 0.4);
+}
+
+.verify-button:hover {
+  box-shadow: 0 12px 35px rgba(34, 197, 94, 0.6);
+}
+
+.standard-button:hover {
+  box-shadow: 0 12px 35px rgba(251, 191, 36, 0.6);
+}
+
+.verify-button:disabled,
+.verify-button.authenticating {
+  box-shadow: 0 4px 15px rgba(34, 197, 94, 0.2) !important;
+}
+
+.standard-button:disabled,
+.standard-button.authenticating {
+  box-shadow: 0 4px 15px rgba(251, 191, 36, 0.2) !important;
+}
+
 /* Bottom Navigation - Space Themed */
 .bottom-nav-container {
   width: 100%;
