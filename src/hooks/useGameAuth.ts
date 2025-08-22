@@ -58,7 +58,7 @@ export const useGameAuth = () => {
         if (session?.user?.id && status === 'authenticated') {
             const saveUser = async () => {
                 try {
-                    const user = session.user as {id: string; username?: string; world_id?: string};
+                    const user = session.user as { id: string; username?: string; world_id?: string };
                     const response = await fetch('/api/users', {
                         method: 'POST',
                         headers: {
@@ -70,7 +70,7 @@ export const useGameAuth = () => {
                             world_id: user.world_id || null,
                         }),
                     });
-                    
+
                     if (response.ok) {
                         console.log('✅ User saved to database via API');
                     } else {
@@ -80,7 +80,7 @@ export const useGameAuth = () => {
                     console.warn('❌ Database save failed (non-blocking):', dbError);
                 }
             };
-            
+
             // Only save once per session
             const userId = session.user.id;
             if (!sessionStorage.getItem('user_saved_' + userId)) {

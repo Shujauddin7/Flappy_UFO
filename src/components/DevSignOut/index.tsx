@@ -7,14 +7,14 @@ function DevSignOut() {
 
     const handleSignOut = async (event: React.MouseEvent<HTMLButtonElement>) => {
         console.log('DevSignOut: Sign out clicked');
-        
+
         // Show loading state
         const button = event.target as HTMLButtonElement;
         if (button) {
             button.disabled = true;
             button.textContent = '🔄 Signing Out...';
         }
-        
+
         try {
             // Clear any additional local storage or session data first
             if (typeof window !== 'undefined') {
@@ -29,7 +29,7 @@ function DevSignOut() {
             });
 
             console.log('DevSignOut: NextAuth sign out completed');
-            
+
             // Force reload the page to clear any remaining state
             if (typeof window !== 'undefined') {
                 setTimeout(() => {
@@ -48,9 +48,9 @@ function DevSignOut() {
     };
 
     // Show in development OR when SHOW_DEV_SIGNOUT is enabled
-    const showDevSignOut = process.env.NODE_ENV === 'development' || 
-                          process.env.NEXT_PUBLIC_SHOW_DEV_SIGNOUT === 'true';
-    
+    const showDevSignOut = process.env.NODE_ENV === 'development' ||
+        process.env.NEXT_PUBLIC_SHOW_DEV_SIGNOUT === 'true';
+
     if (!showDevSignOut) {
         console.log('DevSignOut: Hidden (dev sign out not enabled)');
         return null;
