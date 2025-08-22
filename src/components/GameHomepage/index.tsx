@@ -11,7 +11,7 @@ const FlappyGame = dynamic(() => import('@/components/FlappyGame'), {
 });
 
 // Dynamically import DevSignOut only in development
-const DevSignOut = dynamic(() => import('@/components/DevSignOut').catch(() => ({ default: () => null })), {
+const DevSignOut = dynamic(() => import('@/components/DevSignOut'), {
     ssr: false
 });
 
