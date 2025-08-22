@@ -36,7 +36,6 @@ yarn-error.log*
 # Database and sensitive files
 /src/lib/supabase.ts
 /src/lib/database.ts
-/src/app/api/users/
 /src/components/DevButtons/
 .env.local
 .env.development
