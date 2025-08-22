@@ -1,24 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
-import { useSessionPersistence } from '@/hooks/useSessionPersistence';
 import { Page } from '@/components/PageLayout';
-import { SignInAuthButton } from '@/components/SignInAuthButton';
+import { useGameAuth } from '@/hooks/useGameAuth';
 import dynamic from 'next/dynamic';
-import { TournamentEntryModal } from '@/components/TournamentEntryModal';
-
-// Conditionally import dev tools only in development
-const DevTools = dynamic(() => import('@/components/DevTools'), {
-    ssr: false,
-    loading: () => null
-});
-const MobileDebugConsole = dynamic(() => import('@/components/MobileDebugConsole'), {
-    ssr: false,
-    loading: () => null
-});
 
 // Dynamically import FlappyGame to avoid SSR issues
 const FlappyGame = dynamic(() => import('@/components/FlappyGame'), {
+    ssr: false
+});
+
+// Dynamically import DevSignOut only in development
+const DevSignOut = dynamic(() => import('@/components/DevSignOut'), {
     ssr: false
 });
 
@@ -35,81 +28,30 @@ interface Star {
 type GameMode = 'practice' | 'tournament';
 
 export default function GameHomepage() {
-    const { session, status, isSignedIn } = useSessionPersistence();
     const [currentScreen, setCurrentScreen] = useState<'home' | 'gameSelect' | 'playing'>('home');
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
-    const [showTournamentModal, setShowTournamentModal] = useState(false);
-    const [showSignInModal, setShowSignInModal] = useState(false);
-    const [isAuthenticating, setIsAuthenticating] = useState(false);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const { isAuthenticating, authenticate } = useGameAuth();
 
-    // Handle tap to play - go directly to mode selection screen (no sign-in yet)
-    const handleTapToPlay = () => {
-        setCurrentScreen('gameSelect');
-    };
+    // Handle game start with authentication
+    const handleGameStart = async (mode: GameMode) => {
+        try {
+            // Always attempt authentication to ensure session is valid
+            const authSuccess = await authenticate();
 
-    // Handle game start - both modes require sign-in first
-    const handleGameStart = (mode: GameMode) => {
-        if (status === 'loading' || isAuthenticating) return; // Wait for session check and prevent multiple clicks
-
-        if (isSignedIn && session?.user) {
-            // User is already signed in, start the game
-            if (mode === 'tournament') {
-                setShowTournamentModal(true);
-            } else {
+            if (authSuccess) {
+                // Authentication successful, start the game
                 setGameMode(mode);
                 setCurrentScreen('playing');
+            } else {
+                // Authentication failed
+                console.error('Failed to authenticate user');
+                alert('Authentication required to play. Please try again.');
             }
-        } else {
-            // User not signed in - directly trigger World App sign-in (no intermediate modal)
-            setGameMode(mode); // Remember which mode they want
-            setIsAuthenticating(true); // Prevent multiple clicks
-            // Directly trigger the World App authentication flow
-            triggerWorldAppSignIn();
-        }
-    };
-
-    // Function to directly trigger World App sign-in
-    const triggerWorldAppSignIn = async () => {
-        try {
-            // Import walletAuth dynamically to avoid issues
-            const { walletAuth } = await import('@/auth/wallet');
-            await walletAuth();
-            // After successful sign-in, continue with the selected game mode
-            // The session will be updated and handleSignInSuccess will be triggered
         } catch (error) {
-            console.error('Direct wallet authentication error', error);
-            // If direct auth fails, fallback to showing the sign-in modal
-            setShowSignInModal(true);
-        } finally {
-            setIsAuthenticating(false); // Re-enable buttons
+            console.error('Error during game start:', error);
+            alert('Something went wrong. Please try again.');
         }
-    };
-
-    // Handle successful sign-in - start the previously selected game mode
-    const handleSignInSuccess = () => {
-        setShowSignInModal(false);
-        setIsAuthenticating(false); // Re-enable buttons
-
-        if (gameMode === 'tournament') {
-            setShowTournamentModal(true);
-        } else if (gameMode === 'practice') {
-            setCurrentScreen('playing');
-        }
-    };
-
-    // Handle tournament entry selection from modal
-    const handleTournamentEntry = (entryType: 'verified' | 'standard') => {
-        setShowTournamentModal(false);
-        // For now, just start the tournament game (logic will be added later)
-        setGameMode('tournament');
-        setCurrentScreen('playing');
-        console.log(`Selected entry type: ${entryType}`);
-    };
-
-    // Handle modal close
-    const handleModalClose = () => {
-        setShowTournamentModal(false);
     };
 
     // Handle game end
@@ -122,31 +64,6 @@ export default function GameHomepage() {
         setCurrentScreen('gameSelect');
         setGameMode(null);
     };
-
-    // Auto-start game after successful sign-in
-    useEffect(() => {
-        // Log session status for debugging
-        console.log('🔍 GameHomepage session check:', {
-            status,
-            isSignedIn,
-            userWallet: session?.user?.walletAddress,
-            userName: session?.user?.username,
-            gameMode
-        });
-
-        // Only trigger if we have a valid session and a game mode was selected
-        if (session?.user && gameMode && status === 'authenticated') {
-            // Clear any sign-in modal that might be showing
-            setShowSignInModal(false);
-
-            // Start the selected game mode
-            if (gameMode === 'tournament') {
-                setShowTournamentModal(true);
-            } else if (gameMode === 'practice') {
-                setCurrentScreen('playing');
-            }
-        }
-    }, [session?.user, gameMode, status, isSignedIn]); // Dependencies: session, gameMode, status, isSignedIn
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -273,8 +190,6 @@ export default function GameHomepage() {
     if (currentScreen === 'home') {
         return (
             <Page>
-                {process.env.NEXT_PUBLIC_SHOW_DEV_TOOLS === 'true' && <DevTools />}
-                {process.env.NEXT_PUBLIC_SHOW_DEV_TOOLS === 'true' && <MobileDebugConsole />}
                 <canvas ref={canvasRef} className="starfield-canvas" />
                 <Page.Main className="main-container">
                     <div className="header-section">
@@ -284,24 +199,23 @@ export default function GameHomepage() {
                             <span className="ufo-text">UFO</span>
                             <span className="ufo-icon">🛸</span>
                         </h1>
-                        <div className="header-buttons">
-                            <button
-                                className="info-btn"
-                                onClick={() => alert('Game Rules:\n• Tap to navigate your UFO\n• Avoid obstacles\n• Win WLD tournaments!')}
-                                aria-label="Game Info"
-                            >
-                                ℹ️
-                            </button>
-                        </div>
+                        <button
+                            className="info-btn"
+                            onClick={() => alert('Game Rules:\n• Tap to navigate your UFO\n• Avoid obstacles\n• Win WLD tournaments!')}
+                            aria-label="Game Info"
+                        >
+                            ℹ️
+                        </button>
                     </div>
                     <div className="play-section">
                         <button
                             className="custom-play-btn"
-                            onClick={handleTapToPlay}
+                            onClick={() => setCurrentScreen('gameSelect')}
                             aria-label="Tap to Play"
                         >
                             Tap To Play
                         </button>
+                        <DevSignOut />
                     </div>
                     <div className="bottom-nav-container">
                         <div className="space-nav-icons">
@@ -330,8 +244,6 @@ export default function GameHomepage() {
 
     return (
         <Page>
-            {process.env.NEXT_PUBLIC_SHOW_DEV_TOOLS === 'true' && <DevTools />}
-            {process.env.NEXT_PUBLIC_SHOW_DEV_TOOLS === 'true' && <MobileDebugConsole />}
             <canvas ref={canvasRef} className="starfield-canvas" />
             <Page.Main className="game-select-screen">
 
@@ -356,11 +268,11 @@ export default function GameHomepage() {
                                 <span className="feature">⭐ Perfect your skills</span>
                             </div>
                             <button
-                                className={`mode-button practice-button ${isAuthenticating ? 'authenticating' : ''}`}
+                                className="mode-button practice-button"
                                 onClick={() => handleGameStart('practice')}
                                 disabled={isAuthenticating}
                             >
-                                {isAuthenticating && gameMode === 'practice' ? 'SIGNING IN...' : 'ENTER TRAINING'}
+                                {isAuthenticating ? 'AUTHENTICATING...' : 'ENTER TRAINING'}
                             </button>
                         </div>
                     </div>
@@ -376,11 +288,11 @@ export default function GameHomepage() {
                                 <span className="feature">🏆 Daily challenges</span>
                             </div>
                             <button
-                                className={`mode-button tournament-button ${isAuthenticating ? 'authenticating' : ''}`}
+                                className="mode-button tournament-button"
                                 onClick={() => handleGameStart('tournament')}
                                 disabled={isAuthenticating}
                             >
-                                {isAuthenticating && gameMode === 'tournament' ? 'SIGNING IN...' : 'JOIN BATTLE'}
+                                {isAuthenticating ? 'AUTHENTICATING...' : 'JOIN BATTLE'}
                             </button>
                         </div>
                     </div>
@@ -409,36 +321,6 @@ export default function GameHomepage() {
                 </div>
 
             </Page.Main>
-
-            {/* Tournament Entry Modal */}
-            <TournamentEntryModal
-                isOpen={showTournamentModal}
-                onClose={handleModalClose}
-                onEntrySelect={handleTournamentEntry}
-            />
-
-            {/* Sign-In Modal - Direct MiniKit Sign-In */}
-            {showSignInModal && (
-                <div className="modal-overlay">
-                    <div className="modal-content sign-in-modal">
-                        <div className="modal-header">
-                            <h2 className="modal-title">🛸 Sign In Required</h2>
-                            <button
-                                className="modal-close-btn"
-                                onClick={() => setShowSignInModal(false)}
-                                aria-label="Close"
-                            >
-                                ✕
-                            </button>
-                        </div>
-                        <div className="modal-body">
-                            <div className="auth-button-container">
-                                <SignInAuthButton onSuccess={handleSignInSuccess} />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
         </Page>
     );
 }
