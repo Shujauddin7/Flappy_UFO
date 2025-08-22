@@ -33,6 +33,15 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# Database and sensitive files
+/src/lib/supabase.ts
+/src/lib/database.ts
+/src/app/api/users/
+/src/components/DevButtons/
+.env.local
+.env.development
+.env.production
+
 # vercel
 .vercel
 

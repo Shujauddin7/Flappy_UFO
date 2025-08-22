@@ -1,4 +1,5 @@
 import { hashNonce } from '@/auth/wallet/client-helpers';
+import { createOrUpdateUser } from '@/lib/database';
 import {
   MiniAppWalletAuthSuccessPayload,
   MiniKit,
@@ -68,6 +69,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
         // Optionally, fetch the user info from your own database
         const userInfo = await MiniKit.getUserInfo(finalPayload.address);
+
+        // Save user data to Supabase database
+        try {
+          await createOrUpdateUser({
+            wallet: finalPayload.address,
+            username: userInfo.username || undefined,
+          });
+        } catch (error) {
+          console.error('Failed to save user to database:', error);
+          // Continue with auth even if database save fails
+        }
 
         return {
           id: finalPayload.address,
