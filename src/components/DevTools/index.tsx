@@ -17,21 +17,21 @@ export default function DevTools() {
 
     // Show dev tools in development OR on dev deployment URLs, never in production
     const isLocalDev = process.env.NODE_ENV === 'development';
-    const isDevDeployment = typeof window !== 'undefined' && 
+    const isDevDeployment = typeof window !== 'undefined' &&
         (window.location.hostname.includes('flappyufo-git-dev-shujauddin') ||
-         window.location.hostname.includes('msshuj') ||
-         window.location.href.includes('git-dev-shujauddin'));
-    const isProductionDeployment = typeof window !== 'undefined' && 
+            window.location.hostname.includes('msshuj') ||
+            window.location.href.includes('git-dev-shujauddin'));
+    const isProductionDeployment = typeof window !== 'undefined' &&
         window.location.hostname === 'flappyufo.vercel.app';
-    
+
     // Show if: (local dev OR dev deployment) AND not production deployment  
-    const showDevTools = (isLocalDev || isDevDeployment) && 
+    const showDevTools = (isLocalDev || isDevDeployment) &&
         !isProductionDeployment &&
         process.env.NEXT_PUBLIC_SHOW_DEV_TOOLS !== 'false';
 
     if (!showDevTools) {
         return null;
-    }    return (
+    } return (
         <div className="dev-tools" style={{
             position: 'fixed',
             top: '10px',

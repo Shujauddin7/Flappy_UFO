@@ -49,20 +49,20 @@ function DevSignOut() {
 
     // Show dev sign out in development OR on dev deployment URLs
     const isLocalDev = process.env.NODE_ENV === 'development';
-    const isDevDeployment = typeof window !== 'undefined' && 
+    const isDevDeployment = typeof window !== 'undefined' &&
         window.location.hostname.includes('flappyufo-git-dev-shujauddin');
-    const isProductionDeployment = typeof window !== 'undefined' && 
+    const isProductionDeployment = typeof window !== 'undefined' &&
         window.location.hostname === 'flappyufo.vercel.app';
-    
+
     // Show if: (local dev OR dev deployment) AND not production deployment
-    const showDevSignOut = (isLocalDev || isDevDeployment) && 
+    const showDevSignOut = (isLocalDev || isDevDeployment) &&
         !isProductionDeployment &&
         process.env.NEXT_PUBLIC_SHOW_DEV_SIGNOUT !== 'false';
 
     if (!showDevSignOut) {
         console.log('DevSignOut: Hidden (not in dev environment or explicitly disabled)');
         return null;
-    }    console.log('DevSignOut: Rendering button in development mode');
+    } console.log('DevSignOut: Rendering button in development mode');
 
     return (
         <div className="mt-4">
