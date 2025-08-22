@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Page } from '@/components/PageLayout';
 import { useGameAuth } from '@/hooks/useGameAuth';
 import dynamic from 'next/dynamic';
+import { TournamentEntryModal } from '@/components/TournamentEntryModal';
 
 // Dynamically import FlappyGame to avoid SSR issues
 const FlappyGame = dynamic(() => import('@/components/FlappyGame'), {
@@ -28,7 +29,7 @@ interface Star {
 type GameMode = 'practice' | 'tournament';
 
 export default function GameHomepage() {
-    const [currentScreen, setCurrentScreen] = useState<'home' | 'gameSelect' | 'playing'>('home');
+    const [currentScreen, setCurrentScreen] = useState<'home' | 'gameSelect' | 'tournamentEntry' | 'playing'>('home');
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const { isAuthenticating, authenticate } = useGameAuth();
@@ -40,9 +41,15 @@ export default function GameHomepage() {
             const authSuccess = await authenticate();
 
             if (authSuccess) {
-                // Authentication successful, start the game
-                setGameMode(mode);
-                setCurrentScreen('playing');
+                // Authentication successful
+                if (mode === 'practice') {
+                    // Start practice game immediately
+                    setGameMode(mode);
+                    setCurrentScreen('playing');
+                } else {
+                    // For tournament mode, go to tournament entry screen
+                    setCurrentScreen('tournamentEntry');
+                }
             } else {
                 // Authentication failed
                 console.error('Failed to authenticate user');
@@ -52,6 +59,33 @@ export default function GameHomepage() {
             console.error('Error during game start:', error);
             alert('Something went wrong. Please try again.');
         }
+    };
+
+    // Handle tournament entry selection
+    const handleTournamentEntrySelect = async (entryType: 'verify' | 'standard') => {
+        try {
+            // For now, just simulate the entry process and start the game
+            // In future implementation, this will handle payment processing
+            console.log(`Selected tournament entry type: ${entryType}`);
+
+            // TODO: Implement actual tournament entry logic here
+            // - Handle payment (0.9 WLD for verify, 1.0 WLD for standard)
+            // - Process World ID verification if needed
+            // - Create tournament entry record
+
+            // For now, just start the tournament game
+            setGameMode('tournament');
+            setCurrentScreen('playing');
+
+        } catch (error) {
+            console.error('Error during tournament entry:', error);
+            alert('Tournament entry failed. Please try again.');
+        }
+    };
+
+    // Handle going back from tournament entry screen
+    const handleTournamentEntryBack = () => {
+        setCurrentScreen('gameSelect');
     };
 
     // Handle game end
@@ -185,6 +219,20 @@ export default function GameHomepage() {
     // Render the FlappyGame when playing
     if (currentScreen === 'playing') {
         return <FlappyGame gameMode={gameMode} onGameEnd={handleGameEnd} />;
+    }
+
+    // Render tournament entry screen
+    if (currentScreen === 'tournamentEntry') {
+        return (
+            <>
+                <canvas ref={canvasRef} className="starfield-canvas" />
+                <TournamentEntryModal
+                    onBack={handleTournamentEntryBack}
+                    onEntrySelect={handleTournamentEntrySelect}
+                    isAuthenticating={isAuthenticating}
+                />
+            </>
+        );
     }
 
     if (currentScreen === 'home') {
