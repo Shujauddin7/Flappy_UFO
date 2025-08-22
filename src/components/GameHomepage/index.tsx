@@ -10,6 +10,11 @@ const FlappyGame = dynamic(() => import('@/components/FlappyGame'), {
     ssr: false
 });
 
+// Dynamically import DevSignOut only in development
+const DevSignOut = dynamic(() => import('@/components/DevSignOut').catch(() => ({ default: () => null })), {
+    ssr: false
+});
+
 interface Star {
     x: number;
     y: number;
@@ -315,6 +320,7 @@ export default function GameHomepage() {
                 </div>
 
             </Page.Main>
+            <DevSignOut />
         </Page>
     );
 }
