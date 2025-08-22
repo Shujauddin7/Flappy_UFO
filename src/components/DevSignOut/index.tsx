@@ -47,27 +47,22 @@ function DevSignOut() {
         }
     };
 
-    // Only show in development - NEVER in production
-    const showDevSignOut = process.env.NODE_ENV === 'development' &&
-        process.env.NEXT_PUBLIC_SHOW_DEV_SIGNOUT === 'true';
-
-    // Double safety check - never show if hostname contains production URLs
-    if (typeof window !== 'undefined') {
-        const hostname = window.location.hostname;
-        if (hostname === 'flappyufo.vercel.app' ||
-            hostname.includes('flappyufo.vercel.app') ||
-            hostname.includes('vercel.app')) {
-            console.log('DevSignOut: Hidden in production environment');
-            return null;
-        }
-    }
+    // Show dev sign out in development OR on dev deployment URLs
+    const isLocalDev = process.env.NODE_ENV === 'development';
+    const isDevDeployment = typeof window !== 'undefined' && 
+        window.location.hostname.includes('flappyufo-git-dev-shujauddin');
+    const isProductionDeployment = typeof window !== 'undefined' && 
+        window.location.hostname === 'flappyufo.vercel.app';
+    
+    // Show if: (local dev OR dev deployment) AND not production deployment
+    const showDevSignOut = (isLocalDev || isDevDeployment) && 
+        !isProductionDeployment &&
+        process.env.NEXT_PUBLIC_SHOW_DEV_SIGNOUT !== 'false';
 
     if (!showDevSignOut) {
-        console.log('DevSignOut: Hidden (dev sign out not enabled)');
+        console.log('DevSignOut: Hidden (not in dev environment or explicitly disabled)');
         return null;
-    }
-
-    console.log('DevSignOut: Rendering button in development mode');
+    }    console.log('DevSignOut: Rendering button in development mode');
 
     return (
         <div className="mt-4">
