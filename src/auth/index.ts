@@ -69,8 +69,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // Optionally, fetch the user info from your own database
         const userInfo = await MiniKit.getUserInfo(finalPayload.address);
 
-        // TODO: Database integration will be added after deployment
         console.log('✅ User authenticated:', finalPayload.address, userInfo.username || 'No username');
+
+        // Save user data to database in the background (don't block authentication)
+        try {
+          // Use setTimeout to make this truly async and not block the auth flow
+          setTimeout(async () => {
+            try {
+              const { createOrUpdateUser } = await import('@/lib/database');
+              await createOrUpdateUser({
+                wallet: finalPayload.address,
+                username: userInfo.username || undefined,
+              });
+              console.log('✅ User saved to database:', finalPayload.address);
+            } catch (dbError) {
+              console.warn('❌ Database save failed (non-blocking):', dbError);
+            }
+          }, 0);
+        } catch (error) {
+          console.warn('❌ Database import failed (non-blocking):', error);
+        }
 
         return {
           id: finalPayload.address,
