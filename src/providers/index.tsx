@@ -35,7 +35,16 @@ export default function ClientProviders({
   return (
     <ErudaProvider>
       <MiniKitProvider>
-        <SessionProvider session={session}>{children}</SessionProvider>
+        <SessionProvider
+          session={session}
+          refetchInterval={0} // Disable periodic session fetching - JWT handles persistence
+          refetchOnWindowFocus={false} // Disable refetch on focus for permanent sessions
+          refetchWhenOffline={false} // Don't refetch when coming back online
+          // Enhanced session options for dev environment persistence
+          basePath="/api/auth"
+        >
+          {children}
+        </SessionProvider>
       </MiniKitProvider>
     </ErudaProvider>
   );

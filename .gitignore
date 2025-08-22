@@ -1,5 +1,20 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+# Database schema files (development only)
+supabase-*.sql
+
+
+# Development tools (exclude from production)
+src/components/DevTools/
+src/components/MobileDebugConsole/
+
+# Development documentation (exclude from production)  
+toself.md
+STEP-BY-STEP-SIGNIN.md
+URGENT_WORLD_PORTAL_UPDATE.md
+complete-database-schema.sql
+
+
 # dependencies
 /node_modules
 /.pnp
@@ -53,4 +68,3 @@ next-env.d.ts
 Plan.md
 Createdfiles.md
 toself.md
-

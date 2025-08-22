@@ -28,12 +28,27 @@ export async function POST(req: NextRequest) {
   )) as IVerifyResponse; // Wrapper on this
 
   if (verifyRes.success) {
-    // This is where you should perform backend actions if the verification succeeds
-    // Such as, setting a user as "verified" in a database
-    return NextResponse.json({ verifyRes, status: 200 });
+    // Verification successful - World ID proof is valid
+    // The actual nullifier_hash will be handled client-side in world-id-verification.ts
+    console.log('✅ World ID verification successful for action:', action);
+    console.log('🆔 Nullifier Hash:', payload.nullifier_hash);
+    
+    return NextResponse.json({ 
+      success: true, 
+      verifyRes, 
+      nullifier_hash: payload.nullifier_hash,
+      verification_level: payload.verification_level,
+      status: 200 
+    });
   } else {
     // This is where you should handle errors from the World ID /verify endpoint.
-    // Usually these errors are due to a user having already verified.
-    return NextResponse.json({ verifyRes, status: 400 });
+    // Usually these errors are due to a user having already verified for this action.
+    console.error('❌ World ID verification failed:', verifyRes);
+    return NextResponse.json({ 
+      success: false, 
+      verifyRes, 
+      error: verifyRes.detail || 'Verification failed',
+      status: 400 
+    });
   }
 }
