@@ -22,9 +22,12 @@ function DevSignOut() {
         }
     };
 
-    // Only show in development mode
-    if (process.env.NODE_ENV === 'production') {
-        console.log('DevSignOut: Hidden in production mode');
+    // Show in development OR when SHOW_DEV_SIGNOUT is enabled
+    const showDevSignOut = process.env.NODE_ENV === 'development' || 
+                          process.env.NEXT_PUBLIC_SHOW_DEV_SIGNOUT === 'true';
+    
+    if (!showDevSignOut) {
+        console.log('DevSignOut: Hidden (dev sign out not enabled)');
         return null;
     }
 
