@@ -6,7 +6,6 @@ import { Page } from '@/components/PageLayout';
 import { useGameAuth } from '@/hooks/useGameAuth';
 import dynamic from 'next/dynamic';
 import { TournamentEntryModal } from '@/components/TournamentEntryModal';
-import { MiniKit, VerificationLevel } from '@worldcoin/minikit-js';
 
 // Dynamically import FlappyGame to avoid SSR issues
 const FlappyGame = dynamic(() => import('@/components/FlappyGame'), {
@@ -114,119 +113,20 @@ export default function GameHomepage() {
         }
     };
 
-    // Handle tournament entry selection
-    const handleTournamentEntrySelect = async (entryType: 'verify' | 'standard' | 'verified') => {
-        try {
-            console.log(`Selected tournament entry type: ${entryType}`);
-
-            if (entryType === 'verify') {
-                // Handle World ID verification first
-                await handleWorldIDVerification();
-            } else if (entryType === 'verified') {
-                // User is already verified, proceed with 0.9 WLD entry
-                await handleVerifiedEntry();
-            } else {
-                // Standard entry - proceed directly to payment
-                await handleStandardEntry();
-            }
-
-        } catch (error) {
-            console.error('Error during tournament entry:', error);
-            alert('Tournament entry failed. Please try again.');
-        }
+    // Handle tournament entry selection (now just for UI state)
+    const handleTournamentEntrySelect = (entryType: 'verify' | 'standard' | 'verified') => {
+        console.log(`Selected tournament entry type: ${entryType}`);
+        // The actual payment processing is now handled by TournamentPayment component
     };
 
-    // Handle World ID verification for verified entry
-    const handleWorldIDVerification = async () => {
-        try {
-            // Use MiniKit to verify World ID with Orb verification level
-            const result = await MiniKit.commandsAsync.verify({
-                action: 'flappy-ufo', // World ID app identifier from developer portal
-                verification_level: VerificationLevel.Orb, // Require Orb verification for discount
-            });
+    // Handle successful payment and start game
+    const handlePaymentSuccess = (entryId: string, entryType: string) => {
+        console.log(`✅ Payment successful! Entry ID: ${entryId}, Type: ${entryType}`);
 
-            console.log('World ID verification result:', result.finalPayload);
+        // Store entry ID for game session
+        // TODO: Pass entry ID to FlappyGame component for score submission
 
-            // Send proof to backend for verification
-            const response = await fetch('/api/verify-proof', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    payload: result.finalPayload,
-                    action: 'flappy-ufo', // Updated to match World ID app
-                }),
-            });
-
-            const verificationData = await response.json();
-
-            if (verificationData.success) {
-                console.log('✅ World ID verification successful');
-                // Update user's verification status in database
-                await updateUserVerificationStatus(verificationData.nullifier_hash);
-                // Proceed with 0.9 WLD entry
-                await handleVerifiedEntry();
-            } else {
-                throw new Error(verificationData.error || 'Verification failed');
-            }
-
-        } catch (error) {
-            console.error('World ID verification error:', error);
-            alert('World ID verification failed. Please try again or use Standard Entry.');
-        }
-    };
-
-    // Update user verification status in database
-    const updateUserVerificationStatus = async (nullifierHash: string) => {
-        try {
-            if (!session?.user?.walletAddress) {
-                throw new Error('No wallet address found in session');
-            }
-
-            const response = await fetch('/api/users/update-verification', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    nullifier_hash: nullifierHash,
-                    verification_date: new Date().toISOString(),
-                    wallet: session.user.walletAddress, // Pass wallet address
-                }),
-            });
-
-            const responseData = await response.json();
-
-            if (!response.ok) {
-                throw new Error(responseData.error || 'Failed to update verification status');
-            }
-
-            console.log('✅ User verification status updated:', responseData.data);
-
-            // Refresh verification status after successful update
-            await checkVerificationStatus();
-
-            return responseData;
-        } catch (error) {
-            console.error('❌ Error updating verification status:', error);
-            alert('Warning: Verification successful but failed to save to database. You may need to verify again.');
-            return null;
-        }
-    };
-
-    // Handle verified entry (0.9 WLD)
-    const handleVerifiedEntry = async () => {
-        // TODO: Implement payment processing for 0.9 WLD
-        console.log('Processing verified entry payment: 0.9 WLD');
-
-        // For now, just start the tournament game
-        setGameMode('tournament');
-        setCurrentScreen('playing');
-    };
-
-    // Handle standard entry (1.0 WLD)
-    const handleStandardEntry = async () => {
-        // TODO: Implement payment processing for 1.0 WLD
-        console.log('Processing standard entry payment: 1.0 WLD');
-
-        // For now, just start the tournament game
+        // Start tournament game
         setGameMode('tournament');
         setCurrentScreen('playing');
     };
@@ -377,6 +277,7 @@ export default function GameHomepage() {
                 <TournamentEntryModal
                     onBack={handleTournamentEntryBack}
                     onEntrySelect={handleTournamentEntrySelect}
+                    onPaymentSuccess={handlePaymentSuccess}
                     isAuthenticating={isAuthenticating}
                     isVerifiedToday={isVerifiedToday}
                     verificationLoading={verificationLoading}
