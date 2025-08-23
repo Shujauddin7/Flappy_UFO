@@ -182,9 +182,6 @@ export default function GameHomepage() {
                 throw new Error('No wallet address found in session');
             }
 
-            console.log('🔄 Updating verification status for wallet:', session.user.walletAddress);
-            console.log('🆔 Nullifier hash:', nullifierHash);
-
             const response = await fetch('/api/users/update-verification', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -196,7 +193,6 @@ export default function GameHomepage() {
             });
 
             const responseData = await response.json();
-            console.log('📡 API Response:', responseData);
 
             if (!response.ok) {
                 throw new Error(responseData.error || 'Failed to update verification status');

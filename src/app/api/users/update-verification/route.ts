@@ -41,18 +41,30 @@ export async function POST(req: NextRequest) {
 
         const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+        // Check if the user exists
+        const { error: checkError } = await supabase
+            .from('users')
+            .select('id')
+            .eq('wallet', wallet)
+            .single();
+
+        if (checkError) {
+            if (checkError.code === 'PGRST116') {
+                return NextResponse.json({
+                    success: false,
+                    error: 'User not found. Please sign in first to create your profile.'
+                }, { status: 404 });
+            }
+            console.error('❌ Error checking user existence:', checkError);
+            return NextResponse.json({
+                success: false,
+                error: 'Database query failed: ' + checkError.message
+            }, { status: 500 });
+        }
+
         // Get current tournament info (for tournament_id)
         const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
         const currentTournamentId = `tournament-${today}`;
-
-        console.log('🔧 Update verification debug info:', {
-            wallet,
-            nullifier_hash,
-            verification_date,
-            today,
-            currentTournamentId,
-            formatted_date: new Date(verification_date).toISOString().split('T')[0]
-        });
 
         // Update user verification status
         const { data, error } = await supabase
@@ -67,12 +79,6 @@ export async function POST(req: NextRequest) {
 
         if (error) {
             console.error('❌ Error updating user verification:', error);
-            console.error('❌ Error details:', {
-                code: error.code,
-                message: error.message,
-                details: error.details,
-                hint: error.hint
-            });
             return NextResponse.json(
                 { success: false, error: 'Database update failed: ' + error.message },
                 { status: 500 }
