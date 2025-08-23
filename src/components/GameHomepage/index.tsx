@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { Page } from '@/components/PageLayout';
 import { useGameAuth } from '@/hooks/useGameAuth';
@@ -39,6 +39,54 @@ export default function GameHomepage() {
     // Import useSession to get user wallet
     const { data: session } = useSession();
 
+    // Verification status state
+    const [isVerifiedToday, setIsVerifiedToday] = useState<boolean>(false);
+    const [verificationLoading, setVerificationLoading] = useState<boolean>(false);
+
+    // Check user's verification status for today's tournament
+    const checkVerificationStatus = useCallback(async () => {
+        if (!session?.user?.walletAddress) return false;
+
+        try {
+            setVerificationLoading(true);
+
+            const response = await fetch('/api/users/verification-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    wallet: session.user.walletAddress,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                console.log('✅ Verification status:', data.data);
+                setIsVerifiedToday(data.data.isVerified);
+                return data.data.isVerified;
+            } else {
+                console.error('❌ Failed to check verification status:', data.error);
+                setIsVerifiedToday(false);
+                return false;
+            }
+        } catch (error) {
+            console.error('❌ Error checking verification status:', error);
+            setIsVerifiedToday(false);
+            return false;
+        } finally {
+            setVerificationLoading(false);
+        }
+    }, [session?.user?.walletAddress]);
+
+    // Check verification status when user session changes
+    useEffect(() => {
+        if (session?.user?.walletAddress) {
+            checkVerificationStatus();
+        } else {
+            setIsVerifiedToday(false);
+        }
+    }, [session?.user?.walletAddress, checkVerificationStatus]);
+
     // Handle game start with authentication
     const handleGameStart = async (mode: GameMode) => {
         try {
@@ -67,13 +115,16 @@ export default function GameHomepage() {
     };
 
     // Handle tournament entry selection
-    const handleTournamentEntrySelect = async (entryType: 'verify' | 'standard') => {
+    const handleTournamentEntrySelect = async (entryType: 'verify' | 'standard' | 'verified') => {
         try {
             console.log(`Selected tournament entry type: ${entryType}`);
 
             if (entryType === 'verify') {
                 // Handle World ID verification first
                 await handleWorldIDVerification();
+            } else if (entryType === 'verified') {
+                // User is already verified, proceed with 0.9 WLD entry
+                await handleVerifiedEntry();
             } else {
                 // Standard entry - proceed directly to payment
                 await handleStandardEntry();
@@ -131,6 +182,9 @@ export default function GameHomepage() {
                 throw new Error('No wallet address found in session');
             }
 
+            console.log('🔄 Updating verification status for wallet:', session.user.walletAddress);
+            console.log('🆔 Nullifier hash:', nullifierHash);
+
             const response = await fetch('/api/users/update-verification', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -142,16 +196,21 @@ export default function GameHomepage() {
             });
 
             const responseData = await response.json();
+            console.log('📡 API Response:', responseData);
 
             if (!response.ok) {
                 throw new Error(responseData.error || 'Failed to update verification status');
             }
 
             console.log('✅ User verification status updated:', responseData.data);
+
+            // Refresh verification status after successful update
+            await checkVerificationStatus();
+
             return responseData;
         } catch (error) {
-            console.error('Error updating verification status:', error);
-            // Don't block the flow if verification status update fails
+            console.error('❌ Error updating verification status:', error);
+            alert('Warning: Verification successful but failed to save to database. You may need to verify again.');
             return null;
         }
     };
@@ -323,6 +382,8 @@ export default function GameHomepage() {
                     onBack={handleTournamentEntryBack}
                     onEntrySelect={handleTournamentEntrySelect}
                     isAuthenticating={isAuthenticating}
+                    isVerifiedToday={isVerifiedToday}
+                    verificationLoading={verificationLoading}
                 />
             </Page>
         );

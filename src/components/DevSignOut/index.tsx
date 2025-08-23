@@ -28,14 +28,7 @@ function DevSignOut() {
                 redirect: false
             });
 
-            console.log('DevSignOut: NextAuth sign out completed');
-
-            // Force reload the page to clear any remaining state
-            if (typeof window !== 'undefined') {
-                setTimeout(() => {
-                    window.location.reload();
-                }, 500);
-            }
+            console.log('✅ DevSignOut: Successfully signed out');
         } catch (error) {
             console.error('Error signing out:', error);
             // Even if sign out fails, try to reload to clear state
@@ -62,16 +55,18 @@ function DevSignOut() {
     if (!showDevSignOut) {
         console.log('DevSignOut: Hidden (not in dev environment or explicitly disabled)');
         return null;
-    } console.log('DevSignOut: Rendering button in development mode');
+    }
+
+    console.log('DevSignOut: Rendering button in development mode');
 
     return (
         <div className="mt-4">
             <button
                 onClick={handleSignOut}
                 className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg transition-all duration-200 border border-red-400"
-                title="Development only - Sign out and reload to test authentication flow"
+                title="Development only - Sign out and reload to test authentication flow and reset verification status"
             >
-                🚪 DEV: Sign Out & Reload
+                🚪 DEV: Sign Out & Reset
             </button>
         </div>
     );

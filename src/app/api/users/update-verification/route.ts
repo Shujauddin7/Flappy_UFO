@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
         const currentTournamentId = `tournament-${today}`;
 
         // Update user verification status
-        const { error } = await supabase
+        const { data, error } = await supabase
             .from('users')
             .update({
                 world_id: nullifier_hash, // Store World ID identifier
@@ -59,15 +59,24 @@ export async function POST(req: NextRequest) {
         if (error) {
             console.error('❌ Error updating user verification:', error);
             return NextResponse.json(
-                { success: false, error: 'Database update failed' },
+                { success: false, error: 'Database update failed: ' + error.message },
                 { status: 500 }
+            );
+        }
+
+        if (!data || data.length === 0) {
+            console.error('❌ No user found with wallet:', wallet);
+            return NextResponse.json(
+                { success: false, error: 'User not found. Please sign in first.' },
+                { status: 404 }
             );
         }
 
         console.log('✅ User verification status updated:', {
             wallet: wallet,
             verified_date: verification_date,
-            tournament_id: currentTournamentId
+            tournament_id: currentTournamentId,
+            updated_user: data[0]
         });
 
         return NextResponse.json({
