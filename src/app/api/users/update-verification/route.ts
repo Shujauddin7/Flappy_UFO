@@ -45,6 +45,15 @@ export async function POST(req: NextRequest) {
         const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
         const currentTournamentId = `tournament-${today}`;
 
+        console.log('🔧 Update verification debug info:', {
+            wallet,
+            nullifier_hash,
+            verification_date,
+            today,
+            currentTournamentId,
+            formatted_date: new Date(verification_date).toISOString().split('T')[0]
+        });
+
         // Update user verification status
         const { data, error } = await supabase
             .from('users')
@@ -58,6 +67,12 @@ export async function POST(req: NextRequest) {
 
         if (error) {
             console.error('❌ Error updating user verification:', error);
+            console.error('❌ Error details:', {
+                code: error.code,
+                message: error.message,
+                details: error.details,
+                hint: error.hint
+            });
             return NextResponse.json(
                 { success: false, error: 'Database update failed: ' + error.message },
                 { status: 500 }
