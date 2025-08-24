@@ -212,6 +212,40 @@ export default function GameHomepage() {
         }
     };
 
+    // Create tournament entry after successful payment
+    const createTournamentEntry = async (paymentReference: string, amount: number, isVerified: boolean) => {
+        try {
+            if (!session?.user?.walletAddress) {
+                throw new Error('No wallet address found in session');
+            }
+
+            const response = await fetch('/api/tournament/entry', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    payment_reference: paymentReference,
+                    paid_amount: amount,
+                    is_verified_entry: isVerified,
+                    wallet: session.user.walletAddress,
+                }),
+            });
+
+            const responseData = await response.json();
+
+            if (!response.ok) {
+                throw new Error(responseData.error || 'Failed to create tournament entry');
+            }
+
+            console.log('✅ Tournament entry created:', responseData.data);
+            return responseData.data;
+
+        } catch (error) {
+            console.error('❌ Error creating tournament entry:', error);
+            alert('Payment successful but failed to register tournament entry. Please contact support.');
+            throw error;
+        }
+    };
+
     // Handle payment
     const handlePayment = async (amount: number, isVerified: boolean) => {
         try {
@@ -239,9 +273,10 @@ export default function GameHomepage() {
             if (result.finalPayload.status === 'success') {
                 console.log('✅ Payment successful:', result.finalPayload);
 
-                // TODO: Validate payment on backend and create tournament entry
-                // For now, just start the game
-                alert(`Payment successful! Amount: ${amount} WLD`);
+                // Create tournament entry after successful payment
+                await createTournamentEntry(result.finalPayload.reference, amount, isVerified);
+
+                // Start the game directly
                 setGameMode('tournament');
                 setCurrentScreen('playing');
             } else {
