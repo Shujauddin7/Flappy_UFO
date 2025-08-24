@@ -2,12 +2,10 @@
 
 import React, { useState } from 'react';
 import { Page } from '@/components/PageLayout';
-import { TournamentPayment } from '@/components/TournamentPayment';
 
 interface TournamentEntryModalProps {
     onBack: () => void;
     onEntrySelect: (entryType: 'verify' | 'standard' | 'verified') => void;
-    onPaymentSuccess: (entryId: string, entryType: string) => void;
     isAuthenticating: boolean;
     isVerifiedToday: boolean;
     verificationLoading: boolean;
@@ -16,71 +14,16 @@ interface TournamentEntryModalProps {
 export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
     onBack,
     onEntrySelect,
-    onPaymentSuccess,
     isAuthenticating,
     isVerifiedToday,
     verificationLoading
 }) => {
     const [selectedEntry, setSelectedEntry] = useState<'verify' | 'standard' | 'verified' | null>(null);
-    const [showPayment, setShowPayment] = useState(false);
 
     const handleEntrySelect = (entryType: 'verify' | 'standard' | 'verified') => {
         setSelectedEntry(entryType);
-        setShowPayment(true);
         onEntrySelect(entryType);
     };
-
-    const handlePaymentSuccess = (entryId: string) => {
-        if (selectedEntry) {
-            onPaymentSuccess(entryId, selectedEntry);
-        }
-    };
-
-    const handlePaymentFailed = (error: string) => {
-        console.error('Payment failed:', error);
-        alert(`Payment failed: ${error}`);
-        setShowPayment(false);
-        setSelectedEntry(null);
-    };
-
-    const handlePaymentCancel = () => {
-        setShowPayment(false);
-        setSelectedEntry(null);
-    };
-
-    // Show payment screen if entry is selected
-    if (showPayment && selectedEntry) {
-        return (
-            <Page.Main className="tournament-payment-screen">
-                <div className="epic-title-section">
-                    <h1 className="epic-title">
-                        <span className="choose-word">Complete</span>
-                        <span className="destiny-word">Payment</span>
-                    </h1>
-                    <p className="epic-subtitle">Secure tournament entry powered by World App</p>
-                </div>
-
-                <TournamentPayment
-                    entryType={selectedEntry}
-                    onPaymentSuccess={handlePaymentSuccess}
-                    onPaymentFailed={handlePaymentFailed}
-                    onCancel={handlePaymentCancel}
-                />
-
-                <div className="bottom-nav-container">
-                    <div className="space-nav-icons">
-                        <button
-                            className="space-nav-btn back-nav"
-                            onClick={handlePaymentCancel}
-                            aria-label="Go Back"
-                        >
-                            <div className="space-icon">⬅️</div>
-                        </button>
-                    </div>
-                </div>
-            </Page.Main>
-        );
-    }
 
     return (
         <Page.Main className="tournament-entry-screen">

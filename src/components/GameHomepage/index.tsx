@@ -113,22 +113,145 @@ export default function GameHomepage() {
         }
     };
 
-    // Handle tournament entry selection (now just for UI state)
-    const handleTournamentEntrySelect = (entryType: 'verify' | 'standard' | 'verified') => {
-        console.log(`Selected tournament entry type: ${entryType}`);
-        // The actual payment processing is now handled by TournamentPayment component
+    // Handle tournament entry selection
+    const handleTournamentEntrySelect = async (entryType: 'verify' | 'standard' | 'verified') => {
+        try {
+            console.log(`Selected tournament entry type: ${entryType}`);
+
+            if (entryType === 'verify') {
+                // Handle World ID verification first, then payment
+                await handleWorldIDVerification();
+            } else if (entryType === 'verified') {
+                // User is already verified, proceed with 0.9 WLD payment
+                await handlePayment(0.9, true);
+            } else {
+                // Standard entry - proceed with 1.0 WLD payment
+                await handlePayment(1.0, false);
+            }
+
+        } catch (error) {
+            console.error('Error during tournament entry:', error);
+            alert('Tournament entry failed. Please try again.');
+        }
     };
 
-    // Handle successful payment and start game
-    const handlePaymentSuccess = (entryId: string, entryType: string) => {
-        console.log(`✅ Payment successful! Entry ID: ${entryId}, Type: ${entryType}`);
+    // Handle World ID verification for verified entry
+    const handleWorldIDVerification = async () => {
+        try {
+            const { MiniKit, VerificationLevel } = await import('@worldcoin/minikit-js');
 
-        // Store entry ID for game session
-        // TODO: Pass entry ID to FlappyGame component for score submission
+            // Use MiniKit to verify World ID with Orb verification level
+            const result = await MiniKit.commandsAsync.verify({
+                action: 'flappy-ufo', // World ID app identifier from developer portal
+                verification_level: VerificationLevel.Orb, // Require Orb verification for discount
+            });
 
-        // Start tournament game
-        setGameMode('tournament');
-        setCurrentScreen('playing');
+            console.log('World ID verification result:', result.finalPayload);
+
+            // Send proof to backend for verification
+            const response = await fetch('/api/verify-proof', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    payload: result.finalPayload,
+                    action: 'flappy-ufo', // Updated to match World ID app
+                }),
+            });
+
+            const verificationData = await response.json();
+
+            if (verificationData.success) {
+                console.log('✅ World ID verification successful');
+                // Update user's verification status in database
+                await updateUserVerificationStatus(verificationData.nullifier_hash);
+                // Proceed with 0.9 WLD payment
+                await handlePayment(0.9, true);
+            } else {
+                throw new Error(verificationData.error || 'Verification failed');
+            }
+
+        } catch (error) {
+            console.error('World ID verification error:', error);
+            alert('World ID verification failed. Please try again or use Standard Entry.');
+        }
+    };
+
+    // Update user verification status in database
+    const updateUserVerificationStatus = async (nullifierHash: string) => {
+        try {
+            if (!session?.user?.walletAddress) {
+                throw new Error('No wallet address found in session');
+            }
+
+            const response = await fetch('/api/users/update-verification', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    nullifier_hash: nullifierHash,
+                    verification_date: new Date().toISOString(),
+                    wallet: session.user.walletAddress, // Pass wallet address
+                }),
+            });
+
+            const responseData = await response.json();
+
+            if (!response.ok) {
+                throw new Error(responseData.error || 'Failed to update verification status');
+            }
+
+            console.log('✅ User verification status updated:', responseData.data);
+
+            // Refresh verification status after successful update
+            await checkVerificationStatus();
+
+            return responseData;
+        } catch (error) {
+            console.error('❌ Error updating verification status:', error);
+            alert('Warning: Verification successful but failed to save to database. You may need to verify again.');
+            return null;
+        }
+    };
+
+    // Handle payment
+    const handlePayment = async (amount: number, isVerified: boolean) => {
+        try {
+            const { MiniKit, Tokens, tokenToDecimals } = await import('@worldcoin/minikit-js');
+
+            // Get payment reference from backend
+            const res = await fetch('/api/initiate-payment', {
+                method: 'POST',
+            });
+            const { id } = await res.json();
+
+            // Make payment using MiniKit
+            const result = await MiniKit.commandsAsync.pay({
+                reference: id,
+                to: process.env.NEXT_PUBLIC_ADMIN_WALLET || '',
+                tokens: [
+                    {
+                        symbol: Tokens.WLD,
+                        token_amount: tokenToDecimals(amount, Tokens.WLD).toString(),
+                    },
+                ],
+                description: `Flappy UFO Tournament Entry ${isVerified ? '(Verified - 0.9 WLD)' : '(Standard - 1.0 WLD)'}`,
+            });
+
+            if (result.finalPayload.status === 'success') {
+                console.log('✅ Payment successful:', result.finalPayload);
+
+                // TODO: Validate payment on backend and create tournament entry
+                // For now, just start the game
+                alert(`Payment successful! Amount: ${amount} WLD`);
+                setGameMode('tournament');
+                setCurrentScreen('playing');
+            } else {
+                throw new Error('Payment failed or was cancelled');
+            }
+
+        } catch (error) {
+            console.error('❌ Payment error:', error);
+            alert('Payment failed. Please try again.');
+        }
     };
 
     // Handle going back from tournament entry screen
@@ -277,7 +400,6 @@ export default function GameHomepage() {
                 <TournamentEntryModal
                     onBack={handleTournamentEntryBack}
                     onEntrySelect={handleTournamentEntrySelect}
-                    onPaymentSuccess={handlePaymentSuccess}
                     isAuthenticating={isAuthenticating}
                     isVerifiedToday={isVerifiedToday}
                     verificationLoading={verificationLoading}
