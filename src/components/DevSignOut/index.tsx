@@ -29,7 +29,7 @@ function DevSignOut() {
             });
 
             console.log('✅ DevSignOut: Successfully signed out');
-            
+
             // Force reload to ensure complete state reset including verification status
             if (typeof window !== 'undefined') {
                 setTimeout(() => {

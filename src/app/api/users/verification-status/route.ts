@@ -31,9 +31,33 @@ export async function POST(req: NextRequest) {
 
         const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-        // Get current tournament info
+        // Get current tournament info - get actual tournament UUID
         const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-        const currentTournamentId = `tournament-${today}`;
+
+        // Get today's tournament UUID from tournaments table
+        const { data: tournament, error: tournamentError } = await supabase
+            .from('tournaments')
+            .select('id')
+            .eq('tournament_day', today)
+            .single();
+
+        if (tournamentError || !tournament) {
+            console.log('ℹ️ No tournament found for today:', today);
+            // Return not verified if no tournament exists
+            return NextResponse.json({
+                success: true,
+                data: {
+                    isVerified: false,
+                    verifiedDate: null,
+                    tournamentId: null,
+                    currentTournamentId: null,
+                    pricing: '1.0 WLD',
+                    worldId: null,
+                }
+            });
+        }
+
+        const currentTournamentId = tournament.id;
 
         // Get user's verification status
         const { data, error } = await supabase

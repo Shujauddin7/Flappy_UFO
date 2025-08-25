@@ -33,12 +33,12 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
         }
 
-        const { entry_id, score, game_duration } = await req.json();
+        const { entry_id, wallet, score, game_duration } = await req.json();
 
-        // Validate required fields
-        if (!entry_id || score === undefined || !game_duration) {
+        // Validate required fields - either entry_id OR wallet must be provided
+        if ((!entry_id && !wallet) || score === undefined || !game_duration) {
             return NextResponse.json({
-                error: 'Missing required fields: entry_id, score, game_duration'
+                error: 'Missing required fields: (entry_id OR wallet), score, game_duration'
             }, { status: 400 });
         }
 
@@ -58,16 +58,17 @@ export async function POST(req: NextRequest) {
 
         console.log('📊 Score submission:', {
             entry_id,
-            wallet: session.user.walletAddress,
+            wallet: wallet || session.user.walletAddress,
             score,
             game_duration: game_duration + 'ms'
         });
 
         // Get user ID from users table
+        const walletToCheck = wallet || session.user.walletAddress;
         const { data: user, error: userError } = await supabase
             .from('users')
             .select('id')
-            .eq('wallet', session.user.walletAddress)
+            .eq('wallet', walletToCheck)
             .single();
 
         if (userError || !user) {
@@ -77,23 +78,36 @@ export async function POST(req: NextRequest) {
             }, { status: 404 });
         }
 
-        // Verify entry belongs to this user and is from today
+        // Find the entry - either by entry_id or by user_id + today's date
         const today = new Date().toISOString().split('T')[0];
-        const { data: entry, error: entryError } = await supabase
+        let entryQuery = supabase
             .from('entries')
             .select('id, user_id, highest_score, tournament_day')
-            .eq('id', entry_id)
             .eq('user_id', user.id)
-            .eq('tournament_day', today)
-            .single();
+            .eq('tournament_day', today);
 
-        if (entryError || !entry) {
+        if (entry_id) {
+            entryQuery = entryQuery.eq('id', entry_id);
+        }
+
+        const { data: entries, error: entryError } = await entryQuery;
+
+        if (entryError) {
             console.error('❌ Error fetching entry:', entryError);
             return NextResponse.json({
-                error: 'Entry not found or does not belong to authenticated user'
+                error: 'Database query failed: ' + entryError.message
+            }, { status: 500 });
+        }
+
+        if (!entries || entries.length === 0) {
+            console.error('❌ No entries found for user today');
+            return NextResponse.json({
+                error: 'No tournament entry found for today. Please make a payment first.'
             }, { status: 404 });
         }
 
+        // Use the first (or specified) entry
+        const entry = entries[0];
         console.log('🎮 Current entry:', {
             entry_id: entry.id,
             current_highest: entry.highest_score,
@@ -110,7 +124,7 @@ export async function POST(req: NextRequest) {
                     highest_score: score,
                     updated_at: new Date().toISOString()
                 })
-                .eq('id', entry_id)
+                .eq('id', entry.id)
                 .eq('user_id', user.id)
                 .select()
                 .single();

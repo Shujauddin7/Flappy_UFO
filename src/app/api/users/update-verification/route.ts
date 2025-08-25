@@ -62,17 +62,31 @@ export async function POST(req: NextRequest) {
             }, { status: 500 });
         }
 
-        // Get current tournament info (for tournament_id)
+        // Get current tournament info (get actual tournament UUID)
         const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-        const currentTournamentId = `tournament-${today}`;
 
-        // Update user verification status
+        // Get today's tournament UUID from tournaments table
+        const { data: tournament, error: tournamentError } = await supabase
+            .from('tournaments')
+            .select('id')
+            .eq('tournament_day', today)
+            .single();
+
+        if (tournamentError || !tournament) {
+            console.error('❌ No tournament found for today:', tournamentError);
+            return NextResponse.json({
+                success: false,
+                error: 'No active tournament found for today'
+            }, { status: 404 });
+        }
+
+        // Update user verification status with actual tournament UUID
         const { data, error } = await supabase
             .from('users')
             .update({
                 world_id: nullifier_hash, // Store World ID identifier
                 last_verified_date: new Date(verification_date).toISOString().split('T')[0], // Store date only
-                last_verified_tournament_id: currentTournamentId,
+                last_verified_tournament_id: tournament.id, // Use actual tournament UUID
             })
             .eq('wallet', wallet)
             .select();
@@ -96,7 +110,7 @@ export async function POST(req: NextRequest) {
         console.log('✅ User verification status updated:', {
             wallet: wallet,
             verified_date: verification_date,
-            tournament_id: currentTournamentId,
+            tournament_id: tournament.id,
             updated_user: data[0]
         });
 
@@ -104,7 +118,7 @@ export async function POST(req: NextRequest) {
             success: true,
             data: {
                 verified_date: verification_date,
-                tournament_id: currentTournamentId,
+                tournament_id: tournament.id,
                 pricing: '0.9 WLD' // Verified pricing
             }
         });

@@ -308,12 +308,12 @@ export default function GameHomepage() {
     const handleGameEnd = async (score: number, coins: number) => {
         // Show results based on game mode
         const modeText = gameMode === 'practice' ? 'Practice' : 'Tournament';
-        
+
         // If tournament mode, submit score to backend
         if (gameMode === 'tournament' && session?.user?.walletAddress) {
             try {
                 console.log('Submitting tournament score:', { score, coins });
-                
+
                 const response = await fetch('/api/score/submit', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -325,16 +325,15 @@ export default function GameHomepage() {
                 });
 
                 const result = await response.json();
-                
+
                 if (result.success) {
                     console.log('✅ Score submitted successfully:', result.data);
                     const isNewHighScore = result.data.is_new_high_score;
                     const previousHigh = result.data.previous_highest_score;
-                    
-                    alert(`${modeText} Complete!\nScore: ${score}\nCoins: ${coins}${
-                        isNewHighScore ? `\n🎉 NEW HIGH SCORE! (Previous: ${previousHigh})` : 
-                        `\nYour highest score: ${result.data.current_highest_score}`
-                    }`);
+
+                    alert(`${modeText} Complete!\nScore: ${score}\nCoins: ${coins}${isNewHighScore ? `\n🎉 NEW HIGH SCORE! (Previous: ${previousHigh})` :
+                            `\nYour highest score: ${result.data.current_highest_score}`
+                        }`);
                 } else {
                     console.error('❌ Failed to submit score:', result.error);
                     alert(`${modeText} Complete!\nScore: ${score}\nCoins: ${coins}\n\n⚠️ Score submission failed: ${result.error}`);

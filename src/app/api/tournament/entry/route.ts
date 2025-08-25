@@ -129,13 +129,16 @@ export async function POST(req: NextRequest) {
             }, { status: 404 });
         }
 
-        // Simplified verification check - just check if user is verified for today
-        const actuallyVerified = is_verified_entry && 
-            user.last_verified_date === today;
+        // Check verification status - user must be verified for today's tournament
+        const actuallyVerified = is_verified_entry &&
+            user.last_verified_date === today &&
+            user.last_verified_tournament_id === finalTournament.id;
 
         console.log('🔍 Verification check:', {
             frontend_says_verified: is_verified_entry,
             user_last_verified_date: user.last_verified_date,
+            user_last_verified_tournament: user.last_verified_tournament_id,
+            current_tournament_id: finalTournament.id,
             today,
             final_verification_status: actuallyVerified
         });
