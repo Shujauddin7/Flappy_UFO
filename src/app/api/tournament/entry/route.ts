@@ -3,12 +3,27 @@ import { auth } from '@/auth';
 import { createClient } from '@supabase/supabase-js';
 
 export async function POST(req: NextRequest) {
+    console.log('🚀 Tournament entry API called');
+
     try {
+        // Check environment variables first
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+        console.log('🔧 Environment check:', {
+            supabaseUrl: supabaseUrl ? '✅ Set' : '❌ Missing',
+            serviceKey: supabaseServiceKey ? '✅ Set' : '❌ Missing'
+        });
+
+        if (!supabaseUrl || !supabaseServiceKey) {
+            console.error('❌ Missing environment variables');
+            return NextResponse.json({
+                error: 'Server configuration error: Missing database credentials'
+            }, { status: 500 });
+        }
+
         // Initialize Supabase client with service role key for database operations
-        const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-            process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-        );
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
         // Get session using the new auth() function
         const session = await auth();
