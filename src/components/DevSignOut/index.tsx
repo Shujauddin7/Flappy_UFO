@@ -29,6 +29,13 @@ function DevSignOut() {
             });
 
             console.log('✅ DevSignOut: Successfully signed out');
+            
+            // Force reload to ensure complete state reset including verification status
+            if (typeof window !== 'undefined') {
+                setTimeout(() => {
+                    window.location.reload();
+                }, 100);
+            }
         } catch (error) {
             console.error('Error signing out:', error);
             // Even if sign out fails, try to reload to clear state

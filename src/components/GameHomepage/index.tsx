@@ -305,10 +305,48 @@ export default function GameHomepage() {
     };
 
     // Handle game end
-    const handleGameEnd = (score: number, coins: number) => {
+    const handleGameEnd = async (score: number, coins: number) => {
         // Show results based on game mode
         const modeText = gameMode === 'practice' ? 'Practice' : 'Tournament';
-        alert(`${modeText} Complete!\nScore: ${score}\nCoins: ${coins}`);
+        
+        // If tournament mode, submit score to backend
+        if (gameMode === 'tournament' && session?.user?.walletAddress) {
+            try {
+                console.log('Submitting tournament score:', { score, coins });
+                
+                const response = await fetch('/api/score/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        wallet: session.user.walletAddress,
+                        score: score,
+                        game_duration: 30 // Minimum duration - could be calculated from actual game time
+                    }),
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    console.log('✅ Score submitted successfully:', result.data);
+                    const isNewHighScore = result.data.is_new_high_score;
+                    const previousHigh = result.data.previous_highest_score;
+                    
+                    alert(`${modeText} Complete!\nScore: ${score}\nCoins: ${coins}${
+                        isNewHighScore ? `\n🎉 NEW HIGH SCORE! (Previous: ${previousHigh})` : 
+                        `\nYour highest score: ${result.data.current_highest_score}`
+                    }`);
+                } else {
+                    console.error('❌ Failed to submit score:', result.error);
+                    alert(`${modeText} Complete!\nScore: ${score}\nCoins: ${coins}\n\n⚠️ Score submission failed: ${result.error}`);
+                }
+            } catch (error) {
+                console.error('❌ Error submitting score:', error);
+                alert(`${modeText} Complete!\nScore: ${score}\nCoins: ${coins}\n\n⚠️ Unable to submit score. Please check your connection.`);
+            }
+        } else {
+            // Practice mode - just show results
+            alert(`${modeText} Complete!\nScore: ${score}\nCoins: ${coins}`);
+        }
 
         // Return to game select
         setCurrentScreen('gameSelect');

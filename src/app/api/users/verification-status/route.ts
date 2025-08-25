@@ -51,9 +51,10 @@ export async function POST(req: NextRequest) {
         }
 
         // Check if user is verified for today's tournament
-        const isVerifiedToday = data &&
+        // Note: We check against the tournament string ID format used during verification
+        const isVerifiedToday = !!(data &&
             data.last_verified_date === today &&
-            data.last_verified_tournament_id === currentTournamentId;
+            data.last_verified_tournament_id === currentTournamentId);
 
         const verificationStatus = {
             isVerified: isVerifiedToday,
