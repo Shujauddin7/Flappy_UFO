@@ -1,9 +1,12 @@
 "use client";
 
 import { signOut } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 
 function DevSignOut() {
     console.log('DevSignOut component loaded, NODE_ENV:', process.env.NODE_ENV);
+
+    const { data: session } = useSession();
 
     const handleSignOut = async (event: React.MouseEvent<HTMLButtonElement>) => {
         console.log('DevSignOut: Sign out clicked');
@@ -16,11 +19,28 @@ function DevSignOut() {
         }
 
         try {
+            // Clear verification status from database if we have a session
+            if (session?.user?.walletAddress) {
+                try {
+                    await fetch('/api/users/clear-verification', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ wallet: session.user.walletAddress })
+                    });
+                    console.log('DevSignOut: Cleared verification status from database');
+                } catch (verificationError) {
+                    console.warn('DevSignOut: Failed to clear verification status:', verificationError);
+                    // Continue with sign out even if verification clear fails
+                }
+            }
+
             // Clear any additional local storage or session data first
             if (typeof window !== 'undefined') {
                 localStorage.clear();
                 sessionStorage.clear();
-                console.log('DevSignOut: Cleared local/session storage');
+                // Add a flag to indicate we just signed out - this will force verification check
+                localStorage.setItem('justSignedOut', 'true');
+                console.log('DevSignOut: Cleared local/session storage and set sign-out flag');
             }
 
             // Sign out without redirect to stay in the app

@@ -80,6 +80,13 @@ export default function GameHomepage() {
     // Check verification status when user session changes
     useEffect(() => {
         if (session?.user?.walletAddress) {
+            // Check if user just signed out - if so, force fresh verification check
+            const justSignedOut = localStorage.getItem('justSignedOut');
+            if (justSignedOut) {
+                localStorage.removeItem('justSignedOut');
+                console.log('🔄 User just signed out and back in - forcing fresh verification check');
+                setIsVerifiedToday(false); // Reset to force verification
+            }
             checkVerificationStatus();
         } else {
             setIsVerifiedToday(false);
@@ -320,7 +327,7 @@ export default function GameHomepage() {
                     body: JSON.stringify({
                         wallet: session.user.walletAddress,
                         score: score,
-                        game_duration: 30 // Minimum duration - could be calculated from actual game time
+                        game_duration: 1000 // 1 second - reasonable minimum duration
                     }),
                 });
 
@@ -332,7 +339,7 @@ export default function GameHomepage() {
                     const previousHigh = result.data.previous_highest_score;
 
                     alert(`${modeText} Complete!\nScore: ${score}\nCoins: ${coins}${isNewHighScore ? `\n🎉 NEW HIGH SCORE! (Previous: ${previousHigh})` :
-                            `\nYour highest score: ${result.data.current_highest_score}`
+                        `\nYour highest score: ${result.data.current_highest_score}`
                         }`);
                 } else {
                     console.error('❌ Failed to submit score:', result.error);

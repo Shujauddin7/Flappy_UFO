@@ -49,12 +49,7 @@ export async function POST(req: NextRequest) {
             }, { status: 400 });
         }
 
-        // Validate game duration (anti-cheat - minimum 5 seconds)
-        if (game_duration < 5000) { // 5000ms = 5 seconds
-            return NextResponse.json({
-                error: 'Invalid game duration: minimum 5 seconds required'
-            }, { status: 400 });
-        }
+        // Note: Removed minimum game duration requirement as requested by user
 
         console.log('📊 Score submission:', {
             entry_id,
