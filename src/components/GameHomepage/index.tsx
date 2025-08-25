@@ -337,9 +337,10 @@ export default function GameHomepage() {
                     console.log('✅ Score submitted successfully:', result.data);
                     const isNewHighScore = result.data.is_new_high_score;
                     const previousHigh = result.data.previous_highest_score;
+                    const currentHigh = result.data.current_highest_score;
 
                     alert(`${modeText} Complete!\nScore: ${score}\nCoins: ${coins}${isNewHighScore ? `\n🎉 NEW HIGH SCORE! (Previous: ${previousHigh})` :
-                        `\nYour highest score: ${result.data.current_highest_score}`
+                        `\nYour highest score: ${currentHigh}`
                         }`);
                 } else {
                     console.error('❌ Failed to submit score:', result.error);

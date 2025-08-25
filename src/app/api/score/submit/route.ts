@@ -43,9 +43,9 @@ export async function POST(req: NextRequest) {
         }
 
         // Validate score (anti-cheat)
-        if (score < 0 || score > 999) {
+        if (score < 0 || score > 100000) {
             return NextResponse.json({
-                error: 'Invalid score: must be between 0 and 999'
+                error: 'Invalid score: must be between 0 and 100,000'
             }, { status: 400 });
         }
 
@@ -140,10 +140,10 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({
                 success: true,
                 data: {
-                    entry_id,
-                    previous_highest: entry.highest_score,
-                    new_highest: score,
-                    is_new_record: true,
+                    entry_id: entry.id,
+                    previous_highest_score: entry.highest_score,
+                    current_highest_score: score,
+                    is_new_high_score: true,
                     updated_at: updatedEntry.updated_at
                 }
             });
@@ -152,10 +152,10 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({
                 success: true,
                 data: {
-                    entry_id,
-                    current_highest: entry.highest_score,
+                    entry_id: entry.id,
+                    current_highest_score: entry.highest_score,
                     submitted_score: score,
-                    is_new_record: false,
+                    is_new_high_score: false,
                     message: 'Score submitted but not higher than current record'
                 }
             });
