@@ -112,11 +112,11 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Tournament setup failed' }, { status: 500 });
         }
 
-        // Get user ID from users table
+        // Get user ID and current verification status from users table
         console.log('👤 Looking for user with wallet:', wallet);
         const { data: user, error: userError } = await supabase
             .from('users')
-            .select('id')
+            .select('id, last_verified_date, last_verified_tournament_id')
             .eq('wallet', wallet)
             .single();
 
@@ -129,12 +129,26 @@ export async function POST(req: NextRequest) {
             }, { status: 404 });
         }
 
+        // Double-check verification status based on user data and tournament
+        const actuallyVerified = is_verified_entry && 
+            user.last_verified_tournament_id === finalTournament.id &&
+            user.last_verified_date === today;
+
+        console.log('🔍 Verification check:', {
+            frontend_says_verified: is_verified_entry,
+            user_last_verified_date: user.last_verified_date,
+            user_last_verified_tournament: user.last_verified_tournament_id,
+            current_tournament: finalTournament.id,
+            today,
+            final_verification_status: actuallyVerified
+        });
+
         // Create tournament entry
         console.log('🎮 Creating tournament entry:', {
             user_id: user.id,
             tournament_id: finalTournament.id,
             tournament_day: today,
-            is_verified_entry,
+            is_verified_entry: actuallyVerified, // Use the double-checked value
             paid_amount,
             payment_reference
         });
@@ -145,7 +159,7 @@ export async function POST(req: NextRequest) {
                 user_id: user.id,
                 tournament_id: finalTournament.id,
                 tournament_day: today,
-                is_verified_entry,
+                is_verified_entry: actuallyVerified, // Use the double-checked value
                 paid_amount,
                 payment_reference,
                 highest_score: 0,
@@ -177,7 +191,13 @@ export async function POST(req: NextRequest) {
             tournament_id: finalTournament.id,
             user_id: user.id,
             paid_amount,
-            is_verified_entry
+            is_verified_entry: actuallyVerified,
+            verification_details: {
+                frontend_claimed: is_verified_entry,
+                database_verified: actuallyVerified,
+                user_last_verified_date: user.last_verified_date,
+                tournament_date: today
+            }
         });
 
         return NextResponse.json({
