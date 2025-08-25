@@ -3,15 +3,15 @@ import { NextResponse } from 'next/server';
 export async function GET() {
     // Environment-specific database configuration (matches your frontend pattern)
     const isProduction = process.env.NEXT_PUBLIC_ENV === 'production';
-    
-    const supabaseUrl = isProduction 
-        ? process.env.SUPABASE_PROD_URL 
+
+    const supabaseUrl = isProduction
+        ? process.env.SUPABASE_PROD_URL
         : process.env.SUPABASE_DEV_URL;
 
-    const supabaseServiceKey = isProduction 
-        ? process.env.SUPABASE_PROD_SERVICE_KEY 
+    const supabaseServiceKey = isProduction
+        ? process.env.SUPABASE_PROD_SERVICE_KEY
         : process.env.SUPABASE_DEV_SERVICE_KEY;
-    
+
     return NextResponse.json({
         environment_check: {
             environment: isProduction ? 'PRODUCTION' : 'DEVELOPMENT',
