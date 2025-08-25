@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Double-check verification status based on user data and tournament
-        const actuallyVerified = is_verified_entry && 
+        const actuallyVerified = is_verified_entry &&
             user.last_verified_tournament_id === finalTournament.id &&
             user.last_verified_date === today;
 

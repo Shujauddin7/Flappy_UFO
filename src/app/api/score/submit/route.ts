@@ -8,13 +8,13 @@ export async function POST(req: NextRequest) {
     try {
         // Environment-specific database configuration
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'production';
-        
-        const supabaseUrl = isProduction 
-            ? process.env.SUPABASE_PROD_URL 
+
+        const supabaseUrl = isProduction
+            ? process.env.SUPABASE_PROD_URL
             : process.env.SUPABASE_DEV_URL;
 
-        const supabaseServiceKey = isProduction 
-            ? process.env.SUPABASE_PROD_SERVICE_KEY 
+        const supabaseServiceKey = isProduction
+            ? process.env.SUPABASE_PROD_SERVICE_KEY
             : process.env.SUPABASE_DEV_SERVICE_KEY;
 
         if (!supabaseUrl || !supabaseServiceKey) {
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
         // Only update if new score is higher
         if (score > entry.highest_score) {
             console.log('🎉 New high score! Updating...');
-            
+
             const { data: updatedEntry, error: updateError } = await supabase
                 .from('entries')
                 .update({
