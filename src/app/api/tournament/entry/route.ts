@@ -6,23 +6,31 @@ export async function POST(req: NextRequest) {
     console.log('🚀 Tournament entry API called');
 
     try {
-        // Check environment variables first
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        // Environment-specific database configuration (matches your frontend pattern)
+        const isProduction = process.env.NEXT_PUBLIC_ENV === 'production';
+        
+        const supabaseUrl = isProduction 
+            ? process.env.SUPABASE_PROD_URL 
+            : process.env.SUPABASE_DEV_URL;
+
+        const supabaseServiceKey = isProduction 
+            ? process.env.SUPABASE_PROD_SERVICE_KEY 
+            : process.env.SUPABASE_DEV_SERVICE_KEY;
 
         console.log('🔧 Environment check:', {
-            supabaseUrl: supabaseUrl ? '✅ Set' : '❌ Missing',
-            serviceKey: supabaseServiceKey ? '✅ Set' : '❌ Missing'
+            environment: isProduction ? 'PRODUCTION' : 'DEVELOPMENT',
+            supabaseUrl: supabaseUrl ? '✅ Set (' + supabaseUrl.substring(0, 30) + '...)' : '❌ Missing',
+            serviceKey: supabaseServiceKey ? '✅ Set (length: ' + supabaseServiceKey.length + ')' : '❌ Missing'
         });
 
         if (!supabaseUrl || !supabaseServiceKey) {
-            console.error('❌ Missing environment variables');
+            console.error('❌ Missing environment variables for', isProduction ? 'PRODUCTION' : 'DEVELOPMENT');
             return NextResponse.json({
-                error: 'Server configuration error: Missing database credentials'
+                error: `Server configuration error: Missing ${isProduction ? 'production' : 'development'} database credentials`
             }, { status: 500 });
         }
 
-        // Initialize Supabase client with service role key for database operations
+        // Initialize Supabase client with environment-specific credentials
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
         // Get session using the new auth() function
