@@ -241,7 +241,10 @@ export default function GameHomepage() {
 
         } catch (error) {
             console.error('❌ Error creating tournament entry:', error);
-            alert('Payment successful but failed to register tournament entry. Please contact support.');
+
+            // More specific error message
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            alert(`Payment successful but failed to register tournament entry.\n\nError: ${errorMessage}\n\nPlease contact support if this persists.`);
             throw error;
         }
     };
@@ -273,16 +276,23 @@ export default function GameHomepage() {
             if (result.finalPayload.status === 'success') {
                 console.log('✅ Payment successful:', result.finalPayload);
 
-                // Create tournament entry after successful payment
-                await createTournamentEntry(result.finalPayload.reference, amount, isVerified);
+                try {
+                    // Create tournament entry after successful payment
+                    await createTournamentEntry(result.finalPayload.reference, amount, isVerified);
 
-                // Start the game directly
-                setGameMode('tournament');
-                setCurrentScreen('playing');
+                    // Start the game directly (only if entry creation succeeds)
+                    setGameMode('tournament');
+                    setCurrentScreen('playing');
+                } catch (entryError) {
+                    // Payment succeeded but entry creation failed
+                    // Don't throw error here to avoid double alert
+                    console.error('❌ Tournament entry creation failed after successful payment:', entryError);
+                    // The error message is already shown in createTournamentEntry function
+                    return;
+                }
             } else {
                 throw new Error('Payment failed or was cancelled');
             }
-
         } catch (error) {
             console.error('❌ Payment error:', error);
             alert('Payment failed. Please try again.');

@@ -20,8 +20,8 @@ export async function POST(req: NextRequest) {
 
         // Validate required fields
         if (!payment_reference || !paid_amount || is_verified_entry === undefined) {
-            return NextResponse.json({ 
-                error: 'Missing required fields: payment_reference, paid_amount, is_verified_entry' 
+            return NextResponse.json({
+                error: 'Missing required fields: payment_reference, paid_amount, is_verified_entry'
             }, { status: 400 });
         }
 
@@ -32,7 +32,8 @@ export async function POST(req: NextRequest) {
 
         // Get or create today's tournament
         const today = new Date().toISOString().split('T')[0];
-        
+        console.log('🔍 Looking for tournament on date:', today);
+
         // First, try to get existing tournament for today
         const { data: tournament, error: tournamentFetchError } = await supabase
             .from('tournaments')
@@ -41,9 +42,13 @@ export async function POST(req: NextRequest) {
             .eq('is_active', true)
             .single();
 
+        console.log('🔍 Tournament fetch result:', { tournament, error: tournamentFetchError });
+
         if (tournamentFetchError && tournamentFetchError.code !== 'PGRST116') {
             console.error('❌ Error fetching tournament:', tournamentFetchError);
-            return NextResponse.json({ error: 'Database error' }, { status: 500 });
+            return NextResponse.json({
+                error: `Database error fetching tournament: ${tournamentFetchError.message}`
+            }, { status: 500 });
         }
 
         // Ensure we have a tournament (either existing or newly created)
@@ -51,6 +56,7 @@ export async function POST(req: NextRequest) {
 
         // If no tournament exists for today, create one
         if (!finalTournament) {
+            console.log('🏆 Creating new tournament for today:', today);
             const startTime = new Date(today + 'T15:30:00Z'); // 15:30 UTC
             const endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000); // 24 hours later
 
@@ -65,9 +71,13 @@ export async function POST(req: NextRequest) {
                 .select()
                 .single();
 
+            console.log('🏆 Tournament creation result:', { newTournament, error: tournamentCreateError });
+
             if (tournamentCreateError) {
                 console.error('❌ Error creating tournament:', tournamentCreateError);
-                return NextResponse.json({ error: 'Failed to create tournament' }, { status: 500 });
+                return NextResponse.json({
+                    error: `Failed to create tournament: ${tournamentCreateError.message}`
+                }, { status: 500 });
             }
 
             finalTournament = newTournament;
@@ -80,18 +90,32 @@ export async function POST(req: NextRequest) {
         }
 
         // Get user ID from users table
+        console.log('👤 Looking for user with wallet:', wallet);
         const { data: user, error: userError } = await supabase
             .from('users')
             .select('id')
             .eq('wallet', wallet)
             .single();
 
+        console.log('👤 User fetch result:', { user, error: userError });
+
         if (userError || !user) {
             console.error('❌ Error fetching user:', userError);
-            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+            return NextResponse.json({
+                error: `User not found: ${userError?.message || 'No user found'}`
+            }, { status: 404 });
         }
 
         // Create tournament entry
+        console.log('🎮 Creating tournament entry:', {
+            user_id: user.id,
+            tournament_id: finalTournament.id,
+            tournament_day: today,
+            is_verified_entry,
+            paid_amount,
+            payment_reference
+        });
+
         const { data: entry, error: entryError } = await supabase
             .from('entries')
             .insert({
@@ -108,17 +132,21 @@ export async function POST(req: NextRequest) {
             .select()
             .single();
 
+        console.log('🎮 Entry creation result:', { entry, error: entryError });
+
         if (entryError) {
             console.error('❌ Error creating entry:', entryError);
-            
+
             // Check if it's a duplicate payment reference
             if (entryError.code === '23505') { // Unique constraint violation
-                return NextResponse.json({ 
-                    error: 'Payment reference already used' 
+                return NextResponse.json({
+                    error: `Payment reference already used: ${entryError.message}`
                 }, { status: 409 });
             }
-            
-            return NextResponse.json({ error: 'Failed to create tournament entry' }, { status: 500 });
+
+            return NextResponse.json({
+                error: `Failed to create tournament entry: ${entryError.message}`
+            }, { status: 500 });
         }
 
         console.log('✅ Tournament entry created successfully:', {
