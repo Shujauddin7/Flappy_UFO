@@ -285,7 +285,7 @@ export async function POST(req: NextRequest) {
         // Update user's total tournament count
         await updateUserTournamentCount(supabase, user.id);
 
-        // Now update the payment information and add verification tracking
+        // Now update the payment information (only existing columns)
         const paymentUpdate: {
             updated_at: string;
             verified_entry_paid?: boolean;
@@ -296,8 +296,6 @@ export async function POST(req: NextRequest) {
             unverified_paid_amount?: number;
             unverified_payment_ref?: string;
             unverified_paid_at?: string;
-            world_id_proof?: string;
-            verify_at?: string;
         } = {
             updated_at: new Date().toISOString()
         };
@@ -307,12 +305,6 @@ export async function POST(req: NextRequest) {
             paymentUpdate.verified_paid_amount = paid_amount;
             paymentUpdate.verified_payment_ref = payment_reference;
             paymentUpdate.verified_paid_at = new Date().toISOString();
-
-            // Add World ID proof and verification time if available
-            if (user.last_verified_date === today) {
-                paymentUpdate.world_id_proof = user.world_id || null;
-                paymentUpdate.verify_at = new Date().toISOString();
-            }
         } else {
             paymentUpdate.unverified_entry_paid = true;
             paymentUpdate.unverified_paid_amount = paid_amount;

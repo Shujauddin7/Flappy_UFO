@@ -220,7 +220,7 @@ export async function POST(req: NextRequest) {
                 // Also update game count - get current count first
                 const { data: currentRecord } = await supabase
                     .from('user_tournament_records')
-                    .select('total_games_played, first_game_at')
+                    .select('total_games_played')
                     .eq('id', record.id)
                     .single();
 
@@ -228,7 +228,6 @@ export async function POST(req: NextRequest) {
                     .from('user_tournament_records')
                     .update({
                         total_games_played: (currentRecord?.total_games_played || 0) + 1,
-                        first_game_at: currentRecord?.first_game_at || new Date().toISOString(),
                         updated_at: new Date().toISOString()
                     })
                     .eq('id', record.id);
@@ -263,7 +262,7 @@ export async function POST(req: NextRequest) {
         // First get current count, then increment
         const { data: currentRecord } = await supabase
             .from('user_tournament_records')
-            .select('total_games_played, first_game_at')
+            .select('total_games_played')
             .eq('id', record.id)
             .single();
 
@@ -271,7 +270,6 @@ export async function POST(req: NextRequest) {
             .from('user_tournament_records')
             .update({
                 total_games_played: (currentRecord?.total_games_played || 0) + 1,
-                first_game_at: currentRecord?.first_game_at || new Date().toISOString(),
                 updated_at: new Date().toISOString()
             })
             .eq('id', record.id);
