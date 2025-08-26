@@ -143,51 +143,75 @@ export async function POST(req: NextRequest) {
             final_verification_status: actuallyVerified
         });
 
-        // Create tournament entry
-        console.log('🎮 Creating tournament entry:', {
+        // Create or get user tournament record (single row per user per tournament)
+        console.log('🎮 Getting or creating user tournament record:', {
             user_id: user.id,
             tournament_id: finalTournament.id,
             tournament_day: today,
-            is_verified_entry: actuallyVerified, // Use the double-checked value
+            is_verified_entry: actuallyVerified,
             paid_amount,
             payment_reference
         });
 
-        const { data: entry, error: entryError } = await supabase
-            .from('entries')
-            .insert({
-                user_id: user.id,
-                tournament_id: finalTournament.id,
-                tournament_day: today,
-                is_verified_entry: actuallyVerified, // Use the double-checked value
-                paid_amount,
-                payment_reference,
-                highest_score: 0,
-                continue_used: false,
-                world_id_proof: null // Will be updated later if needed
-            })
-            .select()
-            .single();
+        // Use the database function to get or create user tournament record
+        const { data: recordId, error: recordError } = await supabase
+            .rpc('get_or_create_user_tournament_record', {
+                p_user_id: user.id,
+                p_tournament_id: finalTournament.id,
+                p_username: null, // Will be updated when we have username
+                p_wallet: wallet
+            });
 
-        console.log('🎮 Entry creation result:', { entry, error: entryError });
-
-        if (entryError) {
-            console.error('❌ Error creating entry:', entryError);
-
-            // Check if it's a duplicate payment reference
-            if (entryError.code === '23505') { // Unique constraint violation
-                return NextResponse.json({
-                    error: `Payment reference already used: ${entryError.message}`
-                }, { status: 409 });
-            }
-
+        if (recordError) {
+            console.error('❌ Error getting/creating tournament record:', recordError);
             return NextResponse.json({
-                error: `Failed to create tournament entry: ${entryError.message}`
+                error: `Failed to create tournament record: ${recordError.message}`
             }, { status: 500 });
         }
 
-        console.log('✅ Tournament entry created successfully:', {
-            entry_id: entry.id,
+        // Now update the payment information
+        const paymentUpdate: {
+            updated_at: string;
+            verified_entry_paid?: boolean;
+            verified_paid_amount?: number;
+            verified_payment_ref?: string;
+            verified_paid_at?: string;
+            unverified_entry_paid?: boolean;
+            unverified_paid_amount?: number;
+            unverified_payment_ref?: string;
+            unverified_paid_at?: string;
+        } = {
+            updated_at: new Date().toISOString()
+        };
+
+        if (actuallyVerified) {
+            paymentUpdate.verified_entry_paid = true;
+            paymentUpdate.verified_paid_amount = paid_amount;
+            paymentUpdate.verified_payment_ref = payment_reference;
+            paymentUpdate.verified_paid_at = new Date().toISOString();
+        } else {
+            paymentUpdate.unverified_entry_paid = true;
+            paymentUpdate.unverified_paid_amount = paid_amount;
+            paymentUpdate.unverified_payment_ref = payment_reference;
+            paymentUpdate.unverified_paid_at = new Date().toISOString();
+        }
+
+        const { data: updatedRecord, error: updateError } = await supabase
+            .from('user_tournament_records')
+            .update(paymentUpdate)
+            .eq('id', recordId)
+            .select()
+            .single();
+
+        if (updateError) {
+            console.error('❌ Error updating payment info:', updateError);
+            return NextResponse.json({
+                error: `Failed to update payment information: ${updateError.message}`
+            }, { status: 500 });
+        }
+
+        console.log('✅ Tournament record created/updated successfully:', {
+            record_id: recordId,
             tournament_id: finalTournament.id,
             user_id: user.id,
             paid_amount,
@@ -203,11 +227,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
             success: true,
             data: {
-                entry_id: entry.id,
+                user_tournament_record_id: recordId,
                 tournament_id: finalTournament.id,
-                paid_amount: entry.paid_amount,
-                is_verified_entry: entry.is_verified_entry,
-                created_at: entry.created_at
+                paid_amount: paid_amount,
+                is_verified_entry: actuallyVerified,
+                created_at: updatedRecord.updated_at
             }
         });
 
