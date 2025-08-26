@@ -58,11 +58,11 @@ export async function POST(req: NextRequest) {
             game_duration: game_duration + 'ms'
         });
 
-        // Get user ID from users table
+        // Get user ID and username from users table
         const walletToCheck = wallet || session.user.walletAddress;
         const { data: user, error: userError } = await supabase
             .from('users')
-            .select('id')
+            .select('id, username')
             .eq('wallet', walletToCheck)
             .single();
 
@@ -72,6 +72,8 @@ export async function POST(req: NextRequest) {
                 error: `User not found: ${userError?.message || 'No user found'}`
             }, { status: 404 });
         }
+
+        console.log('👤 User found:', { id: user.id, username: user.username });
 
         // Find the user tournament record - either by record_id or by user_id + today's date
         const today = new Date().toISOString().split('T')[0];
@@ -116,7 +118,7 @@ export async function POST(req: NextRequest) {
                 user_tournament_record_id: record.id,
                 user_id: user.id,
                 tournament_id: record.tournament_id,
-                username: null, // Will be updated later when we have username
+                username: user.username || null, // Use the actual username from users table
                 wallet: walletToCheck,
                 tournament_day: today,
                 score: score,
@@ -130,6 +132,8 @@ export async function POST(req: NextRequest) {
         if (gameScoreError) {
             console.error('❌ Error inserting game score:', gameScoreError);
             // Don't fail the entire request if we can't log the individual score
+        } else {
+            console.log('✅ Game score recorded with username:', user.username);
         }
 
         // Only update highest score if new score is higher

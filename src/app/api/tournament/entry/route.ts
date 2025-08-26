@@ -195,7 +195,7 @@ export async function POST(req: NextRequest) {
             .rpc('get_or_create_user_tournament_record', {
                 p_user_id: user.id,
                 p_tournament_id: finalTournament.id,
-                p_username: null, // Will be updated when we have username
+                p_username: user.username, // Use the actual username from user table
                 p_wallet: wallet
             });
 
@@ -205,6 +205,8 @@ export async function POST(req: NextRequest) {
                 error: `Failed to create tournament record: ${recordError.message}`
             }, { status: 500 });
         }
+
+        console.log('✅ Tournament record ID obtained:', recordId, 'with username:', user.username);
 
         // Now update the payment information
         const paymentUpdate: {

@@ -20,16 +20,25 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Create Supabase client
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        // Environment-specific database configuration (use service keys)
+        const isProduction = process.env.NEXT_PUBLIC_ENV === 'production';
 
-        if (!supabaseUrl || !supabaseAnonKey) {
-            console.error('❌ Missing Supabase environment variables');
-            return NextResponse.json({ error: 'Database configuration error' }, { status: 500 });
+        const supabaseUrl = isProduction
+            ? process.env.SUPABASE_PROD_URL
+            : process.env.SUPABASE_DEV_URL;
+
+        const supabaseServiceKey = isProduction
+            ? process.env.SUPABASE_PROD_SERVICE_KEY
+            : process.env.SUPABASE_DEV_SERVICE_KEY;
+
+        if (!supabaseUrl || !supabaseServiceKey) {
+            console.error('❌ Missing environment variables for', isProduction ? 'PRODUCTION' : 'DEVELOPMENT');
+            return NextResponse.json({
+                error: `Server configuration error: Missing ${isProduction ? 'production' : 'development'} database credentials`
+            }, { status: 500 });
         }
 
-        const supabase = createClient(supabaseUrl, supabaseAnonKey);
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
         // Get current tournament info - get actual tournament UUID
         const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
