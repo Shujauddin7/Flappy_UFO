@@ -2,6 +2,77 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { createClient } from '@supabase/supabase-js';
 
+// Helper function to update user's tournament participation count
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function updateUserTournamentCount(supabase: any, userId: string) {
+    try {
+        // Count unique tournaments this user has participated in
+        const { data, error } = await supabase
+            .from('user_tournament_records')
+            .select('tournament_id')
+            .eq('user_id', userId);
+
+        if (error) {
+            console.error('❌ Error counting user tournaments:', error);
+            return;
+        }
+
+        const tournamentCount = data?.length || 0;
+
+        // Update user with tournament count
+        const { error: updateError } = await supabase
+            .from('users')
+            .update({
+                total_tournaments_played: tournamentCount
+            })
+            .eq('id', userId);
+
+        if (updateError) {
+            console.error('❌ Error updating user tournament count:', updateError);
+        } else {
+            console.log('✅ User tournament count updated:', tournamentCount);
+        }
+    } catch (error) {
+        console.error('❌ Error in updateUserTournamentCount:', error);
+    }
+}
+
+// Helper function to update tournament player count
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function updateTournamentPlayerCount(supabase: any, tournamentId: string) {
+    try {
+        // Count unique users in user_tournament_records for this tournament
+        const { data, error } = await supabase
+            .from('user_tournament_records')
+            .select('user_id')
+            .eq('tournament_id', tournamentId);
+
+        if (error) {
+            console.error('❌ Error counting tournament players:', error);
+            return;
+        }
+
+        const uniquePlayerCount = data?.length || 0;
+
+        // Update tournament with player count
+        const { error: updateError } = await supabase
+            .from('tournaments')
+            .update({
+                total_players: uniquePlayerCount,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', tournamentId);
+
+        if (updateError) {
+            console.error('❌ Error updating tournament player count:', updateError);
+        } else {
+            console.log('✅ Tournament player count updated:', uniquePlayerCount);
+        }
+    } catch (error) {
+        console.error('❌ Error in updateTournamentPlayerCount:', error);
+    }
+}
+
 export async function POST(req: NextRequest) {
     console.log('🚀 Tournament entry API called');
 
@@ -118,7 +189,7 @@ export async function POST(req: NextRequest) {
 
         const userFetchResult = await supabase
             .from('users')
-            .select('id, last_verified_date, last_verified_tournament_id, username')
+            .select('id, last_verified_date, last_verified_tournament_id, username, world_id')
             .eq('wallet', wallet)
             .single();
 
@@ -140,7 +211,7 @@ export async function POST(req: NextRequest) {
                     total_games_played: 0,
                     highest_score_ever: 0
                 })
-                .select('id, last_verified_date, last_verified_tournament_id, username')
+                .select('id, last_verified_date, last_verified_tournament_id, username, world_id')
                 .single();
 
             if (createError) {
@@ -208,7 +279,13 @@ export async function POST(req: NextRequest) {
 
         console.log('✅ Tournament record ID obtained:', recordId, 'with username:', user.username);
 
-        // Now update the payment information
+        // Update tournament total players count
+        await updateTournamentPlayerCount(supabase, finalTournament.id);
+
+        // Update user's total tournament count
+        await updateUserTournamentCount(supabase, user.id);
+
+        // Now update the payment information and add verification tracking
         const paymentUpdate: {
             updated_at: string;
             verified_entry_paid?: boolean;
@@ -219,6 +296,8 @@ export async function POST(req: NextRequest) {
             unverified_paid_amount?: number;
             unverified_payment_ref?: string;
             unverified_paid_at?: string;
+            world_id_proof?: string;
+            verify_at?: string;
         } = {
             updated_at: new Date().toISOString()
         };
@@ -228,6 +307,12 @@ export async function POST(req: NextRequest) {
             paymentUpdate.verified_paid_amount = paid_amount;
             paymentUpdate.verified_payment_ref = payment_reference;
             paymentUpdate.verified_paid_at = new Date().toISOString();
+
+            // Add World ID proof and verification time if available
+            if (user.last_verified_date === today) {
+                paymentUpdate.world_id_proof = user.world_id || null;
+                paymentUpdate.verify_at = new Date().toISOString();
+            }
         } else {
             paymentUpdate.unverified_entry_paid = true;
             paymentUpdate.unverified_paid_amount = paid_amount;

@@ -2,6 +2,47 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { createClient } from '@supabase/supabase-js';
 
+// Helper function to update user statistics
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function updateUserStatistics(supabase: any, userId: string, newScore: number, isNewHighScore: boolean) {
+    try {
+        // Get current user statistics
+        const { data: currentUser, error: fetchError } = await supabase
+            .from('users')
+            .select('total_games_played, highest_score_ever')
+            .eq('id', userId)
+            .single();
+
+        if (fetchError) {
+            console.error('❌ Error fetching user stats:', fetchError);
+            return;
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const updates: any = {
+            total_games_played: (currentUser?.total_games_played || 0) + 1
+        };
+
+        // Update highest score if this is a new high score
+        if (isNewHighScore && newScore > (currentUser?.highest_score_ever || 0)) {
+            updates.highest_score_ever = newScore;
+        }
+
+        const { error: updateError } = await supabase
+            .from('users')
+            .update(updates)
+            .eq('id', userId);
+
+        if (updateError) {
+            console.error('❌ Error updating user stats:', updateError);
+        } else {
+            console.log('✅ User statistics updated:', updates);
+        }
+    } catch (error) {
+        console.error('❌ Error in updateUserStatistics:', error);
+    }
+}
+
 export async function POST(req: NextRequest) {
     console.log('🎯 Score submission API called');
 
@@ -74,6 +115,27 @@ export async function POST(req: NextRequest) {
         }
 
         console.log('👤 User found:', { id: user.id, username: user.username });
+
+        // Prevent duplicate submissions - check if this exact score was already submitted recently
+        const recentSubmission = await supabase
+            .from('game_scores')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('score', score)
+            .eq('game_duration_ms', game_duration)
+            .gte('submitted_at', new Date(Date.now() - 30000).toISOString()) // Within last 30 seconds
+            .limit(1);
+
+        if (recentSubmission.data && recentSubmission.data.length > 0) {
+            console.log('⚠️ Duplicate submission detected, ignoring...');
+            return NextResponse.json({
+                success: true,
+                data: {
+                    message: 'Duplicate submission ignored',
+                    is_duplicate: true
+                }
+            });
+        }
 
         // Find the user tournament record - either by record_id or by user_id + today's date
         const today = new Date().toISOString().split('T')[0];
@@ -158,7 +220,7 @@ export async function POST(req: NextRequest) {
                 // Also update game count - get current count first
                 const { data: currentRecord } = await supabase
                     .from('user_tournament_records')
-                    .select('total_games_played')
+                    .select('total_games_played, first_game_at')
                     .eq('id', record.id)
                     .single();
 
@@ -166,6 +228,7 @@ export async function POST(req: NextRequest) {
                     .from('user_tournament_records')
                     .update({
                         total_games_played: (currentRecord?.total_games_played || 0) + 1,
+                        first_game_at: currentRecord?.first_game_at || new Date().toISOString(),
                         updated_at: new Date().toISOString()
                     })
                     .eq('id', record.id);
@@ -173,6 +236,9 @@ export async function POST(req: NextRequest) {
                 if (gameCountError) {
                     console.error('❌ Error updating game count:', gameCountError);
                 }
+
+                // Also update user statistics (highest score, total games played)
+                await updateUserStatistics(supabase, user.id, score, true);
 
                 console.log('✅ Score updated successfully:', {
                     record_id: record.id,
@@ -197,7 +263,7 @@ export async function POST(req: NextRequest) {
         // First get current count, then increment
         const { data: currentRecord } = await supabase
             .from('user_tournament_records')
-            .select('total_games_played')
+            .select('total_games_played, first_game_at')
             .eq('id', record.id)
             .single();
 
@@ -205,6 +271,7 @@ export async function POST(req: NextRequest) {
             .from('user_tournament_records')
             .update({
                 total_games_played: (currentRecord?.total_games_played || 0) + 1,
+                first_game_at: currentRecord?.first_game_at || new Date().toISOString(),
                 updated_at: new Date().toISOString()
             })
             .eq('id', record.id);
@@ -212,6 +279,9 @@ export async function POST(req: NextRequest) {
         if (gameCountError) {
             console.error('❌ Error updating game count:', gameCountError);
         }
+
+        // Also update user statistics (total games played only, no high score)
+        await updateUserStatistics(supabase, user.id, score, false);
 
         console.log('📊 Score not higher than current record');
         return NextResponse.json({
