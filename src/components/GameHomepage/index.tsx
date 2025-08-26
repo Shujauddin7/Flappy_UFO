@@ -311,10 +311,28 @@ export default function GameHomepage() {
         setCurrentScreen('gameSelect');
     };
 
+    // Game result state for modal
+    const [gameResult, setGameResult] = useState<{
+        show: boolean;
+        score: number;
+        coins: number;
+        mode: string;
+        isNewHighScore?: boolean;
+        previousHigh?: number;
+        currentHigh?: number;
+        error?: string;
+    }>({
+        show: false,
+        score: 0,
+        coins: 0,
+        mode: '',
+    });
+
     // Handle game end
     const handleGameEnd = async (score: number, coins: number) => {
         // Show results based on game mode
         const modeText = gameMode === 'practice' ? 'Practice' : 'Tournament';
+        console.log('🎮 Game ended:', { score, coins, mode: modeText });
 
         // If tournament mode, submit score to backend
         if (gameMode === 'tournament' && session?.user?.walletAddress) {
@@ -327,37 +345,61 @@ export default function GameHomepage() {
                     body: JSON.stringify({
                         wallet: session.user.walletAddress,
                         score: score,
-                        game_duration: 1000 // 1 second - reasonable minimum duration
+                        game_duration: Math.max(score * 2000, 5000) // More realistic duration based on score
                     }),
                 });
 
                 const result = await response.json();
 
-                if (result.success) {
+                if (result.success && !result.data.is_duplicate) {
                     console.log('✅ Score submitted successfully:', result.data);
-                    const isNewHighScore = result.data.is_new_high_score;
-                    const previousHigh = result.data.previous_highest_score;
-                    const currentHigh = result.data.current_highest_score;
-
-                    alert(`${modeText} Complete!\nScore: ${score}\nCoins: ${coins}${isNewHighScore ? `\n🎉 NEW HIGH SCORE! (Previous: ${previousHigh})` :
-                        `\nYour highest score: ${currentHigh}`
-                        }`);
+                    setGameResult({
+                        show: true,
+                        score,
+                        coins,
+                        mode: modeText,
+                        isNewHighScore: result.data.is_new_high_score,
+                        previousHigh: result.data.previous_highest_score,
+                        currentHigh: result.data.current_highest_score
+                    });
+                } else if (result.data?.is_duplicate) {
+                    console.log('⚠️ Duplicate submission ignored');
+                    setGameResult({
+                        show: true,
+                        score,
+                        coins,
+                        mode: modeText,
+                        error: 'Score already submitted'
+                    });
                 } else {
                     console.error('❌ Failed to submit score:', result.error);
-                    alert(`${modeText} Complete!\nScore: ${score}\nCoins: ${coins}\n\n⚠️ Score submission failed: ${result.error}`);
+                    setGameResult({
+                        show: true,
+                        score,
+                        coins,
+                        mode: modeText,
+                        error: `Score submission failed: ${result.error}`
+                    });
                 }
             } catch (error) {
                 console.error('❌ Error submitting score:', error);
-                alert(`${modeText} Complete!\nScore: ${score}\nCoins: ${coins}\n\n⚠️ Unable to submit score. Please check your connection.`);
+                setGameResult({
+                    show: true,
+                    score,
+                    coins,
+                    mode: modeText,
+                    error: 'Unable to submit score. Please check your connection.'
+                });
             }
         } else {
             // Practice mode - just show results
-            alert(`${modeText} Complete!\nScore: ${score}\nCoins: ${coins}`);
+            setGameResult({
+                show: true,
+                score,
+                coins,
+                mode: modeText
+            });
         }
-
-        // Return to game select
-        setCurrentScreen('gameSelect');
-        setGameMode(null);
     };
 
     useEffect(() => {
@@ -554,84 +596,270 @@ export default function GameHomepage() {
     }
 
     return (
-        <Page>
-            <canvas ref={canvasRef} className="starfield-canvas" />
-            <Page.Main className="game-select-screen">
+        <>
+            <Page>
+                <canvas ref={canvasRef} className="starfield-canvas" />
+                <Page.Main className="game-select-screen">
 
-                <div className="epic-title-section">
-                    <h1 className="epic-title">
-                        <span className="choose-word">Choose Your</span>
-                        <span className="destiny-word">Destiny</span>
-                    </h1>
-                    <p className="epic-subtitle">Navigate the cosmos • Claim your reward</p>
-                </div>
+                    <div className="epic-title-section">
+                        <h1 className="epic-title">
+                            <span className="choose-word">Choose Your</span>
+                            <span className="destiny-word">Destiny</span>
+                        </h1>
+                        <p className="epic-subtitle">Navigate the cosmos • Claim your reward</p>
+                    </div>
 
-                <div className="game-modes">
+                    <div className="game-modes">
 
-                    <div className="mode-card practice-mode">
-                        <div className="cosmic-aura practice-aura"></div>
-                        <div className="mode-content">
-                            <div className="mode-icon">⚡</div>
-                            <h2 className="mode-name">PRACTICE</h2>
-                            <p className="mode-desc">Master the void</p>
-                            <div className="mode-features">
-                                <span className="feature">🚀 Unlimited tries</span>
-                                <span className="feature">⭐ Perfect your skills</span>
+                        <div className="mode-card practice-mode">
+                            <div className="cosmic-aura practice-aura"></div>
+                            <div className="mode-content">
+                                <div className="mode-icon">⚡</div>
+                                <h2 className="mode-name">PRACTICE</h2>
+                                <p className="mode-desc">Master the void</p>
+                                <div className="mode-features">
+                                    <span className="feature">🚀 Unlimited tries</span>
+                                    <span className="feature">⭐ Perfect your skills</span>
+                                </div>
+                                <button
+                                    className="mode-button practice-button"
+                                    onClick={() => handleGameStart('practice')}
+                                    disabled={isAuthenticating}
+                                >
+                                    {isAuthenticating ? 'AUTHENTICATING...' : 'ENTER TRAINING'}
+                                </button>
                             </div>
+                        </div>
+
+                        <div className="mode-card tournament-mode">
+                            <div className="cosmic-aura tournament-aura"></div>
+                            <div className="mode-content">
+                                <div className="mode-icon">💎</div>
+                                <h2 className="mode-name">TOURNAMENT</h2>
+                                <p className="mode-desc">Conquer for glory</p>
+                                <div className="mode-features">
+                                    <span className="feature">💰 Win WLD prizes</span>
+                                    <span className="feature">🏆 Daily challenges</span>
+                                </div>
+                                <button
+                                    className="mode-button tournament-button"
+                                    onClick={() => handleGameStart('tournament')}
+                                    disabled={isAuthenticating}
+                                >
+                                    {isAuthenticating ? 'AUTHENTICATING...' : 'JOIN BATTLE'}
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div className="bottom-nav-container">
+                        <div className="space-nav-icons">
                             <button
-                                className="mode-button practice-button"
-                                onClick={() => handleGameStart('practice')}
-                                disabled={isAuthenticating}
+                                className="space-nav-btn home-nav"
+                                onClick={() => setCurrentScreen('home')}
+                                aria-label="Launch Pad"
                             >
-                                {isAuthenticating ? 'AUTHENTICATING...' : 'ENTER TRAINING'}
+                                <div className="space-icon">🏠</div>
+
+                            </button>
+                            <button
+                                className="space-nav-btn prizes-nav"
+                                onClick={() => alert('Galactic Leaderboard & Cosmic Prizes')}
+                                aria-label="Cosmic Prizes"
+                            >
+                                <div className="space-icon">🏆</div>
+
                             </button>
                         </div>
                     </div>
 
-                    <div className="mode-card tournament-mode">
-                        <div className="cosmic-aura tournament-aura"></div>
-                        <div className="mode-content">
-                            <div className="mode-icon">💎</div>
-                            <h2 className="mode-name">TOURNAMENT</h2>
-                            <p className="mode-desc">Conquer for glory</p>
-                            <div className="mode-features">
-                                <span className="feature">💰 Win WLD prizes</span>
-                                <span className="feature">🏆 Daily challenges</span>
+                </Page.Main>
+            </Page>
+
+            {/* Game Result Modal */}
+            {gameResult.show && (
+                <div className="game-result-modal-overlay">
+                    <div className="game-result-modal">
+                        <div className="modal-header">
+                            <h2 className="modal-title">{gameResult.mode} Complete!</h2>
+                        </div>
+
+                        <div className="modal-content">
+                            <div className="score-display">
+                                <div className="score-item">
+                                    <span className="score-label">Score:</span>
+                                    <span className="score-value">{gameResult.score}</span>
+                                </div>
+                                <div className="score-item">
+                                    <span className="score-label">⭐ Coins:</span>
+                                    <span className="score-value">{gameResult.coins}</span>
+                                </div>
                             </div>
+
+                            {gameResult.isNewHighScore && (
+                                <div className="new-high-score">
+                                    🎉 NEW HIGH SCORE!
+                                    <br />
+                                    Previous: {gameResult.previousHigh}
+                                </div>
+                            )}
+
+                            {!gameResult.isNewHighScore && gameResult.currentHigh !== undefined && (
+                                <div className="current-high-score">
+                                    Your highest score: {gameResult.currentHigh}
+                                </div>
+                            )}
+
+                            {gameResult.error && (
+                                <div className="error-message">
+                                    ⚠️ {gameResult.error}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="modal-actions">
                             <button
-                                className="mode-button tournament-button"
-                                onClick={() => handleGameStart('tournament')}
-                                disabled={isAuthenticating}
+                                className="modal-button primary"
+                                onClick={() => {
+                                    setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+                                    setCurrentScreen('gameSelect');
+                                    setGameMode(null);
+                                }}
                             >
-                                {isAuthenticating ? 'AUTHENTICATING...' : 'JOIN BATTLE'}
+                                Continue
                             </button>
                         </div>
                     </div>
-
                 </div>
+            )}
 
-                <div className="bottom-nav-container">
-                    <div className="space-nav-icons">
-                        <button
-                            className="space-nav-btn home-nav"
-                            onClick={() => setCurrentScreen('home')}
-                            aria-label="Launch Pad"
-                        >
-                            <div className="space-icon">🏠</div>
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                .game-result-modal-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100vw;
+                    height: 100vh;
+                    background: rgba(0, 0, 0, 0.8);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 10000;
+                    backdrop-filter: blur(4px);
+                }
 
-                        </button>
-                        <button
-                            className="space-nav-btn prizes-nav"
-                            onClick={() => alert('Galactic Leaderboard & Cosmic Prizes')}
-                            aria-label="Cosmic Prizes"
-                        >
-                            <div className="space-icon">🏆</div>
+                .game-result-modal {
+                    background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+                    border: 2px solid #00BFFF;
+                    border-radius: 12px;
+                    padding: 30px;
+                    max-width: 400px;
+                    width: 90%;
+                    text-align: center;
+                    box-shadow: 0 20px 40px rgba(0, 191, 255, 0.3);
+                }
 
-                        </button>
-                    </div>
-                </div>
+                .modal-header {
+                    margin-bottom: 20px;
+                }
 
-            </Page.Main>
-        </Page>
+                .modal-title {
+                    color: #00BFFF;
+                    font-size: 24px;
+                    font-weight: bold;
+                    margin: 0;
+                    text-shadow: 0 0 10px #00BFFF;
+                }
+
+                .modal-content {
+                    margin-bottom: 30px;
+                }
+
+                .score-display {
+                    display: flex;
+                    justify-content: space-around;
+                    margin-bottom: 20px;
+                }
+
+                .score-item {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                }
+
+                .score-label {
+                    color: #94A3B8;
+                    font-size: 14px;
+                    margin-bottom: 5px;
+                }
+
+                .score-value {
+                    color: #FFFFFF;
+                    font-size: 24px;
+                    font-weight: bold;
+                    text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+                }
+
+                .new-high-score {
+                    color: #10B981;
+                    font-size: 18px;
+                    font-weight: bold;
+                    margin: 15px 0;
+                    text-shadow: 0 0 10px #10B981;
+                    animation: pulse 2s ease-in-out infinite;
+                }
+
+                .current-high-score {
+                    color: #FFD700;
+                    font-size: 16px;
+                    margin: 10px 0;
+                }
+
+                .error-message {
+                    color: #EF4444;
+                    font-size: 14px;
+                    margin: 10px 0;
+                    padding: 10px;
+                    background: rgba(239, 68, 68, 0.1);
+                    border-radius: 6px;
+                    border: 1px solid rgba(239, 68, 68, 0.3);
+                }
+
+                .modal-actions {
+                    display: flex;
+                    justify-content: center;
+                }
+
+                .modal-button {
+                    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+                    color: white;
+                    border: none;
+                    padding: 12px 30px;
+                    border-radius: 8px;
+                    font-size: 16px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+                }
+
+                .modal-button:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.6);
+                }
+
+                .modal-button:active {
+                    transform: translateY(0);
+                }
+
+                @keyframes pulse {
+                    0%, 100% { opacity: 1; transform: scale(1); }
+                    50% { opacity: 0.8; transform: scale(1.05); }
+                }
+            ` }} />
+        </>
     );
 }
