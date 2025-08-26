@@ -96,10 +96,10 @@ export async function GET(req: NextRequest) {
         if (statsData && !statsError) {
             tournamentStats = {
                 total_players: count || 0,
-                total_prize_pool: statsData.reduce((sum, record) => 
+                total_prize_pool: statsData.reduce((sum, record) =>
                     sum + (record.verified_paid_amount || 0) + (record.unverified_paid_amount || 0), 0
                 ) * 0.7, // 70% goes to prize pool
-                total_games_played: statsData.reduce((sum, record) => 
+                total_games_played: statsData.reduce((sum, record) =>
                     sum + (record.total_games_played || 0), 0
                 )
             };

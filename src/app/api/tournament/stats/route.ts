@@ -60,41 +60,41 @@ export async function GET(req: NextRequest) {
             total_players: statsData?.length || 0,
             verified_players: statsData?.filter(r => r.verified_paid_amount > 0).length || 0,
             unverified_players: statsData?.filter(r => r.unverified_paid_amount > 0).length || 0,
-            
+
             // Financial stats
-            total_collected: statsData?.reduce((sum, record) => 
+            total_collected: statsData?.reduce((sum, record) =>
                 sum + (record.verified_paid_amount || 0) + (record.unverified_paid_amount || 0), 0
             ) || 0,
-            verified_collected: statsData?.reduce((sum, record) => 
+            verified_collected: statsData?.reduce((sum, record) =>
                 sum + (record.verified_paid_amount || 0), 0
             ) || 0,
-            unverified_collected: statsData?.reduce((sum, record) => 
+            unverified_collected: statsData?.reduce((sum, record) =>
                 sum + (record.unverified_paid_amount || 0), 0
             ) || 0,
-            continue_revenue: statsData?.reduce((sum, record) => 
+            continue_revenue: statsData?.reduce((sum, record) =>
                 sum + (record.total_continue_payments || 0), 0
             ) || 0,
-            
+
             // Game statistics
-            total_games_played: statsData?.reduce((sum, record) => 
+            total_games_played: statsData?.reduce((sum, record) =>
                 sum + (record.total_games_played || 0), 0
             ) || 0,
-            verified_games: statsData?.reduce((sum, record) => 
+            verified_games: statsData?.reduce((sum, record) =>
                 sum + (record.verified_games_played || 0), 0
             ) || 0,
-            unverified_games: statsData?.reduce((sum, record) => 
+            unverified_games: statsData?.reduce((sum, record) =>
                 sum + (record.unverified_games_played || 0), 0
             ) || 0,
-            total_continues_used: statsData?.reduce((sum, record) => 
+            total_continues_used: statsData?.reduce((sum, record) =>
                 sum + (record.total_continues_used || 0), 0
             ) || 0,
-            
+
             // Score statistics
             highest_score: Math.max(...(statsData?.map(r => r.highest_score || 0) || [0])),
-            average_score: statsData?.length ? 
-                statsData.reduce((sum, record) => sum + (record.highest_score || 0), 0) / statsData.length 
+            average_score: statsData?.length ?
+                statsData.reduce((sum, record) => sum + (record.highest_score || 0), 0) / statsData.length
                 : 0,
-            
+
             // Prize pool calculation
             prize_pool: 0,
             tournament_day: tournamentDay

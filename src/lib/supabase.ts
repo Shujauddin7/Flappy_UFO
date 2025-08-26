@@ -94,32 +94,32 @@ export interface UserTournamentRecord {
     username?: string
     wallet: string
     tournament_day: string
-    
+
     // Payment tracking
     verified_entry_paid: boolean
     verified_paid_amount: number
     verified_payment_ref?: string
     verified_paid_at?: string
-    
+
     unverified_entry_paid: boolean
     unverified_paid_amount: number
     unverified_payment_ref?: string
     unverified_paid_at?: string
-    
+
     // Game statistics
     highest_score: number
     total_games_played: number
     verified_games_played: number
     unverified_games_played: number
-    
+
     // Continue tracking
     total_continues_used: number
     total_continue_payments: number
-    
+
     // World ID verification
     world_id_proof?: Record<string, unknown>
     verified_at?: string
-    
+
     // Timestamps
     first_game_at?: string
     last_game_at?: string
@@ -137,13 +137,13 @@ export interface GameScore {
     username?: string
     wallet: string
     tournament_day: string
-    
+
     score: number
     game_duration_ms: number
     was_verified_game: boolean
     continues_used_in_game: number
     continue_payments_for_game: number
-    
+
     game_session_id?: string
     submitted_at: string
 }
