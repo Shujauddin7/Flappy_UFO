@@ -42,6 +42,7 @@ interface GameState {
     gameStatus: 'ready' | 'playing' | 'gameOver';
     playButtonBounds?: { x: number; y: number; width: number; height: number };
     closeButtonBounds?: { x: number; y: number; width: number; height: number };
+    gameEndCalled?: boolean; // Prevent multiple game end calls
 }
 
 const PLANETS = [
@@ -63,7 +64,8 @@ export default function FlappyGame({
         particles: [],
         score: 0,
         coins: 0,
-        gameStatus: 'ready'
+        gameStatus: 'ready',
+        gameEndCalled: false // Initialize flag
     });
 
     const [, setGameState] = useState(gameStateRef.current);
@@ -247,6 +249,8 @@ export default function FlappyGame({
     const handleModalClick = useCallback((x: number, y: number) => {
         const state = gameStateRef.current;
 
+        console.log('🖱️ Modal click detected at:', { x, y, gameStatus: state.gameStatus }); // Debug log
+
         if (state.gameStatus === 'gameOver') {
             // Check play again button
             if (state.playButtonBounds &&
@@ -255,6 +259,9 @@ export default function FlappyGame({
                 y >= state.playButtonBounds.y &&
                 y <= state.playButtonBounds.y + state.playButtonBounds.height) {
 
+                console.log('🔄 Play Again button clicked'); // Debug log
+                alert('Play Again button clicked'); // Debug alert as requested
+
                 // Restart game
                 state.ufo = { x: 100, y: 300, velocity: 0, rotation: 0 };
                 state.obstacles = [];
@@ -262,20 +269,44 @@ export default function FlappyGame({
                 state.score = 0;
                 state.coins = 0;
                 state.gameStatus = 'ready';
+                state.gameEndCalled = false; // Reset flag
                 return;
             }
 
-            // Check home button
+            // Check home button - Add more generous bounds
             if (state.closeButtonBounds &&
-                x >= state.closeButtonBounds.x &&
-                x <= state.closeButtonBounds.x + state.closeButtonBounds.width &&
-                y >= state.closeButtonBounds.y &&
-                y <= state.closeButtonBounds.y + state.closeButtonBounds.height) {
+                x >= state.closeButtonBounds.x - 10 && // Add 10px margin
+                x <= state.closeButtonBounds.x + state.closeButtonBounds.width + 10 && // Add 10px margin
+                y >= state.closeButtonBounds.y - 10 && // Add 10px margin
+                y <= state.closeButtonBounds.y + state.closeButtonBounds.height + 10) { // Add 10px margin
+
+                console.log('🏠 GO HOME button clicked'); // Debug log
+                alert('GO HOME button clicked - returning to menu'); // Debug alert as requested
+
+                // Prevent multiple calls
+                if (state.gameEndCalled) {
+                    console.log('⚠️ Game end already called, ignoring...');
+                    alert('Game end already called, ignoring...');
+                    return;
+                }
+                state.gameEndCalled = true;
 
                 // Return to menu
                 onGameEnd(state.score, state.coins);
                 return;
             }
+
+            // If no button was clicked, log the bounds for debugging
+            console.log('❌ No button clicked. Button bounds:', {
+                playButton: state.playButtonBounds,
+                homeButton: state.closeButtonBounds,
+                clickPosition: { x, y }
+            });
+            const bounds = state.closeButtonBounds;
+            const boundsText = bounds
+                ? `Home button at: ${bounds.x}-${bounds.x + bounds.width}, ${bounds.y}-${bounds.y + bounds.height}`
+                : 'No home button bounds';
+            alert(`Click missed! Position: ${x},${y}. ${boundsText}`);
         }
     }, [onGameEnd]);
 
@@ -395,6 +426,8 @@ export default function FlappyGame({
             // Check collisions
             if (checkCollisions()) {
                 state.gameStatus = 'gameOver';
+                console.log('💥 Game Over! Score:', state.score); // Debug log
+                alert(`💥 Game Over! Final Score: ${state.score}`); // Debug alert as requested
 
                 // Explosion particles
                 const explosionParticles = createParticles(state.ufo.x, state.ufo.y, 15);
@@ -737,6 +770,14 @@ export default function FlappyGame({
             }
 
             if (e.code === 'Escape' && gameStateRef.current.gameStatus === 'gameOver') {
+                // Prevent multiple calls
+                if (gameStateRef.current.gameEndCalled) {
+                    console.log('⚠️ Game end already called via Escape, ignoring...');
+                    alert('Game end already called via Escape, ignoring...');
+                    return;
+                }
+                gameStateRef.current.gameEndCalled = true;
+                alert('Escape pressed - returning to menu'); // Debug alert
                 onGameEnd(gameStateRef.current.score, gameStateRef.current.coins);
             }
         };

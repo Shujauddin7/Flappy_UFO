@@ -328,15 +328,27 @@ export default function GameHomepage() {
         mode: '',
     });
 
+    // Track if score has been submitted to prevent duplicates
+    const [isSubmittingScore, setIsSubmittingScore] = useState<boolean>(false);
+
     // Handle game end
     const handleGameEnd = async (score: number, coins: number) => {
+        // Prevent duplicate submissions
+        if (isSubmittingScore) {
+            console.log('⚠️ Score submission already in progress, ignoring...');
+            alert('Score submission already in progress...'); // Debug alert as requested
+            return;
+        }
+
         // Show results based on game mode
         const modeText = gameMode === 'practice' ? 'Practice' : 'Tournament';
         console.log('🎮 Game ended:', { score, coins, mode: modeText });
+        alert(`Game ended: Score ${score}, Coins ${coins}, Mode ${modeText}`); // Debug alert as requested
 
         // If tournament mode, submit score to backend
         if (gameMode === 'tournament' && session?.user?.walletAddress) {
             try {
+                setIsSubmittingScore(true);
                 console.log('Submitting tournament score:', { score, coins });
 
                 const response = await fetch('/api/score/submit', {
@@ -353,6 +365,7 @@ export default function GameHomepage() {
 
                 if (result.success && !result.data.is_duplicate) {
                     console.log('✅ Score submitted successfully:', result.data);
+                    alert(`✅ Score submitted successfully! New high: ${result.data.is_new_high_score}`); // Debug alert
                     setGameResult({
                         show: true,
                         score,
@@ -364,6 +377,7 @@ export default function GameHomepage() {
                     });
                 } else if (result.data?.is_duplicate) {
                     console.log('⚠️ Duplicate submission ignored');
+                    alert('⚠️ Duplicate submission ignored'); // Debug alert
                     setGameResult({
                         show: true,
                         score,
@@ -373,6 +387,7 @@ export default function GameHomepage() {
                     });
                 } else {
                     console.error('❌ Failed to submit score:', result.error);
+                    alert(`❌ Failed to submit score: ${result.error}`); // Debug alert
                     setGameResult({
                         show: true,
                         score,
@@ -383,6 +398,7 @@ export default function GameHomepage() {
                 }
             } catch (error) {
                 console.error('❌ Error submitting score:', error);
+                alert(`❌ Error submitting score: ${error}`); // Debug alert
                 setGameResult({
                     show: true,
                     score,
@@ -390,9 +406,12 @@ export default function GameHomepage() {
                     mode: modeText,
                     error: 'Unable to submit score. Please check your connection.'
                 });
+            } finally {
+                setIsSubmittingScore(false);
             }
         } else {
             // Practice mode - just show results
+            alert(`Practice mode: Score ${score}, Coins ${coins}`); // Debug alert
             setGameResult({
                 show: true,
                 score,
