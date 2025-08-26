@@ -112,21 +112,58 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Tournament setup failed' }, { status: 500 });
         }
 
-        // Get user ID and current verification status from users table
+        // Get user ID and current verification status from users table, create if doesn't exist
         console.log('👤 Looking for user with wallet:', wallet);
-        const { data: user, error: userError } = await supabase
+        let user;
+
+        const userFetchResult = await supabase
             .from('users')
-            .select('id, last_verified_date, last_verified_tournament_id')
+            .select('id, last_verified_date, last_verified_tournament_id, username')
             .eq('wallet', wallet)
             .single();
 
+        user = userFetchResult.data;
+        const userError = userFetchResult.error;
+
         console.log('👤 User fetch result:', { user, error: userError });
 
-        if (userError || !user) {
+        // If user doesn't exist, create them
+        if (userError && userError.code === 'PGRST116') {
+            console.log('👤 User not found, creating new user...');
+            const { data: newUser, error: createError } = await supabase
+                .from('users')
+                .insert({
+                    wallet: wallet,
+                    username: null,
+                    world_id: null,
+                    total_tournaments_played: 0,
+                    total_games_played: 0,
+                    highest_score_ever: 0
+                })
+                .select('id, last_verified_date, last_verified_tournament_id, username')
+                .single();
+
+            if (createError) {
+                console.error('❌ Error creating user:', createError);
+                return NextResponse.json({
+                    error: `Failed to create user: ${createError.message}`
+                }, { status: 500 });
+            }
+
+            user = newUser;
+            console.log('✅ New user created:', user);
+        } else if (userError) {
             console.error('❌ Error fetching user:', userError);
             return NextResponse.json({
-                error: `User not found: ${userError?.message || 'No user found'}`
-            }, { status: 404 });
+                error: `User database error: ${userError.message}`
+            }, { status: 500 });
+        }
+
+        if (!user) {
+            console.error('❌ Failed to get or create user');
+            return NextResponse.json({
+                error: 'User setup failed'
+            }, { status: 500 });
         }
 
         // Check verification status - user must be verified for today's tournament
