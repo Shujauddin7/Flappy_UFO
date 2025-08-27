@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Update user verification status with actual tournament UUID
-        const { data, error } = await supabase
+        const { data: userData, error: userError } = await supabase
             .from('users')
             .update({
                 world_id: nullifier_hash, // Store World ID identifier
@@ -98,17 +98,17 @@ export async function POST(req: NextRequest) {
                 last_verified_tournament_id: tournament.id, // Use actual tournament UUID
             })
             .eq('wallet', wallet)
-            .select();
+            .select('id, username');
 
-        if (error) {
-            console.error('❌ Error updating user verification:', error);
+        if (userError) {
+            console.error('❌ Error updating user verification:', userError);
             return NextResponse.json(
-                { success: false, error: 'Database update failed: ' + error.message },
+                { success: false, error: 'Database update failed: ' + userError.message },
                 { status: 500 }
             );
         }
 
-        if (!data || data.length === 0) {
+        if (!userData || userData.length === 0) {
             console.error('❌ No user found with wallet:', wallet);
             return NextResponse.json(
                 { success: false, error: 'User not found. Please sign in first.' },
@@ -116,11 +116,42 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        const user = userData[0];
+
+        // IMPORTANT: Also update user_tournament_records table with verification data
+        // Check if user has a tournament record for today
+        const { data: tournamentRecord } = await supabase
+            .from('user_tournament_records')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('tournament_id', tournament.id)
+            .eq('tournament_day', today)
+            .single();
+
+        if (tournamentRecord) {
+            // Update existing tournament record with verification data
+            const { error: updateRecordError } = await supabase
+                .from('user_tournament_records')
+                .update({
+                    world_id_proof: { nullifier_hash }, // Store World ID proof
+                    verified_at: new Date(verification_date).toISOString(), // Store full timestamp
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', tournamentRecord.id);
+
+            if (updateRecordError) {
+                console.error('❌ Error updating tournament record verification:', updateRecordError);
+                // Don't fail the request, just log the error
+            } else {
+                console.log('✅ Tournament record updated with verification data');
+            }
+        }
+
         console.log('✅ User verification status updated:', {
             wallet: wallet,
             verified_date: verification_date,
             tournament_id: tournament.id,
-            updated_user: data[0]
+            updated_user: user
         });
 
         return NextResponse.json({

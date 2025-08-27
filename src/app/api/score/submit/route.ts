@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
         const today = new Date().toISOString().split('T')[0];
         let recordQuery = supabase
             .from('user_tournament_records')
-            .select('id, user_id, highest_score, tournament_day, tournament_id')
+            .select('id, user_id, highest_score, tournament_day, tournament_id, verified_at, verified_games_played, unverified_games_played, total_games_played')
             .eq('user_id', user.id)
             .eq('tournament_day', today);
 
@@ -167,10 +167,16 @@ export async function POST(req: NextRequest) {
 
         // Use the first (or specified) record
         const record = records[0];
+        
+        // Determine if this is a verified game based on verification status
+        const isVerifiedGame = record.verified_at !== null;
+        
         console.log('🎮 Current tournament record:', {
             record_id: record.id,
             current_highest: record.highest_score,
-            new_score: score
+            new_score: score,
+            is_verified_game: isVerifiedGame,
+            verified_at: record.verified_at
         });
 
         // First, always insert the individual score into game_scores table
@@ -185,7 +191,7 @@ export async function POST(req: NextRequest) {
                 tournament_day: today,
                 score: score,
                 game_duration_ms: game_duration,
-                was_verified_game: true, // We'll need to determine this based on verification status
+                was_verified_game: isVerifiedGame, // Properly determined based on verification status
                 continues_used_in_game: 0, // Default for now
                 continue_payments_for_game: 0,
                 submitted_at: new Date().toISOString()
@@ -217,23 +223,36 @@ export async function POST(req: NextRequest) {
             }
 
             if (isUpdated) {
-                // Also update game count - get current count first
-                const { data: currentRecord } = await supabase
-                    .from('user_tournament_records')
-                    .select('total_games_played')
-                    .eq('id', record.id)
-                    .single();
+                // Update game counts properly - verified vs unverified and total
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const gameCountUpdates: any = {
+                    total_games_played: (record.total_games_played || 0) + 1,
+                    updated_at: new Date().toISOString()
+                };
+
+                if (isVerifiedGame) {
+                    gameCountUpdates.verified_games_played = (record.verified_games_played || 0) + 1;
+                } else {
+                    gameCountUpdates.unverified_games_played = (record.unverified_games_played || 0) + 1;
+                }
+
+                // Set first_game_at if this is the first game
+                if ((record.total_games_played || 0) === 0) {
+                    gameCountUpdates.first_game_at = new Date().toISOString();
+                }
+                
+                // Always update last_game_at
+                gameCountUpdates.last_game_at = new Date().toISOString();
 
                 const { error: gameCountError } = await supabase
                     .from('user_tournament_records')
-                    .update({
-                        total_games_played: (currentRecord?.total_games_played || 0) + 1,
-                        updated_at: new Date().toISOString()
-                    })
+                    .update(gameCountUpdates)
                     .eq('id', record.id);
 
                 if (gameCountError) {
                     console.error('❌ Error updating game count:', gameCountError);
+                } else {
+                    console.log('✅ Game counts updated:', gameCountUpdates);
                 }
 
                 // Also update user statistics (highest score, total games played)
@@ -258,24 +277,36 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // Score was not higher, but still update game count
-        // First get current count, then increment
-        const { data: currentRecord } = await supabase
-            .from('user_tournament_records')
-            .select('total_games_played')
-            .eq('id', record.id)
-            .single();
+        // Score was not higher, but still update game count properly
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const gameCountUpdates: any = {
+            total_games_played: (record.total_games_played || 0) + 1,
+            updated_at: new Date().toISOString()
+        };
+
+        if (isVerifiedGame) {
+            gameCountUpdates.verified_games_played = (record.verified_games_played || 0) + 1;
+        } else {
+            gameCountUpdates.unverified_games_played = (record.unverified_games_played || 0) + 1;
+        }
+
+        // Set first_game_at if this is the first game
+        if ((record.total_games_played || 0) === 0) {
+            gameCountUpdates.first_game_at = new Date().toISOString();
+        }
+        
+        // Always update last_game_at
+        gameCountUpdates.last_game_at = new Date().toISOString();
 
         const { error: gameCountError } = await supabase
             .from('user_tournament_records')
-            .update({
-                total_games_played: (currentRecord?.total_games_played || 0) + 1,
-                updated_at: new Date().toISOString()
-            })
+            .update(gameCountUpdates)
             .eq('id', record.id);
 
         if (gameCountError) {
             console.error('❌ Error updating game count:', gameCountError);
+        } else {
+            console.log('✅ Game counts updated (non-high score):', gameCountUpdates);
         }
 
         // Also update user statistics (total games played only, no high score)
