@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 
 // Helper function to update user statistics
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateUserStatistics(supabase: any, userId: string, newScore: number, isNewHighScore: boolean) {
+async function updateUserStatistics(supabase: any, userId: string, newScore: number) {
     try {
         // Get current user statistics
         const { data: currentUser, error: fetchError } = await supabase
@@ -23,9 +23,11 @@ async function updateUserStatistics(supabase: any, userId: string, newScore: num
             total_games_played: (currentUser?.total_games_played || 0) + 1
         };
 
-        // Update highest score if this is a new high score
-        if (isNewHighScore && newScore > (currentUser?.highest_score_ever || 0)) {
+        // Update highest score if this is a new ALL-TIME high score (regardless of tournament high score)
+        const currentHighest = currentUser?.highest_score_ever || 0;
+        if (newScore > currentHighest) {
             updates.highest_score_ever = newScore;
+            console.log(`🏆 New all-time high score! ${currentHighest} -> ${newScore}`);
         }
 
         const { error: updateError } = await supabase
@@ -256,7 +258,7 @@ export async function POST(req: NextRequest) {
                 }
 
                 // Also update user statistics (highest score, total games played)
-                await updateUserStatistics(supabase, user.id, score, true);
+                await updateUserStatistics(supabase, user.id, score);
 
                 console.log('✅ Score updated successfully:', {
                     record_id: record.id,
@@ -310,7 +312,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Also update user statistics (total games played only, no high score)
-        await updateUserStatistics(supabase, user.id, score, false);
+        await updateUserStatistics(supabase, user.id, score);
 
         console.log('📊 Score not higher than current record');
         return NextResponse.json({
