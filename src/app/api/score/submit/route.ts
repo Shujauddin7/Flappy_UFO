@@ -167,10 +167,10 @@ export async function POST(req: NextRequest) {
 
         // Use the first (or specified) record
         const record = records[0];
-        
+
         // Determine if this is a verified game based on verification status
         const isVerifiedGame = record.verified_at !== null;
-        
+
         console.log('🎮 Current tournament record:', {
             record_id: record.id,
             current_highest: record.highest_score,
@@ -240,7 +240,7 @@ export async function POST(req: NextRequest) {
                 if ((record.total_games_played || 0) === 0) {
                     gameCountUpdates.first_game_at = new Date().toISOString();
                 }
-                
+
                 // Always update last_game_at
                 gameCountUpdates.last_game_at = new Date().toISOString();
 
@@ -294,7 +294,7 @@ export async function POST(req: NextRequest) {
         if ((record.total_games_played || 0) === 0) {
             gameCountUpdates.first_game_at = new Date().toISOString();
         }
-        
+
         // Always update last_game_at
         gameCountUpdates.last_game_at = new Date().toISOString();
 

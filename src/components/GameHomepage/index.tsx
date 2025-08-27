@@ -190,6 +190,8 @@ export default function GameHomepage() {
                 throw new Error('No wallet address found in session');
             }
 
+            console.log('🔄 Updating verification status for wallet:', session.user.walletAddress);
+
             const response = await fetch('/api/users/update-verification', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -202,8 +204,11 @@ export default function GameHomepage() {
 
             const responseData = await response.json();
 
+            console.log('📝 Update verification response:', responseData);
+
             if (!response.ok) {
-                throw new Error(responseData.error || 'Failed to update verification status');
+                console.error('❌ Verification update failed:', responseData);
+                throw new Error(responseData.error || `HTTP ${response.status}: Failed to update verification status`);
             }
 
             console.log('✅ User verification status updated:', responseData.data);
@@ -214,7 +219,11 @@ export default function GameHomepage() {
             return responseData;
         } catch (error) {
             console.error('❌ Error updating verification status:', error);
-            alert('Warning: Verification successful but failed to save to database. You may need to verify again.');
+
+            // More specific error message
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            alert(`Verification failed to save to database: ${errorMessage}. Please try again.`);
+
             return null;
         }
     };
@@ -342,6 +351,10 @@ export default function GameHomepage() {
         // Show results based on game mode
         const modeText = gameMode === 'practice' ? 'Practice' : 'Tournament';
         console.log('🎮 Game ended:', { score, coins, mode: modeText });
+
+        // IMPORTANT: Always transition back to home screen first
+        setCurrentScreen('home');
+        setGameMode(null); // Reset game mode
 
         // If tournament mode, submit score to backend
         if (gameMode === 'tournament' && session?.user?.walletAddress) {

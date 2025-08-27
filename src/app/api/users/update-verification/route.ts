@@ -141,9 +141,42 @@ export async function POST(req: NextRequest) {
 
             if (updateRecordError) {
                 console.error('❌ Error updating tournament record verification:', updateRecordError);
-                // Don't fail the request, just log the error
+                return NextResponse.json({
+                    success: false,
+                    error: `Failed to update tournament verification: ${updateRecordError.message}`
+                }, { status: 500 });
             } else {
                 console.log('✅ Tournament record updated with verification data');
+            }
+        } else {
+            // Create a new tournament record with verification data
+            console.log('ℹ️ No tournament record found, creating one with verification data');
+            const { error: createRecordError } = await supabase
+                .from('user_tournament_records')
+                .insert({
+                    user_id: user.id,
+                    tournament_id: tournament.id,
+                    username: user.username,
+                    wallet: wallet,
+                    tournament_day: today,
+                    world_id_proof: { nullifier_hash },
+                    verified_at: new Date(verification_date).toISOString(),
+                    highest_score: 0,
+                    total_games_played: 0,
+                    verified_games_played: 0,
+                    unverified_games_played: 0,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                });
+
+            if (createRecordError) {
+                console.error('❌ Error creating tournament record with verification:', createRecordError);
+                return NextResponse.json({
+                    success: false,
+                    error: `Failed to create tournament record: ${createRecordError.message}`
+                }, { status: 500 });
+            } else {
+                console.log('✅ Tournament record created with verification data');
             }
         }
 
