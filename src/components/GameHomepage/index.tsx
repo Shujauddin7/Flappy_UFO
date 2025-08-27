@@ -122,7 +122,7 @@ export default function GameHomepage() {
 
         try {
             setIsProcessingEntry(true);
-            
+
             if (entryType === 'verify') {
                 await handleWorldIDVerification();
             } else if (entryType === 'verified') {
@@ -514,7 +514,7 @@ export default function GameHomepage() {
                                     START PRACTICE
                                 </button>
                             </div>
-                            
+
                             <div className="mode-card tournament-mode">
                                 <div className="mode-header">
                                     <h2 className="mode-name">TOURNAMENT</h2>
