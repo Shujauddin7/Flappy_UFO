@@ -42,6 +42,9 @@ export default function GameHomepage() {
     const [isVerifiedToday, setIsVerifiedToday] = useState<boolean>(false);
     const [verificationLoading, setVerificationLoading] = useState<boolean>(false);
 
+    // Tournament entry loading states to prevent duplicate operations
+    const [isProcessingEntry, setIsProcessingEntry] = useState<boolean>(false);
+
     // Check user's verification status for today's tournament
     const checkVerificationStatus = useCallback(async () => {
         if (!session?.user?.walletAddress) return false;
@@ -96,6 +99,9 @@ export default function GameHomepage() {
     // Handle game start with authentication
     const handleGameStart = async (mode: GameMode) => {
         try {
+            // Reset game result modal when starting a new game
+            setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+
             // Always attempt authentication to ensure session is valid
             const authSuccess = await authenticate();
 
@@ -122,11 +128,17 @@ export default function GameHomepage() {
 
     // Handle tournament entry selection
     const handleTournamentEntrySelect = async (entryType: 'verify' | 'standard' | 'verified') => {
+        // Prevent duplicate operations
+        if (isProcessingEntry) {
+            console.log('⚠️ Tournament entry operation already in progress, ignoring...');
+            return;
+        }
+
         try {
-            console.log(`Selected tournament entry type: ${entryType}`);
+            setIsProcessingEntry(true);
 
             if (entryType === 'verify') {
-                // Handle World ID verification first, then payment
+                // Verify identity first, then pay 0.9 WLD
                 await handleWorldIDVerification();
             } else if (entryType === 'verified') {
                 // User is already verified, proceed with 0.9 WLD payment
@@ -139,6 +151,8 @@ export default function GameHomepage() {
         } catch (error) {
             console.error('Error during tournament entry:', error);
             alert('Tournament entry failed. Please try again.');
+        } finally {
+            setIsProcessingEntry(false);
         }
     };
 
@@ -560,6 +574,7 @@ export default function GameHomepage() {
                     isAuthenticating={isAuthenticating}
                     isVerifiedToday={isVerifiedToday}
                     verificationLoading={verificationLoading}
+                    isProcessingEntry={isProcessingEntry}
                 />
             </Page>
         );
