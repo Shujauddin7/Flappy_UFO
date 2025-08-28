@@ -428,6 +428,7 @@ export default function GameHomepage() {
             }
         } else {
             // Practice mode - just show results
+            console.log('🎮 Showing practice mode results modal:', { score, coins, mode: modeText });
             setGameResult({
                 show: true,
                 score,
@@ -436,6 +437,15 @@ export default function GameHomepage() {
             });
         }
     };
+
+    // Debug effect to track gameResult changes
+    useEffect(() => {
+        if (gameResult.show) {
+            console.log('🔥 Game result modal should be showing:', gameResult);
+            console.log('🔥 Current screen:', currentScreen);
+            console.log('🔥 Game mode:', gameMode);
+        }
+    }, [gameResult.show, currentScreen, gameMode, gameResult]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
