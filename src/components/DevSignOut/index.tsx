@@ -73,11 +73,11 @@ function DevSignOut() {
     const isLocalDev = process.env.NODE_ENV === 'development';
     const isDevDeployment = typeof window !== 'undefined' &&
         window.location.hostname.includes('flappyufo-git-dev-shujauddin');
-    
+
     // Check for admin password parameter (change "yourpassword" to whatever you want)
     const adminPassword = searchParams.get('admin_password');
     const hasAdminAccess = adminPassword === 'admin123'; // Change this password!
-    
+
     // Show if: (local dev OR dev deployment OR has admin password) 
     const showDevSignOut = (isLocalDev || isDevDeployment || hasAdminAccess) &&
         process.env.NEXT_PUBLIC_SHOW_DEV_SIGNOUT !== 'false';
@@ -95,8 +95,8 @@ function DevSignOut() {
             <button
                 onClick={handleSignOut}
                 className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg transition-all duration-200 border border-red-400"
-                title={hasAdminAccess ? 
-                    "Admin access - Sign out and reload to reset authentication" : 
+                title={hasAdminAccess ?
+                    "Admin access - Sign out and reload to reset authentication" :
                     "Development only - Sign out and reload to test authentication flow and reset verification status"
                 }
             >
