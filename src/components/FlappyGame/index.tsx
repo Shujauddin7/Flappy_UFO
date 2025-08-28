@@ -253,6 +253,7 @@ export default function FlappyGame({
 
         // Ground and ceiling collision (adjusted for larger UFO)
         if (ufo.y <= 30 || ufo.y >= canvas.height - 80) {
+            console.log('💥 Ground/ceiling collision! UFO y:', ufo.y, 'Canvas height:', canvas.height);
             return true;
         }
 
@@ -281,6 +282,7 @@ export default function FlappyGame({
                 );
 
                 if (distance < (obstacle.width / 2 + 20)) { // Generous collision radius
+                    console.log('💥 Planet collision! Distance:', distance, 'Threshold:', obstacle.width / 2 + 20);
                     return true; // Collision with planet
                 }
             } else if (obstacle.type === 'invisible-wall') {
@@ -290,6 +292,7 @@ export default function FlappyGame({
                     ufo.y + 20 < obstacle.y + obstacle.height &&
                     ufo.y + 30 > obstacle.y) {
 
+                    console.log('💥 Invisible wall collision! UFO position:', {x: ufo.x, y: ufo.y}, 'Wall:', {x: obstacle.x, y: obstacle.y, w: obstacle.width, h: obstacle.height});
                     return true; // Collision with invisible barrier
                 }
             }
@@ -360,14 +363,19 @@ export default function FlappyGame({
 
             // Check collisions
             if (checkCollisions()) {
+                console.log('💥💥💥 COLLISION DETECTED! Setting game over...');
                 state.gameStatus = 'gameOver';
-                console.log('💥 Game Over! Score:', state.score);
+                console.log('💥 Game Over! Score:', state.score, 'Status:', state.gameStatus);
 
                 // Call onGameEnd immediately
                 if (!state.gameEndCalled) {
                     state.gameEndCalled = true;
-                    console.log('🔥 Calling onGameEnd with:', { score: state.score, coins: state.coins });
+                    console.log('🔥🔥🔥 Calling onGameEnd with:', { score: state.score, coins: state.coins });
+                    console.log('🔥 onGameEnd function:', onGameEnd);
                     onGameEnd(state.score, state.coins);
+                    console.log('🔥 onGameEnd call completed');
+                } else {
+                    console.log('⚠️ Game end already called, skipping');
                 }
 
                 // Explosion particles for visual effect

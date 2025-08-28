@@ -356,7 +356,8 @@ export default function GameHomepage() {
 
     // Handle game end
     const handleGameEnd = async (score: number, coins: number) => {
-        console.log('🔥 handleGameEnd called with:', { score, coins, gameMode });
+        console.log('🔥🔥🔥 handleGameEnd called with:', { score, coins, gameMode });
+        console.log('🔥 Current state - isSubmittingScore:', isSubmittingScore, 'currentScreen:', currentScreen);
 
         // Prevent duplicate submissions
         if (isSubmittingScore) {
@@ -369,12 +370,14 @@ export default function GameHomepage() {
         console.log('🎮 Game ended:', { score, coins, mode: modeText });
 
         // ALWAYS show the modal immediately, regardless of mode
+        console.log('🔥 Setting gameResult to show modal...');
         setGameResult({
             show: true,
             score,
             coins,
             mode: modeText
         });
+        console.log('🔥 gameResult updated, modal should show now');
 
         // If tournament mode, also submit score to backend (but don't wait for it)
         if (gameMode === 'tournament' && session?.user?.walletAddress) {
