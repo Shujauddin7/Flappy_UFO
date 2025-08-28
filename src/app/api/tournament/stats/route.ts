@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
                 standard_paid_amount,
                 total_games_played,
                 verified_games_played,
-                standard_games_played,
+                unverified_games_played,
                 highest_score,
                 total_continues_used,
                 total_continue_payments
@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
                 sum + (record.verified_games_played || 0), 0
             ) || 0,
             unverified_games: statsData?.reduce((sum, record) =>
-                sum + (record.standard_games_played || 0), 0
+                sum + (record.unverified_games_played || 0), 0
             ) || 0,
             total_continues_used: statsData?.reduce((sum, record) =>
                 sum + (record.total_continues_used || 0), 0
