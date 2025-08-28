@@ -219,7 +219,8 @@ export async function POST(req: NextRequest) {
                 tournament_day: today,
                 score: score,
                 game_duration_ms: game_duration,
-                was_verified_game: isVerifiedGame, // Properly determined based on verification status
+                was_verified_game: isVerifiedGame, // Properly determined based on entry payment
+                entry_type: isVerifiedGame ? 'verified' : 'standard', // NEW: Set the clear entry type
                 continues_used_in_game: 0, // Default for now
                 continue_payments_for_game: 0,
                 submitted_at: new Date().toISOString()

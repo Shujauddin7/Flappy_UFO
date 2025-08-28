@@ -301,6 +301,7 @@ export async function POST(req: NextRequest) {
             standard_paid_amount?: number;
             standard_payment_ref?: string;
             standard_paid_at?: string;
+            current_entry_type?: string;
         } = {
             updated_at: new Date().toISOString()
         };
@@ -310,11 +311,13 @@ export async function POST(req: NextRequest) {
             paymentUpdate.verified_paid_amount = paid_amount;
             paymentUpdate.verified_payment_ref = payment_reference;
             paymentUpdate.verified_paid_at = new Date().toISOString();
+            paymentUpdate.current_entry_type = 'verified'; // Set current entry type
         } else {
             paymentUpdate.standard_entry_paid = true;
             paymentUpdate.standard_paid_amount = paid_amount;
             paymentUpdate.standard_payment_ref = payment_reference;
             paymentUpdate.standard_paid_at = new Date().toISOString();
+            paymentUpdate.current_entry_type = 'standard'; // Set current entry type
         }
 
         const { data: updatedRecord, error: updateError } = await supabase
