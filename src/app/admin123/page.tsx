@@ -30,7 +30,7 @@ export default function AdminSignOutPage() {
                 // Clear all storage
                 localStorage.clear();
                 sessionStorage.clear();
-                
+
                 // Clear all cookies
                 document.cookie.split(";").forEach((c) => {
                     const eqPos = c.indexOf("=");
@@ -38,11 +38,11 @@ export default function AdminSignOutPage() {
                     document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
                     document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=.vercel.app";
                 });
-                
+
                 // Set flag for forced re-authentication
                 localStorage.setItem('justSignedOut', 'true');
                 localStorage.setItem('forceReauth', 'true');
-                
+
                 console.log('Admin SignOut: CLEARED ALL BROWSER DATA');
             }
 
@@ -70,12 +70,12 @@ export default function AdminSignOutPage() {
     // Add a force clear function for when no session is detected but user is still somehow logged in
     const handleForceClear = async () => {
         console.log('Admin: Force clearing all data');
-        
+
         if (typeof window !== 'undefined') {
             // Nuclear option - clear everything
             localStorage.clear();
             sessionStorage.clear();
-            
+
             // Clear all cookies
             document.cookie.split(";").forEach((c) => {
                 const eqPos = c.indexOf("=");
@@ -83,17 +83,17 @@ export default function AdminSignOutPage() {
                 document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
                 document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=.vercel.app";
             });
-            
+
             localStorage.setItem('forceReauth', 'true');
         }
-        
+
         // Force sign out even without session
         try {
             await signOut({ redirect: false });
-        } catch (e) {
+        } catch {
             console.log('No session to sign out from');
         }
-        
+
         // Hard redirect
         window.location.href = '/';
     };
