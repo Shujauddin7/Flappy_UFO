@@ -11,8 +11,12 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Wallet address is required' }, { status: 400 });
         }
 
-        // Environment-specific database configuration (matches your other APIs)
-        const isProduction = process.env.NEXT_PUBLIC_ENV === 'production';
+        // Environment-specific database configuration (improved detection)
+        // Check multiple ways to detect production
+        const isProduction = process.env.NEXT_PUBLIC_ENV === 'production' ||
+            process.env.NODE_ENV === 'production' ||
+            process.env.VERCEL_ENV === 'production' ||
+            (typeof window === 'undefined' && process.env.VERCEL_URL?.includes('flappyufo.vercel.app'));
 
         const supabaseUrl = isProduction
             ? process.env.SUPABASE_PROD_URL
@@ -23,7 +27,11 @@ export async function POST(request: NextRequest) {
             : process.env.SUPABASE_DEV_SERVICE_KEY;
 
         console.log('🔧 Environment check:', {
-            environment: isProduction ? 'PRODUCTION' : 'DEVELOPMENT',
+            NEXT_PUBLIC_ENV: process.env.NEXT_PUBLIC_ENV,
+            NODE_ENV: process.env.NODE_ENV,
+            VERCEL_ENV: process.env.VERCEL_ENV,
+            VERCEL_URL: process.env.VERCEL_URL,
+            detectedEnvironment: isProduction ? 'PRODUCTION' : 'DEVELOPMENT',
             supabaseUrl: supabaseUrl ? '✅ Set' : '❌ Missing',
             serviceKey: supabaseServiceKey ? '✅ Set' : '❌ Missing'
         });
