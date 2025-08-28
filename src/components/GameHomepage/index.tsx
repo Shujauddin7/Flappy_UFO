@@ -364,18 +364,15 @@ export default function GameHomepage() {
 
         const modeText = gameMode === 'practice' ? 'Practice' : 'Tournament';
 
-        // For practice mode, just show the modal immediately
-        if (gameMode === 'practice') {
-            setGameResult({
-                show: true,
-                score,
-                coins,
-                mode: modeText
-            });
-            return;
-        }
+        // ALWAYS show the modal immediately for fast response
+        setGameResult({
+            show: true,
+            score,
+            coins,
+            mode: modeText
+        });
 
-        // For tournament mode, submit score first then show modal with results
+        // For tournament mode, submit score in background and update modal if needed
         if (gameMode === 'tournament' && session?.user?.walletAddress) {
             setIsSubmittingScore(true);
 
@@ -392,42 +389,30 @@ export default function GameHomepage() {
 
                 const result = await response.json();
 
-                // Show modal with all results in one go
-                if (result.success && !result.data.is_duplicate) {
-                    setGameResult({
-                        show: true,
-                        score,
-                        coins,
-                        mode: modeText,
+                // Update modal with high score info if it's a new high score
+                if (result.success && !result.data.is_duplicate && result.data.is_new_high_score) {
+                    setGameResult(prev => ({
+                        ...prev,
                         isNewHighScore: result.data.is_new_high_score,
                         previousHigh: result.data.previous_highest_score,
                         currentHigh: result.data.current_highest_score
-                    });
+                    }));
                 } else if (result.data?.is_duplicate) {
-                    setGameResult({
-                        show: true,
-                        score,
-                        coins,
-                        mode: modeText,
+                    setGameResult(prev => ({
+                        ...prev,
                         error: 'Score already submitted'
-                    });
-                } else {
-                    setGameResult({
-                        show: true,
-                        score,
-                        coins,
-                        mode: modeText,
+                    }));
+                } else if (!result.success) {
+                    setGameResult(prev => ({
+                        ...prev,
                         error: `Score submission failed: ${result.error}`
-                    });
+                    }));
                 }
             } catch {
-                setGameResult({
-                    show: true,
-                    score,
-                    coins,
-                    mode: modeText,
+                setGameResult(prev => ({
+                    ...prev,
                     error: 'Unable to submit score. Please check your connection.'
-                });
+                }));
             } finally {
                 setIsSubmittingScore(false);
             }
