@@ -41,7 +41,6 @@ interface GameState {
     coins: number;
     gameStatus: 'ready' | 'playing' | 'gameOver';
     gameEndCalled?: boolean; // Prevent multiple game end calls
-    debugMessage?: string; // Debug message to show on screen
 }
 
 const PLANETS = [
@@ -66,8 +65,7 @@ export default function FlappyGame({
         score: 0,
         coins: 0,
         gameStatus: 'ready',
-        gameEndCalled: false, // Initialize flag
-        debugMessage: '' // Initialize debug message
+        gameEndCalled: false // Initialize flag
     });
 
     const [, setGameState] = useState(gameStateRef.current);
@@ -255,13 +253,6 @@ export default function FlappyGame({
 
         // Ground and ceiling collision (adjusted for larger UFO)
         if (ufo.y <= 30 || ufo.y >= canvas.height - 80) {
-            console.log('💥 Ground/ceiling collision! UFO y:', ufo.y, 'Canvas height:', canvas.height);
-            return true;
-        }
-
-        // TEMPORARY: Test collision by hitting the edges (for debugging)
-        if (ufo.x <= 10 || ufo.x >= canvas.width - 70) {
-            console.log('💥 SIDE COLLISION for debugging! UFO x:', ufo.x);
             return true;
         }
 
@@ -290,7 +281,6 @@ export default function FlappyGame({
                 );
 
                 if (distance < (obstacle.width / 2 + 20)) { // Generous collision radius
-                    console.log('💥 Planet collision! Distance:', distance, 'Threshold:', obstacle.width / 2 + 20);
                     return true; // Collision with planet
                 }
             } else if (obstacle.type === 'invisible-wall') {
@@ -371,22 +361,12 @@ export default function FlappyGame({
 
             // Check collisions
             if (checkCollisions()) {
-                console.log('💥💥💥 COLLISION DETECTED! Setting game over...');
                 state.gameStatus = 'gameOver';
-                state.debugMessage = 'COLLISION! Calling onGameEnd...';
-                console.log('💥 Game Over! Score:', state.score, 'Status:', state.gameStatus);
 
                 // Call onGameEnd immediately
                 if (!state.gameEndCalled) {
                     state.gameEndCalled = true;
-                    console.log('🔥🔥🔥 Calling onGameEnd with:', { score: state.score, coins: state.coins });
-                    console.log('🔥 onGameEnd function:', onGameEnd);
                     onGameEnd(state.score, state.coins);
-                    console.log('🔥 onGameEnd call completed');
-                    state.debugMessage = 'onGameEnd called! Modal should show...';
-                } else {
-                    console.log('⚠️ Game end already called, skipping');
-                    state.debugMessage = 'Game end already called';
                 }
 
                 // Explosion particles for visual effect
@@ -566,18 +546,7 @@ export default function FlappyGame({
         ctx.fillStyle = '#FFD700';
         ctx.shadowColor = '#FFD700';
         ctx.fillText(`⭐ ${state.coins}`, 20, 80);
-
-        // Debug message display
-        if (state.debugMessage) {
-            ctx.fillStyle = '#FF0000';
-            ctx.shadowColor = '#FF0000';
-            ctx.font = 'bold 20px Arial, sans-serif';
-            ctx.fillText(`DEBUG: ${state.debugMessage}`, 20, 120);
-        }
-
-        ctx.shadowBlur = 0;
-
-        // Game status
+        ctx.shadowBlur = 0;        // Game status
         if (state.gameStatus === 'ready') {
             ctx.font = 'bold 32px Arial, sans-serif';
             ctx.fillStyle = '#FFFFFF';

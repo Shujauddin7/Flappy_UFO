@@ -356,9 +356,6 @@ export default function GameHomepage() {
 
     // Handle game end
     const handleGameEnd = async (score: number, coins: number) => {
-        console.log('🔥🔥🔥 handleGameEnd called with:', { score, coins, gameMode });
-        console.log('🔥 Current state - isSubmittingScore:', isSubmittingScore, 'currentScreen:', currentScreen);
-
         // Prevent duplicate submissions
         if (isSubmittingScore) {
             console.log('⚠️ Score submission already in progress, ignoring...');
@@ -367,17 +364,14 @@ export default function GameHomepage() {
 
         // Show results based on game mode
         const modeText = gameMode === 'practice' ? 'Practice' : 'Tournament';
-        console.log('🎮 Game ended:', { score, coins, mode: modeText });
 
         // ALWAYS show the modal immediately, regardless of mode
-        console.log('🔥 Setting gameResult to show modal...');
         setGameResult({
             show: true,
             score,
             coins,
             mode: modeText
         });
-        console.log('🔥 gameResult updated, modal should show now');
 
         // If tournament mode, also submit score to backend (but don't wait for it)
         if (gameMode === 'tournament' && session?.user?.walletAddress) {
@@ -571,7 +565,220 @@ export default function GameHomepage() {
 
     // Render the FlappyGame when playing
     if (currentScreen === 'playing') {
-        return <FlappyGame gameMode={gameMode} onGameEnd={handleGameEnd} />;
+        return (
+            <>
+                <FlappyGame gameMode={gameMode} onGameEnd={handleGameEnd} />
+                {/* Game Result Modal - render over the game */}
+                {gameResult.show && (
+                    <div className="game-result-modal-overlay">
+                        <div className="game-result-modal">
+                            <div className="modal-header">
+                                <h2 className="modal-title">{gameResult.mode} Complete!</h2>
+                            </div>
+
+                            <div className="modal-content">
+                                <div className="score-display">
+                                    <div className="score-item">
+                                        <span className="score-label">Score:</span>
+                                        <span className="score-value">{gameResult.score}</span>
+                                    </div>
+                                    <div className="score-item">
+                                        <span className="score-label">⭐ Coins:</span>
+                                        <span className="score-value">{gameResult.coins}</span>
+                                    </div>
+                                </div>
+
+                                {gameResult.isNewHighScore && (
+                                    <div className="new-high-score">
+                                        🎉 NEW HIGH SCORE!
+                                        <br />
+                                        Previous: {gameResult.previousHigh}
+                                    </div>
+                                )}
+
+                                {!gameResult.isNewHighScore && gameResult.currentHigh !== undefined && (
+                                    <div className="current-high-score">
+                                        Your highest score: {gameResult.currentHigh}
+                                    </div>
+                                )}
+
+                                {gameResult.error && (
+                                    <div className="error-message">
+                                        ⚠️ {gameResult.error}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="modal-actions">
+                                <button
+                                    className="modal-button primary"
+                                    onClick={() => {
+                                        // Reset game result modal
+                                        setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+                                        // Go directly to home screen
+                                        setCurrentScreen('home');
+                                        setGameMode(null); // Reset game mode
+                                    }}
+                                >
+                                    Go Home
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                <style dangerouslySetInnerHTML={{
+                    __html: `
+                    .game-result-modal-overlay {
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100vw;
+                        height: 100vh;
+                        background: rgba(0, 0, 0, 0.8);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        z-index: 10000;
+                        backdrop-filter: blur(4px);
+                    }
+
+                    .game-result-modal {
+                        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                        border-radius: 20px;
+                        padding: 30px;
+                        max-width: 400px;
+                        width: 90%;
+                        text-align: center;
+                        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+                        border: 2px solid #00bfff;
+                        animation: modalSlideIn 0.3s ease-out;
+                    }
+
+                    @keyframes modalSlideIn {
+                        from {
+                            opacity: 0;
+                            transform: scale(0.8) translateY(50px);
+                        }
+                        to {
+                            opacity: 1;
+                            transform: scale(1) translateY(0);
+                        }
+                    }
+
+                    .modal-header {
+                        margin-bottom: 25px;
+                    }
+
+                    .modal-title {
+                        color: #00bfff;
+                        font-size: 28px;
+                        font-weight: bold;
+                        margin: 0;
+                        text-shadow: 0 0 20px rgba(0, 191, 255, 0.5);
+                    }
+
+                    .modal-content {
+                        margin-bottom: 30px;
+                    }
+
+                    .score-display {
+                        display: flex;
+                        justify-content: space-around;
+                        margin-bottom: 20px;
+                    }
+
+                    .score-item {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: 5px;
+                    }
+
+                    .score-label {
+                        color: #888;
+                        font-size: 16px;
+                    }
+
+                    .score-value {
+                        color: #fff;
+                        font-size: 24px;
+                        font-weight: bold;
+                        text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+                    }
+
+                    .new-high-score {
+                        background: linear-gradient(135deg, #ff6b35, #f7931e);
+                        color: white;
+                        padding: 15px;
+                        border-radius: 10px;
+                        margin: 15px 0;
+                        font-weight: bold;
+                        animation: celebrationGlow 1s ease-in-out infinite alternate;
+                    }
+
+                    @keyframes celebrationGlow {
+                        from { box-shadow: 0 0 20px rgba(255, 107, 53, 0.5); }
+                        to { box-shadow: 0 0 30px rgba(255, 107, 53, 0.8); }
+                    }
+
+                    .current-high-score {
+                        color: #ffd700;
+                        font-size: 16px;
+                        margin: 10px 0;
+                    }
+
+                    .error-message {
+                        color: #ff6b6b;
+                        background: rgba(255, 107, 107, 0.1);
+                        padding: 10px;
+                        border-radius: 8px;
+                        margin: 10px 0;
+                        border: 1px solid rgba(255, 107, 107, 0.3);
+                    }
+
+                    .modal-actions {
+                        display: flex;
+                        gap: 15px;
+                        justify-content: center;
+                    }
+
+                    .modal-button {
+                        padding: 12px 30px;
+                        border: none;
+                        border-radius: 10px;
+                        font-size: 18px;
+                        font-weight: bold;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                    }
+
+                    .modal-button.primary {
+                        background: linear-gradient(135deg, #00bfff, #0080ff);
+                        color: white;
+                        box-shadow: 0 4px 15px rgba(0, 191, 255, 0.3);
+                    }
+
+                    .modal-button.primary:hover {
+                        transform: translateY(-2px);
+                        box-shadow: 0 6px 20px rgba(0, 191, 255, 0.4);
+                    }
+
+                    .modal-button.secondary {
+                        background: transparent;
+                        color: #888;
+                        border: 2px solid #444;
+                    }
+
+                    .modal-button.secondary:hover {
+                        color: #fff;
+                        border-color: #666;
+                    }
+                    `
+                }} />
+            </>
+        );
     }
 
     // Render tournament entry screen
