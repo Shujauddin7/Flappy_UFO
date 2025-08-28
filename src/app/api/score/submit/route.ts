@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
         const today = new Date().toISOString().split('T')[0];
         let recordQuery = supabase
             .from('user_tournament_records')
-            .select('id, user_id, highest_score, tournament_day, tournament_id, verified_at, verified_games_played, unverified_games_played, total_games_played, verified_entry_paid, standard_entry_paid')
+            .select('id, user_id, highest_score, tournament_day, tournament_id, verified_at, verified_games_played, unverified_games_played, total_games_played, verified_entry_paid, standard_entry_paid, verified_paid_at, standard_paid_at')
             .eq('user_id', user.id)
             .eq('tournament_day', today);
 
@@ -170,10 +170,25 @@ export async function POST(req: NextRequest) {
         // Use the first (or specified) record
         const record = records[0];
 
-        // Determine if this is a verified game based on entry type (payment choice)
-        // If verified_entry_paid is true, user paid for verified entry (0.9 WLD)
-        // If standard_entry_paid is true, user paid for standard entry (1.0 WLD)
-        const isVerifiedGame = record.verified_entry_paid === true;
+        // Determine if this is a verified game based on MOST RECENT entry payment
+        // If user paid for both entries, use the most recent one based on timestamps
+        let isVerifiedGame = false;
+
+        if (record.verified_entry_paid && record.standard_entry_paid) {
+            // Both paid - check which was more recent
+            const verifiedTime = new Date(record.verified_paid_at || 0);
+            const standardTime = new Date(record.standard_paid_at || 0);
+            isVerifiedGame = verifiedTime > standardTime;
+        } else if (record.verified_entry_paid) {
+            // Only verified paid
+            isVerifiedGame = true;
+        } else if (record.standard_entry_paid) {
+            // Only standard paid  
+            isVerifiedGame = false;
+        } else {
+            // No payment found - shouldn't happen but default to false
+            isVerifiedGame = false;
+        }
 
         console.log('🎮 Current tournament record:', {
             record_id: record.id,
@@ -182,7 +197,14 @@ export async function POST(req: NextRequest) {
             is_verified_game: isVerifiedGame,
             verified_entry_paid: record.verified_entry_paid,
             standard_entry_paid: record.standard_entry_paid,
-            verified_at: record.verified_at
+            verified_paid_at: record.verified_paid_at,
+            standard_paid_at: record.standard_paid_at,
+            entry_type_logic: {
+                both_paid: record.verified_entry_paid && record.standard_entry_paid,
+                verified_time: record.verified_paid_at,
+                standard_time: record.standard_paid_at,
+                using_most_recent: record.verified_entry_paid && record.standard_entry_paid
+            }
         });
 
         // First, always insert the individual score into game_scores table
