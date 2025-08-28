@@ -49,8 +49,10 @@ export async function POST(req: NextRequest) {
     console.log('🎯 Score submission API called');
 
     try {
-        // Environment-specific database configuration
-        const isProduction = process.env.NEXT_PUBLIC_ENV === 'production';
+        // Environment-specific database configuration (improved detection)
+        const isProduction = process.env.NEXT_PUBLIC_ENV === 'production' || 
+                           process.env.NODE_ENV === 'production' ||
+                           process.env.VERCEL_ENV === 'production';
 
         const supabaseUrl = isProduction
             ? process.env.SUPABASE_PROD_URL
