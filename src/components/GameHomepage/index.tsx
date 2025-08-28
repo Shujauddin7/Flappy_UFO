@@ -99,8 +99,9 @@ export default function GameHomepage() {
     // Handle game start with authentication
     const handleGameStart = async (mode: GameMode) => {
         try {
-            // Reset game result modal when starting a new game
+            // Reset all game-related state when starting a new game
             setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+            setIsSubmittingScore(false);
 
             // Always attempt authentication to ensure session is valid
             const authSuccess = await authenticate();
@@ -358,41 +359,41 @@ export default function GameHomepage() {
     const handleGameEnd = async (score: number, coins: number) => {
         // Prevent duplicate submissions
         if (isSubmittingScore) {
-            console.log('⚠️ Score submission already in progress, ignoring...');
             return;
         }
 
-        // Show results based on game mode
         const modeText = gameMode === 'practice' ? 'Practice' : 'Tournament';
 
-        // ALWAYS show the modal immediately, regardless of mode
-        setGameResult({
-            show: true,
-            score,
-            coins,
-            mode: modeText
-        });
+        // For practice mode, just show the modal immediately
+        if (gameMode === 'practice') {
+            setGameResult({
+                show: true,
+                score,
+                coins,
+                mode: modeText
+            });
+            return;
+        }
 
-        // If tournament mode, also submit score to backend (but don't wait for it)
+        // For tournament mode, submit score first then show modal with results
         if (gameMode === 'tournament' && session?.user?.walletAddress) {
-            try {
-                setIsSubmittingScore(true);
-                console.log('Submitting tournament score:', { score, coins });
+            setIsSubmittingScore(true);
 
+            try {
                 const response = await fetch('/api/score/submit', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         wallet: session.user.walletAddress,
                         score: score,
-                        game_duration: Math.max(score * 2000, 5000) // More realistic duration based on score
+                        game_duration: Math.max(score * 2000, 5000)
                     }),
                 });
 
                 const result = await response.json();
 
+                // Show modal with all results in one go
                 if (result.success && !result.data.is_duplicate) {
-                    console.log('✅ Score submitted successfully:', result.data);
                     setGameResult({
                         show: true,
                         score,
@@ -403,7 +404,6 @@ export default function GameHomepage() {
                         currentHigh: result.data.current_highest_score
                     });
                 } else if (result.data?.is_duplicate) {
-                    console.log('⚠️ Duplicate submission ignored');
                     setGameResult({
                         show: true,
                         score,
@@ -412,7 +412,6 @@ export default function GameHomepage() {
                         error: 'Score already submitted'
                     });
                 } else {
-                    console.error('❌ Failed to submit score:', result.error);
                     setGameResult({
                         show: true,
                         score,
@@ -421,8 +420,7 @@ export default function GameHomepage() {
                         error: `Score submission failed: ${result.error}`
                     });
                 }
-            } catch (error) {
-                console.error('❌ Error submitting score:', error);
+            } catch {
                 setGameResult({
                     show: true,
                     score,
@@ -434,17 +432,7 @@ export default function GameHomepage() {
                 setIsSubmittingScore(false);
             }
         }
-        // Note: Modal is already shown above for both modes
     };
-
-    // Debug effect to track gameResult changes
-    useEffect(() => {
-        if (gameResult.show) {
-            console.log('🔥 Game result modal should be showing:', gameResult);
-            console.log('🔥 Current screen:', currentScreen);
-            console.log('🔥 Game mode:', gameMode);
-        }
-    }, [gameResult.show, currentScreen, gameMode, gameResult]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -613,11 +601,11 @@ export default function GameHomepage() {
                                 <button
                                     className="modal-button primary"
                                     onClick={() => {
-                                        // Reset game result modal
+                                        // Reset all game state
                                         setGameResult({ show: false, score: 0, coins: 0, mode: '' });
-                                        // Go directly to home screen
+                                        setIsSubmittingScore(false); // Ensure submission state is cleared
                                         setCurrentScreen('home');
-                                        setGameMode(null); // Reset game mode
+                                        setGameMode(null);
                                     }}
                                 >
                                     Go Home
@@ -980,11 +968,11 @@ export default function GameHomepage() {
                             <button
                                 className="modal-button primary"
                                 onClick={() => {
-                                    // Reset game result modal
+                                    // Reset all game state
                                     setGameResult({ show: false, score: 0, coins: 0, mode: '' });
-                                    // Go directly to home screen
+                                    setIsSubmittingScore(false); // Ensure submission state is cleared
                                     setCurrentScreen('home');
-                                    setGameMode(null); // Reset game mode
+                                    setGameMode(null);
                                 }}
                             >
                                 Go Home

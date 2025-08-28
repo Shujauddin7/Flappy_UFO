@@ -72,6 +72,20 @@ export default function FlappyGame({
     const gameLoopRef = useRef<number | undefined>(undefined);
     const planetImagesRef = useRef<{ [key: string]: HTMLImageElement }>({});
 
+    // Reset game state when component mounts
+    useEffect(() => {
+        gameStateRef.current = {
+            ufo: { x: 100, y: 300, velocity: 0, rotation: 0 },
+            obstacles: [],
+            particles: [],
+            score: 0,
+            coins: 0,
+            gameStatus: 'ready',
+            gameEndCalled: false
+        };
+        setGameState({ ...gameStateRef.current });
+    }, []);
+
     // Load planet images
     useEffect(() => {
         PLANETS.forEach(planet => {
