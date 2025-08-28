@@ -366,9 +366,6 @@ export default function GameHomepage() {
         const modeText = gameMode === 'practice' ? 'Practice' : 'Tournament';
         console.log('🎮 Game ended:', { score, coins, mode: modeText });
 
-        // DON'T transition to home screen immediately - show game result modal first
-        // We'll handle screen transition in the modal button click
-
         // If tournament mode, submit score to backend
         if (gameMode === 'tournament' && session?.user?.walletAddress) {
             try {

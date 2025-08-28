@@ -50,13 +50,15 @@ const PLANETS = [
     'Neptune.jpg', 'Saturn.jpg', 'Uranus.jpg', 'Venus.jpg'
 ];
 
-export default function FlappyGame({
-    gameMode,
-    onGameEnd
-}: {
+interface FlappyGameProps {
     gameMode: 'practice' | 'tournament' | null;
     onGameEnd: (score: number, coins: number) => void;
-}) {
+}
+
+export default function FlappyGame({
+    gameMode,  // eslint-disable-line @typescript-eslint/no-unused-vars
+    onGameEnd
+}: FlappyGameProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const gameStateRef = useRef<GameState>({
         ufo: { x: 100, y: 300, velocity: 0, rotation: 0 },
@@ -420,6 +422,13 @@ export default function FlappyGame({
                 state.gameStatus = 'gameOver';
                 console.log('💥 Game Over! Score:', state.score); // Debug log only
 
+                // Call onGameEnd immediately when collision happens
+                if (!state.gameEndCalled) {
+                    state.gameEndCalled = true;
+                    // Call the parent's onGameEnd to show the modal
+                    setTimeout(() => onGameEnd(state.score, state.coins), 100); // Small delay to ensure state is fully updated
+                }
+
                 // Explosion particles
                 const explosionParticles = createParticles(state.ufo.x, state.ufo.y, 15);
                 state.particles.push(...explosionParticles);
@@ -612,105 +621,22 @@ export default function FlappyGame({
         }
 
         if (state.gameStatus === 'gameOver') {
-            // Dark overlay
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Game Over modal (larger to accommodate play again button)
-            const modalWidth = Math.min(380, canvas.width - 40);
-            const modalHeight = gameMode === 'practice' ? 380 : 320; // Larger for practice mode
-            const modalX = (canvas.width - modalWidth) / 2;
-            const modalY = (canvas.height - modalHeight) / 2;
-
-            // Modal background
-            const modalGradient = ctx.createLinearGradient(modalX, modalY, modalX, modalY + modalHeight);
-            modalGradient.addColorStop(0, '#1E293B');
-            modalGradient.addColorStop(1, '#0F172A');
-            ctx.fillStyle = modalGradient;
-            ctx.roundRect(modalX, modalY, modalWidth, modalHeight, 12);
-            ctx.fill();
-
-            ctx.strokeStyle = '#00BFFF';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-
-            // Title
+            // Don't render the internal game over modal
+            // Let the parent component handle the modal display
+            // Just show a simple "Game Over" text briefly
             ctx.font = 'bold 32px Arial, sans-serif';
-            ctx.fillStyle = '#FF4444';
+            ctx.fillStyle = 'rgba(255, 68, 68, 0.8)';
             ctx.textAlign = 'center';
             ctx.shadowColor = '#FF4444';
             ctx.shadowBlur = 8;
-            ctx.fillText('GAME OVER', canvas.width / 2, modalY + 60);
-
-            // Scores
-            ctx.font = 'bold 20px Arial, sans-serif';
-            ctx.fillStyle = '#00BFFF';
-            ctx.shadowColor = '#00BFFF';
-            ctx.shadowBlur = 6;
-            ctx.fillText(`Score: ${state.score}`, canvas.width / 2, modalY + 100);
-
-            ctx.fillStyle = '#FFD700';
-            ctx.shadowColor = '#FFD700';
-            ctx.fillText(`⭐ Coins: ${state.coins}`, canvas.width / 2, modalY + 130);
-
-            // Show Play Again button in practice mode
-            const buttonWidth = 140;
-            const buttonHeight = 40;
-            const playButtonX = canvas.width / 2 - buttonWidth / 2;
-            let currentY = modalY + 170;
-
-            // Play Again button (only show in practice mode)
-            if (gameMode === 'practice') {
-                const playGradient = ctx.createLinearGradient(playButtonX, currentY, playButtonX, currentY + buttonHeight);
-                playGradient.addColorStop(0, '#10B981');
-                playGradient.addColorStop(1, '#059669');
-
-                ctx.fillStyle = playGradient;
-                ctx.roundRect(playButtonX, currentY, buttonWidth, buttonHeight, 8);
-                ctx.fill();
-
-                ctx.font = 'bold 16px Arial, sans-serif';
-                ctx.fillStyle = '#FFFFFF';
-                ctx.shadowBlur = 0;
-                ctx.fillText('PLAY AGAIN', canvas.width / 2, currentY + 25);
-
-                // Store play button bounds
-                state.playButtonBounds = {
-                    x: playButtonX,
-                    y: currentY,
-                    width: buttonWidth,
-                    height: buttonHeight
-                };
-
-                currentY += 60; // Move next button down
-            }
-
-            // Home button (always show)
-            const homeGradient = ctx.createLinearGradient(playButtonX, currentY, playButtonX, currentY + buttonHeight);
-            homeGradient.addColorStop(0, '#DC2626');
-            homeGradient.addColorStop(1, '#991B1B');
-            ctx.fillStyle = homeGradient;
-            ctx.roundRect(playButtonX, currentY, buttonWidth, buttonHeight, 8);
-            ctx.fill();
-
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillText('GO HOME', canvas.width / 2, currentY + 25);
-
-            ctx.textAlign = 'left';
+            ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2);
             ctx.shadowBlur = 0;
-
-            // Store home button bounds
-            state.closeButtonBounds = {
-                x: playButtonX,
-                y: currentY,
-                width: buttonWidth,
-                height: buttonHeight
-            };
+            ctx.textAlign = 'left';
         }
 
         setGameState({ ...state });
         gameLoopRef.current = requestAnimationFrame(gameLoop);
-    }, [checkCollisions, createObstacles, createParticles, gameMode]);
+    }, [checkCollisions, createObstacles, createParticles, onGameEnd]);
 
     // Input handlers
     useEffect(() => {
