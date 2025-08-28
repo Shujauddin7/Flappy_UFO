@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
                 verified_games_played,
                 unverified_games_played,
                 verified_entry_paid,
-                unverified_entry_paid,
+                standard_entry_paid,
                 created_at
             `)
             .eq('tournament_day', tournamentDay)
@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
             .from('user_tournament_records')
             .select(`
                 verified_paid_amount,
-                unverified_paid_amount,
+                standard_paid_amount,
                 total_games_played
             `)
             .eq('tournament_day', tournamentDay);
@@ -97,7 +97,7 @@ export async function GET(req: NextRequest) {
             tournamentStats = {
                 total_players: count || 0,
                 total_prize_pool: statsData.reduce((sum, record) =>
-                    sum + (record.verified_paid_amount || 0) + (record.unverified_paid_amount || 0), 0
+                    sum + (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0), 0
                 ) * 0.7, // 70% goes to prize pool
                 total_games_played: statsData.reduce((sum, record) =>
                     sum + (record.total_games_played || 0), 0

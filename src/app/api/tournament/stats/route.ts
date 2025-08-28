@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
             .from('user_tournament_records')
             .select(`
                 verified_paid_amount,
-                unverified_paid_amount,
+                standard_paid_amount,
                 total_games_played,
                 verified_games_played,
                 unverified_games_played,
@@ -59,17 +59,17 @@ export async function GET(req: NextRequest) {
             // Player counts
             total_players: statsData?.length || 0,
             verified_players: statsData?.filter(r => r.verified_paid_amount > 0).length || 0,
-            unverified_players: statsData?.filter(r => r.unverified_paid_amount > 0).length || 0,
+            unverified_players: statsData?.filter(r => r.standard_paid_amount > 0).length || 0,
 
             // Financial stats
             total_collected: statsData?.reduce((sum, record) =>
-                sum + (record.verified_paid_amount || 0) + (record.unverified_paid_amount || 0), 0
+                sum + (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0), 0
             ) || 0,
             verified_collected: statsData?.reduce((sum, record) =>
                 sum + (record.verified_paid_amount || 0), 0
             ) || 0,
             unverified_collected: statsData?.reduce((sum, record) =>
-                sum + (record.unverified_paid_amount || 0), 0
+                sum + (record.standard_paid_amount || 0), 0
             ) || 0,
             continue_revenue: statsData?.reduce((sum, record) =>
                 sum + (record.total_continue_payments || 0), 0

@@ -292,10 +292,10 @@ export async function POST(req: NextRequest) {
             verified_paid_amount?: number;
             verified_payment_ref?: string;
             verified_paid_at?: string;
-            unverified_entry_paid?: boolean;
-            unverified_paid_amount?: number;
-            unverified_payment_ref?: string;
-            unverified_paid_at?: string;
+            standard_entry_paid?: boolean;
+            standard_paid_amount?: number;
+            standard_payment_ref?: string;
+            standard_paid_at?: string;
         } = {
             updated_at: new Date().toISOString()
         };
@@ -306,10 +306,10 @@ export async function POST(req: NextRequest) {
             paymentUpdate.verified_payment_ref = payment_reference;
             paymentUpdate.verified_paid_at = new Date().toISOString();
         } else {
-            paymentUpdate.unverified_entry_paid = true;
-            paymentUpdate.unverified_paid_amount = paid_amount;
-            paymentUpdate.unverified_payment_ref = payment_reference;
-            paymentUpdate.unverified_paid_at = new Date().toISOString();
+            paymentUpdate.standard_entry_paid = true;
+            paymentUpdate.standard_paid_amount = paid_amount;
+            paymentUpdate.standard_payment_ref = payment_reference;
+            paymentUpdate.standard_paid_at = new Date().toISOString();
         }
 
         const { data: updatedRecord, error: updateError } = await supabase
