@@ -6,7 +6,6 @@ import { Page } from '@/components/PageLayout';
 import { useGameAuth } from '@/hooks/useGameAuth';
 import dynamic from 'next/dynamic';
 import { TournamentEntryModal } from '@/components/TournamentEntryModal';
-import { MiniKit, VerificationLevel } from '@worldcoin/minikit-js';
 
 // Dynamically import FlappyGame to avoid SSR issues
 const FlappyGame = dynamic(() => import('@/components/FlappyGame'), {
@@ -42,6 +41,9 @@ export default function GameHomepage() {
     // Verification status state
     const [isVerifiedToday, setIsVerifiedToday] = useState<boolean>(false);
     const [verificationLoading, setVerificationLoading] = useState<boolean>(false);
+
+    // Tournament entry loading states to prevent duplicate operations
+    const [isProcessingEntry, setIsProcessingEntry] = useState<boolean>(false);
 
     // Check user's verification status for today's tournament
     const checkVerificationStatus = useCallback(async () => {
@@ -81,6 +83,13 @@ export default function GameHomepage() {
     // Check verification status when user session changes
     useEffect(() => {
         if (session?.user?.walletAddress) {
+            // Check if user just signed out - if so, force fresh verification check
+            const justSignedOut = localStorage.getItem('justSignedOut');
+            if (justSignedOut) {
+                localStorage.removeItem('justSignedOut');
+                console.log('🔄 User just signed out and back in - forcing fresh verification check');
+                setIsVerifiedToday(false); // Reset to force verification
+            }
             checkVerificationStatus();
         } else {
             setIsVerifiedToday(false);
@@ -90,6 +99,10 @@ export default function GameHomepage() {
     // Handle game start with authentication
     const handleGameStart = async (mode: GameMode) => {
         try {
+            // Reset all game-related state when starting a new game
+            setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+            setIsSubmittingScore(false);
+
             // Always attempt authentication to ensure session is valid
             const authSuccess = await authenticate();
 
@@ -116,29 +129,39 @@ export default function GameHomepage() {
 
     // Handle tournament entry selection
     const handleTournamentEntrySelect = async (entryType: 'verify' | 'standard' | 'verified') => {
+        // Prevent duplicate operations
+        if (isProcessingEntry) {
+            console.log('⚠️ Tournament entry operation already in progress, ignoring...');
+            return;
+        }
+
         try {
-            console.log(`Selected tournament entry type: ${entryType}`);
+            setIsProcessingEntry(true);
 
             if (entryType === 'verify') {
-                // Handle World ID verification first
+                // Verify identity first, then pay 0.9 WLD
                 await handleWorldIDVerification();
             } else if (entryType === 'verified') {
-                // User is already verified, proceed with 0.9 WLD entry
-                await handleVerifiedEntry();
+                // User is already verified, proceed with 0.9 WLD payment
+                await handlePayment(0.9, true);
             } else {
-                // Standard entry - proceed directly to payment
-                await handleStandardEntry();
+                // Standard entry - proceed with 1.0 WLD payment
+                await handlePayment(1.0, false);
             }
 
         } catch (error) {
             console.error('Error during tournament entry:', error);
             alert('Tournament entry failed. Please try again.');
+        } finally {
+            setIsProcessingEntry(false);
         }
     };
 
     // Handle World ID verification for verified entry
     const handleWorldIDVerification = async () => {
         try {
+            const { MiniKit, VerificationLevel } = await import('@worldcoin/minikit-js');
+
             // Use MiniKit to verify World ID with Orb verification level
             const result = await MiniKit.commandsAsync.verify({
                 action: 'flappy-ufo', // World ID app identifier from developer portal
@@ -163,8 +186,8 @@ export default function GameHomepage() {
                 console.log('✅ World ID verification successful');
                 // Update user's verification status in database
                 await updateUserVerificationStatus(verificationData.nullifier_hash);
-                // Proceed with 0.9 WLD entry
-                await handleVerifiedEntry();
+                // Proceed with 0.9 WLD payment
+                await handlePayment(0.9, true);
             } else {
                 throw new Error(verificationData.error || 'Verification failed');
             }
@@ -182,6 +205,8 @@ export default function GameHomepage() {
                 throw new Error('No wallet address found in session');
             }
 
+            console.log('🔄 Updating verification status for wallet:', session.user.walletAddress);
+
             const response = await fetch('/api/users/update-verification', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -194,8 +219,11 @@ export default function GameHomepage() {
 
             const responseData = await response.json();
 
+            console.log('📝 Update verification response:', responseData);
+
             if (!response.ok) {
-                throw new Error(responseData.error || 'Failed to update verification status');
+                console.error('❌ Verification update failed:', responseData);
+                throw new Error(responseData.error || `HTTP ${response.status}: Failed to update verification status`);
             }
 
             console.log('✅ User verification status updated:', responseData.data);
@@ -206,29 +234,100 @@ export default function GameHomepage() {
             return responseData;
         } catch (error) {
             console.error('❌ Error updating verification status:', error);
-            alert('Warning: Verification successful but failed to save to database. You may need to verify again.');
+
+            // More specific error message
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            alert(`Verification failed to save to database: ${errorMessage}. Please try again.`);
+
             return null;
         }
     };
 
-    // Handle verified entry (0.9 WLD)
-    const handleVerifiedEntry = async () => {
-        // TODO: Implement payment processing for 0.9 WLD
-        console.log('Processing verified entry payment: 0.9 WLD');
+    // Create tournament entry after successful payment
+    const createTournamentEntry = async (paymentReference: string, amount: number, isVerified: boolean) => {
+        try {
+            if (!session?.user?.walletAddress) {
+                throw new Error('No wallet address found in session');
+            }
 
-        // For now, just start the tournament game
-        setGameMode('tournament');
-        setCurrentScreen('playing');
+            const response = await fetch('/api/tournament/entry', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    payment_reference: paymentReference,
+                    paid_amount: amount,
+                    is_verified_entry: isVerified,
+                    wallet: session.user.walletAddress,
+                }),
+            });
+
+            const responseData = await response.json();
+
+            if (!response.ok) {
+                throw new Error(responseData.error || 'Failed to create tournament entry');
+            }
+
+            console.log('✅ Tournament entry created:', responseData.data);
+            return responseData.data;
+
+        } catch (error) {
+            console.error('❌ Error creating tournament entry:', error);
+
+            // More specific error message
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            alert(`Payment successful but failed to register tournament entry.\n\nError: ${errorMessage}\n\nPlease contact support if this persists.`);
+            throw error;
+        }
     };
 
-    // Handle standard entry (1.0 WLD)
-    const handleStandardEntry = async () => {
-        // TODO: Implement payment processing for 1.0 WLD
-        console.log('Processing standard entry payment: 1.0 WLD');
+    // Handle payment
+    const handlePayment = async (amount: number, isVerified: boolean) => {
+        try {
+            const { MiniKit, Tokens, tokenToDecimals } = await import('@worldcoin/minikit-js');
 
-        // For now, just start the tournament game
-        setGameMode('tournament');
-        setCurrentScreen('playing');
+            // Get payment reference from backend
+            const res = await fetch('/api/initiate-payment', {
+                method: 'POST',
+            });
+            const { id } = await res.json();
+
+            // Make payment using MiniKit
+            const result = await MiniKit.commandsAsync.pay({
+                reference: id,
+                to: process.env.NEXT_PUBLIC_ADMIN_WALLET || '',
+                tokens: [
+                    {
+                        symbol: Tokens.WLD,
+                        token_amount: tokenToDecimals(amount, Tokens.WLD).toString(),
+                    },
+                ],
+                description: `Flappy UFO Tournament Entry ${isVerified ? '(Verified - 0.9 WLD)' : '(Standard - 1.0 WLD)'}`,
+            });
+
+            if (result.finalPayload.status === 'success') {
+                console.log('✅ Payment successful:', result.finalPayload);
+
+                try {
+                    // Create tournament entry after successful payment
+                    await createTournamentEntry(result.finalPayload.reference, amount, isVerified);
+
+                    // Start the game directly (only if entry creation succeeds)
+                    setGameMode('tournament');
+                    setCurrentScreen('playing');
+                } catch (entryError) {
+                    // Payment succeeded but entry creation failed
+                    // Don't throw error here to avoid double alert
+                    console.error('❌ Tournament entry creation failed after successful payment:', entryError);
+                    // The error message is already shown in createTournamentEntry function
+                    return;
+                }
+            } else {
+                throw new Error('Payment failed or was cancelled');
+            }
+        } catch (error) {
+            console.error('❌ Payment error:', error);
+            alert('Payment failed. Please try again.');
+        }
     };
 
     // Handle going back from tournament entry screen
@@ -236,15 +335,88 @@ export default function GameHomepage() {
         setCurrentScreen('gameSelect');
     };
 
-    // Handle game end
-    const handleGameEnd = (score: number, coins: number) => {
-        // Show results based on game mode
-        const modeText = gameMode === 'practice' ? 'Practice' : 'Tournament';
-        alert(`${modeText} Complete!\nScore: ${score}\nCoins: ${coins}`);
+    // Game result state for modal
+    const [gameResult, setGameResult] = useState<{
+        show: boolean;
+        score: number;
+        coins: number;
+        mode: string;
+        isNewHighScore?: boolean;
+        previousHigh?: number;
+        currentHigh?: number;
+        error?: string;
+    }>({
+        show: false,
+        score: 0,
+        coins: 0,
+        mode: '',
+    });
 
-        // Return to game select
-        setCurrentScreen('gameSelect');
-        setGameMode(null);
+    // Track if score has been submitted to prevent duplicates
+    const [isSubmittingScore, setIsSubmittingScore] = useState<boolean>(false);
+
+    // Handle game end
+    const handleGameEnd = async (score: number, coins: number) => {
+        // Prevent duplicate submissions
+        if (isSubmittingScore) {
+            return;
+        }
+
+        const modeText = gameMode === 'practice' ? 'Practice' : 'Tournament';
+
+        // ALWAYS show the modal immediately for fast response
+        setGameResult({
+            show: true,
+            score,
+            coins,
+            mode: modeText
+        });
+
+        // For tournament mode, submit score in background and update modal if needed
+        if (gameMode === 'tournament' && session?.user?.walletAddress) {
+            setIsSubmittingScore(true);
+
+            try {
+                const response = await fetch('/api/score/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        wallet: session.user.walletAddress,
+                        score: score,
+                        game_duration: Math.max(score * 2000, 5000)
+                    }),
+                });
+
+                const result = await response.json();
+
+                // Update modal with high score info if it's a new high score
+                if (result.success && !result.data.is_duplicate && result.data.is_new_high_score) {
+                    setGameResult(prev => ({
+                        ...prev,
+                        isNewHighScore: result.data.is_new_high_score,
+                        previousHigh: result.data.previous_highest_score,
+                        currentHigh: result.data.current_highest_score
+                    }));
+                } else if (result.data?.is_duplicate) {
+                    setGameResult(prev => ({
+                        ...prev,
+                        error: 'Score already submitted'
+                    }));
+                } else if (!result.success) {
+                    setGameResult(prev => ({
+                        ...prev,
+                        error: `Score submission failed: ${result.error}`
+                    }));
+                }
+            } catch {
+                setGameResult(prev => ({
+                    ...prev,
+                    error: 'Unable to submit score. Please check your connection.'
+                }));
+            } finally {
+                setIsSubmittingScore(false);
+            }
+        }
     };
 
     useEffect(() => {
@@ -366,7 +538,220 @@ export default function GameHomepage() {
 
     // Render the FlappyGame when playing
     if (currentScreen === 'playing') {
-        return <FlappyGame gameMode={gameMode} onGameEnd={handleGameEnd} />;
+        return (
+            <>
+                <FlappyGame gameMode={gameMode} onGameEnd={handleGameEnd} />
+                {/* Game Result Modal - render over the game */}
+                {gameResult.show && (
+                    <div className="game-result-modal-overlay">
+                        <div className="game-result-modal">
+                            <div className="modal-header">
+                                <h2 className="modal-title">{gameResult.mode} Complete!</h2>
+                            </div>
+
+                            <div className="modal-content">
+                                <div className="score-display">
+                                    <div className="score-item">
+                                        <span className="score-label">Score:</span>
+                                        <span className="score-value">{gameResult.score}</span>
+                                    </div>
+                                    <div className="score-item">
+                                        <span className="score-label">⭐ Coins:</span>
+                                        <span className="score-value">{gameResult.coins}</span>
+                                    </div>
+                                </div>
+
+                                {gameResult.isNewHighScore && (
+                                    <div className="new-high-score">
+                                        🎉 NEW HIGH SCORE!
+                                        <br />
+                                        Previous: {gameResult.previousHigh}
+                                    </div>
+                                )}
+
+                                {!gameResult.isNewHighScore && gameResult.currentHigh !== undefined && (
+                                    <div className="current-high-score">
+                                        Your highest score: {gameResult.currentHigh}
+                                    </div>
+                                )}
+
+                                {gameResult.error && (
+                                    <div className="error-message">
+                                        ⚠️ {gameResult.error}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="modal-actions">
+                                <button
+                                    className="modal-button primary"
+                                    onClick={() => {
+                                        // Reset all game state
+                                        setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+                                        setIsSubmittingScore(false); // Ensure submission state is cleared
+                                        setCurrentScreen('home');
+                                        setGameMode(null);
+                                    }}
+                                >
+                                    Go Home
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                <style dangerouslySetInnerHTML={{
+                    __html: `
+                    .game-result-modal-overlay {
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100vw;
+                        height: 100vh;
+                        background: rgba(0, 0, 0, 0.8);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        z-index: 10000;
+                        backdrop-filter: blur(4px);
+                    }
+
+                    .game-result-modal {
+                        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                        border-radius: 20px;
+                        padding: 30px;
+                        max-width: 400px;
+                        width: 90%;
+                        text-align: center;
+                        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+                        border: 2px solid #00bfff;
+                        animation: modalSlideIn 0.3s ease-out;
+                    }
+
+                    @keyframes modalSlideIn {
+                        from {
+                            opacity: 0;
+                            transform: scale(0.8) translateY(50px);
+                        }
+                        to {
+                            opacity: 1;
+                            transform: scale(1) translateY(0);
+                        }
+                    }
+
+                    .modal-header {
+                        margin-bottom: 25px;
+                    }
+
+                    .modal-title {
+                        color: #00bfff;
+                        font-size: 28px;
+                        font-weight: bold;
+                        margin: 0;
+                        text-shadow: 0 0 20px rgba(0, 191, 255, 0.5);
+                    }
+
+                    .modal-content {
+                        margin-bottom: 30px;
+                    }
+
+                    .score-display {
+                        display: flex;
+                        justify-content: space-around;
+                        margin-bottom: 20px;
+                    }
+
+                    .score-item {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: 5px;
+                    }
+
+                    .score-label {
+                        color: #888;
+                        font-size: 16px;
+                    }
+
+                    .score-value {
+                        color: #fff;
+                        font-size: 24px;
+                        font-weight: bold;
+                        text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+                    }
+
+                    .new-high-score {
+                        background: linear-gradient(135deg, #ff6b35, #f7931e);
+                        color: white;
+                        padding: 15px;
+                        border-radius: 10px;
+                        margin: 15px 0;
+                        font-weight: bold;
+                        animation: celebrationGlow 1s ease-in-out infinite alternate;
+                    }
+
+                    @keyframes celebrationGlow {
+                        from { box-shadow: 0 0 20px rgba(255, 107, 53, 0.5); }
+                        to { box-shadow: 0 0 30px rgba(255, 107, 53, 0.8); }
+                    }
+
+                    .current-high-score {
+                        color: #ffd700;
+                        font-size: 16px;
+                        margin: 10px 0;
+                    }
+
+                    .error-message {
+                        color: #ff6b6b;
+                        background: rgba(255, 107, 107, 0.1);
+                        padding: 10px;
+                        border-radius: 8px;
+                        margin: 10px 0;
+                        border: 1px solid rgba(255, 107, 107, 0.3);
+                    }
+
+                    .modal-actions {
+                        display: flex;
+                        gap: 15px;
+                        justify-content: center;
+                    }
+
+                    .modal-button {
+                        padding: 12px 30px;
+                        border: none;
+                        border-radius: 10px;
+                        font-size: 18px;
+                        font-weight: bold;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                    }
+
+                    .modal-button.primary {
+                        background: linear-gradient(135deg, #00bfff, #0080ff);
+                        color: white;
+                        box-shadow: 0 4px 15px rgba(0, 191, 255, 0.3);
+                    }
+
+                    .modal-button.primary:hover {
+                        transform: translateY(-2px);
+                        box-shadow: 0 6px 20px rgba(0, 191, 255, 0.4);
+                    }
+
+                    .modal-button.secondary {
+                        background: transparent;
+                        color: #888;
+                        border: 2px solid #444;
+                    }
+
+                    .modal-button.secondary:hover {
+                        color: #fff;
+                        border-color: #666;
+                    }
+                    `
+                }} />
+            </>
+        );
     }
 
     // Render tournament entry screen
@@ -380,6 +765,7 @@ export default function GameHomepage() {
                     isAuthenticating={isAuthenticating}
                     isVerifiedToday={isVerifiedToday}
                     verificationLoading={verificationLoading}
+                    isProcessingEntry={isProcessingEntry}
                 />
             </Page>
         );
@@ -441,84 +827,272 @@ export default function GameHomepage() {
     }
 
     return (
-        <Page>
-            <canvas ref={canvasRef} className="starfield-canvas" />
-            <Page.Main className="game-select-screen">
+        <>
+            <Page>
+                <canvas ref={canvasRef} className="starfield-canvas" />
+                <Page.Main className="game-select-screen">
 
-                <div className="epic-title-section">
-                    <h1 className="epic-title">
-                        <span className="choose-word">Choose Your</span>
-                        <span className="destiny-word">Destiny</span>
-                    </h1>
-                    <p className="epic-subtitle">Navigate the cosmos • Claim your reward</p>
-                </div>
+                    <div className="epic-title-section">
+                        <h1 className="epic-title">
+                            <span className="choose-word">Choose Your</span>
+                            <span className="destiny-word">Destiny</span>
+                        </h1>
+                        <p className="epic-subtitle">Navigate the cosmos • Claim your reward</p>
+                    </div>
 
-                <div className="game-modes">
+                    <div className="game-modes">
 
-                    <div className="mode-card practice-mode">
-                        <div className="cosmic-aura practice-aura"></div>
-                        <div className="mode-content">
-                            <div className="mode-icon">⚡</div>
-                            <h2 className="mode-name">PRACTICE</h2>
-                            <p className="mode-desc">Master the void</p>
-                            <div className="mode-features">
-                                <span className="feature">🚀 Unlimited tries</span>
-                                <span className="feature">⭐ Perfect your skills</span>
+                        <div className="mode-card practice-mode">
+                            <div className="cosmic-aura practice-aura"></div>
+                            <div className="mode-content">
+                                <div className="mode-icon">⚡</div>
+                                <h2 className="mode-name">PRACTICE</h2>
+                                <p className="mode-desc">Master the void</p>
+                                <div className="mode-features">
+                                    <span className="feature">🚀 Unlimited tries</span>
+                                    <span className="feature">⭐ Perfect your skills</span>
+                                </div>
+                                <button
+                                    className="mode-button practice-button"
+                                    onClick={() => handleGameStart('practice')}
+                                    disabled={isAuthenticating}
+                                >
+                                    {isAuthenticating ? 'AUTHENTICATING...' : 'ENTER TRAINING'}
+                                </button>
                             </div>
+                        </div>
+
+                        <div className="mode-card tournament-mode">
+                            <div className="cosmic-aura tournament-aura"></div>
+                            <div className="mode-content">
+                                <div className="mode-icon">💎</div>
+                                <h2 className="mode-name">TOURNAMENT</h2>
+                                <p className="mode-desc">Conquer for glory</p>
+                                <div className="mode-features">
+                                    <span className="feature">💰 Win WLD prizes</span>
+                                    <span className="feature">🏆 Daily challenges</span>
+                                </div>
+                                <button
+                                    className="mode-button tournament-button"
+                                    onClick={() => handleGameStart('tournament')}
+                                    disabled={isAuthenticating}
+                                >
+                                    {isAuthenticating ? 'AUTHENTICATING...' : 'JOIN BATTLE'}
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div className="bottom-nav-container">
+                        <div className="space-nav-icons">
                             <button
-                                className="mode-button practice-button"
-                                onClick={() => handleGameStart('practice')}
-                                disabled={isAuthenticating}
+                                className="space-nav-btn home-nav"
+                                onClick={() => setCurrentScreen('home')}
+                                aria-label="Launch Pad"
                             >
-                                {isAuthenticating ? 'AUTHENTICATING...' : 'ENTER TRAINING'}
+                                <div className="space-icon">🏠</div>
+
+                            </button>
+                            <button
+                                className="space-nav-btn prizes-nav"
+                                onClick={() => alert('Galactic Leaderboard & Cosmic Prizes')}
+                                aria-label="Cosmic Prizes"
+                            >
+                                <div className="space-icon">🏆</div>
+
                             </button>
                         </div>
                     </div>
 
-                    <div className="mode-card tournament-mode">
-                        <div className="cosmic-aura tournament-aura"></div>
-                        <div className="mode-content">
-                            <div className="mode-icon">💎</div>
-                            <h2 className="mode-name">TOURNAMENT</h2>
-                            <p className="mode-desc">Conquer for glory</p>
-                            <div className="mode-features">
-                                <span className="feature">💰 Win WLD prizes</span>
-                                <span className="feature">🏆 Daily challenges</span>
+                </Page.Main>
+            </Page>
+
+            {/* Game Result Modal */}
+            {gameResult.show && (
+                <div className="game-result-modal-overlay">
+                    <div className="game-result-modal">
+                        <div className="modal-header">
+                            <h2 className="modal-title">{gameResult.mode} Complete!</h2>
+                        </div>
+
+                        <div className="modal-content">
+                            <div className="score-display">
+                                <div className="score-item">
+                                    <span className="score-label">Score:</span>
+                                    <span className="score-value">{gameResult.score}</span>
+                                </div>
+                                <div className="score-item">
+                                    <span className="score-label">⭐ Coins:</span>
+                                    <span className="score-value">{gameResult.coins}</span>
+                                </div>
                             </div>
+
+                            {gameResult.isNewHighScore && (
+                                <div className="new-high-score">
+                                    🎉 NEW HIGH SCORE!
+                                    <br />
+                                    Previous: {gameResult.previousHigh}
+                                </div>
+                            )}
+
+                            {!gameResult.isNewHighScore && gameResult.currentHigh !== undefined && (
+                                <div className="current-high-score">
+                                    Your highest score: {gameResult.currentHigh}
+                                </div>
+                            )}
+
+                            {gameResult.error && (
+                                <div className="error-message">
+                                    ⚠️ {gameResult.error}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="modal-actions">
                             <button
-                                className="mode-button tournament-button"
-                                onClick={() => handleGameStart('tournament')}
-                                disabled={isAuthenticating}
+                                className="modal-button primary"
+                                onClick={() => {
+                                    // Reset all game state
+                                    setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+                                    setIsSubmittingScore(false); // Ensure submission state is cleared
+                                    setCurrentScreen('home');
+                                    setGameMode(null);
+                                }}
                             >
-                                {isAuthenticating ? 'AUTHENTICATING...' : 'JOIN BATTLE'}
+                                Go Home
                             </button>
                         </div>
                     </div>
-
                 </div>
+            )}
 
-                <div className="bottom-nav-container">
-                    <div className="space-nav-icons">
-                        <button
-                            className="space-nav-btn home-nav"
-                            onClick={() => setCurrentScreen('home')}
-                            aria-label="Launch Pad"
-                        >
-                            <div className="space-icon">🏠</div>
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                .game-result-modal-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100vw;
+                    height: 100vh;
+                    background: rgba(0, 0, 0, 0.8);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 10000;
+                    backdrop-filter: blur(4px);
+                }
 
-                        </button>
-                        <button
-                            className="space-nav-btn prizes-nav"
-                            onClick={() => alert('Galactic Leaderboard & Cosmic Prizes')}
-                            aria-label="Cosmic Prizes"
-                        >
-                            <div className="space-icon">🏆</div>
+                .game-result-modal {
+                    background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+                    border: 2px solid #00BFFF;
+                    border-radius: 12px;
+                    padding: 30px;
+                    max-width: 400px;
+                    width: 90%;
+                    text-align: center;
+                    box-shadow: 0 20px 40px rgba(0, 191, 255, 0.3);
+                }
 
-                        </button>
-                    </div>
-                </div>
+                .modal-header {
+                    margin-bottom: 20px;
+                }
 
-            </Page.Main>
-        </Page>
+                .modal-title {
+                    color: #00BFFF;
+                    font-size: 24px;
+                    font-weight: bold;
+                    margin: 0;
+                    text-shadow: 0 0 10px #00BFFF;
+                }
+
+                .modal-content {
+                    margin-bottom: 30px;
+                }
+
+                .score-display {
+                    display: flex;
+                    justify-content: space-around;
+                    margin-bottom: 20px;
+                }
+
+                .score-item {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                }
+
+                .score-label {
+                    color: #94A3B8;
+                    font-size: 14px;
+                    margin-bottom: 5px;
+                }
+
+                .score-value {
+                    color: #FFFFFF;
+                    font-size: 24px;
+                    font-weight: bold;
+                    text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+                }
+
+                .new-high-score {
+                    color: #10B981;
+                    font-size: 18px;
+                    font-weight: bold;
+                    margin: 15px 0;
+                    text-shadow: 0 0 10px #10B981;
+                    animation: pulse 2s ease-in-out infinite;
+                }
+
+                .current-high-score {
+                    color: #FFD700;
+                    font-size: 16px;
+                    margin: 10px 0;
+                }
+
+                .error-message {
+                    color: #EF4444;
+                    font-size: 14px;
+                    margin: 10px 0;
+                    padding: 10px;
+                    background: rgba(239, 68, 68, 0.1);
+                    border-radius: 6px;
+                    border: 1px solid rgba(239, 68, 68, 0.3);
+                }
+
+                .modal-actions {
+                    display: flex;
+                    justify-content: center;
+                }
+
+                .modal-button {
+                    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+                    color: white;
+                    border: none;
+                    padding: 12px 30px;
+                    border-radius: 8px;
+                    font-size: 16px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+                }
+
+                .modal-button:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.6);
+                }
+
+                .modal-button:active {
+                    transform: translateY(0);
+                }
+
+                @keyframes pulse {
+                    0%, 100% { opacity: 1; transform: scale(1); }
+                    50% { opacity: 0.8; transform: scale(1.05); }
+                }
+            ` }} />
+        </>
     );
 }

@@ -11,24 +11,44 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Wallet address is required' }, { status: 400 });
         }
 
-        // Create Supabase client directly in the API route
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        // Environment-specific database configuration (matches your other APIs)
+        const isProduction = process.env.NEXT_PUBLIC_ENV === 'production';
 
-        if (!supabaseUrl || !supabaseAnonKey) {
-            console.error('❌ Missing Supabase environment variables');
-            return NextResponse.json({ error: 'Database configuration error' }, { status: 500 });
+        const supabaseUrl = isProduction
+            ? process.env.SUPABASE_PROD_URL
+            : process.env.SUPABASE_DEV_URL;
+
+        const supabaseServiceKey = isProduction
+            ? process.env.SUPABASE_PROD_SERVICE_KEY
+            : process.env.SUPABASE_DEV_SERVICE_KEY;
+
+        console.log('🔧 Environment check:', {
+            environment: isProduction ? 'PRODUCTION' : 'DEVELOPMENT',
+            supabaseUrl: supabaseUrl ? '✅ Set' : '❌ Missing',
+            serviceKey: supabaseServiceKey ? '✅ Set' : '❌ Missing'
+        });
+
+        if (!supabaseUrl || !supabaseServiceKey) {
+            console.error('❌ Missing environment variables for', isProduction ? 'PRODUCTION' : 'DEVELOPMENT');
+            return NextResponse.json({
+                error: `Server configuration error: Missing ${isProduction ? 'production' : 'development'} database credentials`
+            }, { status: 500 });
         }
 
-        const supabase = createClient(supabaseUrl, supabaseAnonKey);
+        // Use service key for admin operations
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-        // Try to insert new user or update existing one
+        // Try to insert new user or update existing one with new schema
         const { data, error } = await supabase
             .from('users')
             .upsert({
                 wallet: wallet,
                 username: username || null,
                 world_id: world_id || null,
+                total_tournaments_played: 0,
+                total_games_played: 0,
+                highest_score_ever: 0,
+                updated_at: new Date().toISOString()
             }, {
                 onConflict: 'wallet'
             })
@@ -36,7 +56,9 @@ export async function POST(request: NextRequest) {
 
         if (error) {
             console.error('❌ Database error:', error);
-            return NextResponse.json({ error: 'Database operation failed' }, { status: 500 });
+            return NextResponse.json({
+                error: `Database operation failed: ${error.message}`
+            }, { status: 500 });
         }
 
         console.log('✅ User saved successfully:', data);

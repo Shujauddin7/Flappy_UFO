@@ -9,6 +9,7 @@ interface TournamentEntryModalProps {
     isAuthenticating: boolean;
     isVerifiedToday: boolean;
     verificationLoading: boolean;
+    isProcessingEntry: boolean;
 }
 
 export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
@@ -16,7 +17,8 @@ export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
     onEntrySelect,
     isAuthenticating,
     isVerifiedToday,
-    verificationLoading
+    verificationLoading,
+    isProcessingEntry
 }) => {
     const [selectedEntry, setSelectedEntry] = useState<'verify' | 'standard' | 'verified' | null>(null);
 
@@ -54,9 +56,9 @@ export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
                                 <button
                                     className="mode-button verify-button"
                                     onClick={() => handleEntrySelect('verified')}
-                                    disabled={isAuthenticating}
+                                    disabled={isAuthenticating || isProcessingEntry}
                                 >
-                                    {isAuthenticating && selectedEntry === 'verified'
+                                    {(isAuthenticating || isProcessingEntry) && selectedEntry === 'verified'
                                         ? 'PROCESSING...'
                                         : 'PLAY TOURNAMENT (0.9 WLD)'
                                     }
@@ -78,9 +80,9 @@ export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
                                 <button
                                     className="mode-button standard-button"
                                     onClick={() => handleEntrySelect('standard')}
-                                    disabled={isAuthenticating}
+                                    disabled={isAuthenticating || isProcessingEntry}
                                 >
-                                    {isAuthenticating && selectedEntry === 'standard'
+                                    {(isAuthenticating || isProcessingEntry) && selectedEntry === 'standard'
                                         ? 'PROCESSING...'
                                         : 'STANDARD ENTRY (1.0 WLD)'
                                     }
@@ -105,11 +107,11 @@ export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
                                 <button
                                     className="mode-button verify-button"
                                     onClick={() => handleEntrySelect('verify')}
-                                    disabled={isAuthenticating || verificationLoading}
+                                    disabled={isAuthenticating || verificationLoading || isProcessingEntry}
                                 >
                                     {verificationLoading
                                         ? 'CHECKING...'
-                                        : isAuthenticating && selectedEntry === 'verify'
+                                        : (isAuthenticating || isProcessingEntry) && selectedEntry === 'verify'
                                             ? 'VERIFYING...'
                                             : 'GET VERIFIED & PLAY'
                                     }
@@ -131,11 +133,11 @@ export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
                                 <button
                                     className="mode-button standard-button"
                                     onClick={() => handleEntrySelect('standard')}
-                                    disabled={isAuthenticating || verificationLoading}
+                                    disabled={isAuthenticating || verificationLoading || isProcessingEntry}
                                 >
                                     {verificationLoading
                                         ? 'CHECKING...'
-                                        : isAuthenticating && selectedEntry === 'standard'
+                                        : (isAuthenticating || isProcessingEntry) && selectedEntry === 'standard'
                                             ? 'PROCESSING...'
                                             : 'STANDARD ENTRY (1.0 WLD)'
                                     }

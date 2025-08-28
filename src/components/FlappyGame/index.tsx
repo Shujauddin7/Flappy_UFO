@@ -40,8 +40,7 @@ interface GameState {
     score: number;
     coins: number;
     gameStatus: 'ready' | 'playing' | 'gameOver';
-    playButtonBounds?: { x: number; y: number; width: number; height: number };
-    closeButtonBounds?: { x: number; y: number; width: number; height: number };
+    gameEndCalled?: boolean; // Prevent multiple game end calls
 }
 
 const PLANETS = [
@@ -49,13 +48,15 @@ const PLANETS = [
     'Neptune.jpg', 'Saturn.jpg', 'Uranus.jpg', 'Venus.jpg'
 ];
 
-export default function FlappyGame({
-    gameMode,
-    onGameEnd
-}: {
+interface FlappyGameProps {
     gameMode: 'practice' | 'tournament' | null;
     onGameEnd: (score: number, coins: number) => void;
-}) {
+}
+
+export default function FlappyGame({
+    gameMode,  // eslint-disable-line @typescript-eslint/no-unused-vars
+    onGameEnd
+}: FlappyGameProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const gameStateRef = useRef<GameState>({
         ufo: { x: 100, y: 300, velocity: 0, rotation: 0 },
@@ -63,12 +64,27 @@ export default function FlappyGame({
         particles: [],
         score: 0,
         coins: 0,
-        gameStatus: 'ready'
+        gameStatus: 'ready',
+        gameEndCalled: false // Initialize flag
     });
 
     const [, setGameState] = useState(gameStateRef.current);
     const gameLoopRef = useRef<number | undefined>(undefined);
     const planetImagesRef = useRef<{ [key: string]: HTMLImageElement }>({});
+
+    // Reset game state when component mounts
+    useEffect(() => {
+        gameStateRef.current = {
+            ufo: { x: 100, y: 300, velocity: 0, rotation: 0 },
+            obstacles: [],
+            particles: [],
+            score: 0,
+            coins: 0,
+            gameStatus: 'ready',
+            gameEndCalled: false
+        };
+        setGameState({ ...gameStateRef.current });
+    }, []);
 
     // Load planet images
     useEffect(() => {
@@ -243,42 +259,6 @@ export default function FlappyGame({
         }
     }, [createParticles]);
 
-    // Handle modal clicks
-    const handleModalClick = useCallback((x: number, y: number) => {
-        const state = gameStateRef.current;
-
-        if (state.gameStatus === 'gameOver') {
-            // Check play again button
-            if (state.playButtonBounds &&
-                x >= state.playButtonBounds.x &&
-                x <= state.playButtonBounds.x + state.playButtonBounds.width &&
-                y >= state.playButtonBounds.y &&
-                y <= state.playButtonBounds.y + state.playButtonBounds.height) {
-
-                // Restart game
-                state.ufo = { x: 100, y: 300, velocity: 0, rotation: 0 };
-                state.obstacles = [];
-                state.particles = [];
-                state.score = 0;
-                state.coins = 0;
-                state.gameStatus = 'ready';
-                return;
-            }
-
-            // Check home button
-            if (state.closeButtonBounds &&
-                x >= state.closeButtonBounds.x &&
-                x <= state.closeButtonBounds.x + state.closeButtonBounds.width &&
-                y >= state.closeButtonBounds.y &&
-                y <= state.closeButtonBounds.y + state.closeButtonBounds.height) {
-
-                // Return to menu
-                onGameEnd(state.score, state.coins);
-                return;
-            }
-        }
-    }, [onGameEnd]);
-
     // Collision detection - fair and forgiving
     const checkCollisions = useCallback(() => {
         const { ufo, obstacles } = gameStateRef.current;
@@ -324,6 +304,7 @@ export default function FlappyGame({
                     ufo.y + 20 < obstacle.y + obstacle.height &&
                     ufo.y + 30 > obstacle.y) {
 
+                    console.log('💥 Invisible wall collision! UFO position:', { x: ufo.x, y: ufo.y }, 'Wall:', { x: obstacle.x, y: obstacle.y, w: obstacle.width, h: obstacle.height });
                     return true; // Collision with invisible barrier
                 }
             }
@@ -396,7 +377,13 @@ export default function FlappyGame({
             if (checkCollisions()) {
                 state.gameStatus = 'gameOver';
 
-                // Explosion particles
+                // Call onGameEnd immediately
+                if (!state.gameEndCalled) {
+                    state.gameEndCalled = true;
+                    onGameEnd(state.score, state.coins);
+                }
+
+                // Explosion particles for visual effect
                 const explosionParticles = createParticles(state.ufo.x, state.ufo.y, 15);
                 state.particles.push(...explosionParticles);
             }
@@ -573,9 +560,7 @@ export default function FlappyGame({
         ctx.fillStyle = '#FFD700';
         ctx.shadowColor = '#FFD700';
         ctx.fillText(`⭐ ${state.coins}`, 20, 80);
-        ctx.shadowBlur = 0;
-
-        // Game status
+        ctx.shadowBlur = 0;        // Game status
         if (state.gameStatus === 'ready') {
             ctx.font = 'bold 32px Arial, sans-serif';
             ctx.fillStyle = '#FFFFFF';
@@ -588,105 +573,17 @@ export default function FlappyGame({
         }
 
         if (state.gameStatus === 'gameOver') {
-            // Dark overlay
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Game Over modal (larger to accommodate play again button)
-            const modalWidth = Math.min(380, canvas.width - 40);
-            const modalHeight = gameMode === 'practice' ? 380 : 320; // Larger for practice mode
-            const modalX = (canvas.width - modalWidth) / 2;
-            const modalY = (canvas.height - modalHeight) / 2;
-
-            // Modal background
-            const modalGradient = ctx.createLinearGradient(modalX, modalY, modalX, modalY + modalHeight);
-            modalGradient.addColorStop(0, '#1E293B');
-            modalGradient.addColorStop(1, '#0F172A');
-            ctx.fillStyle = modalGradient;
-            ctx.roundRect(modalX, modalY, modalWidth, modalHeight, 12);
-            ctx.fill();
-
-            ctx.strokeStyle = '#00BFFF';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-
-            // Title
-            ctx.font = 'bold 32px Arial, sans-serif';
-            ctx.fillStyle = '#FF4444';
-            ctx.textAlign = 'center';
-            ctx.shadowColor = '#FF4444';
-            ctx.shadowBlur = 8;
-            ctx.fillText('GAME OVER', canvas.width / 2, modalY + 60);
-
-            // Scores
-            ctx.font = 'bold 20px Arial, sans-serif';
-            ctx.fillStyle = '#00BFFF';
-            ctx.shadowColor = '#00BFFF';
-            ctx.shadowBlur = 6;
-            ctx.fillText(`Score: ${state.score}`, canvas.width / 2, modalY + 100);
-
-            ctx.fillStyle = '#FFD700';
-            ctx.shadowColor = '#FFD700';
-            ctx.fillText(`⭐ Coins: ${state.coins}`, canvas.width / 2, modalY + 130);
-
-            // Show Play Again button in practice mode
-            const buttonWidth = 140;
-            const buttonHeight = 40;
-            const playButtonX = canvas.width / 2 - buttonWidth / 2;
-            let currentY = modalY + 170;
-
-            // Play Again button (only show in practice mode)
-            if (gameMode === 'practice') {
-                const playGradient = ctx.createLinearGradient(playButtonX, currentY, playButtonX, currentY + buttonHeight);
-                playGradient.addColorStop(0, '#10B981');
-                playGradient.addColorStop(1, '#059669');
-
-                ctx.fillStyle = playGradient;
-                ctx.roundRect(playButtonX, currentY, buttonWidth, buttonHeight, 8);
-                ctx.fill();
-
-                ctx.font = 'bold 16px Arial, sans-serif';
-                ctx.fillStyle = '#FFFFFF';
-                ctx.shadowBlur = 0;
-                ctx.fillText('PLAY AGAIN', canvas.width / 2, currentY + 25);
-
-                // Store play button bounds
-                state.playButtonBounds = {
-                    x: playButtonX,
-                    y: currentY,
-                    width: buttonWidth,
-                    height: buttonHeight
-                };
-
-                currentY += 60; // Move next button down
-            }
-
-            // Home button (always show)
-            const homeGradient = ctx.createLinearGradient(playButtonX, currentY, playButtonX, currentY + buttonHeight);
-            homeGradient.addColorStop(0, '#DC2626');
-            homeGradient.addColorStop(1, '#991B1B');
-            ctx.fillStyle = homeGradient;
-            ctx.roundRect(playButtonX, currentY, buttonWidth, buttonHeight, 8);
-            ctx.fill();
-
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillText('GO HOME', canvas.width / 2, currentY + 25);
-
-            ctx.textAlign = 'left';
-            ctx.shadowBlur = 0;
-
-            // Store home button bounds
-            state.closeButtonBounds = {
-                x: playButtonX,
-                y: currentY,
-                width: buttonWidth,
-                height: buttonHeight
-            };
+            // Don't render any game over text - let the parent modal handle it
+            // Just continue with normal rendering but frozen state
         }
 
         setGameState({ ...state });
-        gameLoopRef.current = requestAnimationFrame(gameLoop);
-    }, [checkCollisions, createObstacles, createParticles, gameMode]);
+
+        // Only continue game loop if game is not over
+        if (state.gameStatus !== 'gameOver') {
+            gameLoopRef.current = requestAnimationFrame(gameLoop);
+        }
+    }, [checkCollisions, createObstacles, createParticles, onGameEnd]);
 
     // Input handlers
     useEffect(() => {
@@ -695,26 +592,18 @@ export default function FlappyGame({
 
         const handleTouch = (e: TouchEvent) => {
             e.preventDefault();
-            const rect = canvas.getBoundingClientRect();
-            const x = e.touches[0].clientX - rect.left;
-            const y = e.touches[0].clientY - rect.top;
 
-            if (gameStateRef.current.gameStatus === 'gameOver') {
-                handleModalClick(x, y);
-            } else {
+            // Only handle input if game is not over
+            if (gameStateRef.current.gameStatus !== 'gameOver') {
                 handleJump();
             }
         };
 
         const handleClick = (e: MouseEvent) => {
             e.preventDefault();
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
 
-            if (gameStateRef.current.gameStatus === 'gameOver') {
-                handleModalClick(x, y);
-            } else {
+            // Only handle input if game is not over  
+            if (gameStateRef.current.gameStatus !== 'gameOver') {
                 handleJump();
             }
         };
@@ -722,23 +611,12 @@ export default function FlappyGame({
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.code === 'Space' || e.code === 'ArrowUp') {
                 e.preventDefault();
-                if (gameStateRef.current.gameStatus === 'gameOver') {
-                    // Reset game
-                    const state = gameStateRef.current;
-                    state.ufo = { x: 100, y: 300, velocity: 0, rotation: 0 };
-                    state.obstacles = [];
-                    state.particles = [];
-                    state.score = 0;
-                    state.coins = 0;
-                    state.gameStatus = 'ready';
-                } else {
+                // Only handle input if game is not over
+                if (gameStateRef.current.gameStatus !== 'gameOver') {
                     handleJump();
                 }
             }
-
-            if (e.code === 'Escape' && gameStateRef.current.gameStatus === 'gameOver') {
-                onGameEnd(gameStateRef.current.score, gameStateRef.current.coins);
-            }
+            // Remove Escape key handling - let parent modal handle everything
         };
 
         canvas.addEventListener('touchstart', handleTouch, { passive: false });
@@ -750,7 +628,7 @@ export default function FlappyGame({
             canvas.removeEventListener('click', handleClick);
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [handleJump, handleModalClick, onGameEnd]);
+    }, [handleJump, onGameEnd]);
 
     // Start game loop
     useEffect(() => {

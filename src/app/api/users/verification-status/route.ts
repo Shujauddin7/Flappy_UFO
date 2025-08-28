@@ -20,20 +20,53 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Create Supabase client
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        // Environment-specific database configuration (use service keys)
+        const isProduction = process.env.NEXT_PUBLIC_ENV === 'production';
 
-        if (!supabaseUrl || !supabaseAnonKey) {
-            console.error('❌ Missing Supabase environment variables');
-            return NextResponse.json({ error: 'Database configuration error' }, { status: 500 });
+        const supabaseUrl = isProduction
+            ? process.env.SUPABASE_PROD_URL
+            : process.env.SUPABASE_DEV_URL;
+
+        const supabaseServiceKey = isProduction
+            ? process.env.SUPABASE_PROD_SERVICE_KEY
+            : process.env.SUPABASE_DEV_SERVICE_KEY;
+
+        if (!supabaseUrl || !supabaseServiceKey) {
+            console.error('❌ Missing environment variables for', isProduction ? 'PRODUCTION' : 'DEVELOPMENT');
+            return NextResponse.json({
+                error: `Server configuration error: Missing ${isProduction ? 'production' : 'development'} database credentials`
+            }, { status: 500 });
         }
 
-        const supabase = createClient(supabaseUrl, supabaseAnonKey);
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-        // Get current tournament info
+        // Get current tournament info - get actual tournament UUID
         const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-        const currentTournamentId = `tournament-${today}`;
+
+        // Get today's tournament UUID from tournaments table
+        const { data: tournament, error: tournamentError } = await supabase
+            .from('tournaments')
+            .select('id')
+            .eq('tournament_day', today)
+            .single();
+
+        if (tournamentError || !tournament) {
+            console.log('ℹ️ No tournament found for today:', today);
+            // Return not verified if no tournament exists
+            return NextResponse.json({
+                success: true,
+                data: {
+                    isVerified: false,
+                    verifiedDate: null,
+                    tournamentId: null,
+                    currentTournamentId: null,
+                    pricing: '1.0 WLD',
+                    worldId: null,
+                }
+            });
+        }
+
+        const currentTournamentId = tournament.id;
 
         // Get user's verification status
         const { data, error } = await supabase
@@ -51,9 +84,10 @@ export async function POST(req: NextRequest) {
         }
 
         // Check if user is verified for today's tournament
-        const isVerifiedToday = data &&
+        // Note: We check against the tournament string ID format used during verification
+        const isVerifiedToday = !!(data &&
             data.last_verified_date === today &&
-            data.last_verified_tournament_id === currentTournamentId;
+            data.last_verified_tournament_id === currentTournamentId);
 
         const verificationStatus = {
             isVerified: isVerifiedToday,
