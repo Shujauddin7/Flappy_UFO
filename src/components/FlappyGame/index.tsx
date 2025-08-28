@@ -40,8 +40,6 @@ interface GameState {
     score: number;
     coins: number;
     gameStatus: 'ready' | 'playing' | 'gameOver';
-    playButtonBounds?: { x: number; y: number; width: number; height: number };
-    closeButtonBounds?: { x: number; y: number; width: number; height: number };
     gameEndCalled?: boolean; // Prevent multiple game end calls
 }
 
@@ -247,63 +245,6 @@ export default function FlappyGame({
         }
     }, [createParticles]);
 
-    // Handle modal clicks
-    const handleModalClick = useCallback((x: number, y: number) => {
-        const state = gameStateRef.current;
-
-        console.log('🖱️ Modal click detected at:', { x, y, gameStatus: state.gameStatus }); // Debug log
-
-        if (state.gameStatus === 'gameOver') {
-            // Check play again button
-            if (state.playButtonBounds &&
-                x >= state.playButtonBounds.x &&
-                x <= state.playButtonBounds.x + state.playButtonBounds.width &&
-                y >= state.playButtonBounds.y &&
-                y <= state.playButtonBounds.y + state.playButtonBounds.height) {
-
-                console.log('🔄 Play Again button clicked'); // Debug log only
-
-                // Restart game
-                state.ufo = { x: 100, y: 300, velocity: 0, rotation: 0 };
-                state.obstacles = [];
-                state.particles = [];
-                state.score = 0;
-                state.coins = 0;
-                state.gameStatus = 'ready';
-                state.gameEndCalled = false; // Reset flag
-                return;
-            }
-
-            // Check home button - Add more generous bounds
-            if (state.closeButtonBounds &&
-                x >= state.closeButtonBounds.x - 10 && // Add 10px margin
-                x <= state.closeButtonBounds.x + state.closeButtonBounds.width + 10 && // Add 10px margin
-                y >= state.closeButtonBounds.y - 10 && // Add 10px margin
-                y <= state.closeButtonBounds.y + state.closeButtonBounds.height + 10) { // Add 10px margin
-
-                console.log('🏠 GO HOME button clicked'); // Debug log
-
-                // Prevent multiple calls
-                if (state.gameEndCalled) {
-                    console.log('⚠️ Game end already called, ignoring...');
-                    return;
-                }
-                state.gameEndCalled = true;
-
-                // Return to menu - NO ALERT TO PREVENT INFINITE LOOP
-                onGameEnd(state.score, state.coins);
-                return;
-            }
-
-            // Only log to console, no alerts to prevent infinite loops
-            console.log('❌ No button clicked. Button bounds:', {
-                playButton: state.playButtonBounds,
-                homeButton: state.closeButtonBounds,
-                clickPosition: { x, y }
-            });
-        }
-    }, [onGameEnd]);
-
     // Collision detection - fair and forgiving
     const checkCollisions = useCallback(() => {
         const { ufo, obstacles } = gameStateRef.current;
@@ -420,16 +361,16 @@ export default function FlappyGame({
             // Check collisions
             if (checkCollisions()) {
                 state.gameStatus = 'gameOver';
-                console.log('💥 Game Over! Score:', state.score); // Debug log only
+                console.log('💥 Game Over! Score:', state.score);
 
-                // Call onGameEnd immediately when collision happens
+                // Call onGameEnd immediately
                 if (!state.gameEndCalled) {
                     state.gameEndCalled = true;
-                    // Call the parent's onGameEnd to show the modal
-                    setTimeout(() => onGameEnd(state.score, state.coins), 100); // Small delay to ensure state is fully updated
+                    console.log('🔥 Calling onGameEnd with:', { score: state.score, coins: state.coins });
+                    onGameEnd(state.score, state.coins);
                 }
 
-                // Explosion particles
+                // Explosion particles for visual effect
                 const explosionParticles = createParticles(state.ufo.x, state.ufo.y, 15);
                 state.particles.push(...explosionParticles);
             }
@@ -621,21 +562,16 @@ export default function FlappyGame({
         }
 
         if (state.gameStatus === 'gameOver') {
-            // Don't render the internal game over modal
-            // Let the parent component handle the modal display
-            // Just show a simple "Game Over" text briefly
-            ctx.font = 'bold 32px Arial, sans-serif';
-            ctx.fillStyle = 'rgba(255, 68, 68, 0.8)';
-            ctx.textAlign = 'center';
-            ctx.shadowColor = '#FF4444';
-            ctx.shadowBlur = 8;
-            ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2);
-            ctx.shadowBlur = 0;
-            ctx.textAlign = 'left';
+            // Don't render any game over text - let the parent modal handle it
+            // Just continue with normal rendering but frozen state
         }
 
         setGameState({ ...state });
-        gameLoopRef.current = requestAnimationFrame(gameLoop);
+
+        // Only continue game loop if game is not over
+        if (state.gameStatus !== 'gameOver') {
+            gameLoopRef.current = requestAnimationFrame(gameLoop);
+        }
     }, [checkCollisions, createObstacles, createParticles, onGameEnd]);
 
     // Input handlers
@@ -645,26 +581,18 @@ export default function FlappyGame({
 
         const handleTouch = (e: TouchEvent) => {
             e.preventDefault();
-            const rect = canvas.getBoundingClientRect();
-            const x = e.touches[0].clientX - rect.left;
-            const y = e.touches[0].clientY - rect.top;
 
-            if (gameStateRef.current.gameStatus === 'gameOver') {
-                handleModalClick(x, y);
-            } else {
+            // Only handle input if game is not over
+            if (gameStateRef.current.gameStatus !== 'gameOver') {
                 handleJump();
             }
         };
 
         const handleClick = (e: MouseEvent) => {
             e.preventDefault();
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
 
-            if (gameStateRef.current.gameStatus === 'gameOver') {
-                handleModalClick(x, y);
-            } else {
+            // Only handle input if game is not over  
+            if (gameStateRef.current.gameStatus !== 'gameOver') {
                 handleJump();
             }
         };
@@ -672,30 +600,12 @@ export default function FlappyGame({
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.code === 'Space' || e.code === 'ArrowUp') {
                 e.preventDefault();
-                if (gameStateRef.current.gameStatus === 'gameOver') {
-                    // Reset game
-                    const state = gameStateRef.current;
-                    state.ufo = { x: 100, y: 300, velocity: 0, rotation: 0 };
-                    state.obstacles = [];
-                    state.particles = [];
-                    state.score = 0;
-                    state.coins = 0;
-                    state.gameStatus = 'ready';
-                } else {
+                // Only handle input if game is not over
+                if (gameStateRef.current.gameStatus !== 'gameOver') {
                     handleJump();
                 }
             }
-
-            if (e.code === 'Escape' && gameStateRef.current.gameStatus === 'gameOver') {
-                // Prevent multiple calls
-                if (gameStateRef.current.gameEndCalled) {
-                    console.log('⚠️ Game end already called via Escape, ignoring...');
-                    return;
-                }
-                gameStateRef.current.gameEndCalled = true;
-                console.log('Escape pressed - returning to menu'); // Only log, no alert
-                onGameEnd(gameStateRef.current.score, gameStateRef.current.coins);
-            }
+            // Remove Escape key handling - let parent modal handle everything
         };
 
         canvas.addEventListener('touchstart', handleTouch, { passive: false });
@@ -707,7 +617,7 @@ export default function FlappyGame({
             canvas.removeEventListener('click', handleClick);
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [handleJump, handleModalClick, onGameEnd]);
+    }, [handleJump, onGameEnd]);
 
     // Start game loop
     useEffect(() => {

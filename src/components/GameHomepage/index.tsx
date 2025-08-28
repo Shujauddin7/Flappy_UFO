@@ -356,6 +356,8 @@ export default function GameHomepage() {
 
     // Handle game end
     const handleGameEnd = async (score: number, coins: number) => {
+        console.log('🔥 handleGameEnd called with:', { score, coins, gameMode });
+
         // Prevent duplicate submissions
         if (isSubmittingScore) {
             console.log('⚠️ Score submission already in progress, ignoring...');
@@ -366,7 +368,15 @@ export default function GameHomepage() {
         const modeText = gameMode === 'practice' ? 'Practice' : 'Tournament';
         console.log('🎮 Game ended:', { score, coins, mode: modeText });
 
-        // If tournament mode, submit score to backend
+        // ALWAYS show the modal immediately, regardless of mode
+        setGameResult({
+            show: true,
+            score,
+            coins,
+            mode: modeText
+        });
+
+        // If tournament mode, also submit score to backend (but don't wait for it)
         if (gameMode === 'tournament' && session?.user?.walletAddress) {
             try {
                 setIsSubmittingScore(true);
@@ -426,16 +436,8 @@ export default function GameHomepage() {
             } finally {
                 setIsSubmittingScore(false);
             }
-        } else {
-            // Practice mode - just show results
-            console.log('🎮 Showing practice mode results modal:', { score, coins, mode: modeText });
-            setGameResult({
-                show: true,
-                score,
-                coins,
-                mode: modeText
-            });
         }
+        // Note: Modal is already shown above for both modes
     };
 
     // Debug effect to track gameResult changes
