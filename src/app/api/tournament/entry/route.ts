@@ -286,6 +286,11 @@ export async function POST(req: NextRequest) {
         await updateUserTournamentCount(supabase, user.id);
 
         // Now update the payment information (only existing columns)
+        // Determine entry type based on PAYMENT AMOUNT, not verification status
+        // 0.9 WLD = Verified entry (discounted price)
+        // 1.0 WLD = Standard entry (regular price)
+        const isVerifiedEntryByAmount = paid_amount <= 0.9;
+
         const paymentUpdate: {
             updated_at: string;
             verified_entry_paid?: boolean;
@@ -300,7 +305,7 @@ export async function POST(req: NextRequest) {
             updated_at: new Date().toISOString()
         };
 
-        if (actuallyVerified) {
+        if (isVerifiedEntryByAmount) {
             paymentUpdate.verified_entry_paid = true;
             paymentUpdate.verified_paid_amount = paid_amount;
             paymentUpdate.verified_payment_ref = payment_reference;

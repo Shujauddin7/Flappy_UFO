@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
         const today = new Date().toISOString().split('T')[0];
         let recordQuery = supabase
             .from('user_tournament_records')
-            .select('id, user_id, highest_score, tournament_day, tournament_id, verified_at, verified_games_played, unverified_games_played, total_games_played')
+            .select('id, user_id, highest_score, tournament_day, tournament_id, verified_at, verified_games_played, standard_games_played, total_games_played, verified_entry_paid, standard_entry_paid')
             .eq('user_id', user.id)
             .eq('tournament_day', today);
 
@@ -170,14 +170,18 @@ export async function POST(req: NextRequest) {
         // Use the first (or specified) record
         const record = records[0];
 
-        // Determine if this is a verified game based on verification status
-        const isVerifiedGame = record.verified_at !== null;
+        // Determine if this is a verified game based on entry type (payment amount)
+        // If verified_entry_paid > 0, user paid for verified entry (0.9 WLD)
+        // If standard_entry_paid > 0, user paid for standard entry (1.0 WLD)
+        const isVerifiedGame = (record.verified_entry_paid || 0) > 0;
 
         console.log('🎮 Current tournament record:', {
             record_id: record.id,
             current_highest: record.highest_score,
             new_score: score,
             is_verified_game: isVerifiedGame,
+            verified_entry_paid: record.verified_entry_paid,
+            standard_entry_paid: record.standard_entry_paid,
             verified_at: record.verified_at
         });
 
@@ -235,7 +239,7 @@ export async function POST(req: NextRequest) {
                 if (isVerifiedGame) {
                     gameCountUpdates.verified_games_played = (record.verified_games_played || 0) + 1;
                 } else {
-                    gameCountUpdates.unverified_games_played = (record.unverified_games_played || 0) + 1;
+                    gameCountUpdates.standard_games_played = (record.standard_games_played || 0) + 1;
                 }
 
                 // Set first_game_at if this is the first game
@@ -289,7 +293,7 @@ export async function POST(req: NextRequest) {
         if (isVerifiedGame) {
             gameCountUpdates.verified_games_played = (record.verified_games_played || 0) + 1;
         } else {
-            gameCountUpdates.unverified_games_played = (record.unverified_games_played || 0) + 1;
+            gameCountUpdates.standard_games_played = (record.standard_games_played || 0) + 1;
         }
 
         // Set first_game_at if this is the first game
