@@ -8,7 +8,7 @@ export default function AdminSignOutPage() {
     const router = useRouter();
 
     const handleSignOut = async () => {
-        console.log('Admin SignOut: Starting sign out process');
+        console.log('Admin SignOut: Starting COMPLETE sign out process');
 
         try {
             // Clear verification status from database if we have a session
@@ -25,38 +25,77 @@ export default function AdminSignOutPage() {
                 }
             }
 
-            // Clear local storage
+            // AGGRESSIVE CLEANUP - Clear all browser data
             if (typeof window !== 'undefined') {
+                // Clear all storage
                 localStorage.clear();
                 sessionStorage.clear();
+                
+                // Clear all cookies
+                document.cookie.split(";").forEach((c) => {
+                    const eqPos = c.indexOf("=");
+                    const name = eqPos > -1 ? c.substr(0, eqPos) : c;
+                    document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+                    document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=.vercel.app";
+                });
+                
+                // Set flag for forced re-authentication
                 localStorage.setItem('justSignedOut', 'true');
-                console.log('Admin SignOut: Cleared local/session storage');
+                localStorage.setItem('forceReauth', 'true');
+                
+                console.log('Admin SignOut: CLEARED ALL BROWSER DATA');
             }
 
-            // Sign out and redirect to home
+            // Sign out from NextAuth
             await signOut({
                 redirect: false
             });
 
-            console.log('✅ Admin SignOut: Successfully signed out');
+            console.log('✅ Admin SignOut: Complete sign out finished');
 
-            // Redirect to home and reload
-            router.push('/');
-            setTimeout(() => {
-                if (typeof window !== 'undefined') {
-                    window.location.reload();
-                }
-            }, 100);
+            // Force hard reload to completely reset everything
+            if (typeof window !== 'undefined') {
+                window.location.href = '/';
+            }
 
         } catch (error) {
             console.error('Admin SignOut: Error:', error);
-            // Force reload even on error
+            // Force hard reload even on error
             if (typeof window !== 'undefined') {
-                setTimeout(() => {
-                    window.location.reload();
-                }, 500);
+                window.location.href = '/';
             }
         }
+    };
+
+    // Add a force clear function for when no session is detected but user is still somehow logged in
+    const handleForceClear = async () => {
+        console.log('Admin: Force clearing all data');
+        
+        if (typeof window !== 'undefined') {
+            // Nuclear option - clear everything
+            localStorage.clear();
+            sessionStorage.clear();
+            
+            // Clear all cookies
+            document.cookie.split(";").forEach((c) => {
+                const eqPos = c.indexOf("=");
+                const name = eqPos > -1 ? c.substr(0, eqPos) : c;
+                document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+                document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=.vercel.app";
+            });
+            
+            localStorage.setItem('forceReauth', 'true');
+        }
+        
+        // Force sign out even without session
+        try {
+            await signOut({ redirect: false });
+        } catch (e) {
+            console.log('No session to sign out from');
+        }
+        
+        // Hard redirect
+        window.location.href = '/';
     };
 
     return (
@@ -77,16 +116,28 @@ export default function AdminSignOutPage() {
                             onClick={handleSignOut}
                             className="w-full bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-bold transition-all duration-200"
                         >
-                            🚪 Sign Out & Clear Session
+                            🚪 Complete Sign Out & Clear All Data
                         </button>
 
                         <p className="text-xs text-gray-400">
-                            This will clear your session and reload the app
+                            This will completely clear your session and all stored data
                         </p>
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        <p className="text-gray-300">No active session found</p>
+                        <p className="text-gray-300 mb-4">No active session found</p>
+
+                        <p className="text-yellow-400 text-sm mb-4">
+                            Still seeing yourself as logged in on the home page?<br />
+                            Use the force clear button below:
+                        </p>
+
+                        <button
+                            onClick={handleForceClear}
+                            className="w-full bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-bold transition-all duration-200 mb-4"
+                        >
+                            💥 FORCE CLEAR ALL DATA
+                        </button>
 
                         <button
                             onClick={() => {
@@ -96,6 +147,10 @@ export default function AdminSignOutPage() {
                         >
                             🏠 Go to Home
                         </button>
+
+                        <p className="text-xs text-gray-400 mt-2">
+                            Force clear will remove all cached authentication data
+                        </p>
                     </div>
                 )}
             </div>
