@@ -366,9 +366,8 @@ export default function GameHomepage() {
         const modeText = gameMode === 'practice' ? 'Practice' : 'Tournament';
         console.log('🎮 Game ended:', { score, coins, mode: modeText });
 
-        // IMPORTANT: Always transition back to home screen first
-        setCurrentScreen('home');
-        setGameMode(null); // Reset game mode
+        // DON'T transition to home screen immediately - show game result modal first
+        // We'll handle screen transition in the modal button click
 
         // If tournament mode, submit score to backend
         if (gameMode === 'tournament' && session?.user?.walletAddress) {
@@ -762,12 +761,14 @@ export default function GameHomepage() {
                             <button
                                 className="modal-button primary"
                                 onClick={() => {
+                                    // Reset game result modal
                                     setGameResult({ show: false, score: 0, coins: 0, mode: '' });
-                                    setCurrentScreen('gameSelect');
-                                    setGameMode(null);
+                                    // Go directly to home screen
+                                    setCurrentScreen('home');
+                                    setGameMode(null); // Reset game mode
                                 }}
                             >
-                                Continue
+                                Go Home
                             </button>
                         </div>
                     </div>
