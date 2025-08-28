@@ -2,11 +2,13 @@
 
 import { signOut } from 'next-auth/react';
 import { useSession } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
 
 function DevSignOut() {
     console.log('DevSignOut component loaded, NODE_ENV:', process.env.NODE_ENV);
 
     const { data: session } = useSession();
+    const searchParams = useSearchParams();
 
     const handleSignOut = async (event: React.MouseEvent<HTMLButtonElement>) => {
         console.log('DevSignOut: Sign out clicked');
@@ -67,33 +69,38 @@ function DevSignOut() {
         }
     };
 
-    // Show dev sign out in development OR on dev deployment URLs
+    // Show dev sign out in development OR with admin password
     const isLocalDev = process.env.NODE_ENV === 'development';
     const isDevDeployment = typeof window !== 'undefined' &&
         window.location.hostname.includes('flappyufo-git-dev-shujauddin');
-    const isProductionDeployment = typeof window !== 'undefined' &&
-        window.location.hostname === 'flappyufo.vercel.app';
-
-    // Show if: (local dev OR dev deployment) AND not production deployment
-    const showDevSignOut = (isLocalDev || isDevDeployment) &&
-        !isProductionDeployment &&
+    
+    // Check for admin password parameter (change "yourpassword" to whatever you want)
+    const adminPassword = searchParams.get('admin_password');
+    const hasAdminAccess = adminPassword === 'admin123'; // Change this password!
+    
+    // Show if: (local dev OR dev deployment OR has admin password) 
+    const showDevSignOut = (isLocalDev || isDevDeployment || hasAdminAccess) &&
         process.env.NEXT_PUBLIC_SHOW_DEV_SIGNOUT !== 'false';
 
     if (!showDevSignOut) {
-        console.log('DevSignOut: Hidden (not in dev environment or explicitly disabled)');
+        console.log('DevSignOut: Hidden (not in dev environment, no admin password, or explicitly disabled)');
         return null;
     }
 
-    console.log('DevSignOut: Rendering button in development mode');
+    const signOutReason = hasAdminAccess ? 'admin password provided' : 'development mode';
+    console.log(`DevSignOut: Rendering button (${signOutReason})`);
 
     return (
         <div className="mt-4">
             <button
                 onClick={handleSignOut}
                 className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg transition-all duration-200 border border-red-400"
-                title="Development only - Sign out and reload to test authentication flow and reset verification status"
+                title={hasAdminAccess ? 
+                    "Admin access - Sign out and reload to reset authentication" : 
+                    "Development only - Sign out and reload to test authentication flow and reset verification status"
+                }
             >
-                🚪 DEV: Sign Out & Reset
+                🚪 {hasAdminAccess ? 'ADMIN: Sign Out' : 'DEV: Sign Out & Reset'}
             </button>
         </div>
     );
