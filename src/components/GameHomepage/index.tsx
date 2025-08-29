@@ -371,46 +371,16 @@ export default function GameHomepage() {
             if (result.finalPayload.status === 'success') {
                 console.log('✅ Continue payment successful:', result.finalPayload);
 
-                // Record continue payment in database
-                const continueResponse = await fetch('/api/tournament/continue', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        payment_reference: result.finalPayload.reference,
-                        continue_amount: tournamentEntryAmount,
-                        score: score
-                    }),
-                });
-
-                const continueData = await continueResponse.json();
-
-                if (continueData.success) {
-                    // Mark continue as used and continue the game from current score
-                    setTournamentContinueUsed(true);
-                    setContinueFromScore(score);
-                    setGameResult({ show: false, score: 0, coins: 0, mode: '' });
-
-                    console.log(`🎮 Tournament continue successful! Resuming from score ${score}`);
-                } else {
-                    // Handle specific error codes with user-friendly messages
-                    let errorMessage = 'Continue payment failed. Please try again.';
-
-                    if (continueData.code === 'NO_ACTIVE_TOURNAMENT') {
-                        errorMessage = 'No active tournament found. Continue payments require an active tournament.';
-                    } else if (continueData.code === 'USER_NOT_FOUND') {
-                        errorMessage = 'You must enter the tournament first before using continues.';
-                    } else if (continueData.code === 'TOURNAMENT_ENTRY_REQUIRED') {
-                        errorMessage = 'Tournament entry not found. Please enter the tournament first.';
-                    } else if (continueData.code === 'PAYMENT_REQUIRED') {
-                        errorMessage = 'No valid tournament entry payment found. Please enter the tournament first.';
-                    } else if (continueData.code === 'UPDATE_FAILED') {
-                        errorMessage = 'Failed to record continue payment. Please try again.';
-                    } else if (continueData.error) {
-                        errorMessage = continueData.error;
-                    }
-
-                    throw new Error(errorMessage);
-                }
+                // FOR NOW: Skip database API call and just continue the game locally
+                // TODO: Connect database API later once local continue works
+                
+                console.log(`🎮 Tournament continue successful! Payment made, resuming from score ${score}`);
+                
+                // Mark continue as used and continue the game from current score
+                setTournamentContinueUsed(true);
+                setContinueFromScore(score);
+                setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+                
             } else {
                 throw new Error('Continue payment failed or was cancelled');
             }
