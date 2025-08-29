@@ -3,16 +3,21 @@ import { auth } from '@/auth';
 import { createClient } from '@supabase/supabase-js';
 
 export async function POST(req: NextRequest) {
+    console.log('🎮 Continue API called');
+
     try {
         // Get session
         const session = await auth();
         if (!session?.user?.walletAddress) {
+            console.log('❌ No session');
             return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
         }
 
         const { continue_amount } = await req.json();
+        console.log('📝 Continue request:', { wallet: session.user.walletAddress, continue_amount });
 
         if (!continue_amount) {
+            console.log('❌ Missing continue_amount');
             return NextResponse.json({ error: 'Missing continue_amount' }, { status: 400 });
         }
 
@@ -37,9 +42,22 @@ export async function POST(req: NextRequest) {
             .eq('tournament_day', today)
             .single();
 
+        console.log('🔍 Tournament record lookup:', {
+            wallet,
+            today,
+            found: !!currentRecord,
+            record: currentRecord
+        });
+
         if (!currentRecord) {
+            console.log('❌ Tournament record not found');
             return NextResponse.json({ error: 'Tournament record not found' }, { status: 400 });
         }
+
+        console.log('📊 Current continue values:', {
+            total_continues_used: currentRecord.total_continues_used,
+            total_continue_payments: currentRecord.total_continue_payments
+        });
 
         // Update user_tournament_records: increment continue counters
         const { error: userRecordError } = await supabase
@@ -56,6 +74,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Failed to record continue in tournament record' }, { status: 500 });
         }
 
+        console.log('✅ Tournament record updated successfully');
+
         // Update game_scores: find the most recent game score and update continue info
         const { data: recentGameScore } = await supabase
             .from('game_scores')
@@ -65,6 +85,11 @@ export async function POST(req: NextRequest) {
             .order('submitted_at', { ascending: false })
             .limit(1)
             .single();
+
+        console.log('🎯 Game score lookup:', {
+            found: !!recentGameScore,
+            score: recentGameScore
+        });
 
         if (recentGameScore) {
             const { error: gameScoreError } = await supabase
@@ -79,12 +104,21 @@ export async function POST(req: NextRequest) {
                 console.error('❌ Game score update error:', gameScoreError);
                 // Don't fail the request - user tournament record was already updated
                 console.warn('⚠️ Continue recorded in tournament record but failed to update game score');
+            } else {
+                console.log('✅ Game score updated successfully');
             }
         } else {
             console.warn('⚠️ No recent game score found to update continue info');
         }
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json({
+            success: true,
+            message: 'Continue recorded successfully',
+            debug: {
+                tournament_record_updated: true,
+                game_score_updated: !!recentGameScore
+            }
+        });
 
     } catch (error) {
         console.error('❌ Continue API error:', error);
