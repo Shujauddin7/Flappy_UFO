@@ -88,13 +88,12 @@ export async function POST(req: NextRequest) {
             }, { status: 400 });
         }
 
-        // Step 5: Update tournament record with continue payment
+        // Step 5: Update tournament record with continue payment (only continue-specific columns)
         const { error: updateError } = await supabase
             .from('user_tournament_records')
             .update({
                 total_continues_used: tournamentRecord.total_continues_used + 1,
                 total_continue_payments: tournamentRecord.total_continue_payments + continue_amount,
-                last_game_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             })
             .eq('id', tournamentRecord.id);
@@ -102,6 +101,35 @@ export async function POST(req: NextRequest) {
         if (updateError) {
             console.error('❌ Update error:', updateError);
             return NextResponse.json({ error: 'Failed to record continue payment' }, { status: 500 });
+        }
+
+        // Step 6: Update the current game score record with continue info
+        try {
+            // Find the most recent game score for this user and tournament
+            const { data: recentScore } = await supabase
+                .from('game_scores')
+                .select('id, continues_used_in_game, continue_payments_for_game')
+                .eq('user_id', user.id)
+                .eq('tournament_id', tournament.id)
+                .order('submitted_at', { ascending: false })
+                .limit(1)
+                .single();
+
+            if (recentScore) {
+                // Update the most recent game score with continue info
+                await supabase
+                    .from('game_scores')
+                    .update({
+                        continues_used_in_game: recentScore.continues_used_in_game + 1,
+                        continue_payments_for_game: recentScore.continue_payments_for_game + continue_amount
+                    })
+                    .eq('id', recentScore.id);
+
+                console.log('✅ Game score continue info updated');
+            }
+        } catch (gameScoreError) {
+            console.warn('⚠️ Failed to update game score continue info:', gameScoreError);
+            // Don't fail the whole request - continue tracking is working in user_tournament_records
         }
 
         console.log('✅ Continue payment recorded successfully');

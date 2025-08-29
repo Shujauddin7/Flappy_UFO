@@ -371,16 +371,37 @@ export default function GameHomepage() {
             if (result.finalPayload.status === 'success') {
                 console.log('✅ Continue payment successful:', result.finalPayload);
 
-                // FOR NOW: Skip database API call and just continue the game locally
-                // TODO: Connect database API later once local continue works
-                
+                // Record continue payment in database (only continue-specific columns)
+                try {
+                    const continueResponse = await fetch('/api/tournament/continue', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            payment_reference: result.finalPayload.reference,
+                            continue_amount: tournamentEntryAmount,
+                            score: score
+                        }),
+                    });
+
+                    const continueData = await continueResponse.json();
+                    if (!continueData.success) {
+                        console.warn('⚠️ Continue payment recorded locally but database update failed:', continueData.error);
+                        // Don't fail the continue - just log the warning
+                    } else {
+                        console.log('✅ Continue payment recorded in database');
+                    }
+                } catch (dbError) {
+                    console.warn('⚠️ Continue payment recorded locally but database update failed:', dbError);
+                    // Don't fail the continue - just log the warning
+                }
+
                 console.log(`🎮 Tournament continue successful! Payment made, resuming from score ${score}`);
-                
+
                 // Mark continue as used and continue the game from current score
                 setTournamentContinueUsed(true);
                 setContinueFromScore(score);
                 setGameResult({ show: false, score: 0, coins: 0, mode: '' });
-                
+
             } else {
                 throw new Error('Continue payment failed or was cancelled');
             }
