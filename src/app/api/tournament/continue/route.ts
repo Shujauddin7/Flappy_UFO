@@ -46,16 +46,6 @@ export async function POST(req: NextRequest) {
         const wallet = session.user.walletAddress;
         const today = new Date().toISOString().split('T')[0];
 
-        console.log('🔍 Continue API flow:', {
-            wallet,
-            today,
-            payment_reference: payment_reference?.substring(0, 10) + '...',
-            continue_amount,
-            score
-        });
-
-        console.log('🔍 Looking for current tournament and user:', { wallet, today });
-
         // Get current active tournament
         const { data: tournament, error: tournamentError } = await supabase
             .from('tournaments')
@@ -67,12 +57,13 @@ export async function POST(req: NextRequest) {
         if (tournamentError || !tournament) {
             console.error('❌ No active tournament found');
             return NextResponse.json({
-                error: 'No active tournament available. Continue payments require an active tournament.',
-                code: 'NO_ACTIVE_TOURNAMENT'
+                error: 'No active tournament available'
             }, { status: 400 });
         }
 
-        console.log('✅ Active tournament found:', tournament.id);        // Get user (must exist for tournament continues)
+        console.log('✅ Active tournament found:', tournament.id);
+
+        // Get user
         const { data: user, error: userError } = await supabase
             .from('users')
             .select('id')
@@ -80,17 +71,16 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (userError || !user) {
-            console.error('❌ User not found - continues require tournament entry first');
+            console.error('❌ User not found');
             return NextResponse.json({
-                error: 'User not found. You must enter the tournament first before using continues.',
-                code: 'USER_NOT_FOUND'
+                error: 'User not found'
             }, { status: 400 });
         }
 
         const userId = user.id;
-        console.log('✅ User found with ID:', userId);
+        console.log('✅ User found:', userId);
 
-        // Get user tournament record (MUST exist for continues)
+        // Get user tournament record (must exist for continues)
         const { data: userRecord, error: recordError } = await supabase
             .from('user_tournament_records')
             .select('id, total_continues_used, total_continue_payments, verified_entry_paid, standard_entry_paid')
@@ -99,46 +89,22 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (recordError || !userRecord) {
-            console.error('❌ User tournament record not found:', {
-                user_id: userId,
-                tournament_id: tournament.id,
-                error: recordError?.message || 'No record found',
-                error_code: recordError?.code || 'NO_RECORD'
-            });
-
-            // Log all user tournament records for debugging
-            const { data: allRecords, error: allRecordsError } = await supabase
-                .from('user_tournament_records')
-                .select('id, tournament_id, user_id, tournament_day, verified_entry_paid, standard_entry_paid')
-                .eq('user_id', userId);
-
-            console.log('🔍 Debug: All user tournament records:', allRecords, 'Error:', allRecordsError);
-
+            console.error('❌ Tournament entry not found');
             return NextResponse.json({
-                error: 'Tournament entry not found. You must enter the tournament first before using continues.',
-                code: 'TOURNAMENT_ENTRY_REQUIRED',
-                debug: {
-                    user_id: userId,
-                    tournament_id: tournament.id,
-                    all_records: allRecords?.length || 0
-                }
-            }, { status: 400 });
-        }        // Verify user has actually paid to enter the tournament
-        const hasPaidEntry = userRecord.verified_entry_paid || userRecord.standard_entry_paid;
-        if (!hasPaidEntry) {
-            console.error('❌ User has not paid for tournament entry');
-            return NextResponse.json({
-                error: 'No valid tournament entry payment found. You must pay to enter the tournament before using continues.',
-                code: 'PAYMENT_REQUIRED'
+                error: 'Tournament entry not found. You must enter the tournament first before using continues.'
             }, { status: 400 });
         }
 
-        console.log('✅ Tournament record found with valid entry payment:', {
-            record_id: userRecord.id,
-            continues_used: userRecord.total_continues_used,
-            has_verified_payment: userRecord.verified_entry_paid,
-            has_standard_payment: userRecord.standard_entry_paid
-        });
+        // Check if user has paid for entry
+        const hasPaidEntry = userRecord.verified_entry_paid || userRecord.standard_entry_paid;
+        if (!hasPaidEntry) {
+            console.error('❌ No valid tournament entry payment');
+            return NextResponse.json({
+                error: 'No valid tournament entry payment found'
+            }, { status: 400 });
+        }
+
+        console.log('✅ Tournament record found:', userRecord.id);
 
         // Update the tournament record with continue payment
         const { data: updatedRecord, error: updateError } = await supabase
@@ -156,17 +122,11 @@ export async function POST(req: NextRequest) {
         if (updateError) {
             console.error('❌ Error updating continue payment:', updateError);
             return NextResponse.json({
-                error: 'Failed to record continue payment. Please try again.',
-                code: 'UPDATE_FAILED'
+                error: 'Failed to record continue payment'
             }, { status: 500 });
         }
 
-        console.log('✅ Tournament continue payment recorded:', {
-            record_id: userRecord.id,
-            total_continues_used: updatedRecord.total_continues_used,
-            total_continue_payments: updatedRecord.total_continue_payments,
-            continue_amount
-        });
+        console.log('✅ Continue payment recorded successfully');
 
         return NextResponse.json({
             success: true,

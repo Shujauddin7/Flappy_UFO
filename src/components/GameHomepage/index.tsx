@@ -736,14 +736,12 @@ export default function GameHomepage() {
                                             setTournamentContinueUsed(false); // Reset for new entry
                                             setCurrentScreen('tournamentEntry');
                                         } else {
-                                            // For practice mode or tournament without continue used: restart game
-                                            setContinueFromScore(0); // Start fresh
+                                            // Reset all game state and go back to mode selection
+                                            setContinueFromScore(0);
                                             setGameResult({ show: false, score: 0, coins: 0, mode: '' });
-                                            // Force component remount to ensure clean restart
-                                            setCurrentScreen('gameSelect');
-                                            setTimeout(() => {
-                                                setCurrentScreen('playing');
-                                            }, 50);
+                                            setTournamentContinueUsed(false);
+                                            setGameMode(null); // Clear game mode so user must choose again
+                                            setCurrentScreen('gameSelect'); // Go back to mode selection
                                         }
                                     }}
                                 >
