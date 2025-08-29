@@ -594,9 +594,12 @@ export default function FlappyGame({
 
         setGameState({ ...state });
 
-        // Only continue game loop if game is not over
+        // Continue game loop - restart if needed
         if (state.gameStatus !== 'gameOver') {
             gameLoopRef.current = requestAnimationFrame(gameLoop);
+        } else {
+            // Game is over, but we still need to render one more time to show the final state
+            // The parent component will show the modal
         }
     }, [checkCollisions, createObstacles, createParticles, onGameEnd]);
 
@@ -659,6 +662,11 @@ export default function FlappyGame({
         };
 
         window.addEventListener('resize', handleResize);
+
+        // Always start a new game loop when this effect runs
+        if (gameLoopRef.current) {
+            cancelAnimationFrame(gameLoopRef.current);
+        }
         gameLoopRef.current = requestAnimationFrame(gameLoop);
 
         return () => {
@@ -667,7 +675,7 @@ export default function FlappyGame({
                 cancelAnimationFrame(gameLoopRef.current);
             }
         };
-    }, [gameLoop]);
+    }, [gameLoop, gameMode, continueFromScore]); // Added dependencies to restart loop when game restarts
 
     return (
         <Page>
