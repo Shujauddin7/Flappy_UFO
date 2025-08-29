@@ -46,6 +46,14 @@ export async function POST(req: NextRequest) {
         const wallet = session.user.walletAddress;
         const today = new Date().toISOString().split('T')[0];
 
+        console.log('🔍 Continue API flow:', {
+            wallet,
+            today,
+            payment_reference: payment_reference?.substring(0, 10) + '...',
+            continue_amount,
+            score
+        });
+
         console.log('🔍 Looking for current tournament and user:', { wallet, today });
 
         // Get current active tournament
@@ -91,10 +99,29 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (recordError || !userRecord) {
-            console.error('❌ User tournament record not found - continues require tournament entry first');
+            console.error('❌ User tournament record not found:', {
+                user_id: userId,
+                tournament_id: tournament.id,
+                error: recordError?.message || 'No record found',
+                error_code: recordError?.code || 'NO_RECORD'
+            });
+
+            // Log all user tournament records for debugging
+            const { data: allRecords, error: allRecordsError } = await supabase
+                .from('user_tournament_records')
+                .select('id, tournament_id, user_id, tournament_day, verified_entry_paid, standard_entry_paid')
+                .eq('user_id', userId);
+
+            console.log('🔍 Debug: All user tournament records:', allRecords, 'Error:', allRecordsError);
+
             return NextResponse.json({
                 error: 'Tournament entry not found. You must enter the tournament first before using continues.',
-                code: 'TOURNAMENT_ENTRY_REQUIRED'
+                code: 'TOURNAMENT_ENTRY_REQUIRED',
+                debug: {
+                    user_id: userId,
+                    tournament_id: tournament.id,
+                    all_records: allRecords?.length || 0
+                }
             }, { status: 400 });
         }        // Verify user has actually paid to enter the tournament
         const hasPaidEntry = userRecord.verified_entry_paid || userRecord.standard_entry_paid;

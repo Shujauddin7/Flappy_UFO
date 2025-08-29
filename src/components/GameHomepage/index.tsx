@@ -739,7 +739,11 @@ export default function GameHomepage() {
                                             // For practice mode or tournament without continue used: restart game
                                             setContinueFromScore(0); // Start fresh
                                             setGameResult({ show: false, score: 0, coins: 0, mode: '' });
-                                            // Stay in current game mode, restart game
+                                            // Force component remount to ensure clean restart
+                                            setCurrentScreen('gameSelect');
+                                            setTimeout(() => {
+                                                setCurrentScreen('playing');
+                                            }, 50);
                                         }
                                     }}
                                 >
