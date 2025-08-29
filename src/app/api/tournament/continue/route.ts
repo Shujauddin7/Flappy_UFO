@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
         // Get current values first
         const { data: currentRecord } = await supabase
             .from('user_tournament_records')
-            .select('total_continues_used, total_continue_payments')
+            .select('id, user_id, tournament_id, total_continues_used, total_continue_payments')
             .eq('wallet', wallet)
             .eq('tournament_day', today)
             .single();
@@ -41,8 +41,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Tournament record not found' }, { status: 400 });
         }
 
-        // Simple update: increment continue counters
-        const { error } = await supabase
+        // Update user_tournament_records: increment continue counters
+        const { error: userRecordError } = await supabase
             .from('user_tournament_records')
             .update({
                 total_continues_used: currentRecord.total_continues_used + 1,
@@ -51,9 +51,37 @@ export async function POST(req: NextRequest) {
             .eq('wallet', wallet)
             .eq('tournament_day', today);
 
-        if (error) {
-            console.error('❌ Continue update error:', error);
-            return NextResponse.json({ error: 'Failed to record continue' }, { status: 500 });
+        if (userRecordError) {
+            console.error('❌ User tournament record update error:', userRecordError);
+            return NextResponse.json({ error: 'Failed to record continue in tournament record' }, { status: 500 });
+        }
+
+        // Update game_scores: find the most recent game score and update continue info
+        const { data: recentGameScore } = await supabase
+            .from('game_scores')
+            .select('id, continues_used_in_game, continue_payments_for_game')
+            .eq('user_id', currentRecord.user_id)
+            .eq('tournament_id', currentRecord.tournament_id)
+            .order('submitted_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        if (recentGameScore) {
+            const { error: gameScoreError } = await supabase
+                .from('game_scores')
+                .update({
+                    continues_used_in_game: recentGameScore.continues_used_in_game + 1,
+                    continue_payments_for_game: recentGameScore.continue_payments_for_game + continue_amount
+                })
+                .eq('id', recentGameScore.id);
+
+            if (gameScoreError) {
+                console.error('❌ Game score update error:', gameScoreError);
+                // Don't fail the request - user tournament record was already updated
+                console.warn('⚠️ Continue recorded in tournament record but failed to update game score');
+            }
+        } else {
+            console.warn('⚠️ No recent game score found to update continue info');
         }
 
         return NextResponse.json({ success: true });
