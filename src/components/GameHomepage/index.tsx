@@ -392,7 +392,24 @@ export default function GameHomepage() {
 
                     console.log(`🎮 Tournament continue successful! Resuming from score ${score}`);
                 } else {
-                    throw new Error(continueData.error || 'Failed to record continue payment');
+                    // Handle specific error codes with user-friendly messages
+                    let errorMessage = 'Continue payment failed. Please try again.';
+
+                    if (continueData.code === 'NO_ACTIVE_TOURNAMENT') {
+                        errorMessage = 'No active tournament found. Continue payments require an active tournament.';
+                    } else if (continueData.code === 'USER_NOT_FOUND') {
+                        errorMessage = 'You must enter the tournament first before using continues.';
+                    } else if (continueData.code === 'TOURNAMENT_ENTRY_REQUIRED') {
+                        errorMessage = 'Tournament entry not found. Please enter the tournament first.';
+                    } else if (continueData.code === 'PAYMENT_REQUIRED') {
+                        errorMessage = 'No valid tournament entry payment found. Please enter the tournament first.';
+                    } else if (continueData.code === 'UPDATE_FAILED') {
+                        errorMessage = 'Failed to record continue payment. Please try again.';
+                    } else if (continueData.error) {
+                        errorMessage = continueData.error;
+                    }
+
+                    throw new Error(errorMessage);
                 }
             } else {
                 throw new Error('Continue payment failed or was cancelled');

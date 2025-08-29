@@ -16,13 +16,9 @@ export async function POST(req: NextRequest) {
             : process.env.SUPABASE_DEV_SERVICE_KEY;
 
         if (!supabaseUrl || !supabaseServiceKey) {
-            console.error('❌ Missing Supabase credentials:', {
-                hasUrl: !!supabaseUrl,
-                hasKey: !!supabaseServiceKey,
-                environment: isProduction ? 'production' : 'development'
-            });
+            console.error('❌ Missing Supabase credentials');
             return NextResponse.json({
-                error: `Server configuration error: Missing ${isProduction ? 'production' : 'development'} database credentials`
+                error: 'Server configuration error'
             }, { status: 500 });
         }
 
@@ -37,7 +33,7 @@ export async function POST(req: NextRequest) {
         }
 
         const { payment_reference, continue_amount, score } = await req.json();
-        console.log('📝 Continue payment request:', { payment_reference, continue_amount, score });
+        console.log('📝 Continue payment request:', { payment_reference, continue_amount, score, wallet: session.user.walletAddress });
 
         // Validate required fields
         if (!payment_reference || !continue_amount || score === undefined) {
@@ -50,7 +46,7 @@ export async function POST(req: NextRequest) {
         const wallet = session.user.walletAddress;
         const today = new Date().toISOString().split('T')[0];
 
-        console.log('🔍 Looking for tournament and user:', { wallet, today });
+        console.log('🔍 Looking for current tournament and user:', { wallet, today });
 
         // Get current active tournament
         const { data: tournament, error: tournamentError } = await supabase
@@ -60,21 +56,15 @@ export async function POST(req: NextRequest) {
             .eq('is_active', true)
             .single();
 
-        if (tournamentError) {
-            console.error('❌ Error fetching tournament:', tournamentError);
-            // For now, let's just log the continue payment without requiring tournament
-            console.log('⚠️ No tournament found, but recording continue payment anyway');
-            
+        if (tournamentError || !tournament) {
+            console.error('❌ No active tournament found');
             return NextResponse.json({
-                success: true,
-                data: {
-                    message: `Continue payment of ${continue_amount} WLD processed (no tournament validation)`,
-                    warning: 'No active tournament found, but payment accepted'
-                }
-            });
+                error: 'No active tournament available. Continue payments require an active tournament.',
+                code: 'NO_ACTIVE_TOURNAMENT'
+            }, { status: 400 });
         }
 
-        // Get user
+        console.log('✅ Active tournament found:', tournament.id);        // Get user (must exist for tournament continues)
         const { data: user, error: userError } = await supabase
             .from('users')
             .select('id')
@@ -82,66 +72,47 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (userError || !user) {
-            console.error('❌ User not found:', userError);
-            // Create user if they don't exist
-            const { error: createError } = await supabase
-                .from('users')
-                .insert({
-                    wallet: wallet,
-                    username: null,
-                    world_id: null,
-                    total_tournaments_played: 0,
-                    total_games_played: 0,
-                    highest_score_ever: 0
-                })
-                .select('id')
-                .single();
-
-            if (createError) {
-                console.error('❌ Error creating user:', createError);
-                return NextResponse.json({
-                    error: `Failed to create user: ${createError.message}`
-                }, { status: 500 });
-            }
-
-            console.log('✅ New user created for continue payment');
-            // For now, just accept the continue payment
+            console.error('❌ User not found - continues require tournament entry first');
             return NextResponse.json({
-                success: true,
-                data: {
-                    message: `Continue payment of ${continue_amount} WLD processed for new user`
-                }
-            });
+                error: 'User not found. You must enter the tournament first before using continues.',
+                code: 'USER_NOT_FOUND'
+            }, { status: 400 });
         }
 
-        // Try to get user tournament record
+        const userId = user.id;
+        console.log('✅ User found with ID:', userId);
+
+        // Get user tournament record (MUST exist for continues)
         const { data: userRecord, error: recordError } = await supabase
             .from('user_tournament_records')
-            .select('id, total_continues_used, total_continue_payments, current_entry_type')
-            .eq('user_id', user.id)
+            .select('id, total_continues_used, total_continue_payments, verified_entry_paid, unverified_entry_paid')
+            .eq('user_id', userId)
             .eq('tournament_id', tournament.id)
             .single();
 
         if (recordError || !userRecord) {
-            console.error('❌ User tournament record not found:', recordError);
-            // For testing, let's accept the continue payment anyway
-            console.log('⚠️ No tournament record found, but accepting continue payment');
-            
+            console.error('❌ User tournament record not found - must enter tournament first');
             return NextResponse.json({
-                success: true,
-                data: {
-                    message: `Continue payment of ${continue_amount} WLD accepted (no tournament record validation)`,
-                    warning: 'No tournament entry found, but payment accepted for testing'
-                }
-            });
+                error: 'Tournament entry not found. You must enter the tournament first before using continues.',
+                code: 'TOURNAMENT_ENTRY_REQUIRED'
+            }, { status: 400 });
         }
 
-        console.log('🎮 Processing tournament continue:', {
-            user_id: user.id,
-            tournament_record_id: userRecord.id,
-            current_continues_used: userRecord.total_continues_used,
-            continue_amount,
-            score
+        // Verify user has actually paid to enter the tournament
+        const hasPaidEntry = userRecord.verified_entry_paid || userRecord.unverified_entry_paid;
+        if (!hasPaidEntry) {
+            console.error('❌ User has not paid for tournament entry');
+            return NextResponse.json({
+                error: 'No valid tournament entry payment found. You must pay to enter the tournament before using continues.',
+                code: 'PAYMENT_REQUIRED'
+            }, { status: 400 });
+        }
+
+        console.log('✅ Tournament record found with valid entry payment:', {
+            record_id: userRecord.id,
+            continues_used: userRecord.total_continues_used,
+            has_verified_payment: userRecord.verified_entry_paid,
+            has_unverified_payment: userRecord.unverified_entry_paid
         });
 
         // Update the tournament record with continue payment
@@ -150,6 +121,7 @@ export async function POST(req: NextRequest) {
             .update({
                 total_continues_used: userRecord.total_continues_used + 1,
                 total_continue_payments: userRecord.total_continue_payments + continue_amount,
+                last_game_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             })
             .eq('id', userRecord.id)
@@ -159,7 +131,8 @@ export async function POST(req: NextRequest) {
         if (updateError) {
             console.error('❌ Error updating continue payment:', updateError);
             return NextResponse.json({
-                error: `Failed to record continue payment: ${updateError.message}`
+                error: 'Failed to record continue payment. Please try again.',
+                code: 'UPDATE_FAILED'
             }, { status: 500 });
         }
 
