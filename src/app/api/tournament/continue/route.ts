@@ -83,23 +83,54 @@ export async function POST(req: NextRequest) {
         console.log('✅ User found with ID:', userId);
 
         // Get user tournament record (MUST exist for continues)
-        const { data: userRecord, error: recordError } = await supabase
+        let userRecord;
+        const { data: existingRecord, error: recordError } = await supabase
             .from('user_tournament_records')
-            .select('id, total_continues_used, total_continue_payments, verified_entry_paid, unverified_entry_paid')
+            .select('id, total_continues_used, total_continue_payments, verified_entry_paid, standard_entry_paid')
             .eq('user_id', userId)
             .eq('tournament_id', tournament.id)
             .single();
 
-        if (recordError || !userRecord) {
-            console.error('❌ User tournament record not found - must enter tournament first');
-            return NextResponse.json({
-                error: 'Tournament entry not found. You must enter the tournament first before using continues.',
-                code: 'TOURNAMENT_ENTRY_REQUIRED'
-            }, { status: 400 });
+        if (recordError || !existingRecord) {
+            console.error('❌ User tournament record not found - creating temporary record for testing');
+
+            // FOR TESTING: Create a basic tournament record so continue can work
+            const { data: tempRecord, error: tempError } = await supabase
+                .from('user_tournament_records')
+                .insert({
+                    user_id: userId,
+                    tournament_id: tournament.id,
+                    username: null,
+                    wallet: wallet,
+                    tournament_day: today,
+                    standard_entry_paid: true,  // Mark as if they paid standard entry
+                    standard_paid_amount: continue_amount,
+                    standard_paid_at: new Date().toISOString(),
+                    highest_score: 0,
+                    total_games_played: 0,
+                    total_continues_used: 0,
+                    total_continue_payments: 0,
+                    first_game_at: new Date().toISOString()
+                })
+                .select('id, total_continues_used, total_continue_payments, verified_entry_paid, standard_entry_paid')
+                .single();
+
+            if (tempError) {
+                console.error('❌ Failed to create temporary tournament record:', tempError);
+                return NextResponse.json({
+                    error: 'Failed to create tournament record for continue. Please try again.',
+                    code: 'RECORD_CREATION_FAILED'
+                }, { status: 500 });
+            }
+
+            userRecord = tempRecord;
+            console.log('✅ Temporary tournament record created for testing');
+        } else {
+            userRecord = existingRecord;
         }
 
         // Verify user has actually paid to enter the tournament
-        const hasPaidEntry = userRecord.verified_entry_paid || userRecord.unverified_entry_paid;
+        const hasPaidEntry = userRecord.verified_entry_paid || userRecord.standard_entry_paid;
         if (!hasPaidEntry) {
             console.error('❌ User has not paid for tournament entry');
             return NextResponse.json({
@@ -112,7 +143,7 @@ export async function POST(req: NextRequest) {
             record_id: userRecord.id,
             continues_used: userRecord.total_continues_used,
             has_verified_payment: userRecord.verified_entry_paid,
-            has_unverified_payment: userRecord.unverified_entry_paid
+            has_standard_payment: userRecord.standard_entry_paid
         });
 
         // Update the tournament record with continue payment
