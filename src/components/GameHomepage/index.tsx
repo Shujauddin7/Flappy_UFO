@@ -377,9 +377,7 @@ export default function GameHomepage() {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            payment_reference: result.finalPayload.reference,
-                            continue_amount: tournamentEntryAmount,
-                            score: score
+                            continue_amount: tournamentEntryAmount
                         }),
                     });
 
