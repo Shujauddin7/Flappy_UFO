@@ -88,19 +88,49 @@ export async function POST(req: NextRequest) {
             .eq('tournament_id', tournament.id)
             .single();
 
+        console.log('🔍 Debug tournament record query:', {
+            userId,
+            tournamentId: tournament.id,
+            error: recordError?.message,
+            userRecord
+        });
+
         if (recordError || !userRecord) {
-            console.error('❌ Tournament entry not found');
+            console.error('❌ Tournament entry not found:', {
+                error: recordError?.message,
+                code: recordError?.code,
+                details: recordError?.details
+            });
             return NextResponse.json({
-                error: 'Tournament entry not found. You must enter the tournament first before using continues.'
+                error: 'Tournament entry not found. You must enter the tournament first before using continues.',
+                debug: {
+                    userId,
+                    tournamentId: tournament.id,
+                    error: recordError?.message
+                }
             }, { status: 400 });
         }
 
         // Check if user has paid for entry
         const hasPaidEntry = userRecord.verified_entry_paid || userRecord.standard_entry_paid;
+        console.log('🔍 Payment check:', {
+            verified_entry_paid: userRecord.verified_entry_paid,
+            standard_entry_paid: userRecord.standard_entry_paid,
+            hasPaidEntry
+        });
+
         if (!hasPaidEntry) {
-            console.error('❌ No valid tournament entry payment');
+            console.error('❌ No valid tournament entry payment:', {
+                verified_entry_paid: userRecord.verified_entry_paid,
+                standard_entry_paid: userRecord.standard_entry_paid,
+                userRecord: userRecord
+            });
             return NextResponse.json({
-                error: 'No valid tournament entry payment found'
+                error: 'No valid tournament entry payment found',
+                debug: {
+                    verified_entry_paid: userRecord.verified_entry_paid,
+                    standard_entry_paid: userRecord.standard_entry_paid
+                }
             }, { status: 400 });
         }
 
