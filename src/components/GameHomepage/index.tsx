@@ -371,12 +371,29 @@ export default function GameHomepage() {
             if (result.finalPayload.status === 'success') {
                 console.log('✅ Continue payment successful:', result.finalPayload);
 
-                // Mark continue as used and continue the game from current score
-                setTournamentContinueUsed(true);
-                setContinueFromScore(score);
-                setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+                // Record continue payment in database
+                const continueResponse = await fetch('/api/tournament/continue', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        payment_reference: result.finalPayload.reference,
+                        continue_amount: tournamentEntryAmount,
+                        score: score
+                    }),
+                });
 
-                console.log(`🎮 Tournament continue successful! Resuming from score ${score}`);
+                const continueData = await continueResponse.json();
+
+                if (continueData.success) {
+                    // Mark continue as used and continue the game from current score
+                    setTournamentContinueUsed(true);
+                    setContinueFromScore(score);
+                    setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+
+                    console.log(`🎮 Tournament continue successful! Resuming from score ${score}`);
+                } else {
+                    throw new Error(continueData.error || 'Failed to record continue payment');
+                }
             } else {
                 throw new Error('Continue payment failed or was cancelled');
             }
