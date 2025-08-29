@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
         const today = new Date().toISOString().split('T')[0];
         let recordQuery = supabase
             .from('user_tournament_records')
-            .select('id, user_id, highest_score, tournament_day, tournament_id, verified_at, verified_games_played, unverified_games_played, total_games_played, verified_entry_paid, standard_entry_paid, verified_paid_at, standard_paid_at, verified_entry_games, standard_entry_games')
+            .select('id, user_id, highest_score, tournament_day, tournament_id, verified_at, verified_games_played, unverified_games_played, total_games_played, verified_entry_paid, standard_entry_paid, verified_paid_at, standard_paid_at, verified_entry_games, standard_entry_games, pending_continues_used, pending_continue_payments')
             .eq('user_id', user.id)
             .eq('tournament_day', today);
 
@@ -207,6 +207,10 @@ export async function POST(req: NextRequest) {
             }
         });
 
+        // Get pending continue data from the tournament record
+        const pendingContinuesUsed = record.pending_continues_used || 0;
+        const pendingContinuePayments = record.pending_continue_payments || 0;
+
         // First, always insert the individual score into game_scores table
         const { error: gameScoreError } = await supabase
             .from('game_scores')
@@ -221,8 +225,8 @@ export async function POST(req: NextRequest) {
                 game_duration_ms: game_duration,
                 was_verified_game: isVerifiedGame, // Properly determined based on entry payment
                 entry_type: isVerifiedGame ? 'verified' : 'standard', // NEW: Set the clear entry type
-                continues_used_in_game: 0, // Default for now
-                continue_payments_for_game: 0,
+                continues_used_in_game: pendingContinuesUsed, // Use pending continues
+                continue_payments_for_game: pendingContinuePayments, // Use pending continue payments
                 submitted_at: new Date().toISOString()
             });
 
@@ -230,7 +234,26 @@ export async function POST(req: NextRequest) {
             console.error('❌ Error inserting game score:', gameScoreError);
             // Don't fail the entire request if we can't log the individual score
         } else {
-            console.log('✅ Game score recorded with username:', user.username);
+            console.log('✅ Game score recorded with username and continues:', {
+                username: user.username,
+                continues_used: pendingContinuesUsed,
+                continue_payments: pendingContinuePayments
+            });
+
+            // Clear the pending continue data after successfully recording the game score
+            const { error: clearPendingError } = await supabase
+                .from('user_tournament_records')
+                .update({
+                    pending_continues_used: 0,
+                    pending_continue_payments: 0
+                })
+                .eq('id', record.id);
+
+            if (clearPendingError) {
+                console.error('❌ Error clearing pending continue data:', clearPendingError);
+            } else {
+                console.log('✅ Pending continue data cleared');
+            }
         }
 
         // Only update highest score if new score is higher

@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
         // Now get the current record (it definitely exists)
         const { data: currentRecord, error: recordError } = await supabase
             .from('user_tournament_records')
-            .select('total_continues_used, total_continue_payments, user_id, tournament_id')
+            .select('total_continues_used, total_continue_payments, user_id, tournament_id, pending_continues_used, pending_continue_payments')
             .eq('wallet', wallet)
             .eq('tournament_day', today)
             .single();
@@ -95,12 +95,15 @@ export async function POST(req: NextRequest) {
         };
 
         if (currentRecord) {
-            // Update user tournament record
+            // Update user tournament record with totals
             const { error: updateError1 } = await supabase
                 .from('user_tournament_records')
                 .update({
                     total_continues_used: currentRecord.total_continues_used + 1,
-                    total_continue_payments: currentRecord.total_continue_payments + continue_amount
+                    total_continue_payments: currentRecord.total_continue_payments + continue_amount,
+                    // Store pending continues for the current game session
+                    pending_continues_used: (currentRecord.pending_continues_used || 0) + 1,
+                    pending_continue_payments: (currentRecord.pending_continue_payments || 0) + continue_amount
                 })
                 .eq('wallet', wallet)
                 .eq('tournament_day', today);
@@ -110,36 +113,18 @@ export async function POST(req: NextRequest) {
                 error: updateError1?.message
             };
 
-            // Find and update most recent game score
-            const { data: recentScore, error: scoreError } = await supabase
-                .from('game_scores')
-                .select('id, continues_used_in_game, continue_payments_for_game')
-                .eq('user_id', currentRecord.user_id)
-                .eq('tournament_id', currentRecord.tournament_id)
-                .order('submitted_at', { ascending: false })
-                .limit(1)
-                .single();
-
+            // Note: We don't update game_scores here because the record doesn't exist yet
+            // The game_scores record will be created when the score is submitted
+            // The pending continues data will be applied at that time
             debugInfo.step3_lookup_score = {
-                found: !!recentScore,
-                error: scoreError?.message,
-                data: recentScore
+                found: false,
+                note: "game_scores record doesn't exist during gameplay - will be created on score submission"
             };
 
-            if (recentScore) {
-                const { error: updateError2 } = await supabase
-                    .from('game_scores')
-                    .update({
-                        continues_used_in_game: recentScore.continues_used_in_game + 1,
-                        continue_payments_for_game: recentScore.continue_payments_for_game + continue_amount
-                    })
-                    .eq('id', recentScore.id);
-
-                debugInfo.step4_update_score = {
-                    success: !updateError2,
-                    error: updateError2?.message
-                };
-            }
+            debugInfo.step4_update_score = {
+                success: true,
+                note: "Continue data stored in pending fields, will be applied when score is submitted"
+            };
         }
 
         return NextResponse.json({
