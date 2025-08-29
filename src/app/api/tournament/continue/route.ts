@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
         }
 
         const { continue_amount } = await req.json();
-        
+
         if (!continue_amount) {
             return NextResponse.json({ error: 'Missing continue_amount' }, { status: 400 });
         }
