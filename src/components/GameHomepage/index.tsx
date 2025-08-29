@@ -6,6 +6,7 @@ import { Page } from '@/components/PageLayout';
 import { useGameAuth } from '@/hooks/useGameAuth';
 import dynamic from 'next/dynamic';
 import { TournamentEntryModal } from '@/components/TournamentEntryModal';
+import { canContinue, spendCoins, getCoins } from '@/utils/coins';
 
 // Dynamically import FlappyGame to avoid SSR issues
 const FlappyGame = dynamic(() => import('@/components/FlappyGame'), {
@@ -44,6 +45,9 @@ export default function GameHomepage() {
 
     // Tournament entry loading states to prevent duplicate operations
     const [isProcessingEntry, setIsProcessingEntry] = useState<boolean>(false);
+
+    // Practice mode continue functionality
+    const [continueFromScore, setContinueFromScore] = useState<number>(0);
 
     // Check user's verification status for today's tournament
     const checkVerificationStatus = useCallback(async () => {
@@ -364,6 +368,9 @@ export default function GameHomepage() {
 
         const modeText = gameMode === 'practice' ? 'Practice' : 'Tournament';
 
+        // Reset continue score since the game has ended
+        setContinueFromScore(0);
+
         // ALWAYS show the modal immediately for fast response
         setGameResult({
             show: true,
@@ -540,7 +547,11 @@ export default function GameHomepage() {
     if (currentScreen === 'playing') {
         return (
             <>
-                <FlappyGame gameMode={gameMode} onGameEnd={handleGameEnd} />
+                <FlappyGame
+                    gameMode={gameMode}
+                    onGameEnd={handleGameEnd}
+                    continueFromScore={continueFromScore}
+                />
                 {/* Game Result Modal - render over the game */}
                 {gameResult.show && (
                     <div className="game-result-modal-overlay">
@@ -580,13 +591,54 @@ export default function GameHomepage() {
                                         ⚠️ {gameResult.error}
                                     </div>
                                 )}
+
+                                {/* Practice Mode coin info */}
+                                {gameMode === 'practice' && (
+                                    <div className="practice-info">
+                                        💰 You have {getCoins()} coins
+                                        <br />
+                                        <small>Collect ⭐ stars to earn 2 coins each • Use 10 coins to continue</small>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="modal-actions">
+                                {/* Continue button for Practice Mode */}
+                                {gameMode === 'practice' && canContinue() && (
+                                    <button
+                                        className="modal-button continue"
+                                        onClick={() => {
+                                            // Spend 10 coins to continue
+                                            if (spendCoins(10)) {
+                                                setContinueFromScore(gameResult.score);
+                                                setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+                                                // Game will restart with the previous score
+                                            } else {
+                                                alert('Not enough coins to continue! You need 10 coins.');
+                                            }
+                                        }}
+                                    >
+                                        Continue (10 ⭐) - {getCoins()} coins available
+                                    </button>
+                                )}
+
+                                {/* Play Again button */}
+                                <button
+                                    className="modal-button secondary"
+                                    onClick={() => {
+                                        setContinueFromScore(0); // Start fresh
+                                        setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+                                        // Stay in current game mode, restart game
+                                    }}
+                                >
+                                    Play Again
+                                </button>
+
                                 <button
                                     className="modal-button primary"
                                     onClick={() => {
                                         // Reset all game state
+                                        setContinueFromScore(0); // Reset continue score
                                         setGameResult({ show: false, score: 0, coins: 0, mode: '' });
                                         setIsSubmittingScore(false); // Ensure submission state is cleared
                                         setCurrentScreen('home');
@@ -709,6 +761,22 @@ export default function GameHomepage() {
                         border: 1px solid rgba(255, 107, 107, 0.3);
                     }
 
+                    .practice-info {
+                        color: #ffd700;
+                        background: rgba(255, 215, 0, 0.1);
+                        padding: 10px;
+                        border-radius: 8px;
+                        margin: 10px 0;
+                        border: 1px solid rgba(255, 215, 0, 0.3);
+                        text-align: center;
+                        font-size: 14px;
+                    }
+
+                    .practice-info small {
+                        color: #cccccc;
+                        font-size: 12px;
+                    }
+
                     .modal-actions {
                         display: flex;
                         gap: 15px;
@@ -736,6 +804,33 @@ export default function GameHomepage() {
                     .modal-button.primary:hover {
                         transform: translateY(-2px);
                         box-shadow: 0 6px 20px rgba(0, 191, 255, 0.4);
+                    }
+
+                    .modal-button.continue {
+                        background: linear-gradient(135deg, #ffd700, #ffb347);
+                        color: #000;
+                        box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+                        font-size: 16px;
+                    }
+
+                    .modal-button.continue:hover {
+                        transform: translateY(-2px);
+                        box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
+                        background: linear-gradient(135deg, #ffed4a, #ffc82c);
+                    }
+
+                    .modal-actions {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 12px;
+                        justify-content: center;
+                        align-items: center;
+                    }
+
+                    @media (min-width: 480px) {
+                        .modal-actions {
+                            flex-direction: row;
+                        }
                     }
 
                     .modal-button.secondary {
