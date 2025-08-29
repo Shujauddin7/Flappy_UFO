@@ -382,6 +382,28 @@ export default function GameHomepage() {
                     });
 
                     const continueData = await continueResponse.json();
+
+                    // DEBUG: Show the debug info in an alert
+                    if (continueData.debug) {
+                        const debugMsg = `🔍 CONTINUE DEBUG:
+Wallet: ${continueData.debug.wallet}
+Date: ${continueData.debug.today}
+Amount: ${continueData.debug.continue_amount}
+
+Step 1 - Find Record: ${continueData.debug.step1_lookup_record?.found ? '✅ FOUND' : '❌ NOT FOUND'}
+${continueData.debug.step1_lookup_record?.error ? 'Error: ' + continueData.debug.step1_lookup_record.error : ''}
+
+Step 2 - Update Record: ${continueData.debug.step2_update_record?.success ? '✅ SUCCESS' : '❌ FAILED'}
+${continueData.debug.step2_update_record?.error ? 'Error: ' + continueData.debug.step2_update_record.error : ''}
+
+Step 3 - Find Score: ${continueData.debug.step3_lookup_score?.found ? '✅ FOUND' : '❌ NOT FOUND'}
+${continueData.debug.step3_lookup_score?.error ? 'Error: ' + continueData.debug.step3_lookup_score.error : ''}
+
+Step 4 - Update Score: ${continueData.debug.step4_update_score?.success ? '✅ SUCCESS' : '❌ FAILED'}
+${continueData.debug.step4_update_score?.error ? 'Error: ' + continueData.debug.step4_update_score.error : ''}`;
+                        alert(debugMsg);
+                    }
+
                     if (!continueData.success) {
                         console.warn('⚠️ Continue payment recorded locally but database update failed:', continueData.error);
                         // Don't fail the continue - just log the warning

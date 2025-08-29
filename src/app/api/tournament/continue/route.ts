@@ -26,19 +26,34 @@ export async function POST(req: NextRequest) {
         const wallet = session.user.walletAddress;
         const today = new Date().toISOString().split('T')[0];
 
-        // Get current values first, then increment
+        // DEBUG INFO TO RETURN
+        const debugInfo = {
+            wallet,
+            today,
+            continue_amount,
+            step1_lookup_record: {} as Record<string, unknown>,
+            step2_update_record: {} as Record<string, unknown>,
+            step3_lookup_score: {} as Record<string, unknown>,
+            step4_update_score: {} as Record<string, unknown>
+        };
 
-        // Update user_tournament_records
-        const { data: currentRecord } = await supabase
+        // Get current values first, then increment
+        const { data: currentRecord, error: recordError } = await supabase
             .from('user_tournament_records')
             .select('total_continues_used, total_continue_payments, user_id, tournament_id')
             .eq('wallet', wallet)
             .eq('tournament_day', today)
             .single();
 
+        debugInfo.step1_lookup_record = {
+            found: !!currentRecord,
+            error: recordError?.message,
+            data: currentRecord
+        };
+
         if (currentRecord) {
             // Update user tournament record
-            await supabase
+            const { error: updateError1 } = await supabase
                 .from('user_tournament_records')
                 .update({
                     total_continues_used: currentRecord.total_continues_used + 1,
@@ -47,8 +62,13 @@ export async function POST(req: NextRequest) {
                 .eq('wallet', wallet)
                 .eq('tournament_day', today);
 
+            debugInfo.step2_update_record = {
+                success: !updateError1,
+                error: updateError1?.message
+            };
+
             // Find and update most recent game score
-            const { data: recentScore } = await supabase
+            const { data: recentScore, error: scoreError } = await supabase
                 .from('game_scores')
                 .select('id, continues_used_in_game, continue_payments_for_game')
                 .eq('user_id', currentRecord.user_id)
@@ -57,18 +77,32 @@ export async function POST(req: NextRequest) {
                 .limit(1)
                 .single();
 
+            debugInfo.step3_lookup_score = {
+                found: !!recentScore,
+                error: scoreError?.message,
+                data: recentScore
+            };
+
             if (recentScore) {
-                await supabase
+                const { error: updateError2 } = await supabase
                     .from('game_scores')
                     .update({
                         continues_used_in_game: recentScore.continues_used_in_game + 1,
                         continue_payments_for_game: recentScore.continue_payments_for_game + continue_amount
                     })
                     .eq('id', recentScore.id);
+
+                debugInfo.step4_update_score = {
+                    success: !updateError2,
+                    error: updateError2?.message
+                };
             }
         }
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json({
+            success: true,
+            debug: debugInfo
+        });
 
     } catch (error) {
         console.error('❌ Continue API error:', error);
