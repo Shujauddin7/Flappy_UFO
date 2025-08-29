@@ -49,6 +49,10 @@ export default function GameHomepage() {
     // Practice mode continue functionality
     const [continueFromScore, setContinueFromScore] = useState<number>(0);
 
+    // Tournament mode continue tracking
+    const [tournamentContinueUsed, setTournamentContinueUsed] = useState<boolean>(false);
+    const [tournamentEntryAmount, setTournamentEntryAmount] = useState<number>(1.0); // Track entry amount for continue payment
+
     // Check user's verification status for today's tournament
     const checkVerificationStatus = useCallback(async () => {
         if (!session?.user?.walletAddress) return false;
@@ -106,6 +110,8 @@ export default function GameHomepage() {
             // Reset all game-related state when starting a new game
             setGameResult({ show: false, score: 0, coins: 0, mode: '' });
             setIsSubmittingScore(false);
+            setContinueFromScore(0);
+            setTournamentContinueUsed(false); // Reset continue state for new game
 
             // Always attempt authentication to ensure session is valid
             const authSuccess = await authenticate();
@@ -315,6 +321,10 @@ export default function GameHomepage() {
                     // Create tournament entry after successful payment
                     await createTournamentEntry(result.finalPayload.reference, amount, isVerified);
 
+                    // Track entry amount and reset continue status for new game
+                    setTournamentEntryAmount(amount);
+                    setTournamentContinueUsed(false);
+
                     // Start the game directly (only if entry creation succeeds)
                     setGameMode('tournament');
                     setCurrentScreen('playing');
@@ -331,6 +341,48 @@ export default function GameHomepage() {
         } catch (error) {
             console.error('❌ Payment error:', error);
             alert('Payment failed. Please try again.');
+        }
+    };
+
+    // Handle tournament continue payment
+    const handleTournamentContinue = async (score: number) => {
+        try {
+            const { MiniKit, Tokens, tokenToDecimals } = await import('@worldcoin/minikit-js');
+
+            // Get payment reference from backend for continue payment
+            const res = await fetch('/api/initiate-payment', {
+                method: 'POST',
+            });
+            const { id } = await res.json();
+
+            // Make continue payment using the same amount as entry fee
+            const result = await MiniKit.commandsAsync.pay({
+                reference: id,
+                to: process.env.NEXT_PUBLIC_ADMIN_WALLET || '',
+                tokens: [
+                    {
+                        symbol: Tokens.WLD,
+                        token_amount: tokenToDecimals(tournamentEntryAmount, Tokens.WLD).toString(),
+                    },
+                ],
+                description: `Flappy UFO Tournament Continue (${tournamentEntryAmount} WLD)`,
+            });
+
+            if (result.finalPayload.status === 'success') {
+                console.log('✅ Continue payment successful:', result.finalPayload);
+
+                // Mark continue as used and continue the game from current score
+                setTournamentContinueUsed(true);
+                setContinueFromScore(score);
+                setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+
+                console.log(`🎮 Tournament continue successful! Resuming from score ${score}`);
+            } else {
+                throw new Error('Continue payment failed or was cancelled');
+            }
+        } catch (error) {
+            console.error('❌ Tournament continue payment error:', error);
+            alert('Continue payment failed. Please try again.');
         }
     };
 
@@ -622,16 +674,42 @@ export default function GameHomepage() {
                                     </button>
                                 )}
 
+                                {/* Continue button for Tournament Mode - one continue per game only */}
+                                {gameMode === 'tournament' && !tournamentContinueUsed && (
+                                    <button
+                                        className="modal-button continue"
+                                        onClick={() => handleTournamentContinue(gameResult.score)}
+                                    >
+                                        Continue ({tournamentEntryAmount} WLD) - One continue per game
+                                    </button>
+                                )}
+
+                                {/* Tournament Mode: Show message if continue already used */}
+                                {gameMode === 'tournament' && tournamentContinueUsed && (
+                                    <div className="tournament-continue-info">
+                                        ❌ Continue already used. Create new entry to play again.
+                                    </div>
+                                )}
+
                                 {/* Play Again button */}
                                 <button
                                     className="modal-button secondary"
                                     onClick={() => {
-                                        setContinueFromScore(0); // Start fresh
-                                        setGameResult({ show: false, score: 0, coins: 0, mode: '' });
-                                        // Stay in current game mode, restart game
+                                        if (gameMode === 'tournament' && tournamentContinueUsed) {
+                                            // For tournament mode after continue used: redirect to new entry
+                                            setContinueFromScore(0);
+                                            setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+                                            setTournamentContinueUsed(false); // Reset for new entry
+                                            setCurrentScreen('tournamentEntry');
+                                        } else {
+                                            // For practice mode or tournament without continue used: restart game
+                                            setContinueFromScore(0); // Start fresh
+                                            setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+                                            // Stay in current game mode, restart game
+                                        }
                                     }}
                                 >
-                                    Play Again
+                                    {gameMode === 'tournament' && tournamentContinueUsed ? 'New Entry' : 'Play Again'}
                                 </button>
 
                                 <button
@@ -775,6 +853,18 @@ export default function GameHomepage() {
                     .practice-info small {
                         color: #cccccc;
                         font-size: 12px;
+                    }
+
+                    .tournament-continue-info {
+                        color: #ff6b6b;
+                        background: rgba(255, 107, 107, 0.1);
+                        padding: 10px;
+                        border-radius: 8px;
+                        margin: 10px 0;
+                        border: 1px solid rgba(255, 107, 107, 0.3);
+                        text-align: center;
+                        font-size: 14px;
+                        font-weight: bold;
                     }
 
                     .modal-actions {
