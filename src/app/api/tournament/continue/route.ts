@@ -76,17 +76,12 @@ export async function POST(req: NextRequest) {
             newContinuePayments
         });
 
-        // Update continue totals
-        const { data: updateData, error: updateError } = await supabase
-            .from('user_tournament_records')
-            .update({
-                total_continues_used: newContinuesUsed,
-                total_continue_payments: newContinuePayments,
-                updated_at: new Date().toISOString()
-            })
-            .eq('user_id', user.id)
-            .eq('tournament_id', tournament.id)
-            .select();
+        // Update continue totals using raw SQL to bypass any RLS issues
+        const { data: updateData, error: updateError } = await supabase.rpc('update_continue_totals', {
+            p_user_id: user.id,
+            p_tournament_id: tournament.id,
+            p_continue_amount: continue_amount
+        });
 
         console.log('🔍 Update result:', { updateData, updateError });
 
