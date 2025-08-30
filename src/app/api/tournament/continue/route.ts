@@ -15,6 +15,12 @@ export async function POST(req: NextRequest) {
         }
 
         const isProduction = process.env.NODE_ENV === 'production';
+        console.log('🔍 Continue API Environment Check:', {
+            NODE_ENV: process.env.NODE_ENV,
+            isProduction,
+            SUPABASE_PROD_URL: !!process.env.SUPABASE_PROD_URL,
+            SUPABASE_DEV_URL: !!process.env.SUPABASE_DEV_URL
+        });
         const supabaseUrl = isProduction ? process.env.SUPABASE_PROD_URL : process.env.SUPABASE_DEV_URL;
         const supabaseServiceKey = isProduction ? process.env.SUPABASE_PROD_SERVICE_KEY : process.env.SUPABASE_DEV_SERVICE_KEY;
 
@@ -81,12 +87,19 @@ export async function POST(req: NextRequest) {
         };
 
         // Now get the current record (it definitely exists)
+        console.log('🔍 Looking for record with:', { wallet, tournament_day: today });
         const { data: currentRecord, error: recordError } = await supabase
             .from('user_tournament_records')
-            .select('total_continues_used, total_continue_payments, user_id, tournament_id')
+            .select('total_continues_used, total_continue_payments, user_id, tournament_id, tournament_day, wallet')
             .eq('wallet', wallet)
             .eq('tournament_day', today)
             .single();
+
+        console.log('🔍 Record lookup result:', {
+            found: !!currentRecord,
+            error: recordError?.message,
+            record: currentRecord
+        });
 
         debugInfo.step1_lookup_record = {
             found: !!currentRecord,
@@ -113,7 +126,7 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({
             success: true,
-            debug: debugInfo
+            message: 'Continue payment recorded successfully'
         });
 
     } catch (error) {
