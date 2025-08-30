@@ -57,31 +57,56 @@ export async function POST(req: NextRequest) {
             .eq('tournament_id', tournament.id)
             .single();
 
+        console.log('🔍 User/Tournament lookup:', { userId: user.id, tournamentId: tournament.id });
+        console.log('🔍 Current record result:', { currentRecord, recordError });
+
         if (recordError || !currentRecord) {
             return NextResponse.json({
                 error: 'Tournament entry not found. Please pay entry fee first.'
             }, { status: 404 });
         }
 
+        const newContinuesUsed = (currentRecord.total_continues_used || 0) + 1;
+        const newContinuePayments = (currentRecord.total_continue_payments || 0) + continue_amount;
+
+        console.log('🔍 About to update:', {
+            currentContinues: currentRecord.total_continues_used,
+            currentPayments: currentRecord.total_continue_payments,
+            newContinuesUsed,
+            newContinuePayments
+        });
+
         // Update continue totals
-        const { error: updateError } = await supabase
+        const { data: updateData, error: updateError } = await supabase
             .from('user_tournament_records')
             .update({
-                total_continues_used: (currentRecord.total_continues_used || 0) + 1,
-                total_continue_payments: (currentRecord.total_continue_payments || 0) + continue_amount,
+                total_continues_used: newContinuesUsed,
+                total_continue_payments: newContinuePayments,
                 updated_at: new Date().toISOString()
             })
             .eq('user_id', user.id)
-            .eq('tournament_id', tournament.id);
+            .eq('tournament_id', tournament.id)
+            .select();
+
+        console.log('🔍 Update result:', { updateData, updateError });
 
         if (updateError) {
             console.error('❌ Continue update error:', updateError);
             return NextResponse.json({ error: 'Failed to record continue payment' }, { status: 500 });
         }
 
+        console.log('✅ Continue update successful!', updateData);
+
         return NextResponse.json({
             success: true,
-            message: 'Continue payment recorded successfully'
+            message: 'Continue payment recorded successfully',
+            debug: {
+                userId: user.id,
+                tournamentId: tournament.id,
+                newContinuesUsed,
+                newContinuePayments,
+                updateData
+            }
         });
 
     } catch (error) {
