@@ -14,15 +14,17 @@ async function updateUserStatistics(supabase: any, userId: string, newScore: num
             .single();
 
         if (fetchError) {
-            return;
+            console.error('User stats fetch error:', fetchError);
+            return false;
         }
 
+        // Always increment games played
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const updates: any = {
             total_games_played: (currentUser?.total_games_played || 0) + 1
         };
 
-        // Only update highest score if explicitly told to AND it's actually higher
+        // Update highest score if this is a new high score
         if (shouldUpdateHighScore) {
             const currentHighest = currentUser?.highest_score_ever || 0;
             if (newScore > currentHighest) {
@@ -30,13 +32,20 @@ async function updateUserStatistics(supabase: any, userId: string, newScore: num
             }
         }
 
-        await supabase
+        const { error: updateError } = await supabase
             .from('users')
             .update(updates)
             .eq('id', userId);
 
-    } catch {
-        // Silent fail - don't break score submission
+        if (updateError) {
+            console.error('User stats update error:', updateError);
+            return false;
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error in updateUserStatistics:', error);
+        return false;
     }
 } export async function POST(req: NextRequest) {
     try {
