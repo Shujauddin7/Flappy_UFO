@@ -6,8 +6,6 @@ import { createClient } from '@supabase/supabase-js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function updateUserStatistics(supabase: any, userId: string, newScore: number, shouldUpdateHighScore: boolean = false) {
     try {
-        console.log('📊 Updating user statistics:', { userId, newScore, shouldUpdateHighScore });
-
         // Get current user statistics
         const { data: currentUser, error: fetchError } = await supabase
             .from('users')
@@ -16,11 +14,8 @@ async function updateUserStatistics(supabase: any, userId: string, newScore: num
             .single();
 
         if (fetchError) {
-            console.error('❌ Error fetching user stats:', fetchError);
             return;
         }
-
-        console.log('📊 Current user stats:', currentUser);
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const updates: any = {
@@ -32,30 +27,18 @@ async function updateUserStatistics(supabase: any, userId: string, newScore: num
             const currentHighest = currentUser?.highest_score_ever || 0;
             if (newScore > currentHighest) {
                 updates.highest_score_ever = newScore;
-                console.log(`🏆 New all-time high score! ${currentHighest} -> ${newScore}`);
-            } else {
-                console.log(`📊 Score ${newScore} not higher than current ${currentHighest}`);
             }
         }
 
-        console.log('📊 Applying updates:', updates);
-
-        const { error: updateError } = await supabase
+        await supabase
             .from('users')
             .update(updates)
             .eq('id', userId);
 
-        if (updateError) {
-            console.error('❌ Error updating user stats:', updateError);
-        } else {
-            console.log('✅ User statistics updated:', updates);
-        }
-    } catch (error) {
-        console.error('❌ Error in updateUserStatistics:', error);
+    } catch {
+        // Silent fail - don't break score submission
     }
-}
-
-export async function POST(req: NextRequest) {
+} export async function POST(req: NextRequest) {
     try {
         // Environment-specific database configuration
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'production';

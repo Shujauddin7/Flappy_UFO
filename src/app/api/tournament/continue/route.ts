@@ -49,75 +49,54 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'No active tournament found' }, { status: 404 });
         }
 
-        // First, try to get existing record
-        console.log('🔍 Looking for continue record:', { userId: user.id, tournamentId: tournament.id });
-
-        const { data: existingRecord, error: fetchError } = await supabase
+        // Simple approach: try insert first, then update if conflict
+        const { error: insertError } = await supabase
             .from('user_tournament_continue_totals')
-            .select('total_continues_used, total_continue_payments')
-            .eq('user_id', user.id)
-            .eq('tournament_id', tournament.id)
-            .single();
+            .insert({
+                user_id: user.id,
+                tournament_id: tournament.id,
+                total_continues_used: 1,
+                total_continue_payments: continue_amount
+            });
 
-        console.log('🔍 Existing record result:', { existingRecord, fetchError });
+        if (insertError) {
+            if (insertError.code === '23505') {
+                // Unique constraint violation - record exists, so update it
+                const { data: existing } = await supabase
+                    .from('user_tournament_continue_totals')
+                    .select('total_continues_used, total_continue_payments')
+                    .eq('user_id', user.id)
+                    .eq('tournament_id', tournament.id)
+                    .single();
 
-        if (fetchError && fetchError.code !== 'PGRST116') {
-            // PGRST116 is "not found", which is expected for new records
-            console.error('❌ Unexpected database error:', fetchError);
-            return NextResponse.json({
-                error: 'Database error',
-                message: fetchError.message
-            }, { status: 500 });
-        }
+                const { error: updateError } = await supabase
+                    .from('user_tournament_continue_totals')
+                    .update({
+                        total_continues_used: (existing?.total_continues_used || 0) + 1,
+                        total_continue_payments: (existing?.total_continue_payments || 0) + continue_amount,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('user_id', user.id)
+                    .eq('tournament_id', tournament.id);
 
-        if (existingRecord) {
-            // Update existing record
-            console.log('📝 Updating existing record...');
-            const { error: updateError } = await supabase
-                .from('user_tournament_continue_totals')
-                .update({
-                    total_continues_used: (existingRecord.total_continues_used || 0) + 1,
-                    total_continue_payments: (existingRecord.total_continue_payments || 0) + continue_amount,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('user_id', user.id)
-                .eq('tournament_id', tournament.id);
-
-            console.log('📝 Update result:', { updateError });
-
-            if (updateError) {
+                if (updateError) {
+                    return NextResponse.json({
+                        error: 'Failed to update continue totals',
+                        details: updateError.message
+                    }, { status: 500 });
+                }
+            } else {
                 return NextResponse.json({
-                    error: 'Failed to update continue totals',
-                    message: updateError.message
-                }, { status: 500 });
-            }
-        } else {
-            // Create new record
-            console.log('➕ Creating new record...');
-            const { error: insertError } = await supabase
-                .from('user_tournament_continue_totals')
-                .insert({
-                    user_id: user.id,
-                    tournament_id: tournament.id,
-                    total_continues_used: 1,
-                    total_continue_payments: continue_amount
-                });
-
-            console.log('➕ Insert result:', { insertError });
-
-            if (insertError) {
-                return NextResponse.json({
-                    error: 'Failed to create continue totals',
-                    message: insertError.message
+                    error: 'Failed to create continue record',
+                    details: insertError.message
                 }, { status: 500 });
             }
         }
-
         return NextResponse.json({
             success: true,
-            message: 'Continue payment recorded successfully'
+            message: 'Continue payment recorded successfully',
+            debug: `User: ${user.id.slice(0, 8)}, Tournament: ${tournament.id.slice(0, 8)}, Amount: ${continue_amount}`
         });
-
     } catch (error) {
         console.error('Continue API error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
