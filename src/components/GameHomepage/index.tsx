@@ -383,27 +383,6 @@ export default function GameHomepage() {
 
                     const continueData = await continueResponse.json();
 
-                    // DEBUG: Show the debug info in an alert
-                    if (continueData.debug) {
-                        const debugMsg = `🔍 CONTINUE DEBUG:
-Wallet: ${continueData.debug.wallet}
-Date: ${continueData.debug.today}
-Amount: ${continueData.debug.continue_amount}
-
-Step 1 - Find Record: ${continueData.debug.step1_lookup_record?.found ? '✅ FOUND' : '❌ NOT FOUND'}
-${continueData.debug.step1_lookup_record?.error ? 'Error: ' + continueData.debug.step1_lookup_record.error : ''}
-
-Step 2 - Update Record: ${continueData.debug.step2_update_record?.success ? '✅ SUCCESS' : '❌ FAILED'}
-${continueData.debug.step2_update_record?.error ? 'Error: ' + continueData.debug.step2_update_record.error : ''}
-
-Step 3 - Find Score: ${continueData.debug.step3_lookup_score?.found ? '✅ FOUND' : '❌ NOT FOUND'}
-${continueData.debug.step3_lookup_score?.error ? 'Error: ' + continueData.debug.step3_lookup_score.error : ''}
-
-Step 4 - Update Score: ${continueData.debug.step4_update_score?.success ? '✅ SUCCESS' : '❌ FAILED'}
-${continueData.debug.step4_update_score?.error ? 'Error: ' + continueData.debug.step4_update_score.error : ''}`;
-                        alert(debugMsg);
-                    }
-
                     if (!continueData.success) {
                         console.warn('⚠️ Continue payment recorded locally but database update failed:', continueData.error);
                         // Don't fail the continue - just log the warning
@@ -428,6 +407,47 @@ ${continueData.debug.step4_update_score?.error ? 'Error: ' + continueData.debug.
         } catch (error) {
             console.error('❌ Tournament continue payment error:', error);
             alert('Continue payment failed. Please try again.');
+        }
+    };
+
+    // Handle when user chooses NOT to continue (final game over)
+    const handleFinalGameOver = async (score: number) => {
+        if (gameMode === 'tournament' && session?.user?.walletAddress && !isSubmittingScore) {
+            setIsSubmittingScore(true);
+
+            try {
+                const response = await fetch('/api/score/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        wallet: session.user.walletAddress,
+                        score: score,
+                        game_duration: Math.max(score * 2000, 5000),
+                        used_continue: false,
+                        continue_amount: 0
+                    }),
+                });
+
+                const result = await response.json();
+
+                // Update modal with high score info
+                if (result.success && !result.data.is_duplicate && result.data.is_new_high_score) {
+                    setGameResult(prev => ({
+                        ...prev,
+                        isNewHighScore: result.data.is_new_high_score,
+                        previousHigh: result.data.previous_highest_score,
+                        currentHigh: result.data.current_highest_score
+                    }));
+                }
+            } catch (error) {
+                console.error('Final score submission failed:', error);
+                setGameResult(prev => ({
+                    ...prev,
+                    error: 'Unable to submit final score. Please check your connection.'
+                }));
+            } finally {
+                setIsSubmittingScore(false);
+            }
         }
     };
 
@@ -476,50 +496,63 @@ ${continueData.debug.step4_update_score?.error ? 'Error: ' + continueData.debug.
             mode: modeText
         });
 
-        // For tournament mode, submit score in background and update modal if needed
+        // For tournament mode, only submit score if continue was already used (meaning this is the final game end)
         if (gameMode === 'tournament' && session?.user?.walletAddress) {
-            setIsSubmittingScore(true);
+            // If continue was used, this is the final score - submit it
+            // If continue wasn't used, this is the first crash - DON'T submit yet (user might continue)
+            const shouldSubmitScore = tournamentContinueUsed;
 
-            try {
-                const response = await fetch('/api/score/submit', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        wallet: session.user.walletAddress,
-                        score: score,
-                        game_duration: Math.max(score * 2000, 5000)
-                    }),
-                });
+            if (shouldSubmitScore) {
+                setIsSubmittingScore(true);
 
-                const result = await response.json();
+                try {
+                    const response = await fetch('/api/score/submit', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            wallet: session.user.walletAddress,
+                            score: score,
+                            game_duration: Math.max(score * 2000, 5000),
+                            used_continue: true,
+                            continue_amount: tournamentEntryAmount
+                        }),
+                    });
 
-                // Update modal with high score info if it's a new high score
-                if (result.success && !result.data.is_duplicate && result.data.is_new_high_score) {
+                    const result = await response.json();
+
+                    // Update modal with high score info if it's a new high score
+                    if (result.success && !result.data.is_duplicate && result.data.is_new_high_score) {
+                        setGameResult(prev => ({
+                            ...prev,
+                            isNewHighScore: result.data.is_new_high_score,
+                            previousHigh: result.data.previous_highest_score,
+                            currentHigh: result.data.current_highest_score
+                        }));
+                    } else if (result.data?.is_duplicate) {
+                        setGameResult(prev => ({
+                            ...prev,
+                            error: 'Score already submitted'
+                        }));
+                    } else if (!result.success) {
+                        setGameResult(prev => ({
+                            ...prev,
+                            error: `Score submission failed: ${result.error}`
+                        }));
+                    }
+                } catch {
                     setGameResult(prev => ({
                         ...prev,
-                        isNewHighScore: result.data.is_new_high_score,
-                        previousHigh: result.data.previous_highest_score,
-                        currentHigh: result.data.current_highest_score
+                        error: 'Unable to submit score. Please check your connection.'
                     }));
-                } else if (result.data?.is_duplicate) {
-                    setGameResult(prev => ({
-                        ...prev,
-                        error: 'Score already submitted'
-                    }));
-                } else if (!result.success) {
-                    setGameResult(prev => ({
-                        ...prev,
-                        error: `Score submission failed: ${result.error}`
-                    }));
+                } finally {
+                    setIsSubmittingScore(false);
                 }
-            } catch {
-                setGameResult(prev => ({
-                    ...prev,
-                    error: 'Unable to submit score. Please check your connection.'
-                }));
-            } finally {
-                setIsSubmittingScore(false);
             }
+            // If continue not used yet, don't submit score - wait for user decision
+        }
+        // Practice mode - update coins immediately  
+        else if (gameMode === 'practice') {
+            spendCoins(-coins);
         }
     };
 
@@ -739,15 +772,24 @@ ${continueData.debug.step4_update_score?.error ? 'Error: ' + continueData.debug.
                                 {/* Play Again button */}
                                 <button
                                     className="modal-button secondary"
-                                    onClick={() => {
+                                    onClick={async () => {
                                         if (gameMode === 'tournament' && tournamentContinueUsed) {
                                             // For tournament mode after continue used: redirect to new entry
                                             setContinueFromScore(0);
                                             setGameResult({ show: false, score: 0, coins: 0, mode: '' });
                                             setTournamentContinueUsed(false); // Reset for new entry
                                             setCurrentScreen('tournamentEntry');
-                                        } else {
+                                        } else if (gameMode === 'tournament' && !tournamentContinueUsed) {
+                                            // For tournament mode first crash: submit final score without continue
+                                            await handleFinalGameOver(gameResult.score);
                                             // Reset all game state and go back to mode selection
+                                            setContinueFromScore(0);
+                                            setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+                                            setTournamentContinueUsed(false);
+                                            setGameMode(null); // Clear game mode so user must choose again
+                                            setCurrentScreen('gameSelect'); // Go back to mode selection
+                                        } else {
+                                            // Practice mode: Reset all game state and go back to mode selection
                                             setContinueFromScore(0);
                                             setGameResult({ show: false, score: 0, coins: 0, mode: '' });
                                             setTournamentContinueUsed(false);
@@ -761,7 +803,11 @@ ${continueData.debug.step4_update_score?.error ? 'Error: ' + continueData.debug.
 
                                 <button
                                     className="modal-button primary"
-                                    onClick={() => {
+                                    onClick={async () => {
+                                        // If tournament mode and continue not used, submit final score
+                                        if (gameMode === 'tournament' && !tournamentContinueUsed) {
+                                            await handleFinalGameOver(gameResult.score);
+                                        }
                                         // Reset all game state
                                         setContinueFromScore(0); // Reset continue score
                                         setGameResult({ show: false, score: 0, coins: 0, mode: '' });
