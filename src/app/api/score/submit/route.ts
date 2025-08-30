@@ -6,6 +6,8 @@ import { createClient } from '@supabase/supabase-js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function updateUserStatistics(supabase: any, userId: string, newScore: number, shouldUpdateHighScore: boolean = false) {
     try {
+        console.log('📊 Updating user statistics:', { userId, newScore, shouldUpdateHighScore });
+
         // Get current user statistics
         const { data: currentUser, error: fetchError } = await supabase
             .from('users')
@@ -18,6 +20,8 @@ async function updateUserStatistics(supabase: any, userId: string, newScore: num
             return;
         }
 
+        console.log('📊 Current user stats:', currentUser);
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const updates: any = {
             total_games_played: (currentUser?.total_games_played || 0) + 1
@@ -29,8 +33,12 @@ async function updateUserStatistics(supabase: any, userId: string, newScore: num
             if (newScore > currentHighest) {
                 updates.highest_score_ever = newScore;
                 console.log(`🏆 New all-time high score! ${currentHighest} -> ${newScore}`);
+            } else {
+                console.log(`📊 Score ${newScore} not higher than current ${currentHighest}`);
             }
         }
+
+        console.log('📊 Applying updates:', updates);
 
         const { error: updateError } = await supabase
             .from('users')

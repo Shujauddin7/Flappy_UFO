@@ -50,6 +50,8 @@ export async function POST(req: NextRequest) {
         }
 
         // First, try to get existing record
+        console.log('🔍 Looking for continue record:', { userId: user.id, tournamentId: tournament.id });
+
         const { data: existingRecord, error: fetchError } = await supabase
             .from('user_tournament_continue_totals')
             .select('total_continues_used, total_continue_payments')
@@ -57,8 +59,11 @@ export async function POST(req: NextRequest) {
             .eq('tournament_id', tournament.id)
             .single();
 
+        console.log('🔍 Existing record result:', { existingRecord, fetchError });
+
         if (fetchError && fetchError.code !== 'PGRST116') {
             // PGRST116 is "not found", which is expected for new records
+            console.error('❌ Unexpected database error:', fetchError);
             return NextResponse.json({
                 error: 'Database error',
                 message: fetchError.message
@@ -67,6 +72,7 @@ export async function POST(req: NextRequest) {
 
         if (existingRecord) {
             // Update existing record
+            console.log('📝 Updating existing record...');
             const { error: updateError } = await supabase
                 .from('user_tournament_continue_totals')
                 .update({
@@ -77,6 +83,8 @@ export async function POST(req: NextRequest) {
                 .eq('user_id', user.id)
                 .eq('tournament_id', tournament.id);
 
+            console.log('📝 Update result:', { updateError });
+
             if (updateError) {
                 return NextResponse.json({
                     error: 'Failed to update continue totals',
@@ -85,6 +93,7 @@ export async function POST(req: NextRequest) {
             }
         } else {
             // Create new record
+            console.log('➕ Creating new record...');
             const { error: insertError } = await supabase
                 .from('user_tournament_continue_totals')
                 .insert({
@@ -93,6 +102,8 @@ export async function POST(req: NextRequest) {
                     total_continues_used: 1,
                     total_continue_payments: continue_amount
                 });
+
+            console.log('➕ Insert result:', { insertError });
 
             if (insertError) {
                 return NextResponse.json({
