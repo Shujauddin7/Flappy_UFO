@@ -46,8 +46,6 @@ async function updateUserStatistics(supabase: any, userId: string, newScore: num
 }
 
 export async function POST(req: NextRequest) {
-    console.log('🎯 Score submission API called');
-
     try {
         // Environment-specific database configuration
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'production';
@@ -61,7 +59,6 @@ export async function POST(req: NextRequest) {
             : process.env.SUPABASE_DEV_SERVICE_KEY;
 
         if (!supabaseUrl || !supabaseServiceKey) {
-            console.error('❌ Missing environment variables for', isProduction ? 'PRODUCTION' : 'DEVELOPMENT');
             return NextResponse.json({
                 error: `Server configuration error: Missing ${isProduction ? 'production' : 'development'} database credentials`
             }, { status: 500 });
@@ -93,13 +90,6 @@ export async function POST(req: NextRequest) {
 
         // Note: Removed minimum game duration requirement as requested by user
 
-        console.log('📊 Score submission:', {
-            user_tournament_record_id,
-            wallet: wallet || session.user.walletAddress,
-            score,
-            game_duration: game_duration + 'ms'
-        });
-
         // Get user ID and username from users table
         const walletToCheck = wallet || session.user.walletAddress;
         const { data: user, error: userError } = await supabase
@@ -109,13 +99,10 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (userError || !user) {
-            console.error('❌ Error fetching user:', userError);
             return NextResponse.json({
                 error: `User not found: ${userError?.message || 'No user found'}`
             }, { status: 404 });
         }
-
-        console.log('👤 User found:', { id: user.id, username: user.username });
 
         // Prevent duplicate submissions - check if this exact score was already submitted recently
         const recentSubmission = await supabase
@@ -128,13 +115,10 @@ export async function POST(req: NextRequest) {
             .limit(1);
 
         if (recentSubmission.data && recentSubmission.data.length > 0) {
-            console.log('⚠️ Duplicate submission detected, ignoring...');
             return NextResponse.json({
-                success: true,
-                data: {
-                    message: 'Duplicate submission ignored',
-                    is_duplicate: true
-                }
+                success: false,
+                error: 'Duplicate submission',
+                data: { is_duplicate: true }
             });
         }
 
@@ -153,16 +137,14 @@ export async function POST(req: NextRequest) {
         const { data: records, error: recordError } = await recordQuery;
 
         if (recordError) {
-            console.error('❌ Error fetching tournament record:', recordError);
             return NextResponse.json({
-                error: 'Database query failed: ' + recordError.message
+                error: `Database error: ${recordError.message}`
             }, { status: 500 });
         }
 
         if (!records || records.length === 0) {
-            console.error('❌ No tournament record found for user today');
             return NextResponse.json({
-                error: 'No tournament entry found for today. Please make a payment first.'
+                error: 'Tournament entry not found. Please pay entry fee first.'
             }, { status: 404 });
         }
 
@@ -188,23 +170,6 @@ export async function POST(req: NextRequest) {
             // No payment found - shouldn't happen but default to false
             isVerifiedGame = false;
         }
-
-        console.log('🎮 Current tournament record:', {
-            record_id: record.id,
-            current_highest: record.highest_score,
-            new_score: score,
-            is_verified_game: isVerifiedGame,
-            verified_entry_paid: record.verified_entry_paid,
-            standard_entry_paid: record.standard_entry_paid,
-            verified_paid_at: record.verified_paid_at,
-            standard_paid_at: record.standard_paid_at,
-            entry_type_logic: {
-                both_paid: record.verified_entry_paid && record.standard_entry_paid,
-                verified_time: record.verified_paid_at,
-                standard_time: record.standard_paid_at,
-                using_most_recent: record.verified_entry_paid && record.standard_entry_paid
-            }
-        });
 
         // Auto-detect if continue was used by checking tournament totals vs previous games
         const { data: previousGames, error: prevGamesError } = await supabase
@@ -266,21 +231,12 @@ export async function POST(req: NextRequest) {
             });
 
         if (gameScoreError) {
-            console.error('❌ Error inserting game score:', gameScoreError);
             // Don't fail the entire request if we can't log the individual score
-        } else {
-            console.log('✅ Game score recorded with auto-detected continue data:', {
-                username: user.username,
-                used_continue: finalContinuesUsed > 0,
-                continue_amount: finalContinuePayments,
-                entry_type: isVerifiedGame ? 'verified' : 'standard',
-                auto_detected: used_continue === undefined
-            });
         }
 
-        // Only update highest score if new score is higher
-        if (score > record.highest_score) {
-            console.log('🎉 New high score! Updating...');
+        // Check if this is a new high score
+        if (score > (record.highest_score || 0)) {
+            // Update tournament record with new high score
 
             // Use the safe update function
             const { data: isUpdated, error: updateError } = await supabase
@@ -326,19 +282,11 @@ export async function POST(req: NextRequest) {
                     .eq('id', record.id);
 
                 if (gameCountError) {
-                    console.error('❌ Error updating game count:', gameCountError);
-                } else {
-                    console.log('✅ Game counts updated:', gameCountUpdates);
+                    // Game count update failed, but don't fail the whole request
                 }
 
                 // Also update user statistics (highest score, total games played)
                 await updateUserStatistics(supabase, user.id, score);
-
-                console.log('✅ Score updated successfully:', {
-                    record_id: record.id,
-                    old_score: record.highest_score,
-                    new_score: score
-                });
 
                 return NextResponse.json({
                     success: true,
@@ -382,15 +330,12 @@ export async function POST(req: NextRequest) {
             .eq('id', record.id);
 
         if (gameCountError) {
-            console.error('❌ Error updating game count:', gameCountError);
-        } else {
-            console.log('✅ Game counts updated (non-high score):', gameCountUpdates);
+            // Game count update failed, but don't fail the whole request
         }
 
         // Also update user statistics (total games played only, no high score)
         await updateUserStatistics(supabase, user.id, score);
 
-        console.log('📊 Score not higher than current record');
         return NextResponse.json({
             success: true,
             data: {

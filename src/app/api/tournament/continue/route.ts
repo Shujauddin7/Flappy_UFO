@@ -67,8 +67,8 @@ export async function POST(req: NextRequest) {
         const { error: updateError } = await supabase
             .from('user_tournament_records')
             .update({
-                total_continues_used: currentRecord.total_continues_used + 1,
-                total_continue_payments: currentRecord.total_continue_payments + continue_amount,
+                total_continues_used: (currentRecord.total_continues_used || 0) + 1,
+                total_continue_payments: (currentRecord.total_continue_payments || 0) + continue_amount,
                 updated_at: new Date().toISOString()
             })
             .eq('user_id', user.id)
