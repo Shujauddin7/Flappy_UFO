@@ -86,22 +86,20 @@ export async function POST(req: NextRequest) {
             record_id: ensureResult
         };
 
-        // Now get the current record (it definitely exists)
-        console.log('🔍 Looking for record with:', { wallet, tournament_day: today });
+        // Now get the current record using user_id and tournament_id (more reliable)
+        console.log('🔍 Looking for record with:', { user_id: user.id, tournament_id: tournament.id });
         const { data: currentRecord, error: recordError } = await supabase
             .from('user_tournament_records')
             .select('total_continues_used, total_continue_payments, user_id, tournament_id, tournament_day, wallet')
-            .eq('wallet', wallet)
-            .eq('tournament_day', today)
+            .eq('user_id', user.id)
+            .eq('tournament_id', tournament.id)
             .single();
 
         console.log('🔍 Record lookup result:', {
             found: !!currentRecord,
             error: recordError?.message,
             record: currentRecord
-        });
-
-        debugInfo.step1_lookup_record = {
+        }); debugInfo.step1_lookup_record = {
             found: !!currentRecord,
             error: recordError?.message,
             data: currentRecord
@@ -115,8 +113,8 @@ export async function POST(req: NextRequest) {
                     total_continues_used: currentRecord.total_continues_used + 1,
                     total_continue_payments: currentRecord.total_continue_payments + continue_amount
                 })
-                .eq('wallet', wallet)
-                .eq('tournament_day', today);
+                .eq('user_id', user.id)
+                .eq('tournament_id', tournament.id);
 
             debugInfo.step2_update_record = {
                 success: !updateError1,
