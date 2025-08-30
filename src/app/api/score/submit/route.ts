@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
         }
 
-        const { user_tournament_record_id, wallet, score, game_duration } = await req.json();
+        const { user_tournament_record_id, wallet, score, game_duration, used_continue, continue_amount } = await req.json();
 
         // Validate required fields - either user_tournament_record_id OR wallet must be provided
         if ((!user_tournament_record_id && !wallet) || score === undefined || !game_duration) {
@@ -207,9 +207,13 @@ export async function POST(req: NextRequest) {
             }
         });
 
-        // Get pending continue data from the tournament record
+        // Get pending continue data from the tournament record, or use frontend data
         const pendingContinuesUsed = record.pending_continues_used || 0;
         const pendingContinuePayments = record.pending_continue_payments || 0;
+
+        // Use frontend data if provided, otherwise use pending data
+        const finalContinuesUsed = used_continue ? 1 : pendingContinuesUsed;
+        const finalContinuePayments = continue_amount || pendingContinuePayments;
 
         // First, always insert the individual score into game_scores table
         const { error: gameScoreError } = await supabase
@@ -225,8 +229,8 @@ export async function POST(req: NextRequest) {
                 game_duration_ms: game_duration,
                 was_verified_game: isVerifiedGame, // Properly determined based on entry payment
                 entry_type: isVerifiedGame ? 'verified' : 'standard', // NEW: Set the clear entry type
-                continues_used_in_game: pendingContinuesUsed, // Use pending continues
-                continue_payments_for_game: pendingContinuePayments, // Use pending continue payments
+                continues_used_in_game: finalContinuesUsed, // 0 or 1 (max 1 per game)
+                continue_payments_for_game: finalContinuePayments, // Continue cost if used
                 submitted_at: new Date().toISOString()
             });
 
@@ -234,25 +238,28 @@ export async function POST(req: NextRequest) {
             console.error('❌ Error inserting game score:', gameScoreError);
             // Don't fail the entire request if we can't log the individual score
         } else {
-            console.log('✅ Game score recorded with username and continues:', {
+            console.log('✅ Game score recorded with continue data:', {
                 username: user.username,
-                continues_used: pendingContinuesUsed,
-                continue_payments: pendingContinuePayments
+                used_continue: finalContinuesUsed > 0,
+                continue_amount: finalContinuePayments,
+                entry_type: isVerifiedGame ? 'verified' : 'standard'
             });
 
             // Clear the pending continue data after successfully recording the game score
-            const { error: clearPendingError } = await supabase
-                .from('user_tournament_records')
-                .update({
-                    pending_continues_used: 0,
-                    pending_continue_payments: 0
-                })
-                .eq('id', record.id);
+            if (pendingContinuesUsed > 0 || pendingContinuePayments > 0) {
+                const { error: clearPendingError } = await supabase
+                    .from('user_tournament_records')
+                    .update({
+                        pending_continues_used: 0,
+                        pending_continue_payments: 0
+                    })
+                    .eq('id', record.id);
 
-            if (clearPendingError) {
-                console.error('❌ Error clearing pending continue data:', clearPendingError);
-            } else {
-                console.log('✅ Pending continue data cleared');
+                if (clearPendingError) {
+                    console.error('❌ Error clearing pending continue data:', clearPendingError);
+                } else {
+                    console.log('✅ Pending continue data cleared');
+                }
             }
         }
 
