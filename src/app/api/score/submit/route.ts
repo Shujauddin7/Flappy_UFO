@@ -77,7 +77,6 @@ export async function POST(req: NextRequest) {
         }
 
         const { user_tournament_record_id, wallet, score, game_duration, used_continue, continue_amount } = await req.json();
-
         // Validate required fields - either user_tournament_record_id OR wallet must be provided
         if ((!user_tournament_record_id && !wallet) || score === undefined || !game_duration) {
             return NextResponse.json({
@@ -143,7 +142,7 @@ export async function POST(req: NextRequest) {
         const today = new Date().toISOString().split('T')[0];
         let recordQuery = supabase
             .from('user_tournament_records')
-            .select('id, user_id, highest_score, tournament_day, tournament_id, verified_at, verified_games_played, unverified_games_played, total_games_played, verified_entry_paid, standard_entry_paid, verified_paid_at, standard_paid_at, verified_entry_games, standard_entry_games, pending_continues_used, pending_continue_payments')
+            .select('id, user_id, highest_score, tournament_day, tournament_id, verified_at, verified_games_played, unverified_games_played, total_games_played, verified_entry_paid, standard_entry_paid, verified_paid_at, standard_paid_at, verified_entry_games, standard_entry_games')
             .eq('user_id', user.id)
             .eq('tournament_day', today);
 
@@ -207,13 +206,9 @@ export async function POST(req: NextRequest) {
             }
         });
 
-        // Get pending continue data from the tournament record, or use frontend data
-        const pendingContinuesUsed = record.pending_continues_used || 0;
-        const pendingContinuePayments = record.pending_continue_payments || 0;
-
-        // Use frontend data if provided, otherwise use pending data
-        const finalContinuesUsed = used_continue ? 1 : pendingContinuesUsed;
-        const finalContinuePayments = continue_amount || pendingContinuePayments;
+        // Use only frontend-provided continue data (no pending fields)
+        const finalContinuesUsed = used_continue ? 1 : 0;
+        const finalContinuePayments = continue_amount || 0;
 
         // First, always insert the individual score into game_scores table
         const { error: gameScoreError } = await supabase
@@ -244,23 +239,6 @@ export async function POST(req: NextRequest) {
                 continue_amount: finalContinuePayments,
                 entry_type: isVerifiedGame ? 'verified' : 'standard'
             });
-
-            // Clear the pending continue data after successfully recording the game score
-            if (pendingContinuesUsed > 0 || pendingContinuePayments > 0) {
-                const { error: clearPendingError } = await supabase
-                    .from('user_tournament_records')
-                    .update({
-                        pending_continues_used: 0,
-                        pending_continue_payments: 0
-                    })
-                    .eq('id', record.id);
-
-                if (clearPendingError) {
-                    console.error('❌ Error clearing pending continue data:', clearPendingError);
-                } else {
-                    console.log('✅ Pending continue data cleared');
-                }
-            }
         }
 
         // Only update highest score if new score is higher

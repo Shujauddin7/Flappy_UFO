@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
         // Now get the current record (it definitely exists)
         const { data: currentRecord, error: recordError } = await supabase
             .from('user_tournament_records')
-            .select('total_continues_used, total_continue_payments, user_id, tournament_id, pending_continues_used, pending_continue_payments')
+            .select('total_continues_used, total_continue_payments, user_id, tournament_id')
             .eq('wallet', wallet)
             .eq('tournament_day', today)
             .single();
@@ -95,15 +95,12 @@ export async function POST(req: NextRequest) {
         };
 
         if (currentRecord) {
-            // Update user tournament record with totals
+            // Update user tournament record with totals only
             const { error: updateError1 } = await supabase
                 .from('user_tournament_records')
                 .update({
                     total_continues_used: currentRecord.total_continues_used + 1,
-                    total_continue_payments: currentRecord.total_continue_payments + continue_amount,
-                    // Store pending continues for the current game session
-                    pending_continues_used: (currentRecord.pending_continues_used || 0) + 1,
-                    pending_continue_payments: (currentRecord.pending_continue_payments || 0) + continue_amount
+                    total_continue_payments: currentRecord.total_continue_payments + continue_amount
                 })
                 .eq('wallet', wallet)
                 .eq('tournament_day', today);
@@ -111,19 +108,6 @@ export async function POST(req: NextRequest) {
             debugInfo.step2_update_record = {
                 success: !updateError1,
                 error: updateError1?.message
-            };
-
-            // Note: We don't update game_scores here because the record doesn't exist yet
-            // The game_scores record will be created when the score is submitted
-            // The pending continues data will be applied at that time
-            debugInfo.step3_lookup_score = {
-                found: false,
-                note: "game_scores record doesn't exist during gameplay - will be created on score submission"
-            };
-
-            debugInfo.step4_update_score = {
-                success: true,
-                note: "Continue data stored in pending fields, will be applied when score is submitted"
             };
         }
 
