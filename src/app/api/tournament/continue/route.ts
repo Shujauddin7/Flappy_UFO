@@ -49,50 +49,57 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'No active tournament found' }, { status: 404 });
         }
 
-        // Get the user tournament record
-        const { data: currentRecord, error: recordError } = await supabase
-            .from('user_tournament_records')
+        // First, try to get existing record
+        const { data: existingRecord, error: fetchError } = await supabase
+            .from('user_tournament_continue_totals')
             .select('total_continues_used, total_continue_payments')
             .eq('user_id', user.id)
             .eq('tournament_id', tournament.id)
             .single();
 
-        console.log('🔍 User/Tournament lookup:', { userId: user.id, tournamentId: tournament.id });
-        console.log('🔍 Current record result:', { currentRecord, recordError });
-
-        if (recordError || !currentRecord) {
+        if (fetchError && fetchError.code !== 'PGRST116') {
+            // PGRST116 is "not found", which is expected for new records
             return NextResponse.json({
-                error: 'Tournament entry not found. Please pay entry fee first.'
-            }, { status: 404 });
+                error: 'Database error',
+                message: fetchError.message
+            }, { status: 500 });
         }
 
-        const newContinuesUsed = (currentRecord.total_continues_used || 0) + 1;
-        const newContinuePayments = (currentRecord.total_continue_payments || 0) + continue_amount;
+        if (existingRecord) {
+            // Update existing record
+            const { error: updateError } = await supabase
+                .from('user_tournament_continue_totals')
+                .update({
+                    total_continues_used: (existingRecord.total_continues_used || 0) + 1,
+                    total_continue_payments: (existingRecord.total_continue_payments || 0) + continue_amount,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('user_id', user.id)
+                .eq('tournament_id', tournament.id);
 
-        console.log('🔍 About to update:', {
-            currentContinues: currentRecord.total_continues_used,
-            currentPayments: currentRecord.total_continue_payments,
-            newContinuesUsed,
-            newContinuePayments
-        });
+            if (updateError) {
+                return NextResponse.json({
+                    error: 'Failed to update continue totals',
+                    message: updateError.message
+                }, { status: 500 });
+            }
+        } else {
+            // Create new record
+            const { error: insertError } = await supabase
+                .from('user_tournament_continue_totals')
+                .insert({
+                    user_id: user.id,
+                    tournament_id: tournament.id,
+                    total_continues_used: 1,
+                    total_continue_payments: continue_amount
+                });
 
-        // Direct update - simple and reliable
-        const { error: updateError } = await supabase
-            .from('user_tournament_records')
-            .update({
-                total_continues_used: (currentRecord.total_continues_used || 0) + 1,
-                total_continue_payments: (currentRecord.total_continue_payments || 0) + continue_amount,
-                updated_at: new Date().toISOString()
-            })
-            .eq('user_id', user.id)
-            .eq('tournament_id', tournament.id);
-
-        if (updateError) {
-            return NextResponse.json({
-                error: 'Failed to record continue payment',
-                message: updateError.message,
-                code: updateError.code
-            }, { status: 500 });
+            if (insertError) {
+                return NextResponse.json({
+                    error: 'Failed to create continue totals',
+                    message: insertError.message
+                }, { status: 500 });
+            }
         }
 
         return NextResponse.json({
@@ -101,7 +108,7 @@ export async function POST(req: NextRequest) {
         });
 
     } catch (error) {
-        console.error('❌ Continue API error:', error);
+        console.error('Continue API error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

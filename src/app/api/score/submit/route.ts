@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 
 // Helper function to update user statistics
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateUserStatistics(supabase: any, userId: string, newScore: number) {
+async function updateUserStatistics(supabase: any, userId: string, newScore: number, shouldUpdateHighScore: boolean = false) {
     try {
         // Get current user statistics
         const { data: currentUser, error: fetchError } = await supabase
@@ -23,11 +23,13 @@ async function updateUserStatistics(supabase: any, userId: string, newScore: num
             total_games_played: (currentUser?.total_games_played || 0) + 1
         };
 
-        // Update highest score if this is a new ALL-TIME high score (regardless of tournament high score)
-        const currentHighest = currentUser?.highest_score_ever || 0;
-        if (newScore > currentHighest) {
-            updates.highest_score_ever = newScore;
-            console.log(`🏆 New all-time high score! ${currentHighest} -> ${newScore}`);
+        // Only update highest score if explicitly told to AND it's actually higher
+        if (shouldUpdateHighScore) {
+            const currentHighest = currentUser?.highest_score_ever || 0;
+            if (newScore > currentHighest) {
+                updates.highest_score_ever = newScore;
+                console.log(`🏆 New all-time high score! ${currentHighest} -> ${newScore}`);
+            }
         }
 
         const { error: updateError } = await supabase
@@ -285,6 +287,9 @@ export async function POST(req: NextRequest) {
                     // Game count update failed, but don't fail the whole request
                 }
 
+                // Update user statistics with new high score
+                await updateUserStatistics(supabase, user.id, score, true);
+
                 return NextResponse.json({
                     success: true,
                     data: {
@@ -331,7 +336,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Also update user statistics (total games played only, no high score)
-        await updateUserStatistics(supabase, user.id, score);
+        await updateUserStatistics(supabase, user.id, score, false);
 
         return NextResponse.json({
             success: true,
