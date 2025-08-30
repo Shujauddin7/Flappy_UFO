@@ -76,32 +76,28 @@ export async function POST(req: NextRequest) {
             newContinuePayments
         });
 
-        // Update continue totals using raw SQL to bypass any RLS issues
-        const { data: updateData, error: updateError } = await supabase.rpc('update_continue_totals', {
-            p_user_id: user.id,
-            p_tournament_id: tournament.id,
-            p_continue_amount: continue_amount
-        });
-
-        console.log('🔍 Update result:', { updateData, updateError });
+        // Direct update - simple and reliable
+        const { error: updateError } = await supabase
+            .from('user_tournament_records')
+            .update({
+                total_continues_used: (currentRecord.total_continues_used || 0) + 1,
+                total_continue_payments: (currentRecord.total_continue_payments || 0) + continue_amount,
+                updated_at: new Date().toISOString()
+            })
+            .eq('user_id', user.id)
+            .eq('tournament_id', tournament.id);
 
         if (updateError) {
-            console.error('❌ Continue update error:', updateError);
-            return NextResponse.json({ error: 'Failed to record continue payment' }, { status: 500 });
+            return NextResponse.json({
+                error: 'Failed to record continue payment',
+                message: updateError.message,
+                code: updateError.code
+            }, { status: 500 });
         }
-
-        console.log('✅ Continue update successful!', updateData);
 
         return NextResponse.json({
             success: true,
-            message: 'Continue payment recorded successfully',
-            debug: {
-                userId: user.id,
-                tournamentId: tournament.id,
-                newContinuesUsed,
-                newContinuePayments,
-                updateData
-            }
+            message: 'Continue payment recorded successfully'
         });
 
     } catch (error) {
