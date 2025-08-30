@@ -285,9 +285,6 @@ export async function POST(req: NextRequest) {
                     // Game count update failed, but don't fail the whole request
                 }
 
-                // Also update user statistics (highest score, total games played)
-                await updateUserStatistics(supabase, user.id, score);
-
                 return NextResponse.json({
                     success: true,
                     data: {
