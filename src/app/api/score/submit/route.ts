@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
         const today = new Date().toISOString().split('T')[0];
         let recordQuery = supabase
             .from('user_tournament_records')
-            .select('id, user_id, highest_score, tournament_day, tournament_id, verified_at, verified_games_played, unverified_games_played, total_games_played, verified_entry_paid, standard_entry_paid, verified_paid_at, standard_paid_at, verified_entry_games, standard_entry_games')
+            .select('id, user_id, highest_score, tournament_day, tournament_id, verified_at, verified_games_played, unverified_games_played, total_games_played, verified_entry_paid, standard_entry_paid, verified_paid_at, standard_paid_at, verified_entry_games, standard_entry_games, total_continues_used, total_continue_payments')
             .eq('user_id', user.id)
             .eq('tournament_day', today);
 
@@ -206,9 +206,45 @@ export async function POST(req: NextRequest) {
             }
         });
 
-        // Use only frontend-provided continue data (no pending fields)
-        const finalContinuesUsed = used_continue ? 1 : 0;
-        const finalContinuePayments = continue_amount || 0;
+        // Auto-detect if continue was used by checking tournament totals vs previous games
+        const { data: previousGames, error: prevGamesError } = await supabase
+            .from('game_scores')
+            .select('continues_used_in_game')
+            .eq('user_id', user.id)
+            .eq('tournament_id', record.tournament_id)
+            .order('submitted_at', { ascending: false });
+
+        // Calculate continues used in previous games
+        let continuesUsedInPreviousGames = 0;
+        if (previousGames && !prevGamesError) {
+            continuesUsedInPreviousGames = previousGames.reduce((sum, game) => sum + (game.continues_used_in_game || 0), 0);
+        }
+
+        // If tournament total > previous games total, then this game used a continue
+        const tournamentContinuesUsed = record.total_continues_used || 0;
+        const gameUsedContinue = tournamentContinuesUsed > continuesUsedInPreviousGames;
+
+        // Calculate continue amount for this game
+        const tournamentContinuePayments = record.total_continue_payments || 0;
+        let continuePaymentsInPreviousGames = 0;
+        if (previousGames && !prevGamesError) {
+            const { data: previousPayments } = await supabase
+                .from('game_scores')
+                .select('continue_payments_for_game')
+                .eq('user_id', user.id)
+                .eq('tournament_id', record.tournament_id)
+                .order('submitted_at', { ascending: false });
+
+            if (previousPayments) {
+                continuePaymentsInPreviousGames = previousPayments.reduce((sum, game) => sum + (game.continue_payments_for_game || 0), 0);
+            }
+        }
+
+        const gamesContinuePayment = tournamentContinuePayments - continuePaymentsInPreviousGames;
+
+        // Use frontend data if provided, otherwise use auto-detected data
+        const finalContinuesUsed = used_continue !== undefined ? (used_continue ? 1 : 0) : (gameUsedContinue ? 1 : 0);
+        const finalContinuePayments = continue_amount || gamesContinuePayment;
 
         // First, always insert the individual score into game_scores table
         const { error: gameScoreError } = await supabase
@@ -233,11 +269,12 @@ export async function POST(req: NextRequest) {
             console.error('❌ Error inserting game score:', gameScoreError);
             // Don't fail the entire request if we can't log the individual score
         } else {
-            console.log('✅ Game score recorded with continue data:', {
+            console.log('✅ Game score recorded with auto-detected continue data:', {
                 username: user.username,
                 used_continue: finalContinuesUsed > 0,
                 continue_amount: finalContinuePayments,
-                entry_type: isVerifiedGame ? 'verified' : 'standard'
+                entry_type: isVerifiedGame ? 'verified' : 'standard',
+                auto_detected: used_continue === undefined
             });
         }
 
