@@ -12,11 +12,8 @@ export async function POST(request: NextRequest) {
         }
 
         // Environment-specific database configuration (improved detection)
-        // Check multiple ways to detect production
-        const isProduction = process.env.NEXT_PUBLIC_ENV === 'production' ||
-            process.env.NODE_ENV === 'production' ||
-            process.env.VERCEL_ENV === 'production' ||
-            (typeof window === 'undefined' && process.env.VERCEL_URL?.includes('flappyufo.vercel.app'));
+        // Environment-specific database configuration (following Plan.md specification)
+        const isProduction = process.env.NEXT_PUBLIC_ENV === 'production';
 
         const supabaseUrl = isProduction
             ? process.env.SUPABASE_PROD_URL

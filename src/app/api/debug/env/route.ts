@@ -14,15 +14,11 @@ export async function GET() {
         SUPABASE_PROD_SERVICE_KEY: process.env.SUPABASE_PROD_SERVICE_KEY ? '✅ Set' : '❌ Missing',
         SUPABASE_DEV_SERVICE_KEY: process.env.SUPABASE_DEV_SERVICE_KEY ? '✅ Set' : '❌ Missing',
 
-        // Current detection logic
-        isProduction: process.env.NEXT_PUBLIC_ENV === 'production' ||
-            process.env.NODE_ENV === 'production' ||
-            process.env.VERCEL_ENV === 'production',
+        // Current detection logic (following Plan.md specification)
+        isProduction: process.env.NEXT_PUBLIC_ENV === 'production',
 
-        // Which database would be used
-        selectedDatabase: (process.env.NEXT_PUBLIC_ENV === 'production' ||
-            process.env.NODE_ENV === 'production' ||
-            process.env.VERCEL_ENV === 'production') ? 'PRODUCTION' : 'DEVELOPMENT'
+        // Which database would be used (following Plan.md specification)
+        selectedDatabase: process.env.NEXT_PUBLIC_ENV === 'production' ? 'PRODUCTION' : 'DEVELOPMENT'
     };
 
     return NextResponse.json(envCheck);

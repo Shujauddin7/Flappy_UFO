@@ -16,10 +16,8 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Environment-specific database configuration (improved detection)
-        const isProduction = process.env.NEXT_PUBLIC_ENV === 'production' ||
-            process.env.NODE_ENV === 'production' ||
-            process.env.VERCEL_ENV === 'production';
+        // Environment-specific database configuration (following Plan.md specification)
+        const isProduction = process.env.NEXT_PUBLIC_ENV === 'production';
 
         const supabaseUrl = isProduction
             ? process.env.SUPABASE_PROD_URL
