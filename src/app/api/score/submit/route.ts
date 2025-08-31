@@ -188,42 +188,32 @@ async function updateUserStatistics(userId: string, newScore: number, shouldUpda
         // Auto-detect if continue was used by checking tournament totals vs previous games
         const { data: previousGames, error: prevGamesError } = await supabase
             .from('game_scores')
-            .select('continues_used_in_game')
+            .select('continues_used_in_game, continue_payments_for_game')
             .eq('user_id', user.id)
             .eq('tournament_id', record.tournament_id)
             .order('submitted_at', { ascending: false });
 
-        // Calculate continues used in previous games
+        // Calculate continues used and payments in previous games
         let continuesUsedInPreviousGames = 0;
+        let continuePaymentsInPreviousGames = 0;
+
         if (previousGames && !prevGamesError) {
             continuesUsedInPreviousGames = previousGames.reduce((sum, game) => sum + (game.continues_used_in_game || 0), 0);
+            continuePaymentsInPreviousGames = previousGames.reduce((sum, game) => sum + (game.continue_payments_for_game || 0), 0);
         }
 
-        // If tournament total > previous games total, then this game used a continue
+        // Get tournament totals
         const tournamentContinuesUsed = record.total_continues_used || 0;
-        const gameUsedContinue = tournamentContinuesUsed > continuesUsedInPreviousGames;
-
-        // Calculate continue amount for this game
         const tournamentContinuePayments = record.total_continue_payments || 0;
-        let continuePaymentsInPreviousGames = 0;
-        if (previousGames && !prevGamesError) {
-            const { data: previousPayments } = await supabase
-                .from('game_scores')
-                .select('continue_payments_for_game')
-                .eq('user_id', user.id)
-                .eq('tournament_id', record.tournament_id)
-                .order('submitted_at', { ascending: false });
 
-            if (previousPayments) {
-                continuePaymentsInPreviousGames = previousPayments.reduce((sum, game) => sum + (game.continue_payments_for_game || 0), 0);
-            }
-        }
+        // Calculate continues for this specific game
+        const gameUsedContinue = tournamentContinuesUsed > continuesUsedInPreviousGames;
+        const gamesContinuePayment = Math.max(0, tournamentContinuePayments - continuePaymentsInPreviousGames);
 
-        const gamesContinuePayment = tournamentContinuePayments - continuePaymentsInPreviousGames;
-
-        // Use frontend data if provided, otherwise use auto-detected data
+        // Use frontend data if provided, otherwise use calculated data
+        // Ensure no negative values and proper defaults
         const finalContinuesUsed = used_continue !== undefined ? (used_continue ? 1 : 0) : (gameUsedContinue ? 1 : 0);
-        const finalContinuePayments = continue_amount || gamesContinuePayment;
+        const finalContinuePayments = continue_amount !== undefined ? continue_amount : (gamesContinuePayment > 0 ? gamesContinuePayment : 0);
 
         // First, always insert the individual score into game_scores table
         const { error: gameScoreError } = await supabase
