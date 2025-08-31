@@ -6,7 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 async function updateUserStatistics(userId: string, newScore: number, shouldUpdateHighScore: boolean = false) {
     try {
         // Create a fresh service role client to ensure we have admin privileges
-        const isProduction = process.env.NEXT_PUBLIC_ENV === 'production';
+        const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
         const supabaseUrl = isProduction ? process.env.SUPABASE_PROD_URL : process.env.SUPABASE_DEV_URL;
         const supabaseServiceKey = isProduction ? process.env.SUPABASE_PROD_SERVICE_KEY : process.env.SUPABASE_DEV_SERVICE_KEY;
 
@@ -34,7 +34,7 @@ async function updateUserStatistics(userId: string, newScore: number, shouldUpda
 } export async function POST(req: NextRequest) {
     try {
         // Environment-specific database configuration (following Plan.md specification)
-        const isProduction = process.env.NEXT_PUBLIC_ENV === 'production';
+        const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
 
         const supabaseUrl = isProduction
             ? process.env.SUPABASE_PROD_URL

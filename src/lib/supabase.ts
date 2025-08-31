@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 // FOLLOWS PLAN.MD SPECIFICATION EXACTLY - Use ONLY NEXT_PUBLIC_ENV
 const getSupabaseConfig = () => {
     // Use ONLY NEXT_PUBLIC_ENV as specified in Plan.md
-    const isProduction = process.env.NEXT_PUBLIC_ENV === 'production';
+    const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
 
     if (isProduction) {
         return {

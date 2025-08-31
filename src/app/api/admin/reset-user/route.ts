@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Environment-specific database configuration (following Plan.md specification)
-        const isProduction = process.env.NEXT_PUBLIC_ENV === 'production';
+        const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
 
         const supabaseUrl = isProduction
             ? process.env.SUPABASE_PROD_URL

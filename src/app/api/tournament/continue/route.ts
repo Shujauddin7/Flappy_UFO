@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Missing continue_amount' }, { status: 400 });
         }
 
-        const isProduction = process.env.NEXT_PUBLIC_ENV === 'production';
+        const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
         const supabaseUrl = isProduction ? process.env.SUPABASE_PROD_URL : process.env.SUPABASE_DEV_URL;
         const supabaseServiceKey = isProduction ? process.env.SUPABASE_PROD_SERVICE_KEY : process.env.SUPABASE_DEV_SERVICE_KEY;
 

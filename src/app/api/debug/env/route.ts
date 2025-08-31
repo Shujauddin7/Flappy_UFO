@@ -15,10 +15,10 @@ export async function GET() {
         SUPABASE_DEV_SERVICE_KEY: process.env.SUPABASE_DEV_SERVICE_KEY ? '✅ Set' : '❌ Missing',
 
         // Current detection logic (following Plan.md specification)
-        isProduction: process.env.NEXT_PUBLIC_ENV === 'production',
+        isProduction: process.env.NEXT_PUBLIC_ENV === 'prod',
 
         // Which database would be used (following Plan.md specification)
-        selectedDatabase: process.env.NEXT_PUBLIC_ENV === 'production' ? 'PRODUCTION' : 'DEVELOPMENT'
+        selectedDatabase: process.env.NEXT_PUBLIC_ENV === 'prod' ? 'PRODUCTION' : 'DEVELOPMENT'
     };
 
     return NextResponse.json(envCheck);

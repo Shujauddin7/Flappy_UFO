@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
     // Environment-specific database configuration (matches your frontend pattern)
-    const isProduction = process.env.NEXT_PUBLIC_ENV === 'production';
+    const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
 
     const supabaseUrl = isProduction
         ? process.env.SUPABASE_PROD_URL
