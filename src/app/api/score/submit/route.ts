@@ -49,11 +49,9 @@ async function updateUserStatistics(userId: string, newScore: number, shouldUpda
             .eq('id', userId);
 
         if (updateError) {
-            console.error('User stats update error:', updateError);
             return false;
         }
 
-        console.log(`✅ Updated user stats for ${userId}: games=${updates.total_games_played}, high_score=${updates.highest_score_ever || 'unchanged'}`);
         return true;
     } catch (error) {
         console.error('Error in updateUserStatistics:', error);

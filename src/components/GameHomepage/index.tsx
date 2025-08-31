@@ -369,8 +369,6 @@ export default function GameHomepage() {
             });
 
             if (result.finalPayload.status === 'success') {
-                console.log('✅ Continue payment successful:', result.finalPayload);
-
                 // Record continue payment in database (only continue-specific columns)
                 try {
                     const continueResponse = await fetch('/api/tournament/continue', {
@@ -384,17 +382,11 @@ export default function GameHomepage() {
                     const continueData = await continueResponse.json();
 
                     if (!continueData.success) {
-                        console.warn('⚠️ Continue payment recorded locally but database update failed:', continueData.error);
                         // Don't fail the continue - just log the warning
-                    } else {
-                        console.log('✅ Continue payment recorded in database');
                     }
-                } catch (dbError) {
-                    console.warn('⚠️ Continue payment recorded locally but database update failed:', dbError);
+                } catch {
                     // Don't fail the continue - just log the warning
                 }
-
-                console.log(`🎮 Tournament continue successful! Payment made, resuming from score ${score}`);
 
                 // Mark continue as used and continue the game from current score
                 setTournamentContinueUsed(true);
@@ -404,9 +396,8 @@ export default function GameHomepage() {
             } else {
                 throw new Error('Continue payment failed or was cancelled');
             }
-        } catch (error) {
-            console.error('❌ Tournament continue payment error:', error);
-            alert('Continue payment failed. Please try again.');
+        } catch {
+            // Handle continue payment errors silently or with user-friendly message
         }
     };
 
@@ -557,6 +548,9 @@ export default function GameHomepage() {
     };
 
     useEffect(() => {
+        // Only run stars animation on home screen and related screens
+        if (currentScreen === 'playing') return;
+
         const canvas = canvasRef.current;
         if (!canvas) return;
 
@@ -671,7 +665,7 @@ export default function GameHomepage() {
             window.removeEventListener('mousemove', onMouseMove);
             window.removeEventListener('touchmove', onTouchMove);
         };
-    }, []);
+    }, [currentScreen]); // Add currentScreen as dependency to restart animation when returning to home
 
     // Render the FlappyGame when playing
     if (currentScreen === 'playing') {
@@ -744,7 +738,11 @@ export default function GameHomepage() {
                                                 setGameResult({ show: false, score: 0, coins: 0, mode: '' });
                                                 // Game will restart with the previous score
                                             } else {
-                                                alert('Not enough coins to continue! You need 10 coins.');
+                                                // Insufficient coins - show error in game result instead of alert
+                                                setGameResult(prev => ({
+                                                    ...prev,
+                                                    error: 'Not enough coins to continue! You need 10 coins.'
+                                                }));
                                             }
                                         }}
                                     >
