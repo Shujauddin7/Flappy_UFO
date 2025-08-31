@@ -89,13 +89,18 @@ export async function POST(req: NextRequest) {
             }, { status: 404 });
         }
 
-        // Update user verification status with row locking to prevent race conditions
-        const { data: userData, error: userError } = await supabase.rpc('update_user_verification_safe', {
-            p_wallet: wallet,
-            p_world_id: nullifier_hash,
-            p_verified_date: new Date(verification_date).toISOString().split('T')[0],
-            p_tournament_id: tournament.id
-        });
+        // Update user verification status with atomic operation (fixed approach)
+        const { data: userData, error: userError } = await supabase
+            .from('users')
+            .update({
+                world_id: nullifier_hash,
+                last_verified_date: new Date(verification_date).toISOString().split('T')[0],
+                last_verified_tournament_id: tournament.id,
+                updated_at: new Date().toISOString()
+            })
+            .eq('wallet', wallet)
+            .select('id, username')
+            .single();
 
         if (userError) {
             console.error('❌ Error updating user verification:', userError);
@@ -113,7 +118,7 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const user = { id: userData.user_id, username: userData.username };
+        const user = userData;
 
         // IMPORTANT: Also update user_tournament_records table with verification data
         // Check if user has a tournament record for today
