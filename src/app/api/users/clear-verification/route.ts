@@ -38,12 +38,13 @@ export async function POST(req: NextRequest) {
 
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-        // Clear verification status for this user
+        // Clear verification status for this user (atomic operation)
         const { error } = await supabase
             .from('users')
             .update({
                 last_verified_date: null,
-                last_verified_tournament_id: null
+                last_verified_tournament_id: null,
+                updated_at: new Date().toISOString() // Always update timestamp
             })
             .eq('wallet', wallet);
 

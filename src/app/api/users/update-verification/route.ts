@@ -91,16 +91,18 @@ export async function POST(req: NextRequest) {
             }, { status: 404 });
         }
 
-        // Update user verification status with actual tournament UUID
+        // Update user verification status with atomic operation (fixed approach)
         const { data: userData, error: userError } = await supabase
             .from('users')
             .update({
-                world_id: nullifier_hash, // Store World ID identifier
-                last_verified_date: new Date(verification_date).toISOString().split('T')[0], // Store date only
-                last_verified_tournament_id: tournament.id, // Use actual tournament UUID
+                world_id: nullifier_hash,
+                last_verified_date: new Date(verification_date).toISOString().split('T')[0],
+                last_verified_tournament_id: tournament.id,
+                updated_at: new Date().toISOString()
             })
             .eq('wallet', wallet)
-            .select('id, username');
+            .select('id, username')
+            .single();
 
         if (userError) {
             console.error('❌ Error updating user verification:', userError);
@@ -110,7 +112,7 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        if (!userData || userData.length === 0) {
+        if (!userData) {
             console.error('❌ No user found with wallet:', wallet);
             return NextResponse.json(
                 { success: false, error: 'User not found. Please sign in first.' },
@@ -118,7 +120,7 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const user = userData[0];
+        const user = userData;
 
         // IMPORTANT: Also update user_tournament_records table with verification data
         // Check if user has a tournament record for today

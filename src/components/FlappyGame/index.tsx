@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Page } from '@/components/PageLayout';
+import { addCoins, getCoins } from '@/utils/coins';
 
 interface GameObject {
     x: number;
@@ -51,11 +52,13 @@ const PLANETS = [
 interface FlappyGameProps {
     gameMode: 'practice' | 'tournament' | null;
     onGameEnd: (score: number, coins: number) => void;
+    continueFromScore?: number; // For practice mode continue functionality
 }
 
 export default function FlappyGame({
-    gameMode,  // eslint-disable-line @typescript-eslint/no-unused-vars
-    onGameEnd
+    gameMode,
+    onGameEnd,
+    continueFromScore = 0
 }: FlappyGameProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const gameStateRef = useRef<GameState>({
@@ -74,17 +77,20 @@ export default function FlappyGame({
 
     // Reset game state when component mounts
     useEffect(() => {
+        // Initialize coins based on mode
+        const initialCoins = gameMode === 'practice' ? getCoins() : 0;
+
         gameStateRef.current = {
             ufo: { x: 100, y: 300, velocity: 0, rotation: 0 },
             obstacles: [],
             particles: [],
-            score: 0,
-            coins: 0,
+            score: continueFromScore, // Start from previous score if continuing
+            coins: initialCoins, // Load saved coins for practice mode
             gameStatus: 'ready',
             gameEndCalled: false
         };
         setGameState({ ...gameStateRef.current });
-    }, []);
+    }, [gameMode, continueFromScore]);
 
     // Load planet images
     useEffect(() => {
@@ -279,7 +285,16 @@ export default function FlappyGame({
                     ufo.y + 15 < obstacle.y + obstacle.height &&
                     ufo.y + 35 > obstacle.y) {
 
-                    gameStateRef.current.coins += 1;
+                    // Practice Mode: 2 coins per star, save to localStorage
+                    // Tournament Mode: 1 coin per star, not saved
+                    const coinsToAdd = gameMode === 'practice' ? 2 : 1;
+                    gameStateRef.current.coins += coinsToAdd;
+
+                    // For Practice Mode, also save to localStorage
+                    if (gameMode === 'practice') {
+                        addCoins(coinsToAdd);
+                    }
+
                     const coinParticles = createParticles(obstacle.x, obstacle.y, 6);
                     gameStateRef.current.particles.push(...coinParticles);
 
@@ -304,14 +319,13 @@ export default function FlappyGame({
                     ufo.y + 20 < obstacle.y + obstacle.height &&
                     ufo.y + 30 > obstacle.y) {
 
-                    console.log('💥 Invisible wall collision! UFO position:', { x: ufo.x, y: ufo.y }, 'Wall:', { x: obstacle.x, y: obstacle.y, w: obstacle.width, h: obstacle.height });
                     return true; // Collision with invisible barrier
                 }
             }
         }
 
         return false;
-    }, [createParticles]);    // Main game loop
+    }, [createParticles, gameMode]);    // Main game loop
     const gameLoop = useCallback(() => {
         const canvas = canvasRef.current;
         const ctx = canvas?.getContext('2d');
@@ -579,9 +593,12 @@ export default function FlappyGame({
 
         setGameState({ ...state });
 
-        // Only continue game loop if game is not over
+        // Continue game loop - restart if needed
         if (state.gameStatus !== 'gameOver') {
             gameLoopRef.current = requestAnimationFrame(gameLoop);
+        } else {
+            // Game is over, but we still need to render one more time to show the final state
+            // The parent component will show the modal
         }
     }, [checkCollisions, createObstacles, createParticles, onGameEnd]);
 
@@ -644,6 +661,11 @@ export default function FlappyGame({
         };
 
         window.addEventListener('resize', handleResize);
+
+        // Always start a new game loop when this effect runs
+        if (gameLoopRef.current) {
+            cancelAnimationFrame(gameLoopRef.current);
+        }
         gameLoopRef.current = requestAnimationFrame(gameLoop);
 
         return () => {
@@ -652,7 +674,7 @@ export default function FlappyGame({
                 cancelAnimationFrame(gameLoopRef.current);
             }
         };
-    }, [gameLoop]);
+    }, [gameLoop, gameMode, continueFromScore]); // Added dependencies to restart loop when game restarts
 
     return (
         <Page>

@@ -6,6 +6,7 @@ import { Page } from '@/components/PageLayout';
 import { useGameAuth } from '@/hooks/useGameAuth';
 import dynamic from 'next/dynamic';
 import { TournamentEntryModal } from '@/components/TournamentEntryModal';
+import { canContinue, spendCoins, getCoins } from '@/utils/coins';
 
 // Dynamically import FlappyGame to avoid SSR issues
 const FlappyGame = dynamic(() => import('@/components/FlappyGame'), {
@@ -44,6 +45,13 @@ export default function GameHomepage() {
 
     // Tournament entry loading states to prevent duplicate operations
     const [isProcessingEntry, setIsProcessingEntry] = useState<boolean>(false);
+
+    // Practice mode continue functionality
+    const [continueFromScore, setContinueFromScore] = useState<number>(0);
+
+    // Tournament mode continue tracking
+    const [tournamentContinueUsed, setTournamentContinueUsed] = useState<boolean>(false);
+    const [tournamentEntryAmount, setTournamentEntryAmount] = useState<number>(1.0); // Track entry amount for continue payment
 
     // Check user's verification status for today's tournament
     const checkVerificationStatus = useCallback(async () => {
@@ -102,6 +110,8 @@ export default function GameHomepage() {
             // Reset all game-related state when starting a new game
             setGameResult({ show: false, score: 0, coins: 0, mode: '' });
             setIsSubmittingScore(false);
+            setContinueFromScore(0);
+            setTournamentContinueUsed(false); // Reset continue state for new game
 
             // Always attempt authentication to ensure session is valid
             const authSuccess = await authenticate();
@@ -311,6 +321,10 @@ export default function GameHomepage() {
                     // Create tournament entry after successful payment
                     await createTournamentEntry(result.finalPayload.reference, amount, isVerified);
 
+                    // Track entry amount and reset continue status for new game
+                    setTournamentEntryAmount(amount);
+                    setTournamentContinueUsed(false);
+
                     // Start the game directly (only if entry creation succeeds)
                     setGameMode('tournament');
                     setCurrentScreen('playing');
@@ -327,6 +341,104 @@ export default function GameHomepage() {
         } catch (error) {
             console.error('❌ Payment error:', error);
             alert('Payment failed. Please try again.');
+        }
+    };
+
+    // Handle tournament continue payment
+    const handleTournamentContinue = async (score: number) => {
+        try {
+            const { MiniKit, Tokens, tokenToDecimals } = await import('@worldcoin/minikit-js');
+
+            // Get payment reference from backend for continue payment
+            const res = await fetch('/api/initiate-payment', {
+                method: 'POST',
+            });
+            const { id } = await res.json();
+
+            // Make continue payment using the same amount as entry fee
+            const result = await MiniKit.commandsAsync.pay({
+                reference: id,
+                to: process.env.NEXT_PUBLIC_ADMIN_WALLET || '',
+                tokens: [
+                    {
+                        symbol: Tokens.WLD,
+                        token_amount: tokenToDecimals(tournamentEntryAmount, Tokens.WLD).toString(),
+                    },
+                ],
+                description: `Flappy UFO Tournament Continue (${tournamentEntryAmount} WLD)`,
+            });
+
+            if (result.finalPayload.status === 'success') {
+                // Record continue payment in database (only continue-specific columns)
+                try {
+                    const continueResponse = await fetch('/api/tournament/continue', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            continue_amount: tournamentEntryAmount
+                        }),
+                    });
+
+                    const continueData = await continueResponse.json();
+
+                    if (!continueData.success) {
+                        // Don't fail the continue - just log the warning
+                    }
+                } catch {
+                    // Don't fail the continue - just log the warning
+                }
+
+                // Mark continue as used and continue the game from current score
+                setTournamentContinueUsed(true);
+                setContinueFromScore(score);
+                setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+
+            } else {
+                throw new Error('Continue payment failed or was cancelled');
+            }
+        } catch {
+            // Handle continue payment errors silently or with user-friendly message
+        }
+    };
+
+    // Handle when user chooses NOT to continue (final game over)
+    const handleFinalGameOver = async (score: number) => {
+        if (gameMode === 'tournament' && session?.user?.walletAddress && !isSubmittingScore) {
+            setIsSubmittingScore(true);
+
+            try {
+                const response = await fetch('/api/score/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        wallet: session.user.walletAddress,
+                        score: score,
+                        game_duration: Math.max(score * 2000, 5000),
+                        used_continue: false,
+                        continue_amount: 0
+                    }),
+                });
+
+                const result = await response.json();
+
+                // Update modal with high score info
+                if (result.success && !result.data.is_duplicate && result.data.is_new_high_score) {
+                    setGameResult(prev => ({
+                        ...prev,
+                        isNewHighScore: result.data.is_new_high_score,
+                        previousHigh: result.data.previous_highest_score,
+                        currentHigh: result.data.current_highest_score
+                    }));
+                }
+            } catch (error) {
+                console.error('Final score submission failed:', error);
+                setGameResult(prev => ({
+                    ...prev,
+                    error: 'Unable to submit final score. Please check your connection.'
+                }));
+            } finally {
+                setIsSubmittingScore(false);
+            }
         }
     };
 
@@ -364,6 +476,9 @@ export default function GameHomepage() {
 
         const modeText = gameMode === 'practice' ? 'Practice' : 'Tournament';
 
+        // Reset continue score since the game has ended
+        setContinueFromScore(0);
+
         // ALWAYS show the modal immediately for fast response
         setGameResult({
             show: true,
@@ -372,54 +487,70 @@ export default function GameHomepage() {
             mode: modeText
         });
 
-        // For tournament mode, submit score in background and update modal if needed
+        // For tournament mode, only submit score if continue was already used (meaning this is the final game end)
         if (gameMode === 'tournament' && session?.user?.walletAddress) {
-            setIsSubmittingScore(true);
+            // If continue was used, this is the final score - submit it
+            // If continue wasn't used, this is the first crash - DON'T submit yet (user might continue)
+            const shouldSubmitScore = tournamentContinueUsed;
 
-            try {
-                const response = await fetch('/api/score/submit', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        wallet: session.user.walletAddress,
-                        score: score,
-                        game_duration: Math.max(score * 2000, 5000)
-                    }),
-                });
+            if (shouldSubmitScore) {
+                setIsSubmittingScore(true);
 
-                const result = await response.json();
+                try {
+                    const response = await fetch('/api/score/submit', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            wallet: session.user.walletAddress,
+                            score: score,
+                            game_duration: Math.max(score * 2000, 5000),
+                            used_continue: true,
+                            continue_amount: tournamentEntryAmount
+                        }),
+                    });
 
-                // Update modal with high score info if it's a new high score
-                if (result.success && !result.data.is_duplicate && result.data.is_new_high_score) {
+                    const result = await response.json();
+
+                    // Update modal with high score info if it's a new high score
+                    if (result.success && !result.data.is_duplicate && result.data.is_new_high_score) {
+                        setGameResult(prev => ({
+                            ...prev,
+                            isNewHighScore: result.data.is_new_high_score,
+                            previousHigh: result.data.previous_highest_score,
+                            currentHigh: result.data.current_highest_score
+                        }));
+                    } else if (result.data?.is_duplicate) {
+                        setGameResult(prev => ({
+                            ...prev,
+                            error: 'Score already submitted'
+                        }));
+                    } else if (!result.success) {
+                        setGameResult(prev => ({
+                            ...prev,
+                            error: `Score submission failed: ${result.error}`
+                        }));
+                    }
+                } catch {
                     setGameResult(prev => ({
                         ...prev,
-                        isNewHighScore: result.data.is_new_high_score,
-                        previousHigh: result.data.previous_highest_score,
-                        currentHigh: result.data.current_highest_score
+                        error: 'Unable to submit score. Please check your connection.'
                     }));
-                } else if (result.data?.is_duplicate) {
-                    setGameResult(prev => ({
-                        ...prev,
-                        error: 'Score already submitted'
-                    }));
-                } else if (!result.success) {
-                    setGameResult(prev => ({
-                        ...prev,
-                        error: `Score submission failed: ${result.error}`
-                    }));
+                } finally {
+                    setIsSubmittingScore(false);
                 }
-            } catch {
-                setGameResult(prev => ({
-                    ...prev,
-                    error: 'Unable to submit score. Please check your connection.'
-                }));
-            } finally {
-                setIsSubmittingScore(false);
             }
+            // If continue not used yet, don't submit score - wait for user decision
+        }
+        // Practice mode - update coins immediately  
+        else if (gameMode === 'practice') {
+            spendCoins(-coins);
         }
     };
 
     useEffect(() => {
+        // Only run stars animation on home screen and related screens
+        if (currentScreen === 'playing') return;
+
         const canvas = canvasRef.current;
         if (!canvas) return;
 
@@ -534,13 +665,18 @@ export default function GameHomepage() {
             window.removeEventListener('mousemove', onMouseMove);
             window.removeEventListener('touchmove', onTouchMove);
         };
-    }, []);
+    }, [currentScreen]); // Add currentScreen as dependency to restart animation when returning to home
 
     // Render the FlappyGame when playing
     if (currentScreen === 'playing') {
         return (
             <>
-                <FlappyGame gameMode={gameMode} onGameEnd={handleGameEnd} />
+                <FlappyGame
+                    key={`${gameMode}-${continueFromScore}-${tournamentContinueUsed}`} // Force remount on continue
+                    gameMode={gameMode}
+                    onGameEnd={handleGameEnd}
+                    continueFromScore={continueFromScore}
+                />
                 {/* Game Result Modal - render over the game */}
                 {gameResult.show && (
                     <div className="game-result-modal-overlay">
@@ -580,13 +716,99 @@ export default function GameHomepage() {
                                         ⚠️ {gameResult.error}
                                     </div>
                                 )}
+
+                                {/* Practice Mode coin info */}
+                                {gameMode === 'practice' && (
+                                    <div className="practice-info">
+                                        💰 You have {getCoins()} coins
+                                        <br />
+                                        <small>Collect ⭐ stars to earn 2 coins each • Use 10 coins to continue</small>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="modal-actions">
+                                {/* Continue button for Practice Mode */}
+                                {gameMode === 'practice' && canContinue() && (
+                                    <button
+                                        className="modal-button continue"
+                                        onClick={() => {
+                                            // Spend 10 coins to continue
+                                            if (spendCoins(10)) {
+                                                setContinueFromScore(gameResult.score);
+                                                setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+                                                // Game will restart with the previous score
+                                            } else {
+                                                // Insufficient coins - show error in game result instead of alert
+                                                setGameResult(prev => ({
+                                                    ...prev,
+                                                    error: 'Not enough coins to continue! You need 10 coins.'
+                                                }));
+                                            }
+                                        }}
+                                    >
+                                        Continue (10 ⭐) - {getCoins()} coins available
+                                    </button>
+                                )}
+
+                                {/* Continue button for Tournament Mode - one continue per game only */}
+                                {gameMode === 'tournament' && !tournamentContinueUsed && (
+                                    <button
+                                        className="modal-button continue"
+                                        onClick={() => handleTournamentContinue(gameResult.score)}
+                                    >
+                                        Continue ({tournamentEntryAmount} WLD) - One continue per game
+                                    </button>
+                                )}
+
+                                {/* Tournament Mode: Show message if continue already used */}
+                                {gameMode === 'tournament' && tournamentContinueUsed && (
+                                    <div className="tournament-continue-info">
+                                        ❌ Continue already used. Create new entry to play again.
+                                    </div>
+                                )}
+
+                                {/* Play Again button */}
+                                <button
+                                    className="modal-button secondary"
+                                    onClick={async () => {
+                                        if (gameMode === 'tournament' && tournamentContinueUsed) {
+                                            // For tournament mode after continue used: redirect to new entry
+                                            setContinueFromScore(0);
+                                            setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+                                            setTournamentContinueUsed(false); // Reset for new entry
+                                            setCurrentScreen('tournamentEntry');
+                                        } else if (gameMode === 'tournament' && !tournamentContinueUsed) {
+                                            // For tournament mode first crash: submit final score without continue
+                                            await handleFinalGameOver(gameResult.score);
+                                            // Reset all game state and go back to mode selection
+                                            setContinueFromScore(0);
+                                            setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+                                            setTournamentContinueUsed(false);
+                                            setGameMode(null); // Clear game mode so user must choose again
+                                            setCurrentScreen('gameSelect'); // Go back to mode selection
+                                        } else {
+                                            // Practice mode: Reset all game state and go back to mode selection
+                                            setContinueFromScore(0);
+                                            setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+                                            setTournamentContinueUsed(false);
+                                            setGameMode(null); // Clear game mode so user must choose again
+                                            setCurrentScreen('gameSelect'); // Go back to mode selection
+                                        }
+                                    }}
+                                >
+                                    {gameMode === 'tournament' && tournamentContinueUsed ? 'New Entry' : 'Play Again'}
+                                </button>
+
                                 <button
                                     className="modal-button primary"
-                                    onClick={() => {
+                                    onClick={async () => {
+                                        // If tournament mode and continue not used, submit final score
+                                        if (gameMode === 'tournament' && !tournamentContinueUsed) {
+                                            await handleFinalGameOver(gameResult.score);
+                                        }
                                         // Reset all game state
+                                        setContinueFromScore(0); // Reset continue score
                                         setGameResult({ show: false, score: 0, coins: 0, mode: '' });
                                         setIsSubmittingScore(false); // Ensure submission state is cleared
                                         setCurrentScreen('home');
@@ -709,6 +931,34 @@ export default function GameHomepage() {
                         border: 1px solid rgba(255, 107, 107, 0.3);
                     }
 
+                    .practice-info {
+                        color: #ffd700;
+                        background: rgba(255, 215, 0, 0.1);
+                        padding: 10px;
+                        border-radius: 8px;
+                        margin: 10px 0;
+                        border: 1px solid rgba(255, 215, 0, 0.3);
+                        text-align: center;
+                        font-size: 14px;
+                    }
+
+                    .practice-info small {
+                        color: #cccccc;
+                        font-size: 12px;
+                    }
+
+                    .tournament-continue-info {
+                        color: #ff6b6b;
+                        background: rgba(255, 107, 107, 0.1);
+                        padding: 10px;
+                        border-radius: 8px;
+                        margin: 10px 0;
+                        border: 1px solid rgba(255, 107, 107, 0.3);
+                        text-align: center;
+                        font-size: 14px;
+                        font-weight: bold;
+                    }
+
                     .modal-actions {
                         display: flex;
                         gap: 15px;
@@ -736,6 +986,33 @@ export default function GameHomepage() {
                     .modal-button.primary:hover {
                         transform: translateY(-2px);
                         box-shadow: 0 6px 20px rgba(0, 191, 255, 0.4);
+                    }
+
+                    .modal-button.continue {
+                        background: linear-gradient(135deg, #ffd700, #ffb347);
+                        color: #000;
+                        box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+                        font-size: 16px;
+                    }
+
+                    .modal-button.continue:hover {
+                        transform: translateY(-2px);
+                        box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
+                        background: linear-gradient(135deg, #ffed4a, #ffc82c);
+                    }
+
+                    .modal-actions {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 12px;
+                        justify-content: center;
+                        align-items: center;
+                    }
+
+                    @media (min-width: 480px) {
+                        .modal-actions {
+                            flex-direction: row;
+                        }
                     }
 
                     .modal-button.secondary {
