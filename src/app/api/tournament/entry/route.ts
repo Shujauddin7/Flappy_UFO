@@ -79,10 +79,10 @@ export async function POST(req: NextRequest) {
     try {
         // Environment-specific database configuration (following Plan.md specification)
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'production';
-        
+
         const supabaseUrl = isProduction
-                ? process.env.SUPABASE_PROD_URL
-                : process.env.SUPABASE_DEV_URL;
+            ? process.env.SUPABASE_PROD_URL
+            : process.env.SUPABASE_DEV_URL;
 
         const supabaseServiceKey = isProduction
             ? process.env.SUPABASE_PROD_SERVICE_KEY
