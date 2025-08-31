@@ -3,11 +3,22 @@ import { auth } from '@/auth';
 import { createClient } from '@supabase/supabase-js';
 
 // Helper function to update user statistics
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateUserStatistics(supabase: any, userId: string, newScore: number, shouldUpdateHighScore: boolean = false) {
+async function updateUserStatistics(userId: string, newScore: number, shouldUpdateHighScore: boolean = false) {
     try {
+        // Create a fresh service role client to ensure we have admin privileges
+        const isProduction = process.env.NEXT_PUBLIC_ENV === 'production';
+        const supabaseUrl = isProduction ? process.env.SUPABASE_PROD_URL : process.env.SUPABASE_DEV_URL;
+        const supabaseServiceKey = isProduction ? process.env.SUPABASE_PROD_SERVICE_KEY : process.env.SUPABASE_DEV_SERVICE_KEY;
+
+        if (!supabaseUrl || !supabaseServiceKey) {
+            console.error('Missing supabase credentials for user stats update');
+            return false;
+        }
+
+        const adminSupabase = createClient(supabaseUrl, supabaseServiceKey);
+
         // Get current user statistics
-        const { data: currentUser, error: fetchError } = await supabase
+        const { data: currentUser, error: fetchError } = await adminSupabase
             .from('users')
             .select('total_games_played, highest_score_ever')
             .eq('id', userId)
@@ -32,7 +43,7 @@ async function updateUserStatistics(supabase: any, userId: string, newScore: num
             }
         }
 
-        const { error: updateError } = await supabase
+        const { error: updateError } = await adminSupabase
             .from('users')
             .update(updates)
             .eq('id', userId);
@@ -42,6 +53,7 @@ async function updateUserStatistics(supabase: any, userId: string, newScore: num
             return false;
         }
 
+        console.log(`✅ Updated user stats for ${userId}: games=${updates.total_games_played}, high_score=${updates.highest_score_ever || 'unchanged'}`);
         return true;
     } catch (error) {
         console.error('Error in updateUserStatistics:', error);
@@ -288,7 +300,7 @@ async function updateUserStatistics(supabase: any, userId: string, newScore: num
                 }
 
                 // Update user statistics with new high score
-                await updateUserStatistics(supabase, user.id, score, true);
+                await updateUserStatistics(user.id, score, true);
 
                 return NextResponse.json({
                     success: true,
@@ -336,7 +348,7 @@ async function updateUserStatistics(supabase: any, userId: string, newScore: num
         }
 
         // Also update user statistics (total games played only, no high score)
-        await updateUserStatistics(supabase, user.id, score, false);
+        await updateUserStatistics(user.id, score, false);
 
         return NextResponse.json({
             success: true,
