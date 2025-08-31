@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { createClient } from '@supabase/supabase-js';
 
-// Helper function to update user statistics
+// Helper function to update user statistics safely (prevents race conditions)
 async function updateUserStatistics(userId: string, newScore: number, shouldUpdateHighScore: boolean = false) {
     try {
         // Create a fresh service role client to ensure we have admin privileges
@@ -11,50 +11,24 @@ async function updateUserStatistics(userId: string, newScore: number, shouldUpda
         const supabaseServiceKey = isProduction ? process.env.SUPABASE_PROD_SERVICE_KEY : process.env.SUPABASE_DEV_SERVICE_KEY;
 
         if (!supabaseUrl || !supabaseServiceKey) {
-            console.error('Missing supabase credentials for user stats update');
             return false;
         }
 
         const adminSupabase = createClient(supabaseUrl, supabaseServiceKey);
 
-        // Get current user statistics
-        const { data: currentUser, error: fetchError } = await adminSupabase
-            .from('users')
-            .select('total_games_played, highest_score_ever')
-            .eq('id', userId)
-            .single();
-
-        if (fetchError) {
-            console.error('User stats fetch error:', fetchError);
-            return false;
-        }
-
-        // Always increment games played
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const updates: any = {
-            total_games_played: (currentUser?.total_games_played || 0) + 1
-        };
-
-        // Update highest score if this is a new high score
-        if (shouldUpdateHighScore) {
-            const currentHighest = currentUser?.highest_score_ever || 0;
-            if (newScore > currentHighest) {
-                updates.highest_score_ever = newScore;
-            }
-        }
-
-        const { error: updateError } = await adminSupabase
-            .from('users')
-            .update(updates)
-            .eq('id', userId);
+        // Use atomic update to prevent race conditions - only update game stats, never verification fields
+        const { error: updateError } = await adminSupabase.rpc('update_user_stats_safe', {
+            p_user_id: userId,
+            p_increment_games: 1,
+            p_new_high_score: shouldUpdateHighScore ? newScore : null
+        });
 
         if (updateError) {
             return false;
         }
 
         return true;
-    } catch (error) {
-        console.error('Error in updateUserStatistics:', error);
+    } catch {
         return false;
     }
 } export async function POST(req: NextRequest) {
@@ -287,8 +261,21 @@ async function updateUserStatistics(userId: string, newScore: number, shouldUpda
                     // Game count update failed, but don't fail the whole request
                 }
 
-                // Update user statistics with new high score
-                await updateUserStatistics(user.id, score, true);
+                // Update user statistics with new high score (with retry for race conditions)
+                let retryCount = 0;
+                const maxRetries = 3;
+                let statsUpdated = false;
+
+                while (retryCount < maxRetries && !statsUpdated) {
+                    statsUpdated = await updateUserStatistics(user.id, score, true);
+                    if (!statsUpdated) {
+                        retryCount++;
+                        if (retryCount < maxRetries) {
+                            // Wait before retry (exponential backoff)
+                            await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 100));
+                        }
+                    }
+                }
 
                 return NextResponse.json({
                     success: true,
@@ -335,8 +322,21 @@ async function updateUserStatistics(userId: string, newScore: number, shouldUpda
             // Game count update failed, but don't fail the whole request
         }
 
-        // Also update user statistics (total games played only, no high score)
-        await updateUserStatistics(user.id, score, false);
+        // Also update user statistics (total games played only, no high score) with retry
+        let retryCount = 0;
+        const maxRetries = 3;
+        let statsUpdated = false;
+
+        while (retryCount < maxRetries && !statsUpdated) {
+            statsUpdated = await updateUserStatistics(user.id, score, false);
+            if (!statsUpdated) {
+                retryCount++;
+                if (retryCount < maxRetries) {
+                    // Wait before retry (exponential backoff)
+                    await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 100));
+                }
+            }
+        }
 
         return NextResponse.json({
             success: true,
