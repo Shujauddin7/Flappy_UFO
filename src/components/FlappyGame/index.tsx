@@ -319,7 +319,6 @@ export default function FlappyGame({
                     ufo.y + 20 < obstacle.y + obstacle.height &&
                     ufo.y + 30 > obstacle.y) {
 
-                    console.log('💥 Invisible wall collision! UFO position:', { x: ufo.x, y: ufo.y }, 'Wall:', { x: obstacle.x, y: obstacle.y, w: obstacle.width, h: obstacle.height });
                     return true; // Collision with invisible barrier
                 }
             }

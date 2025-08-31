@@ -672,6 +672,7 @@ export default function GameHomepage() {
         return (
             <>
                 <FlappyGame
+                    key={`${gameMode}-${continueFromScore}-${tournamentContinueUsed}`} // Force remount on continue
                     gameMode={gameMode}
                     onGameEnd={handleGameEnd}
                     continueFromScore={continueFromScore}
