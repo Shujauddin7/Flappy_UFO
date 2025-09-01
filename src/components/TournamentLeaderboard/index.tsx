@@ -16,16 +16,15 @@ interface LeaderboardPlayer {
 }
 
 interface TournamentLeaderboardProps {
-    tournamentId: string; // Keep for future use but not currently used in logic
-    currentUserId: string | null;
+    tournamentId?: string;
+    currentUserId?: string | null;
     isGracePeriod?: boolean;
 }
 
-export const TournamentLeaderboard: React.FC<TournamentLeaderboardProps> = ({
-    tournamentId,
-    currentUserId,
+export const TournamentLeaderboard = ({
+    currentUserId = null,
     isGracePeriod = false
-}) => {
+}: TournamentLeaderboardProps) => {
     const [topPlayers, setTopPlayers] = useState<LeaderboardPlayer[]>([]);
     const [allPlayers, setAllPlayers] = useState<LeaderboardPlayer[]>([]);
     const [currentUserRank, setCurrentUserRank] = useState<LeaderboardPlayer | null>(null);
