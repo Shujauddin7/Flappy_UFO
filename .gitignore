@@ -50,6 +50,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# Environment variables file (contains secrets - DO NOT COMMIT)
+vercel-env-vars.txt
+
 # Database and sensitive files
 /src/lib/supabase.ts
 /src/lib/database.ts
