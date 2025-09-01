@@ -1090,8 +1090,8 @@ export default function GameHomepage() {
                             </button>
                             <button
                                 className="space-nav-btn prizes-nav"
-                                onClick={() => alert('Galactic Leaderboard & Cosmic Prizes')}
-                                aria-label="Cosmic Prizes"
+                                onClick={() => window.location.href = '/leaderboard'}
+                                aria-label="Leaderboard"
                             >
                                 <div className="space-icon">🏆</div>
 
@@ -1173,8 +1173,8 @@ export default function GameHomepage() {
                             </button>
                             <button
                                 className="space-nav-btn prizes-nav"
-                                onClick={() => alert('Galactic Leaderboard & Cosmic Prizes')}
-                                aria-label="Cosmic Prizes"
+                                onClick={() => window.location.href = '/leaderboard'}
+                                aria-label="Leaderboard"
                             >
                                 <div className="space-icon">🏆</div>
 

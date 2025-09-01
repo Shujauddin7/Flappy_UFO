@@ -1,8 +1,9 @@
 'use client';
 
 import { TabItem, Tabs } from '@worldcoin/mini-apps-ui-kit-react';
-import { Bank, Home, User } from 'iconoir-react';
-import { useState } from 'react';
+import { Home, Trophy, InfoCircle } from 'iconoir-react';
+import { useState, useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 
 /**
  * This component uses the UI Kit to navigate between pages
@@ -12,14 +13,43 @@ import { useState } from 'react';
  */
 
 export const Navigation = () => {
+  const router = useRouter();
+  const pathname = usePathname();
   const [value, setValue] = useState('home');
 
+  // Update tab based on current route
+  useEffect(() => {
+    if (pathname === '/') {
+      setValue('home');
+    } else if (pathname === '/leaderboard') {
+      setValue('leaderboard');
+    }
+  }, [pathname]);
+
+  const handleValueChange = (newValue: string) => {
+    setValue(newValue);
+
+    switch (newValue) {
+      case 'home':
+        router.push('/');
+        break;
+      case 'leaderboard':
+        router.push('/leaderboard');
+        break;
+      case 'info':
+        // TODO: Open info modal
+        console.log('Info clicked - TODO: Open info modal');
+        break;
+      default:
+        break;
+    }
+  };
+
   return (
-    <Tabs value={value} onValueChange={setValue}>
+    <Tabs value={value} onValueChange={handleValueChange}>
       <TabItem value="home" icon={<Home />} label="Home" />
-      {/* // TODO: These currently don't link anywhere */}
-      <TabItem value="wallet" icon={<Bank />} label="Wallet" />
-      <TabItem value="profile" icon={<User />} label="Profile" />
+      <TabItem value="leaderboard" icon={<Trophy />} label="Leaderboard" />
+      <TabItem value="info" icon={<InfoCircle />} label="Info" />
     </Tabs>
   );
 };

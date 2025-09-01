@@ -10,6 +10,8 @@ src/components/MobileDebugConsole/
 
 # Development documentation (exclude from production)  
 toself.md
+to-implement.md
+to_implement.md
 STEP-BY-STEP-SIGNIN.md
 URGENT_WORLD_PORTAL_UPDATE.md
 complete-database-schema.sql
