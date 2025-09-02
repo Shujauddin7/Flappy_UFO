@@ -2,6 +2,60 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { createClient } from '@supabase/supabase-js';
 
+interface TournamentRecord {
+    user_id: string;
+    verified_entry_paid: number;
+    standard_entry_paid: number;
+    total_continue_payments: number;
+}
+
+// Helper function to update tournament player count and prize pool
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function updateTournamentTotals(supabase: any, tournamentId: string) {
+    try {
+        // Count unique users and calculate total prize pool from user_tournament_records for this tournament
+        const { data, error } = await supabase
+            .from('user_tournament_records')
+            .select('user_id, verified_entry_paid, standard_entry_paid, total_continue_payments')
+            .eq('tournament_id', tournamentId);
+
+        if (error) {
+            console.error('❌ Error fetching tournament records:', error);
+            return;
+        }
+
+        const uniquePlayerCount = data?.length || 0;
+
+        // Calculate total prize pool from all entry payments and continue payments
+        const totalPrizePool = (data as TournamentRecord[])?.reduce((sum: number, record: TournamentRecord) => {
+            const entryAmount = (record.verified_entry_paid || 0) + (record.standard_entry_paid || 0);
+            const continueAmount = record.total_continue_payments || 0;
+            return sum + entryAmount + continueAmount;
+        }, 0) || 0;
+
+        // Update tournament with player count and prize pool
+        const { error: updateError } = await supabase
+            .from('tournaments')
+            .update({
+                total_players: uniquePlayerCount,
+                total_prize_pool: totalPrizePool,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', tournamentId);
+
+        if (updateError) {
+            console.error('❌ Error updating tournament totals:', updateError);
+        } else {
+            console.log('✅ Tournament totals updated:', {
+                players: uniquePlayerCount,
+                prize_pool: totalPrizePool
+            });
+        }
+    } catch (error) {
+        console.error('❌ Error in updateTournamentTotals:', error);
+    }
+}
+
 // Helper function to update user statistics safely (prevents race conditions)
 async function updateUserStatistics(userId: string, newScore: number, shouldUpdateHighScore: boolean = false) {
     try {
@@ -108,13 +162,25 @@ async function updateUserStatistics(userId: string, newScore: number, shouldUpda
             });
         }
 
-        // Find the user tournament record - either by record_id or by user_id + today's date
-        const today = new Date().toISOString().split('T')[0];
+        // Find the user tournament record - either by record_id or by user_id + tournament day
+        // Calculate tournament day using same logic as tournament system (15:30 UTC boundary)
+        const now = new Date();
+        const utcHour = now.getUTCHours();
+        const utcMinute = now.getUTCMinutes();
+
+        // Tournament day starts at 15:30 UTC, so if it's before 15:30, use yesterday's date
+        const tournamentDate = new Date(now);
+        if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
+            tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
+        }
+
+        const tournamentDay = tournamentDate.toISOString().split('T')[0];
+
         let recordQuery = supabase
             .from('user_tournament_records')
             .select('id, user_id, highest_score, tournament_day, tournament_id, verified_at, verified_games_played, unverified_games_played, total_games_played, verified_entry_paid, standard_entry_paid, verified_paid_at, standard_paid_at, verified_entry_games, standard_entry_games, total_continues_used, total_continue_payments')
             .eq('user_id', user.id)
-            .eq('tournament_day', today);
+            .eq('tournament_day', tournamentDay);
 
         if (user_tournament_record_id) {
             recordQuery = recordQuery.eq('id', user_tournament_record_id);
@@ -196,7 +262,7 @@ async function updateUserStatistics(userId: string, newScore: number, shouldUpda
                 tournament_id: record.tournament_id,
                 username: user.username || null, // Use the actual username from users table
                 wallet: walletToCheck,
-                tournament_day: today,
+                tournament_day: tournamentDay,
                 score: score,
                 game_duration_ms: game_duration,
                 was_verified_game: isVerifiedGame, // Properly determined based on entry payment
@@ -322,13 +388,18 @@ async function updateUserStatistics(userId: string, newScore: number, shouldUpda
             // Game count update failed, but don't fail the whole request
         }
 
-        // Also update user statistics (total games played only, no high score) with retry
+        // Update tournament totals (player count and prize pool) in background
+        updateTournamentTotals(supabase, record.tournament_id).catch(error => {
+            console.error('❌ Failed to update tournament totals:', error);
+        });
+
+        // Also update user statistics (total games played and high score) with retry
         let retryCount = 0;
         const maxRetries = 3;
         let statsUpdated = false;
 
         while (retryCount < maxRetries && !statsUpdated) {
-            statsUpdated = await updateUserStatistics(user.id, score, false);
+            statsUpdated = await updateUserStatistics(user.id, score, true);
             if (!statsUpdated) {
                 retryCount++;
                 if (retryCount < maxRetries) {
@@ -338,17 +409,21 @@ async function updateUserStatistics(userId: string, newScore: number, shouldUpda
             }
         }
 
+        // Update tournament totals (player count and prize pool) in background
+        updateTournamentTotals(supabase, record.tournament_id).catch(error => {
+            console.error('❌ Failed to update tournament totals:', error);
+        });
+
         return NextResponse.json({
             success: true,
             data: {
                 user_tournament_record_id: record.id,
-                current_highest_score: record.highest_score,
-                submitted_score: score,
-                is_new_high_score: false,
-                message: 'Score submitted but not higher than current record'
+                previous_highest_score: record.highest_score,
+                current_highest_score: score,
+                is_new_high_score: true,
+                updated_at: new Date().toISOString()
             }
         });
-
     } catch (error) {
         console.error('❌ Score submission error:', error);
         return NextResponse.json(

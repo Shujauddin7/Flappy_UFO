@@ -39,13 +39,24 @@ export const TournamentLeaderboard = ({
 
     const fetchLeaderboardData = useCallback(async () => {
         try {
-            const today = new Date().toISOString().split('T')[0];
+            // Calculate tournament day using same logic as tournament system (15:30 UTC boundary)
+            const now = new Date();
+            const utcHour = now.getUTCHours();
+            const utcMinute = now.getUTCMinutes();
+
+            // Tournament day starts at 15:30 UTC, so if it's before 15:30, use yesterday's date
+            const tournamentDate = new Date(now);
+            if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
+                tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
+            }
+
+            const tournamentDay = tournamentDate.toISOString().split('T')[0];
 
             // Fetch all players for this tournament, ordered by score
             const { data: players, error } = await supabase
                 .from('user_tournament_records')
                 .select('*')
-                .eq('tournament_day', today)
+                .eq('tournament_day', tournamentDay)
                 .gt('highest_score', 0) // Only players with scores > 0
                 .order('highest_score', { ascending: false })
                 .order('created_at', { ascending: true }); // Tie-breaker: earlier submission wins

@@ -20,6 +20,7 @@ export default function LeaderboardPage() {
     const [currentTournament, setCurrentTournament] = useState<TournamentData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [currentTime, setCurrentTime] = useState(new Date());
 
     const fetchCurrentTournament = useCallback(async () => {
         try {
@@ -45,22 +46,34 @@ export default function LeaderboardPage() {
 
     useEffect(() => {
         fetchCurrentTournament();
+
+        // Update time every second for live countdown
+        const timeInterval = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 1000);
+
+        return () => {
+            clearInterval(timeInterval);
+        };
     }, [fetchCurrentTournament]);
 
-    // Calculate time remaining for tournament
+    // Calculate time remaining for tournament (updates every second)
     const getTimeRemaining = () => {
         if (!currentTournament) return null;
 
-        const now = new Date();
+        const now = currentTime;
         const utcHour = now.getUTCHours();
         const utcMinute = now.getUTCMinutes();
+        const utcSecond = now.getUTCSeconds();
 
         // Check if we're in grace period (15:00-15:30 UTC)
         if (utcHour === 15 && utcMinute >= 0 && utcMinute < 30) {
-            const minutesLeft = 30 - utcMinute;
+            const totalSecondsLeft = (29 - utcMinute) * 60 + (60 - utcSecond);
+            const minutesLeft = Math.floor(totalSecondsLeft / 60);
+            const secondsLeft = totalSecondsLeft % 60;
             return {
                 status: 'grace',
-                timeLeft: `${minutesLeft} minutes until new tournament`
+                timeLeft: `${minutesLeft}m ${secondsLeft}s until new tournament`
             };
         }
 
@@ -76,10 +89,11 @@ export default function LeaderboardPage() {
         const msUntilGrace = nextGrace.getTime() - now.getTime();
         const hoursLeft = Math.floor(msUntilGrace / (1000 * 60 * 60));
         const minutesLeft = Math.floor((msUntilGrace % (1000 * 60 * 60)) / (1000 * 60));
+        const secondsLeft = Math.floor((msUntilGrace % (1000 * 60)) / 1000);
 
         return {
             status: 'active',
-            timeLeft: `${hoursLeft}h ${minutesLeft}m until tournament ends`
+            timeLeft: `${hoursLeft}h ${minutesLeft}m ${secondsLeft}s until tournament ends`
         };
     };
 
