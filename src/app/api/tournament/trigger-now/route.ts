@@ -9,14 +9,14 @@ export async function POST() {
         const cronSecret = process.env.CRON_SECRET;
 
         if (!baseUrl) {
-            return NextResponse.json({ 
-                error: 'NEXTAUTH_URL not configured - required for Vercel deployment' 
+            return NextResponse.json({
+                error: 'NEXTAUTH_URL not configured - required for Vercel deployment'
             }, { status: 500 });
         }
 
         if (!cronSecret) {
-            return NextResponse.json({ 
-                error: 'CRON_SECRET not configured' 
+            return NextResponse.json({
+                error: 'CRON_SECRET not configured'
             }, { status: 500 });
         }
 
