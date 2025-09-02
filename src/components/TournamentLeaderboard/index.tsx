@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { PlayerRankCard } from '@/components/PlayerRankCard';
 
 interface LeaderboardPlayer {
@@ -32,61 +31,34 @@ export const TournamentLeaderboard = ({
     const [showAllPlayers, setShowAllPlayers] = useState(false);
     const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
-    const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-
     const fetchLeaderboardData = useCallback(async () => {
         try {
-            // Calculate tournament day using same logic as tournament system (15:30 UTC boundary)
-            const now = new Date();
-            const utcHour = now.getUTCHours();
-            const utcMinute = now.getUTCMinutes();
+            // Fetch leaderboard data via API (uses service key permissions)
+            const response = await fetch('/api/tournament/leaderboard-data');
+            const data = await response.json();
 
-            // Tournament day starts at 15:30 UTC, so if it's before 15:30, use yesterday's date
-            const tournamentDate = new Date(now);
-            if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
-                tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
-            }
-
-            const tournamentDay = tournamentDate.toISOString().split('T')[0];
-
-            // Fetch all players for this tournament, ordered by score
-            const { data: players, error } = await supabase
-                .from('user_tournament_records')
-                .select('*')
-                .eq('tournament_day', tournamentDay)
-                .gt('highest_score', 0) // Only players with scores > 0
-                .order('highest_score', { ascending: false })
-                .order('created_at', { ascending: true }); // Tie-breaker: earlier submission wins
-
-            if (error) {
-                console.error('Error fetching leaderboard:', error);
+            if (!response.ok) {
+                console.error('Error fetching leaderboard:', data.error);
                 return;
             }
 
-            if (!players || players.length === 0) {
+            const players = data.players || [];
+
+            if (players.length === 0) {
                 setTopPlayers([]);
                 setAllPlayers([]);
                 setCurrentUserRank(null);
                 return;
             }
 
-            // Add rank to each player
-            const playersWithRank = players.map((player, index) => ({
-                ...player,
-                rank: index + 1
-            }));
-
             // Get top 10
-            const top10 = playersWithRank.slice(0, 10);
+            const top10 = players.slice(0, 10);
             setTopPlayers(top10);
-            setAllPlayers(playersWithRank);
+            setAllPlayers(players);
 
             // Find current user's rank
             if (currentUserId) {
-                const userRank = playersWithRank.find(player => player.user_id === currentUserId);
+                const userRank = players.find((player: LeaderboardPlayer) => player.user_id === currentUserId);
                 setCurrentUserRank(userRank || null);
             }
 
@@ -97,34 +69,21 @@ export const TournamentLeaderboard = ({
         } finally {
             setLoading(false);
         }
-    }, [supabase, currentUserId]);
+    }, [currentUserId]);
 
     useEffect(() => {
         fetchLeaderboardData();
 
-        // Set up real-time subscription if not in grace period
+        // Set up polling instead of real-time subscription (API-based approach)
         if (!isGracePeriod) {
-            const subscription = supabase
-                .channel('tournament_leaderboard')
-                .on('postgres_changes', {
-                    event: '*',
-                    schema: 'public',
-                    table: 'user_tournament_records'
-                }, () => {
-                    // Refresh leaderboard when changes occur
-                    fetchLeaderboardData();
-                })
-                .subscribe();
-
-            // Also refresh every 5 seconds as specified in Plan.md
+            // Refresh every 5 seconds as specified in Plan.md
             const intervalId = setInterval(fetchLeaderboardData, 5000);
 
             return () => {
-                subscription.unsubscribe();
                 clearInterval(intervalId);
             };
         }
-    }, [fetchLeaderboardData, isGracePeriod, supabase]);
+    }, [fetchLeaderboardData, isGracePeriod]);
 
     const getPrizeAmount = (rank: number, totalPrizePool: number) => {
         const prizeDistribution: { [key: number]: number } = {
