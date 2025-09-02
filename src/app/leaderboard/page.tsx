@@ -24,6 +24,7 @@ export default function LeaderboardPage() {
 
     const fetchCurrentTournament = useCallback(async () => {
         try {
+            setLoading(true);
             // Call our API instead of direct Supabase query (fixes permissions and timezone issues)
             const response = await fetch('/api/tournament/current');
             const data = await response.json();
@@ -207,6 +208,7 @@ export default function LeaderboardPage() {
                         tournamentId={currentTournament.id}
                         currentUserId={session?.user?.id || null}
                         isGracePeriod={timeRemaining?.status === 'grace'}
+                        totalPrizePool={currentTournament.total_prize_pool}
                     />
                 </div>
 

@@ -18,18 +18,21 @@ interface TournamentLeaderboardProps {
     tournamentId?: string;
     currentUserId?: string | null;
     isGracePeriod?: boolean;
+    refreshTrigger?: number; // Add this to trigger manual refresh
+    totalPrizePool?: number; // Add real prize pool
 }
 
 export const TournamentLeaderboard = ({
     currentUserId = null,
-    isGracePeriod = false
+    isGracePeriod = false,
+    refreshTrigger = 0,
+    totalPrizePool = 0
 }: TournamentLeaderboardProps) => {
     const [topPlayers, setTopPlayers] = useState<LeaderboardPlayer[]>([]);
     const [allPlayers, setAllPlayers] = useState<LeaderboardPlayer[]>([]);
     const [currentUserRank, setCurrentUserRank] = useState<LeaderboardPlayer | null>(null);
     const [loading, setLoading] = useState(true);
     const [showAllPlayers, setShowAllPlayers] = useState(false);
-    const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
     const fetchLeaderboardData = useCallback(async () => {
         try {
@@ -62,8 +65,6 @@ export const TournamentLeaderboard = ({
                 setCurrentUserRank(userRank || null);
             }
 
-            setLastUpdate(new Date());
-
         } catch (err) {
             console.error('Failed to fetch leaderboard:', err);
         } finally {
@@ -84,6 +85,13 @@ export const TournamentLeaderboard = ({
             };
         }
     }, [fetchLeaderboardData, isGracePeriod]);
+
+    // Add effect for manual refresh trigger
+    useEffect(() => {
+        if (refreshTrigger > 0) {
+            fetchLeaderboardData();
+        }
+    }, [refreshTrigger, fetchLeaderboardData]);
 
     const getPrizeAmount = (rank: number, totalPrizePool: number) => {
         const prizeDistribution: { [key: number]: number } = {
@@ -127,9 +135,6 @@ export const TournamentLeaderboard = ({
 
             <div className="leaderboard-header">
                 <h3>🏆 TOP PLAYERS</h3>
-                <div className="last-updated">
-                    Last updated: {lastUpdate.toLocaleTimeString()}
-                </div>
             </div>
 
             <div className="leaderboard-list">
@@ -137,7 +142,7 @@ export const TournamentLeaderboard = ({
                     <PlayerRankCard
                         key={player.id}
                         player={player}
-                        prizeAmount={player.rank && player.rank <= 10 ? getPrizeAmount(player.rank, 1000) : null} // Using placeholder total
+                        prizeAmount={player.rank && player.rank <= 10 ? getPrizeAmount(player.rank, totalPrizePool) : null}
                         isCurrentUser={player.user_id === currentUserId}
                         isTopThree={player.rank !== undefined && player.rank <= 3}
                     />
