@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { Page } from '@/components/PageLayout';
 import { TournamentLeaderboard } from '@/components/TournamentLeaderboard';
 import { useSession } from 'next-auth/react';
-import { createClient } from '@supabase/supabase-js';
 
 interface TournamentData {
     id: string;
@@ -22,29 +21,19 @@ export default function LeaderboardPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-
     const fetchCurrentTournament = useCallback(async () => {
         try {
-            const today = new Date().toISOString().split('T')[0];
+            // Call our API instead of direct Supabase query (fixes permissions and timezone issues)
+            const response = await fetch('/api/tournament/current');
+            const data = await response.json();
 
-            const { data: tournament, error: tournamentError } = await supabase
-                .from('tournaments')
-                .select('*')
-                .eq('tournament_day', today)
-                .eq('is_active', true)
-                .single();
-
-            if (tournamentError) {
-                console.error('Error fetching tournament:', tournamentError);
-                setError('No active tournament found');
+            if (!response.ok) {
+                console.error('Error fetching tournament:', data.error);
+                setError(data.error || 'Failed to load tournament data');
                 return;
             }
 
-            setCurrentTournament(tournament);
+            setCurrentTournament(data.tournament);
             setError(null);
         } catch (err) {
             console.error('Failed to fetch tournament:', err);
@@ -52,7 +41,7 @@ export default function LeaderboardPage() {
         } finally {
             setLoading(false);
         }
-    }, [supabase]);
+    }, []);
 
     useEffect(() => {
         fetchCurrentTournament();
