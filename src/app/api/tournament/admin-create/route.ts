@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
     console.log('🧪 Manual tournament trigger called');
-    
+
     try {
         // Get the base URL for the current request
         const baseUrl = `${req.nextUrl.protocol}//${req.nextUrl.host}`;
-        
+
         // Call the cron endpoint with proper authorization
         const cronResponse = await fetch(`${baseUrl}/api/tournament/daily-cron`, {
             method: 'GET',
