@@ -4,8 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 
 interface TournamentRecord {
     user_id: string;
-    verified_entry_paid: number;
-    standard_entry_paid: number;
+    verified_paid_amount: number;
+    standard_paid_amount: number;
     total_continue_payments: number;
 }
 
@@ -16,7 +16,7 @@ async function updateTournamentTotals(supabase: any, tournamentId: string) {
         // Count unique users and calculate total prize pool from user_tournament_records for this tournament
         const { data, error } = await supabase
             .from('user_tournament_records')
-            .select('user_id, verified_entry_paid, standard_entry_paid, total_continue_payments')
+            .select('user_id, verified_paid_amount, standard_paid_amount, total_continue_payments')
             .eq('tournament_id', tournamentId);
 
         if (error) {
@@ -28,7 +28,7 @@ async function updateTournamentTotals(supabase: any, tournamentId: string) {
 
         // Calculate total prize pool from all entry payments and continue payments
         const totalPrizePool = (data as TournamentRecord[])?.reduce((sum: number, record: TournamentRecord) => {
-            const entryAmount = (record.verified_entry_paid || 0) + (record.standard_entry_paid || 0);
+            const entryAmount = (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0);
             const continueAmount = record.total_continue_payments || 0;
             return sum + entryAmount + continueAmount;
         }, 0) || 0;
