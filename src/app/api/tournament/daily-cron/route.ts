@@ -37,18 +37,17 @@ export async function GET(req: NextRequest) {
         const now = new Date();
         const utcHour = now.getUTCHours();
         const utcMinute = now.getUTCMinutes();
-        
+
         // Tournament day starts at 15:30 UTC, so if it's before 15:30, use yesterday's date
         const tournamentDate = new Date(now);
         if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
             tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
         }
-        
+
         const tournamentDay = tournamentDate.toISOString().split('T')[0];
-        const tournamentId = `tournament_${tournamentDay}_${Date.now()}`;
+        // Remove the custom tournamentId - let the database generate the UUID
 
         console.log('📅 Creating tournament for day:', tournamentDay);
-        console.log('🆔 Tournament ID:', tournamentId);
 
         // Step 1: Set all previous tournaments to inactive
         console.log('📊 Deactivating previous tournaments...');
@@ -81,7 +80,7 @@ export async function GET(req: NextRequest) {
         // Step 3: Create new tournament
         const tournamentStartTime = new Date();
         tournamentStartTime.setUTCHours(15, 30, 0, 0); // 15:30 UTC today
-        
+
         const tournamentEndTime = new Date(tournamentStartTime);
         tournamentEndTime.setUTCDate(tournamentEndTime.getUTCDate() + 1); // Next day 15:00 UTC
         tournamentEndTime.setUTCHours(15, 0, 0, 0);
@@ -91,7 +90,6 @@ export async function GET(req: NextRequest) {
             .from('tournaments')
             .insert([
                 {
-                    id: tournamentId,
                     tournament_day: tournamentDay,
                     is_active: true,
                     total_players: 0,
@@ -129,7 +127,7 @@ export async function GET(req: NextRequest) {
         }
 
         console.log('🎉 Daily tournament automation completed successfully!');
-        
+
         return NextResponse.json({
             success: true,
             message: 'Daily tournament created successfully',

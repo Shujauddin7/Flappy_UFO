@@ -33,18 +33,8 @@ function DevSignOut() {
                     // Continue with sign out even if verification clear fails
                 }
 
-                // Also reset tournament data for testing
-                try {
-                    await fetch('/api/admin/reset-user', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ wallet: session.user.walletAddress })
-                    });
-                    console.log('DevSignOut: Reset tournament data for testing');
-                } catch (tournamentError) {
-                    console.warn('DevSignOut: Failed to reset tournament data:', tournamentError);
-                    // Continue with sign out even if tournament reset fails
-                }
+                // Note: Tournament data reset removed to prevent accidental data loss
+                // If you need to reset tournament data, use the admin panel instead
             }
 
             // Clear any additional local storage or session data first
