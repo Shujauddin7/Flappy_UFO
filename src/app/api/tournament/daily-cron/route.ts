@@ -5,12 +5,26 @@ export async function GET(req: NextRequest) {
     console.log('🕐 Daily Tournament Cron Job Triggered at:', new Date().toISOString());
 
     try {
-        // Verify this is a legitimate cron job call (Vercel adds this header)
-        const authHeader = req.headers.get('authorization');
-        if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+        // Log all headers to debug Vercel cron authentication
+        console.log('🔍 Cron job headers:', Object.fromEntries(req.headers.entries()));
+
+        // Vercel cron jobs are authenticated differently than manual calls
+        // Check for Vercel-specific headers instead of custom CRON_SECRET
+        const userAgent = req.headers.get('user-agent');
+        const vercelCronHeader = req.headers.get('vercel-cron');
+
+        // Allow Vercel cron jobs (they have specific user-agent) or manual calls with CRON_SECRET
+        const isVercelCron = userAgent?.includes('vercel-cron') || vercelCronHeader;
+        const isManualTrigger = req.headers.get('authorization') === `Bearer ${process.env.CRON_SECRET}`;
+
+        if (!isVercelCron && !isManualTrigger) {
             console.error('❌ Unauthorized cron job access attempt');
+            console.log('User-Agent:', userAgent);
+            console.log('Vercel-Cron header:', vercelCronHeader);
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
+
+        console.log('✅ Cron job authorized:', isVercelCron ? 'Vercel Cron' : 'Manual Trigger');
 
         // Environment-specific database configuration (following Plan.md specification)
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';

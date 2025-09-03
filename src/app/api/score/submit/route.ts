@@ -5,16 +5,33 @@ import { createClient } from '@supabase/supabase-js';
 // Helper function to update user statistics safely (prevents race conditions)
 async function updateUserStatistics(userId: string, newScore: number, shouldUpdateHighScore: boolean = false) {
     try {
+        console.log('🔄 Attempting to update user stats:', { userId, newScore, shouldUpdateHighScore });
+
         // Create a fresh service role client to ensure we have admin privileges
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
         const supabaseUrl = isProduction ? process.env.SUPABASE_PROD_URL : process.env.SUPABASE_DEV_URL;
         const supabaseServiceKey = isProduction ? process.env.SUPABASE_PROD_SERVICE_KEY : process.env.SUPABASE_DEV_SERVICE_KEY;
 
         if (!supabaseUrl || !supabaseServiceKey) {
+            console.error('❌ Missing environment variables');
             return false;
         }
 
         const adminSupabase = createClient(supabaseUrl, supabaseServiceKey);
+
+        // First, verify the user exists and get current stats for logging
+        const { data: currentUser, error: fetchError } = await adminSupabase
+            .from('users')
+            .select('id, total_games_played, highest_score_ever')
+            .eq('id', userId)
+            .single();
+
+        if (fetchError || !currentUser) {
+            console.error('❌ User not found before update:', { userId, fetchError });
+            return false;
+        }
+
+        console.log('📊 User current stats before update:', currentUser);
 
         // Use atomic update to prevent race conditions - only update game stats, never verification fields
         const { error: updateError } = await adminSupabase.rpc('update_user_stats_safe', {
@@ -28,7 +45,28 @@ async function updateUserStatistics(userId: string, newScore: number, shouldUpda
             return false;
         }
 
-        console.log('✅ User stats updated successfully:', { userId, score: newScore, shouldUpdateHighScore });
+        // Verify the update worked by fetching the user again
+        const { data: updatedUser, error: verifyError } = await adminSupabase
+            .from('users')
+            .select('id, total_games_played, highest_score_ever, updated_at')
+            .eq('id', userId)
+            .single();
+
+        if (verifyError || !updatedUser) {
+            console.error('❌ Failed to verify user stats update:', verifyError);
+            return false;
+        }
+
+        console.log('✅ User stats updated successfully:', {
+            userId,
+            before: currentUser,
+            after: updatedUser,
+            changes: {
+                gamesIncreased: updatedUser.total_games_played - currentUser.total_games_played,
+                highScoreChanged: updatedUser.highest_score_ever !== currentUser.highest_score_ever
+            }
+        });
+
         return true;
     } catch (error) {
         console.error('❌ Exception updating user stats:', error);
