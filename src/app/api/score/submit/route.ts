@@ -29,8 +29,8 @@ async function updateUserStatistics(userId: string, newScore: number, shouldUpda
         }
 
         const newGamesPlayed = (currentUser.total_games_played || 0) + 1;
-        const newHighScore = shouldUpdateHighScore && newScore > (currentUser.highest_score_ever || 0) 
-            ? newScore 
+        const newHighScore = shouldUpdateHighScore && newScore > (currentUser.highest_score_ever || 0)
+            ? newScore
             : (currentUser.highest_score_ever || 0);
 
         // Update user statistics directly
