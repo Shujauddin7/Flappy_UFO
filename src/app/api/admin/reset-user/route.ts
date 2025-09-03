@@ -52,7 +52,18 @@ export async function POST(req: NextRequest) {
         }
 
         // 2. Delete user tournament records for today (fresh start)
-        const today = new Date().toISOString().split('T')[0];
+        // Calculate tournament day using tournament boundary logic (15:30 UTC)
+        const now = new Date();
+        const utcHour = now.getUTCHours();
+        const utcMinute = now.getUTCMinutes();
+
+        // Tournament day starts at 15:30 UTC, so if it's before 15:30, use yesterday's date
+        const tournamentDate = new Date(now);
+        if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
+            tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
+        }
+
+        const today = tournamentDate.toISOString().split('T')[0];
         const { error: deleteRecordsError } = await supabase
             .from('user_tournament_records')
             .delete()
