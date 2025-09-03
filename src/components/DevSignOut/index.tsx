@@ -37,13 +37,12 @@ function DevSignOut() {
                 // If you need to reset tournament data, use the admin panel instead
             }
 
-            // Clear any additional local storage or session data first
+            // Clear specific data only: sign-in, verification, and tournament entry
             if (typeof window !== 'undefined') {
-                localStorage.clear();
-                sessionStorage.clear();
-                // Add a flag to indicate we just signed out - this will force verification check
-                localStorage.setItem('justSignedOut', 'true');
-                console.log('DevSignOut: Cleared local/session storage and set sign-out flag');
+                // Clear only verification-related localStorage (per user request)
+                localStorage.removeItem('verificationToday');
+                // Don't clear all localStorage - preserve game progress, settings, etc.
+                console.log('DevSignOut: Cleared verification localStorage only');
             }
 
             // Sign out without redirect to stay in the app
