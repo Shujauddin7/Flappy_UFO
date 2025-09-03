@@ -37,57 +37,39 @@ async function updateUserTournamentCount(supabase: any, userId: string) {
     }
 }
 
-interface TournamentRecord {
-    user_id: string;
-    verified_paid_amount: number;
-    standard_paid_amount: number;
-    total_continue_payments: number;
-}
-
-// Helper function to update tournament player count and prize pool
+// Helper function to update tournament player count
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateTournamentTotals(supabase: any, tournamentId: string) {
+async function updateTournamentPlayerCount(supabase: any, tournamentId: string) {
     try {
-        // Count unique users and calculate total prize pool from user_tournament_records for this tournament
+        // Count unique users in user_tournament_records for this tournament
         const { data, error } = await supabase
             .from('user_tournament_records')
-            .select('user_id, verified_paid_amount, standard_paid_amount, total_continue_payments')
+            .select('user_id')
             .eq('tournament_id', tournamentId);
 
         if (error) {
-            console.error('❌ Error fetching tournament records:', error);
+            console.error('❌ Error counting tournament players:', error);
             return;
         }
 
         const uniquePlayerCount = data?.length || 0;
 
-        // Calculate total prize pool from all entry payments and continue payments
-        const totalPrizePool = (data as TournamentRecord[])?.reduce((sum: number, record: TournamentRecord) => {
-            const entryAmount = (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0);
-            const continueAmount = record.total_continue_payments || 0;
-            return sum + entryAmount + continueAmount;
-        }, 0) || 0;
-
-        // Update tournament with player count and prize pool
+        // Update tournament with player count
         const { error: updateError } = await supabase
             .from('tournaments')
             .update({
                 total_players: uniquePlayerCount,
-                total_prize_pool: totalPrizePool,
                 updated_at: new Date().toISOString()
             })
             .eq('id', tournamentId);
 
         if (updateError) {
-            console.error('❌ Error updating tournament totals:', updateError);
+            console.error('❌ Error updating tournament player count:', updateError);
         } else {
-            console.log('✅ Tournament totals updated:', {
-                players: uniquePlayerCount,
-                prize_pool: totalPrizePool
-            });
+            console.log('✅ Tournament player count updated:', uniquePlayerCount);
         }
     } catch (error) {
-        console.error('❌ Error in updateTournamentTotals:', error);
+        console.error('❌ Error in updateTournamentPlayerCount:', error);
     }
 }
 
@@ -142,19 +124,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Wallet mismatch' }, { status: 403 });
         }
 
-        // Get or create today's tournament using same logic as cron job
-        // Tournament day starts at 15:30 UTC, so if it's before 15:30, use yesterday's date
-        const now = new Date();
-        const utcHour = now.getUTCHours();
-        const utcMinute = now.getUTCMinutes();
-
-        const tournamentDate = new Date(now);
-        if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
-            tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
-        }
-
-        const today = tournamentDate.toISOString().split('T')[0];
-        console.log('🔍 Looking for tournament on date:', today, '(using tournament boundary logic)');
+        // Get or create today's tournament
+        const today = new Date().toISOString().split('T')[0];
+        console.log('🔍 Looking for tournament on date:', today);
 
         // First, try to get existing tournament for today
         const { data: tournament, error: tournamentFetchError } = await supabase
@@ -178,7 +150,7 @@ export async function POST(req: NextRequest) {
 
         // If no tournament exists for today, create one
         if (!finalTournament) {
-            console.log('🏆 Creating new tournament for day:', today);
+            console.log('🏆 Creating new tournament for today:', today);
             const startTime = new Date(today + 'T15:30:00Z'); // 15:30 UTC
             const endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000); // 24 hours later
 
@@ -308,7 +280,7 @@ export async function POST(req: NextRequest) {
         console.log('✅ Tournament record ID obtained:', recordId, 'with username:', user.username);
 
         // Update tournament total players count
-        await updateTournamentTotals(supabase, finalTournament.id);
+        await updateTournamentPlayerCount(supabase, finalTournament.id);
 
         // Update user's total tournament count
         await updateUserTournamentCount(supabase, user.id);
