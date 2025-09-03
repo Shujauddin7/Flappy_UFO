@@ -61,8 +61,7 @@ export async function POST() {
             .from('tournaments')
             .update({
                 total_players: totalPlayers,
-                total_prize_pool: totalPrizePool,
-                updated_at: new Date().toISOString()
+                total_prize_pool: totalPrizePool
             })
             .eq('id', tournament.id);
 
