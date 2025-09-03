@@ -38,7 +38,7 @@ export default function GameHomepage() {
 
     // Import useSession to get user wallet
     // Use prebuilt World App session management per Plan.md
-    const { session, isSessionReady, isSignedIn } = useSessionPersistence();
+    const { session } = useSessionPersistence();
 
     // Verification status state
     // Verification state - managed properly with World App session per Plan.md
