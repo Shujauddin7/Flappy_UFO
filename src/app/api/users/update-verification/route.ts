@@ -130,45 +130,35 @@ export async function POST(req: NextRequest) {
 
         const user = userData;
 
-        // IMPORTANT: Use the database function to safely get or create user tournament record
-        // This prevents duplicate key constraint violations
-        const { data: recordId, error: recordError } = await supabase
-            .rpc('get_or_create_user_tournament_record', {
-                p_user_id: user.id,
-                p_tournament_id: tournament.id,
-                p_username: user.username,
-                p_wallet: wallet
-            });
-
-        if (recordError) {
-            console.error('❌ Error getting/creating tournament record:', recordError);
-            return NextResponse.json({
-                success: false,
-                error: `Failed to create tournament record: ${recordError.message}`
-            }, { status: 500 });
-        }
-
-        console.log('✅ Tournament record ID obtained:', recordId);
-
-        // Now update the tournament record with verification data
-        const { error: updateRecordError } = await supabase
+        // IMPORTANT: Safely get or create user tournament record using ON CONFLICT
+        // Don't use the database function as it uses CURRENT_DATE instead of tournament boundary logic
+        const { data: tournamentRecord, error: recordError } = await supabase
             .from('user_tournament_records')
-            .update({
+            .upsert({
+                user_id: user.id,
+                tournament_id: tournament.id,
+                username: user.username,
+                wallet: wallet,
+                tournament_day: today, // Use the correct tournament boundary date
                 world_id_proof: { nullifier_hash }, // Store World ID proof
                 verified_at: new Date(verification_date).toISOString(), // Store full timestamp
                 updated_at: new Date().toISOString()
+            }, {
+                onConflict: 'user_id,tournament_id',
+                ignoreDuplicates: false // Update existing record
             })
-            .eq('id', recordId);
+            .select('id')
+            .single();
 
-        if (updateRecordError) {
-            console.error('❌ Error updating tournament record verification:', updateRecordError);
+        if (recordError) {
+            console.error('❌ Error upserting tournament record:', recordError);
             return NextResponse.json({
                 success: false,
-                error: `Failed to update tournament verification: ${updateRecordError.message}`
+                error: `Failed to create/update tournament record: ${recordError.message}`
             }, { status: 500 });
         }
 
-        console.log('✅ Tournament record updated with verification data');
+        console.log('✅ Tournament record created/updated with verification data:', tournamentRecord.id);
 
         console.log('✅ User verification status updated:', {
             wallet: wallet,
