@@ -6,8 +6,6 @@ import { createClient } from '@supabase/supabase-js';
  * Safe to use - won't conflict with automatic tournament creation
  */
 export async function POST() {
-    console.log('🔧 Manual Tournament Creation - Emergency Use');
-
     try {
         // Environment-specific database configuration
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
@@ -32,11 +30,7 @@ export async function POST() {
             tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
         }
 
-        const tournamentDay = tournamentDate.toISOString().split('T')[0];
-
-        console.log('📅 Creating manual tournament for day:', tournamentDay);
-
-        // Check if tournament already exists (same logic as cron job)
+        const tournamentDay = tournamentDate.toISOString().split('T')[0];        // Check if tournament already exists (same logic as cron job)
         const { data: existingTournament } = await supabase
             .from('tournaments')
             .select('*')
@@ -99,14 +93,11 @@ export async function POST() {
             return NextResponse.json({ error: 'Failed to create tournament' }, { status: 500 });
         }
 
-        console.log('✅ Manual tournament created successfully:', newTournament);
-
         return NextResponse.json({
             success: true,
             message: 'Manual tournament created successfully',
             tournament: newTournament,
-            action: 'created',
-            note: 'This tournament is compatible with automatic system and will not cause conflicts'
+            action: 'created'
         });
 
     } catch (error) {
