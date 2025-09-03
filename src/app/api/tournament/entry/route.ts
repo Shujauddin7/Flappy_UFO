@@ -303,16 +303,24 @@ export async function POST(req: NextRequest) {
         const recordId = tournamentRecord.id;
         console.log('✅ Tournament record created/updated:', recordId, 'with username:', user.username);
 
-        // Update tournament total players count
-        await updateTournamentPlayerCount(supabase, finalTournament.id);
+        // Now update the payment information (preserve existing payments)
+        // First get current payment status to avoid overwriting existing payments
+        const { data: currentRecord, error: fetchError } = await supabase
+            .from('user_tournament_records')
+            .select('verified_entry_paid, verified_paid_amount, verified_payment_ref, verified_paid_at, standard_entry_paid, standard_paid_amount, standard_payment_ref, standard_paid_at, current_entry_type')
+            .eq('id', recordId)
+            .single();
 
-        // Update user's total tournament count
-        await updateUserTournamentCount(supabase, user.id);
+        if (fetchError) {
+            console.error('❌ Error fetching current payment status:', fetchError);
+            return NextResponse.json({
+                error: `Failed to fetch current payment status: ${fetchError.message}`
+            }, { status: 500 });
+        }
 
-        // Now update the payment information (only existing columns)
-        // Determine entry type based on PAYMENT AMOUNT, not verification status
+        // Determine entry type based on PAYMENT AMOUNT
         // 0.9 WLD = Verified entry (discounted price)
-        // 1.0 WLD = Standard entry (regular price)
+        // 1.0+ WLD = Standard entry (regular price)
         const isVerifiedEntryByAmount = paid_amount <= 0.9;
 
         const paymentUpdate: {
@@ -331,17 +339,35 @@ export async function POST(req: NextRequest) {
         };
 
         if (isVerifiedEntryByAmount) {
+            // Update verified payment fields while preserving standard payment
             paymentUpdate.verified_entry_paid = true;
             paymentUpdate.verified_paid_amount = paid_amount;
             paymentUpdate.verified_payment_ref = payment_reference;
             paymentUpdate.verified_paid_at = new Date().toISOString();
-            paymentUpdate.current_entry_type = 'verified'; // Set current entry type
+            paymentUpdate.current_entry_type = 'verified';
+
+            // Preserve existing standard payment fields
+            if (currentRecord.standard_entry_paid) {
+                paymentUpdate.standard_entry_paid = currentRecord.standard_entry_paid;
+                paymentUpdate.standard_paid_amount = currentRecord.standard_paid_amount;
+                paymentUpdate.standard_payment_ref = currentRecord.standard_payment_ref;
+                paymentUpdate.standard_paid_at = currentRecord.standard_paid_at;
+            }
         } else {
+            // Update standard payment fields while preserving verified payment
             paymentUpdate.standard_entry_paid = true;
             paymentUpdate.standard_paid_amount = paid_amount;
             paymentUpdate.standard_payment_ref = payment_reference;
             paymentUpdate.standard_paid_at = new Date().toISOString();
-            paymentUpdate.current_entry_type = 'standard'; // Set current entry type
+            paymentUpdate.current_entry_type = 'standard';
+
+            // Preserve existing verified payment fields
+            if (currentRecord.verified_entry_paid) {
+                paymentUpdate.verified_entry_paid = currentRecord.verified_entry_paid;
+                paymentUpdate.verified_paid_amount = currentRecord.verified_paid_amount;
+                paymentUpdate.verified_payment_ref = currentRecord.verified_payment_ref;
+                paymentUpdate.verified_paid_at = currentRecord.verified_paid_at;
+            }
         }
 
         const { data: updatedRecord, error: updateError } = await supabase
@@ -357,6 +383,12 @@ export async function POST(req: NextRequest) {
                 error: `Failed to update payment information: ${updateError.message}`
             }, { status: 500 });
         }
+
+        // Update tournament total players count and prize pool after payment update
+        await updateTournamentPlayerCount(supabase, finalTournament.id);
+
+        // Update user's total tournament count
+        await updateUserTournamentCount(supabase, user.id);
 
         console.log('✅ Tournament record created/updated successfully:', {
             record_id: recordId,
