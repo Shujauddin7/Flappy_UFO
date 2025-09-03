@@ -8,8 +8,8 @@ export async function POST(req: NextRequest) {
         const baseUrl = `${req.nextUrl.protocol}//${req.nextUrl.host}`;
         
         // Call the cron endpoint with proper authorization
-        const cronResponse = await fetch(`${baseUrl}/api/cron/tournament-daily`, {
-            method: 'POST',
+        const cronResponse = await fetch(`${baseUrl}/api/tournament/daily-cron`, {
+            method: 'GET',
             headers: {
                 'Authorization': `Bearer ${process.env.CRON_SECRET}`,
                 'Content-Type': 'application/json'

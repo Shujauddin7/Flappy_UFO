@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
         if (existingTournament) {
             // Tournament exists, just reactivate it and deactivate others
             console.log('♻️ Tournament exists, reactivating...');
-            
+
             // Deactivate all other tournaments first
             const { error: deactivateOthersError } = await supabase
                 .from('tournaments')
