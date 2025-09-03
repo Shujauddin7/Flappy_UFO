@@ -63,8 +63,7 @@ async function updateTournamentPlayerCount(supabase: any, tournamentId: string) 
             .from('tournaments')
             .update({
                 total_players: uniquePlayerCount,
-                total_prize_pool: totalPrizePool,
-                updated_at: new Date().toISOString()
+                total_prize_pool: totalPrizePool
             })
             .eq('id', tournamentId);
 
