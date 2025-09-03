@@ -47,10 +47,69 @@ export async function GET(req: NextRequest) {
         const tournamentDay = tournamentDate.toISOString().split('T')[0];
         // Remove the custom tournamentId - let the database generate the UUID
 
-        console.log('📅 Creating tournament for day:', tournamentDay);
+        console.log('📅 Processing tournament for day:', tournamentDay);
 
-        // Step 1: Set all previous tournaments to inactive
-        console.log('📊 Deactivating previous tournaments...');
+        // Step 1: Check if tournament already exists for this day
+        console.log('🔍 Checking for existing tournament...');
+        const { data: existingTournament, error: checkError } = await supabase
+            .from('tournaments')
+            .select('id, is_active, tournament_day')
+            .eq('tournament_day', tournamentDay)
+            .single();
+
+        console.log('🔍 Existing tournament check result:', { existingTournament, error: checkError });
+
+        if (existingTournament) {
+            // Tournament exists, just reactivate it and deactivate others
+            console.log('♻️ Tournament exists, reactivating...');
+            
+            // Deactivate all other tournaments first
+            const { error: deactivateOthersError } = await supabase
+                .from('tournaments')
+                .update({ is_active: false })
+                .neq('id', existingTournament.id);
+
+            if (deactivateOthersError) {
+                console.error('❌ Error deactivating other tournaments:', deactivateOthersError);
+            }
+
+            // Reactivate the target tournament
+            const { data: reactivatedTournament, error: reactivateError } = await supabase
+                .from('tournaments')
+                .update({ is_active: true })
+                .eq('id', existingTournament.id)
+                .select()
+                .single();
+
+            if (reactivateError) {
+                console.error('❌ Error reactivating tournament:', reactivateError);
+                return NextResponse.json({
+                    error: 'Failed to reactivate tournament',
+                    details: reactivateError.message
+                }, { status: 500 });
+            }
+
+            console.log('✅ Tournament reactivated successfully:', reactivatedTournament);
+
+            return NextResponse.json({
+                success: true,
+                message: 'Tournament reactivated successfully',
+                tournament: {
+                    id: reactivatedTournament.id,
+                    tournament_day: reactivatedTournament.tournament_day,
+                    start_time: reactivatedTournament.start_time,
+                    end_time: reactivatedTournament.end_time,
+                    is_active: reactivatedTournament.is_active
+                },
+                action: 'reactivated',
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        // Step 2: No existing tournament, create new one
+        console.log('🆕 No tournament exists, creating new one...');
+
+        // Deactivate all current tournaments
         const { error: deactivateError } = await supabase
             .from('tournaments')
             .update({ is_active: false })
@@ -64,7 +123,7 @@ export async function GET(req: NextRequest) {
             }, { status: 500 });
         }
 
-        // Step 2: Reset ALL users' verification status (as per Plan.md - verification resets daily)
+        // Reset ALL users' verification status (as per Plan.md - verification resets daily)
         console.log('🔄 Resetting user verification status...');
         const { error: resetVerificationError } = await supabase
             .from('users')
@@ -77,7 +136,7 @@ export async function GET(req: NextRequest) {
             console.log('⚠️ Continuing despite verification reset error...');
         }
 
-        // Step 3: Create new tournament
+        // Create new tournament
         const tournamentStartTime = new Date();
         tournamentStartTime.setUTCHours(15, 30, 0, 0); // 15:30 UTC today
 
