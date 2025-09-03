@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSessionPersistence } from '@/hooks/useSessionPersistence';
 import { Page } from '@/components/PageLayout';
 import { useGameAuth } from '@/hooks/useGameAuth';
 import dynamic from 'next/dynamic';
@@ -37,12 +37,13 @@ export default function GameHomepage() {
     const { isAuthenticating, authenticate } = useGameAuth();
 
     // Import useSession to get user wallet
-    const { data: session } = useSession();
+    // Use prebuilt World App session management per Plan.md
+    const { session, isSessionReady, isSignedIn } = useSessionPersistence();
 
     // Verification status state
-    // Verification state - NO localStorage per Plan.md security requirements
-    // All tournament data must be server-validated, no local trusted data
+    // Verification state - managed properly with World App session per Plan.md
     const [isVerifiedToday, setIsVerifiedToday] = useState<boolean>(false);
+    const [verificationChecked, setVerificationChecked] = useState<boolean>(false);
     const [verificationLoading, setVerificationLoading] = useState<boolean>(false);
 
     // Tournament entry loading states to prevent duplicate operations
@@ -76,31 +77,36 @@ export default function GameHomepage() {
                 console.log('✅ Verification status:', data.data);
                 const isVerified = data.data.isVerified;
                 setIsVerifiedToday(isVerified);
-                // NO localStorage per Plan.md - all tournament data must be server-validated
+                setVerificationChecked(true);
+                // Using World App session management - verification persists per session per Plan.md
                 return isVerified;
             } else {
                 console.error('❌ Failed to check verification status:', data.error);
                 setIsVerifiedToday(false);
+                setVerificationChecked(true);
                 return false;
             }
         } catch (error) {
             console.error('❌ Error checking verification status:', error);
             setIsVerifiedToday(false);
+            setVerificationChecked(true);
             return false;
         } finally {
             setVerificationLoading(false);
         }
     }, [session?.user?.walletAddress]);
 
-    // Check verification status when user session changes
+    // Check verification status once per World App session per Plan.md
     useEffect(() => {
-        if (session?.user?.walletAddress) {
-            // Always check verification status with server per Plan.md - no localStorage trusted data
+        if (session?.user?.walletAddress && !verificationChecked) {
+            // Only check once per session - World App sessions persist across app visits per Plan.md
+            console.log('🔍 Checking verification status for session:', session.user.walletAddress);
             checkVerificationStatus();
-        } else {
+        } else if (!session?.user?.walletAddress) {
             setIsVerifiedToday(false);
+            setVerificationChecked(false); // Reset when user signs out
         }
-    }, [session?.user?.walletAddress, checkVerificationStatus]);
+    }, [session?.user?.walletAddress, verificationChecked, checkVerificationStatus]);
 
     // Handle game start with authentication
     const handleGameStart = async (mode: GameMode) => {
@@ -236,6 +242,8 @@ export default function GameHomepage() {
 
             console.log('✅ User verification status updated:', responseData.data);
 
+            // Reset verification check flag to trigger fresh check per World App session management
+            setVerificationChecked(false);
             // Refresh verification status after successful update
             await checkVerificationStatus();
 
