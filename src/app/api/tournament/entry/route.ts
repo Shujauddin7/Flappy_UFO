@@ -142,9 +142,19 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Wallet mismatch' }, { status: 403 });
         }
 
-        // Get or create today's tournament
-        const today = new Date().toISOString().split('T')[0];
-        console.log('🔍 Looking for tournament on date:', today);
+        // Get or create today's tournament using same logic as cron job
+        // Tournament day starts at 15:30 UTC, so if it's before 15:30, use yesterday's date
+        const now = new Date();
+        const utcHour = now.getUTCHours();
+        const utcMinute = now.getUTCMinutes();
+
+        const tournamentDate = new Date(now);
+        if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
+            tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
+        }
+
+        const today = tournamentDate.toISOString().split('T')[0];
+        console.log('🔍 Looking for tournament on date:', today, '(using tournament boundary logic)');
 
         // First, try to get existing tournament for today
         const { data: tournament, error: tournamentFetchError } = await supabase
@@ -168,7 +178,7 @@ export async function POST(req: NextRequest) {
 
         // If no tournament exists for today, create one
         if (!finalTournament) {
-            console.log('🏆 Creating new tournament for today:', today);
+            console.log('🏆 Creating new tournament for day:', today);
             const startTime = new Date(today + 'T15:30:00Z'); // 15:30 UTC
             const endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000); // 24 hours later
 
