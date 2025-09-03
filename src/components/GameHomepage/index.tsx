@@ -96,7 +96,8 @@ export default function GameHomepage() {
             if (justSignedOut) {
                 localStorage.removeItem('justSignedOut');
                 console.log('🔄 User just signed out and back in - forcing fresh verification check');
-                setIsVerifiedToday(false); // Reset to force verification
+                // Don't reset verification status immediately - check with server first
+                // According to Plan.md, verification should persist for the tournament day
             }
             checkVerificationStatus();
         } else {

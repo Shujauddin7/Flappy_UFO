@@ -341,8 +341,9 @@ export async function POST(req: NextRequest) {
         if (isVerifiedEntryByAmount) {
             // Update verified payment fields while preserving standard payment
             paymentUpdate.verified_entry_paid = true;
-            paymentUpdate.verified_paid_amount = paid_amount;
-            paymentUpdate.verified_payment_ref = payment_reference;
+            // ACCUMULATE payments instead of overwriting
+            paymentUpdate.verified_paid_amount = (currentRecord.verified_paid_amount || 0) + paid_amount;
+            paymentUpdate.verified_payment_ref = payment_reference; // Store latest payment reference
             paymentUpdate.verified_paid_at = new Date().toISOString();
             paymentUpdate.current_entry_type = 'verified';
 
@@ -356,8 +357,9 @@ export async function POST(req: NextRequest) {
         } else {
             // Update standard payment fields while preserving verified payment
             paymentUpdate.standard_entry_paid = true;
-            paymentUpdate.standard_paid_amount = paid_amount;
-            paymentUpdate.standard_payment_ref = payment_reference;
+            // ACCUMULATE payments instead of overwriting
+            paymentUpdate.standard_paid_amount = (currentRecord.standard_paid_amount || 0) + paid_amount;
+            paymentUpdate.standard_payment_ref = payment_reference; // Store latest payment reference
             paymentUpdate.standard_paid_at = new Date().toISOString();
             paymentUpdate.current_entry_type = 'standard';
 
@@ -368,9 +370,7 @@ export async function POST(req: NextRequest) {
                 paymentUpdate.verified_payment_ref = currentRecord.verified_payment_ref;
                 paymentUpdate.verified_paid_at = currentRecord.verified_paid_at;
             }
-        }
-
-        const { data: updatedRecord, error: updateError } = await supabase
+        } const { data: updatedRecord, error: updateError } = await supabase
             .from('user_tournament_records')
             .update(paymentUpdate)
             .eq('id', recordId)
