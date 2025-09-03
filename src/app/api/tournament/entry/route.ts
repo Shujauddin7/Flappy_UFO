@@ -54,7 +54,7 @@ async function updateTournamentPlayerCount(supabase: any, tournamentId: string) 
 
         const uniquePlayerCount = data?.length || 0;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const totalPrizePool = data?.reduce((sum: number, record: any) => 
+        const totalPrizePool = data?.reduce((sum: number, record: any) =>
             sum + (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0), 0
         ) * 0.7 || 0; // 70% goes to prize pool
 

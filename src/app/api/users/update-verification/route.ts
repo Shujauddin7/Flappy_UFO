@@ -171,7 +171,7 @@ export async function POST(req: NextRequest) {
             if (!playerCountError && playerData) {
                 const uniquePlayerCount = playerData.length;
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const totalPrizePool = playerData.reduce((sum: number, record: any) => 
+                const totalPrizePool = playerData.reduce((sum: number, record: any) =>
                     sum + (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0), 0
                 ) * 0.7; // 70% goes to prize pool
 
