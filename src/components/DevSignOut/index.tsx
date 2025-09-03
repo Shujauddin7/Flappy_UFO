@@ -37,13 +37,9 @@ function DevSignOut() {
                 // If you need to reset tournament data, use the admin panel instead
             }
 
-            // Clear specific data only: sign-in, verification, and tournament entry
-            if (typeof window !== 'undefined') {
-                // Clear only verification-related localStorage (per user request)
-                localStorage.removeItem('verificationToday');
-                // Don't clear all localStorage - preserve game progress, settings, etc.
-                console.log('DevSignOut: Cleared verification localStorage only');
-            }
+            // Per Plan.md: Only clear verification from database, NOT localStorage
+            // localStorage should only contain Practice Mode coins with tamper protection
+            console.log('DevSignOut: Cleared verification from database only - localStorage preserved per Plan.md');
 
             // Sign out without redirect to stay in the app
             await signOut({

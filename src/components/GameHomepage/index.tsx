@@ -40,15 +40,9 @@ export default function GameHomepage() {
     const { data: session } = useSession();
 
     // Verification status state
-    // Verification state with localStorage persistence per Plan.md tournament day logic
-    const [isVerifiedToday, setIsVerifiedToday] = useState<boolean>(() => {
-        // Initialize from localStorage to prevent flash of unverified state
-        if (typeof window !== 'undefined') {
-            const savedVerification = localStorage.getItem('verificationToday');
-            return savedVerification === 'true';
-        }
-        return false;
-    });
+    // Verification state - NO localStorage per Plan.md security requirements
+    // All tournament data must be server-validated, no local trusted data
+    const [isVerifiedToday, setIsVerifiedToday] = useState<boolean>(false);
     const [verificationLoading, setVerificationLoading] = useState<boolean>(false);
 
     // Tournament entry loading states to prevent duplicate operations
@@ -82,25 +76,16 @@ export default function GameHomepage() {
                 console.log('✅ Verification status:', data.data);
                 const isVerified = data.data.isVerified;
                 setIsVerifiedToday(isVerified);
-                // Save to localStorage to persist verification state per Plan.md
-                if (typeof window !== 'undefined') {
-                    localStorage.setItem('verificationToday', isVerified.toString());
-                }
+                // NO localStorage per Plan.md - all tournament data must be server-validated
                 return isVerified;
             } else {
                 console.error('❌ Failed to check verification status:', data.error);
                 setIsVerifiedToday(false);
-                if (typeof window !== 'undefined') {
-                    localStorage.setItem('verificationToday', 'false');
-                }
                 return false;
             }
         } catch (error) {
             console.error('❌ Error checking verification status:', error);
             setIsVerifiedToday(false);
-            if (typeof window !== 'undefined') {
-                localStorage.setItem('verificationToday', 'false');
-            }
             return false;
         } finally {
             setVerificationLoading(false);
@@ -110,13 +95,10 @@ export default function GameHomepage() {
     // Check verification status when user session changes
     useEffect(() => {
         if (session?.user?.walletAddress) {
-            // Always check verification status with server to ensure accuracy
+            // Always check verification status with server per Plan.md - no localStorage trusted data
             checkVerificationStatus();
         } else {
             setIsVerifiedToday(false);
-            if (typeof window !== 'undefined') {
-                localStorage.setItem('verificationToday', 'false');
-            }
         }
     }, [session?.user?.walletAddress, checkVerificationStatus]);
 
