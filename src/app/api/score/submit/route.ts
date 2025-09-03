@@ -16,19 +16,42 @@ async function updateUserStatistics(userId: string, newScore: number, shouldUpda
 
         const adminSupabase = createClient(supabaseUrl, supabaseServiceKey);
 
-        // Use atomic update to prevent race conditions - only update game stats, never verification fields
-        const { error: updateError } = await adminSupabase.rpc('update_user_stats_safe', {
-            p_user_id: userId,
-            p_increment_games: 1,
-            p_new_high_score: shouldUpdateHighScore ? newScore : null
-        });
+        // Direct SQL update instead of database function to ensure it works
+        const { data: currentUser, error: fetchError } = await adminSupabase
+            .from('users')
+            .select('total_games_played, highest_score_ever')
+            .eq('id', userId)
+            .single();
 
-        if (updateError) {
+        if (fetchError || !currentUser) {
+            console.error('❌ Error fetching user stats:', fetchError);
             return false;
         }
 
+        const newGamesPlayed = (currentUser.total_games_played || 0) + 1;
+        const newHighScore = shouldUpdateHighScore && newScore > (currentUser.highest_score_ever || 0) 
+            ? newScore 
+            : (currentUser.highest_score_ever || 0);
+
+        // Update user statistics directly
+        const { error: updateError } = await adminSupabase
+            .from('users')
+            .update({
+                total_games_played: newGamesPlayed,
+                highest_score_ever: newHighScore,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', userId);
+
+        if (updateError) {
+            console.error('❌ Error updating user stats:', updateError);
+            return false;
+        }
+
+        console.log('✅ User stats updated:', { userId, games: newGamesPlayed, highScore: newHighScore });
         return true;
-    } catch {
+    } catch (error) {
+        console.error('❌ Exception updating user stats:', error);
         return false;
     }
 } export async function POST(req: NextRequest) {
