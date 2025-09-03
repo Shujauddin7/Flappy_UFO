@@ -160,6 +160,41 @@ export async function POST(req: NextRequest) {
 
         console.log('✅ Tournament record created/updated with verification data:', tournamentRecord.id);
 
+        // Update tournament table with player count and prize pool
+        try {
+            // Count unique users in user_tournament_records for this tournament
+            const { data: playerData, error: playerCountError } = await supabase
+                .from('user_tournament_records')
+                .select('user_id, verified_paid_amount, standard_paid_amount')
+                .eq('tournament_id', tournament.id);
+
+            if (!playerCountError && playerData) {
+                const uniquePlayerCount = playerData.length;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const totalPrizePool = playerData.reduce((sum: number, record: any) => 
+                    sum + (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0), 0
+                ) * 0.7; // 70% goes to prize pool
+
+                // Update tournament with player count and prize pool
+                const { error: updateError } = await supabase
+                    .from('tournaments')
+                    .update({
+                        total_players: uniquePlayerCount,
+                        total_prize_pool: totalPrizePool,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', tournament.id);
+
+                if (updateError) {
+                    console.error('❌ Error updating tournament stats:', updateError);
+                } else {
+                    console.log('✅ Tournament stats updated:', { players: uniquePlayerCount, prize_pool: totalPrizePool });
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error updating tournament stats:', error);
+        }
+
         console.log('✅ User verification status updated:', {
             wallet: wallet,
             verified_date: verification_date,

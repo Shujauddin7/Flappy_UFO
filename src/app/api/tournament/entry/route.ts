@@ -37,14 +37,14 @@ async function updateUserTournamentCount(supabase: any, userId: string) {
     }
 }
 
-// Helper function to update tournament player count
+// Helper function to update tournament player count and prize pool
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function updateTournamentPlayerCount(supabase: any, tournamentId: string) {
     try {
-        // Count unique users in user_tournament_records for this tournament
+        // Count unique users in user_tournament_records for this tournament and get payment data
         const { data, error } = await supabase
             .from('user_tournament_records')
-            .select('user_id')
+            .select('user_id, verified_paid_amount, standard_paid_amount')
             .eq('tournament_id', tournamentId);
 
         if (error) {
@@ -53,12 +53,17 @@ async function updateTournamentPlayerCount(supabase: any, tournamentId: string) 
         }
 
         const uniquePlayerCount = data?.length || 0;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const totalPrizePool = data?.reduce((sum: number, record: any) => 
+            sum + (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0), 0
+        ) * 0.7 || 0; // 70% goes to prize pool
 
-        // Update tournament with player count
+        // Update tournament with player count and prize pool
         const { error: updateError } = await supabase
             .from('tournaments')
             .update({
                 total_players: uniquePlayerCount,
+                total_prize_pool: totalPrizePool,
                 updated_at: new Date().toISOString()
             })
             .eq('id', tournamentId);
@@ -66,7 +71,7 @@ async function updateTournamentPlayerCount(supabase: any, tournamentId: string) 
         if (updateError) {
             console.error('❌ Error updating tournament player count:', updateError);
         } else {
-            console.log('✅ Tournament player count updated:', uniquePlayerCount);
+            console.log('✅ Tournament stats updated:', { players: uniquePlayerCount, prize_pool: totalPrizePool });
         }
     } catch (error) {
         console.error('❌ Error in updateTournamentPlayerCount:', error);
@@ -271,23 +276,33 @@ export async function POST(req: NextRequest) {
             payment_reference
         });
 
-        // Use the database function to get or create user tournament record
-        const { data: recordId, error: recordError } = await supabase
-            .rpc('get_or_create_user_tournament_record', {
-                p_user_id: user.id,
-                p_tournament_id: finalTournament.id,
-                p_username: user.username, // Use the actual username from user table
-                p_wallet: wallet
-            });
+        // Create or get user tournament record using UPSERT to prevent duplicate key issues
+        // Don't use the database function as it uses CURRENT_DATE instead of tournament boundary logic
+        const { data: tournamentRecord, error: recordError } = await supabase
+            .from('user_tournament_records')
+            .upsert({
+                user_id: user.id,
+                tournament_id: finalTournament.id,
+                username: user.username,
+                wallet: wallet,
+                tournament_day: today, // Use the correct tournament boundary date
+                updated_at: new Date().toISOString()
+            }, {
+                onConflict: 'user_id,tournament_id',
+                ignoreDuplicates: false // Update existing record
+            })
+            .select('id')
+            .single();
 
         if (recordError) {
-            console.error('❌ Error getting/creating tournament record:', recordError);
+            console.error('❌ Error upserting tournament record:', recordError);
             return NextResponse.json({
-                error: `Failed to create tournament record: ${recordError.message}`
+                error: `Failed to create/update tournament record: ${recordError.message}`
             }, { status: 500 });
         }
 
-        console.log('✅ Tournament record ID obtained:', recordId, 'with username:', user.username);
+        const recordId = tournamentRecord.id;
+        console.log('✅ Tournament record created/updated:', recordId, 'with username:', user.username);
 
         // Update tournament total players count
         await updateTournamentPlayerCount(supabase, finalTournament.id);
