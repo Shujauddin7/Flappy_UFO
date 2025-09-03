@@ -43,7 +43,6 @@ export default function GameHomepage() {
     // Verification status state
     // Verification state - managed properly with World App session per Plan.md
     const [isVerifiedToday, setIsVerifiedToday] = useState<boolean>(false);
-    const [verificationChecked, setVerificationChecked] = useState<boolean>(false);
     const [verificationLoading, setVerificationLoading] = useState<boolean>(false);
 
     // Tournament entry loading states to prevent duplicate operations
@@ -75,38 +74,30 @@ export default function GameHomepage() {
 
             if (data.success) {
                 console.log('✅ Verification status:', data.data);
-                const isVerified = data.data.isVerified;
-                setIsVerifiedToday(isVerified);
-                setVerificationChecked(true);
-                // Using World App session management - verification persists per session per Plan.md
-                return isVerified;
+                setIsVerifiedToday(data.data.isVerified);
+                return data.data.isVerified;
             } else {
                 console.error('❌ Failed to check verification status:', data.error);
                 setIsVerifiedToday(false);
-                setVerificationChecked(true);
                 return false;
             }
         } catch (error) {
             console.error('❌ Error checking verification status:', error);
             setIsVerifiedToday(false);
-            setVerificationChecked(true);
             return false;
         } finally {
             setVerificationLoading(false);
         }
     }, [session?.user?.walletAddress]);
 
-    // Check verification status once per World App session per Plan.md
+    // Check verification status when user session changes
     useEffect(() => {
-        if (session?.user?.walletAddress && !verificationChecked) {
-            // Only check once per session - World App sessions persist across app visits per Plan.md
-            console.log('🔍 Checking verification status for session:', session.user.walletAddress);
+        if (session?.user?.walletAddress) {
             checkVerificationStatus();
-        } else if (!session?.user?.walletAddress) {
+        } else {
             setIsVerifiedToday(false);
-            setVerificationChecked(false); // Reset when user signs out
         }
-    }, [session?.user?.walletAddress, verificationChecked, checkVerificationStatus]);
+    }, [session?.user?.walletAddress, checkVerificationStatus]);
 
     // Handle game start with authentication
     const handleGameStart = async (mode: GameMode) => {
@@ -242,8 +233,6 @@ export default function GameHomepage() {
 
             console.log('✅ User verification status updated:', responseData.data);
 
-            // Reset verification check flag to trigger fresh check per World App session management
-            setVerificationChecked(false);
             // Refresh verification status after successful update
             await checkVerificationStatus();
 

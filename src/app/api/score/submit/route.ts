@@ -16,20 +16,19 @@ async function updateUserStatistics(userId: string, newScore: number, shouldUpda
 
         const adminSupabase = createClient(supabaseUrl, supabaseServiceKey);
 
-        // Use the database function designed for this purpose
-        const { error: updateError } = await adminSupabase
-            .rpc('update_user_stats_safe', {
-                p_user_id: userId,
-                p_increment_games: 1,
-                p_new_high_score: shouldUpdateHighScore ? newScore : null
-            });
+        // Use atomic update to prevent race conditions - only update game stats, never verification fields
+        const { error: updateError } = await adminSupabase.rpc('update_user_stats_safe', {
+            p_user_id: userId,
+            p_increment_games: 1,
+            p_new_high_score: shouldUpdateHighScore ? newScore : null
+        });
 
         if (updateError) {
-            console.error('❌ Error updating user stats:', updateError);
+            console.error('❌ Error updating user stats with database function:', updateError);
             return false;
         }
 
-        console.log('✅ User stats updated:', { userId, score: newScore, shouldUpdateHighScore });
+        console.log('✅ User stats updated successfully:', { userId, score: newScore, shouldUpdateHighScore });
         return true;
     } catch (error) {
         console.error('❌ Exception updating user stats:', error);
