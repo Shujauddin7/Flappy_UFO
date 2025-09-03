@@ -16,45 +16,28 @@ async function updateUserStatistics(userId: string, newScore: number, shouldUpda
 
         const adminSupabase = createClient(supabaseUrl, supabaseServiceKey);
 
-        // Direct SQL update instead of database function to ensure it works
-        const { data: currentUser, error: fetchError } = await adminSupabase
-            .from('users')
-            .select('total_games_played, highest_score_ever')
-            .eq('id', userId)
-            .single();
-
-        if (fetchError || !currentUser) {
-            console.error('❌ Error fetching user stats:', fetchError);
-            return false;
-        }
-
-        const newGamesPlayed = (currentUser.total_games_played || 0) + 1;
-        const newHighScore = shouldUpdateHighScore && newScore > (currentUser.highest_score_ever || 0)
-            ? newScore
-            : (currentUser.highest_score_ever || 0);
-
-        // Update user statistics directly
+        // Use the database function designed for this purpose
         const { error: updateError } = await adminSupabase
-            .from('users')
-            .update({
-                total_games_played: newGamesPlayed,
-                highest_score_ever: newHighScore,
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', userId);
+            .rpc('update_user_stats_safe', {
+                p_user_id: userId,
+                p_increment_games: 1,
+                p_new_high_score: shouldUpdateHighScore ? newScore : null
+            });
 
         if (updateError) {
             console.error('❌ Error updating user stats:', updateError);
             return false;
         }
 
-        console.log('✅ User stats updated:', { userId, games: newGamesPlayed, highScore: newHighScore });
+        console.log('✅ User stats updated:', { userId, score: newScore, shouldUpdateHighScore });
         return true;
     } catch (error) {
         console.error('❌ Exception updating user stats:', error);
         return false;
     }
-} export async function POST(req: NextRequest) {
+}
+
+export async function POST(req: NextRequest) {
     try {
         // Environment-specific database configuration (following Plan.md specification)
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
