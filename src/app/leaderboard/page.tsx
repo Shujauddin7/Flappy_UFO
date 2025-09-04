@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Page } from '@/components/PageLayout';
 import { TournamentLeaderboard } from '@/components/TournamentLeaderboard';
+import { PlayerRankCard } from '@/components/PlayerRankCard';
 import { useSession } from 'next-auth/react';
 
 interface LeaderboardPlayer {
@@ -36,6 +37,16 @@ export default function LeaderboardPage() {
 
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
         setCurrentUserRank(userRank);
+    }, []);
+
+    const calculatePrizeForRank = useCallback((rank: number, totalPrizePool: number): string | null => {
+        if (rank > 10) return null;
+        
+        const prizePercentages = [50, 25, 15, 3, 2, 2, 1, 1, 0.5, 0.5];
+        const percentage = prizePercentages[rank - 1] || 0;
+        const prizeAmount = (totalPrizePool * percentage) / 100;
+        
+        return prizeAmount.toFixed(2);
     }, []);
 
     const fetchCurrentTournament = useCallback(async () => {
@@ -243,64 +254,42 @@ export default function LeaderboardPage() {
                     maxWidth: '600px',
                     margin: '10px auto 0 auto'
                 }}>
-                    <div className="user-position-card">
-                        <div className="rank-separator" style={{
-                            textAlign: 'center',
-                            color: '#00F5FF',
-                            marginBottom: '10px',
-                            fontSize: '14px',
-                            fontWeight: '500'
-                        }}>
-                            <span className="dots">•••</span>
-                            <span className="your-rank-text" style={{ margin: '0 10px' }}>Your Position</span>
-                            <span className="dots">•••</span>
-                        </div>
-                        <div style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            backgroundColor: 'rgba(255,255,255,0.1)',
-                            padding: '12px 15px',
-                            borderRadius: '8px',
-                            border: currentUserRank ? '2px solid #00F5FF' : '2px solid #FF6B35',
-                            flexWrap: 'wrap',
-                            gap: '10px'
-                        }}>
-                            <div style={{ flex: '1', minWidth: '120px' }}>
-                                <div style={{
-                                    color: '#00F5FF',
-                                    fontSize: '18px',
-                                    fontWeight: 'bold',
-                                    lineHeight: '1.2'
-                                }}>
-                                    #{currentUserRank?.rank || '1001'}
-                                </div>
-                                <div style={{
-                                    color: 'white',
-                                    fontSize: '14px',
-                                    marginTop: '2px'
-                                }}>
-                                    {currentUserRank?.username || session?.user?.name || 'You'}
-                                </div>
-                                <div style={{
-                                    color: '#00F5FF',
-                                    fontSize: '16px',
-                                    fontWeight: 'bold',
-                                    marginTop: '4px'
-                                }}>
-                                    {currentUserRank?.highest_score || '9'} points
-                                </div>
-                            </div>
-                            <div style={{
-                                color: '#FFD700',
-                                fontSize: '14px',
-                                textAlign: 'right',
-                                fontWeight: '500'
-                            }}>
-                                {currentUserRank?.rank && currentUserRank.rank <= 10 ? 'Prize Winner!' : 'No Prize'}
-                            </div>
-                        </div>
+                    <div style={{
+                        textAlign: 'center',
+                        color: '#00F5FF',
+                        marginBottom: '10px',
+                        fontSize: '14px',
+                        fontWeight: '500'
+                    }}>
+                        <span>•••</span>
+                        <span style={{ margin: '0 10px' }}>Your Position</span>
+                        <span>•••</span>
                     </div>
+                    
+                    {currentUserRank ? (
+                        <PlayerRankCard
+                            player={currentUserRank}
+                            prizeAmount={calculatePrizeForRank(currentUserRank.rank || 1001, currentTournament.total_prize_pool)}
+                            isCurrentUser={true}
+                            isTopThree={false}
+                        />
+                    ) : session?.user && (
+                        <PlayerRankCard
+                            player={{
+                                id: 'current-user',
+                                user_id: session.user.id || '',
+                                username: session.user.name || null,
+                                wallet: session.user.name || 'Unknown',
+                                highest_score: 9,
+                                tournament_day: currentTournament.tournament_day,
+                                created_at: new Date().toISOString(),
+                                rank: 1001
+                            }}
+                            prizeAmount={null}
+                            isCurrentUser={true}
+                            isTopThree={false}
+                        />
+                    )}
                 </div>
 
                 <div className="bottom-nav-container">
