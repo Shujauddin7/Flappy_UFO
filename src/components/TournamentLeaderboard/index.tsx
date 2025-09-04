@@ -16,7 +16,7 @@ interface LeaderboardPlayer {
 
 interface TournamentLeaderboardProps {
     tournamentId?: string;
-    currentUserId?: string | null;
+    currentUserId?: string | null;  // This is actually the wallet address
     isGracePeriod?: boolean;
     refreshTrigger?: number; // Add this to trigger manual refresh
     totalPrizePool?: number; // Add real prize pool
@@ -62,7 +62,8 @@ export const TournamentLeaderboard = ({
 
             // Find current user's rank and notify parent
             if (currentUserId) {
-                const userRank = players.find((player: LeaderboardPlayer) => player.user_id === currentUserId);
+                // Match by wallet address since currentUserId is actually the wallet address
+                const userRank = players.find((player: LeaderboardPlayer) => player.wallet === currentUserId);
 
                 // Notify parent component of user rank
                 if (onUserRankUpdate) {
@@ -145,7 +146,7 @@ export const TournamentLeaderboard = ({
                         key={player.id}
                         player={player}
                         prizeAmount={player.rank && player.rank <= 10 ? getPrizeAmount(player.rank, totalPrizePool) : null}
-                        isCurrentUser={player.user_id === currentUserId}
+                        isCurrentUser={player.wallet === currentUserId}
                         isTopThree={player.rank !== undefined && player.rank <= 3}
                     />
                 ))}
