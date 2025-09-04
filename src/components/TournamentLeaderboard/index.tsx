@@ -61,19 +61,16 @@ export const TournamentLeaderboard = ({
             setAllPlayers(players);
 
             // Find current user's rank and notify parent
-            if (currentUserId) {
+            if (currentUserId && onUserRankUpdate) {
                 // Try multiple matching strategies to find the user
-                let userRank = players.find((player: LeaderboardPlayer) => player.wallet === currentUserId);
+                const userRank = players.find((player: LeaderboardPlayer) =>
+                    player.wallet === currentUserId ||
+                    player.user_id === currentUserId ||
+                    (player.wallet && currentUserId && player.wallet.toLowerCase() === currentUserId.toLowerCase())
+                );
 
-                // If not found by wallet, try by user_id
-                if (!userRank) {
-                    userRank = players.find((player: LeaderboardPlayer) => player.user_id === currentUserId);
-                }
-
-                // Notify parent component of user rank
-                if (onUserRankUpdate) {
-                    onUserRankUpdate(userRank || null);
-                }
+                // Always notify parent, even if null
+                onUserRankUpdate(userRank || null);
             }
         } catch (err) {
             console.error('Failed to fetch leaderboard:', err);
@@ -147,10 +144,11 @@ export const TournamentLeaderboard = ({
 
             <div className="leaderboard-list">
                 {allPlayers.map((player) => {
-                    // Check if this player is the current user using multiple matching strategies
+                    // Check if this player is the current user using same matching logic
                     const isCurrentUser = currentUserId && (
                         player.wallet === currentUserId ||
-                        player.user_id === currentUserId
+                        player.user_id === currentUserId ||
+                        (player.wallet && currentUserId && player.wallet.toLowerCase() === currentUserId.toLowerCase())
                     );
 
                     return (
