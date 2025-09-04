@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
             .from('users')
             .update({
                 world_id: nullifier_hash,
-                last_verified_date: new Date(verification_date).toISOString().split('T')[0],
+                last_verified_date: today, // Use tournament-day calculated today, not verification_date
                 last_verified_tournament_id: tournament.id,
                 updated_at: new Date().toISOString()
             })
