@@ -234,6 +234,7 @@ export default function LeaderboardPage() {
                     <TournamentLeaderboard
                         tournamentId={currentTournament.id}
                         currentUserId={session?.user?.walletAddress || session?.user?.id || null}
+                        currentUsername={session?.user?.username || null}
                         isGracePeriod={timeRemaining?.status === 'grace'}
                         totalPrizePool={currentTournament.total_prize_pool}
                         onUserRankUpdate={handleUserRankUpdate}
@@ -257,7 +258,10 @@ export default function LeaderboardPage() {
                     {/* Debug info - show what we have */}
                     {process.env.NODE_ENV === 'development' && (
                         <div style={{ fontSize: '10px', color: '#888', marginBottom: '5px' }}>
-                            Debug: User={session?.user?.walletAddress || session?.user?.id || 'none'} |
+                            Debug:
+                            WalletAddr={session?.user?.walletAddress || 'none'} |
+                            Username={session?.user?.username || 'none'} |
+                            UserId={session?.user?.id || 'none'} |
                             Found={currentUserRank ? `${currentUserRank.username}@${currentUserRank.rank}` : 'null'}
                         </div>
                     )}

@@ -17,6 +17,7 @@ interface LeaderboardPlayer {
 interface TournamentLeaderboardProps {
     tournamentId?: string;
     currentUserId?: string | null;  // This is actually the wallet address
+    currentUsername?: string | null;  // Add username for better matching
     isGracePeriod?: boolean;
     refreshTrigger?: number; // Add this to trigger manual refresh
     totalPrizePool?: number; // Add real prize pool
@@ -25,6 +26,7 @@ interface TournamentLeaderboardProps {
 
 export const TournamentLeaderboard = ({
     currentUserId = null,
+    currentUsername = null,
     isGracePeriod = false,
     refreshTrigger = 0,
     totalPrizePool = 0,
@@ -61,13 +63,53 @@ export const TournamentLeaderboard = ({
             setAllPlayers(players);
 
             // Find current user's rank and notify parent
-            if (currentUserId && onUserRankUpdate) {
-                // Try multiple matching strategies to find the user
-                const userRank = players.find((player: LeaderboardPlayer) =>
-                    player.wallet === currentUserId ||
-                    player.user_id === currentUserId ||
-                    (player.wallet && currentUserId && player.wallet.toLowerCase() === currentUserId.toLowerCase())
-                );
+            if ((currentUserId || currentUsername) && onUserRankUpdate) {
+                let userRank = null;
+
+                // Strategy 1: Username match (most reliable for this app)
+                if (currentUsername) {
+                    userRank = players.find((player: LeaderboardPlayer) =>
+                        player.username === currentUsername
+                    );
+                }
+
+                // Strategy 2: Direct wallet match
+                if (!userRank && currentUserId) {
+                    userRank = players.find((player: LeaderboardPlayer) =>
+                        player.wallet === currentUserId
+                    );
+                }
+
+                // Strategy 3: Direct user_id match
+                if (!userRank && currentUserId) {
+                    userRank = players.find((player: LeaderboardPlayer) =>
+                        player.user_id === currentUserId
+                    );
+                }
+
+                // Strategy 4: Case-insensitive wallet match
+                if (!userRank && currentUserId) {
+                    userRank = players.find((player: LeaderboardPlayer) =>
+                        player.wallet &&
+                        player.wallet.toLowerCase() === currentUserId.toLowerCase()
+                    );
+                }
+
+                // Debug logging in development
+                if (process.env.NODE_ENV === 'development') {
+                    console.log('🔍 User matching debug:', {
+                        currentUserId,
+                        currentUsername,
+                        playersCount: players.length,
+                        foundUser: userRank ? `${userRank.username} (rank ${userRank.rank})` : 'Not found',
+                        firstFewPlayers: players.slice(0, 3).map((p: LeaderboardPlayer) => ({
+                            username: p.username,
+                            wallet: p.wallet,
+                            user_id: p.user_id,
+                            rank: p.rank
+                        }))
+                    });
+                }
 
                 // Always notify parent, even if null
                 onUserRankUpdate(userRank || null);
@@ -77,7 +119,7 @@ export const TournamentLeaderboard = ({
         } finally {
             setLoading(false);
         }
-    }, [currentUserId, onUserRankUpdate]);
+    }, [currentUserId, currentUsername, onUserRankUpdate]);
 
     useEffect(() => {
         fetchLeaderboardData();
@@ -93,12 +135,12 @@ export const TournamentLeaderboard = ({
         }
     }, [fetchLeaderboardData, isGracePeriod]);
 
-    // Force refresh when currentUserId changes (user logs in/out)
+    // Force refresh when currentUserId or currentUsername changes (user logs in/out)
     useEffect(() => {
-        if (currentUserId) {
+        if (currentUserId || currentUsername) {
             fetchLeaderboardData();
         }
-    }, [currentUserId, fetchLeaderboardData]);
+    }, [currentUserId, currentUsername, fetchLeaderboardData]);
 
     // Add effect for manual refresh trigger
     useEffect(() => {
