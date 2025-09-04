@@ -60,12 +60,12 @@ export async function POST(request: NextRequest) {
         let data, error;
 
         if (existingUser) {
-            // User exists - only update username and world_id, preserve stats
-            const updateData: { updated_at: string; username?: string | null; world_id?: string | null } = {
+            // User exists - only update username, preserve stats and world_id
+            const updateData: { updated_at: string; username?: string | null } = {
                 updated_at: new Date().toISOString()
             };
             if (username !== undefined) updateData.username = username;
-            if (world_id !== undefined) updateData.world_id = world_id;
+            // Do NOT update world_id here - it should only be set during verification
 
             const result = await supabase
                 .from('users')

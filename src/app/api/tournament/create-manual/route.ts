@@ -74,6 +74,18 @@ export async function POST() {
         tournamentEndTime.setUTCDate(tournamentEndTime.getUTCDate() + 1);
         tournamentEndTime.setUTCHours(15, 0, 0, 0);
 
+        // Reset ALL users' verification status (as per Plan.md - verification resets daily)
+        console.log('🔄 Resetting user verification status...');
+        const { error: resetVerificationError } = await supabase
+            .from('users')
+            .update({ last_verified_date: null })
+            .neq('id', 'never_match'); // Update all users
+
+        if (resetVerificationError) {
+            console.error('❌ Error resetting user verification:', resetVerificationError);
+            console.log('⚠️ Continuing despite verification reset error...');
+        }
+
         // Create the tournament
         const { data: newTournament, error: createError } = await supabase
             .from('tournaments')
