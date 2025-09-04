@@ -259,12 +259,12 @@ export default function LeaderboardPage() {
                     {/* Debug info - show what we have */}
                     {process.env.NODE_ENV === 'development' && (
                         <div style={{ fontSize: '10px', color: '#888', marginBottom: '5px' }}>
-                            Debug:<br/>
-                            WalletAddr={session?.user?.walletAddress || 'none'}<br/>
-                            Username={session?.user?.username || 'none'}<br/>
-                            UserId={session?.user?.id || 'none'}<br/>
-                            Found={currentUserRank ? `${currentUserRank.username}@${currentUserRank.rank}` : 'null'}<br/>
-                            HasSession={session ? 'yes' : 'no'}<br/>
+                            Debug:<br />
+                            WalletAddr={session?.user?.walletAddress || 'none'}<br />
+                            Username={session?.user?.username || 'none'}<br />
+                            UserId={session?.user?.id || 'none'}<br />
+                            Found={currentUserRank ? `${currentUserRank.username}@${currentUserRank.rank}` : 'null'}<br />
+                            HasSession={session ? 'yes' : 'no'}<br />
                             CallbackCalled={currentUserRank ? 'yes' : 'no'}
                         </div>
                     )}
