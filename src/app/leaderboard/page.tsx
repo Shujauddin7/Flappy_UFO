@@ -36,10 +36,8 @@ export default function LeaderboardPage() {
     const [currentTime, setCurrentTime] = useState(new Date());
 
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
-        console.log('🔍 User rank update:', userRank);
-        console.log('🔑 Current session user:', session?.user);
         setCurrentUserRank(userRank);
-    }, [session?.user]);
+    }, []);
 
     const calculatePrizeForRank = useCallback((rank: number, totalPrizePool: number): string | null => {
         if (rank > 10) return null;

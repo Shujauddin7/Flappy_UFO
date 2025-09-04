@@ -62,12 +62,13 @@ export const TournamentLeaderboard = ({
 
             // Find current user's rank and notify parent
             if (currentUserId) {
-                console.log('🔍 Looking for user with ID:', currentUserId);
-                console.log('📋 First few players:', players.slice(0, 3).map((p: LeaderboardPlayer) => ({ wallet: p.wallet, username: p.username })));
+                // Try multiple matching strategies to find the user
+                let userRank = players.find((player: LeaderboardPlayer) => player.wallet === currentUserId);
 
-                // Match by wallet address since currentUserId is actually the wallet address
-                const userRank = players.find((player: LeaderboardPlayer) => player.wallet === currentUserId);
-                console.log('👤 Found user rank:', userRank);
+                // If not found by wallet, try by user_id
+                if (!userRank) {
+                    userRank = players.find((player: LeaderboardPlayer) => player.user_id === currentUserId);
+                }
 
                 // Notify parent component of user rank
                 if (onUserRankUpdate) {
@@ -145,15 +146,23 @@ export const TournamentLeaderboard = ({
             </div>
 
             <div className="leaderboard-list">
-                {allPlayers.map((player) => (
-                    <PlayerRankCard
-                        key={player.id}
-                        player={player}
-                        prizeAmount={player.rank && player.rank <= 10 ? getPrizeAmount(player.rank, totalPrizePool) : null}
-                        isCurrentUser={player.wallet === currentUserId}
-                        isTopThree={player.rank !== undefined && player.rank <= 3}
-                    />
-                ))}
+                {allPlayers.map((player) => {
+                    // Check if this player is the current user using multiple matching strategies
+                    const isCurrentUser = currentUserId && (
+                        player.wallet === currentUserId ||
+                        player.user_id === currentUserId
+                    );
+
+                    return (
+                        <PlayerRankCard
+                            key={player.id}
+                            player={player}
+                            prizeAmount={player.rank && player.rank <= 10 ? getPrizeAmount(player.rank, totalPrizePool) : null}
+                            isCurrentUser={Boolean(isCurrentUser)}
+                            isTopThree={player.rank !== undefined && player.rank <= 3}
+                        />
+                    );
+                })}
             </div>
         </div>
     );
