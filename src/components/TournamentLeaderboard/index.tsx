@@ -29,10 +29,8 @@ export const TournamentLeaderboard = ({
     totalPrizePool = 0
 }: TournamentLeaderboardProps) => {
     const [topPlayers, setTopPlayers] = useState<LeaderboardPlayer[]>([]);
-    const [allPlayers, setAllPlayers] = useState<LeaderboardPlayer[]>([]);
     const [currentUserRank, setCurrentUserRank] = useState<LeaderboardPlayer | null>(null);
     const [loading, setLoading] = useState(true);
-    const [showAllPlayers, setShowAllPlayers] = useState(false);
 
     const fetchLeaderboardData = useCallback(async () => {
         try {
@@ -49,7 +47,6 @@ export const TournamentLeaderboard = ({
 
             if (players.length === 0) {
                 setTopPlayers([]);
-                setAllPlayers([]);
                 setCurrentUserRank(null);
                 return;
             }
@@ -57,7 +54,6 @@ export const TournamentLeaderboard = ({
             // Get top 10
             const top10 = players.slice(0, 10);
             setTopPlayers(top10);
-            setAllPlayers(players);
 
             // Find current user's rank
             if (currentUserId) {
@@ -123,8 +119,6 @@ export const TournamentLeaderboard = ({
         );
     }
 
-    const displayPlayers = showAllPlayers ? allPlayers : topPlayers;
-
     return (
         <div className="tournament-leaderboard">
             {isGracePeriod && (
@@ -138,7 +132,7 @@ export const TournamentLeaderboard = ({
             </div>
 
             <div className="leaderboard-list">
-                {displayPlayers.map((player) => (
+                {topPlayers.map((player) => (
                     <PlayerRankCard
                         key={player.id}
                         player={player}
@@ -149,10 +143,14 @@ export const TournamentLeaderboard = ({
                 ))}
             </div>
 
-            {/* Show user's rank if outside top 10 */}
-            {currentUserRank && currentUserRank.rank && currentUserRank.rank > 10 && !showAllPlayers && (
+            {/* Always show user's current position if they have played */}
+            {currentUserRank && currentUserRank.rank && (
                 <div className="current-user-rank">
-                    <div className="rank-separator">...</div>
+                    <div className="rank-separator">
+                        <span className="dots">•••</span>
+                        <span className="your-rank-text">Your Position</span>
+                        <span className="dots">•••</span>
+                    </div>
                     <PlayerRankCard
                         player={currentUserRank}
                         prizeAmount={null}
@@ -160,16 +158,6 @@ export const TournamentLeaderboard = ({
                         isTopThree={false}
                     />
                 </div>
-            )}
-
-            {/* Toggle to show all players */}
-            {allPlayers.length > 10 && (
-                <button
-                    onClick={() => setShowAllPlayers(!showAllPlayers)}
-                    className="view-all-btn"
-                >
-                    {showAllPlayers ? 'Show Top 10 Only' : `View All ${allPlayers.length} Players`}
-                </button>
             )}
         </div>
     );
