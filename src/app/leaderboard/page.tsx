@@ -36,8 +36,10 @@ export default function LeaderboardPage() {
     const [currentTime, setCurrentTime] = useState(new Date());
 
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
+        console.log('🔍 User rank update:', userRank);
+        console.log('🔑 Current session user:', session?.user);
         setCurrentUserRank(userRank);
-    }, []);
+    }, [session?.user]);
 
     const calculatePrizeForRank = useCallback((rank: number, totalPrizePool: number): string | null => {
         if (rank > 10) return null;
@@ -241,46 +243,44 @@ export default function LeaderboardPage() {
                 </div>
 
                 {/* Fixed user position at bottom - always visible */}
-                {(currentUserRank || session?.user) && (
-                    <div className="fixed-user-position-container" style={{
-                        position: 'sticky',
-                        bottom: '80px',
-                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                        padding: '10px',
-                        marginTop: '10px',
-                        borderRadius: '10px',
-                        border: '2px solid #00F5FF',
-                        zIndex: 1000,
-                        width: '100%',
-                        maxWidth: '600px',
-                        margin: '10px auto 0 auto'
-                    }}>
-                        {currentUserRank ? (
-                            <PlayerRankCard
-                                player={currentUserRank}
-                                prizeAmount={calculatePrizeForRank(currentUserRank.rank || 1001, currentTournament.total_prize_pool)}
-                                isCurrentUser={true}
-                                isTopThree={false}
-                            />
-                        ) : session?.user && (
-                            <PlayerRankCard
-                                player={{
-                                    id: 'current-user',
-                                    user_id: session.user.id || '',
-                                    username: session.user.username || session.user.name || null,
-                                    wallet: session.user.walletAddress || session.user.id || '',
-                                    highest_score: 0,
-                                    tournament_day: currentTournament.tournament_day,
-                                    created_at: new Date().toISOString(),
-                                    rank: 1001
-                                }}
-                                prizeAmount={null}
-                                isCurrentUser={true}
-                                isTopThree={false}
-                            />
-                        )}
-                    </div>
-                )}
+                <div className="fixed-user-position-container" style={{
+                    position: 'sticky',
+                    bottom: '80px',
+                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                    padding: '10px',
+                    marginTop: '10px',
+                    borderRadius: '10px',
+                    border: '2px solid #00F5FF',
+                    zIndex: 1000,
+                    width: '100%',
+                    maxWidth: '600px',
+                    margin: '10px auto 0 auto'
+                }}>
+                    {currentUserRank ? (
+                        <PlayerRankCard
+                            player={currentUserRank}
+                            prizeAmount={calculatePrizeForRank(currentUserRank.rank || 1001, currentTournament.total_prize_pool)}
+                            isCurrentUser={true}
+                            isTopThree={false}
+                        />
+                    ) : (
+                        <PlayerRankCard
+                            player={{
+                                id: 'current-user',
+                                user_id: session?.user?.id || '',
+                                username: session?.user?.username || session?.user?.name || 'You',
+                                wallet: session?.user?.walletAddress || session?.user?.id || '',
+                                highest_score: 0,
+                                tournament_day: currentTournament.tournament_day,
+                                created_at: new Date().toISOString(),
+                                rank: 1001
+                            }}
+                            prizeAmount={null}
+                            isCurrentUser={true}
+                            isTopThree={false}
+                        />
+                    )}
+                </div>
 
                 <div className="bottom-nav-container">
                     <div className="space-nav-icons">

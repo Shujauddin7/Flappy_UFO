@@ -62,8 +62,12 @@ export const TournamentLeaderboard = ({
 
             // Find current user's rank and notify parent
             if (currentUserId) {
+                console.log('🔍 Looking for user with ID:', currentUserId);
+                console.log('📋 First few players:', players.slice(0, 3).map((p: LeaderboardPlayer) => ({ wallet: p.wallet, username: p.username })));
+
                 // Match by wallet address since currentUserId is actually the wallet address
                 const userRank = players.find((player: LeaderboardPlayer) => player.wallet === currentUserId);
+                console.log('👤 Found user rank:', userRank);
 
                 // Notify parent component of user rank
                 if (onUserRankUpdate) {
