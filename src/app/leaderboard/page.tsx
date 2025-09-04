@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Page } from '@/components/PageLayout';
 import { TournamentLeaderboard } from '@/components/TournamentLeaderboard';
-import { PlayerRankCard } from '@/components/PlayerRankCard';
 import { useSession } from 'next-auth/react';
 
 interface LeaderboardPlayer {
@@ -36,13 +35,8 @@ export default function LeaderboardPage() {
     const [currentTime, setCurrentTime] = useState(new Date());
 
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
-        console.log('🔍 User rank update:', {
-            userRank,
-            sessionUserId: session?.user?.id,
-            hasRank: !!userRank?.rank
-        });
         setCurrentUserRank(userRank);
-    }, [session?.user?.id]);
+    }, []);
 
     const fetchCurrentTournament = useCallback(async () => {
         try {
@@ -236,16 +230,6 @@ export default function LeaderboardPage() {
                 </div>
 
                 {/* Fixed user position at bottom - always visible */}
-                {(() => {
-                    console.log('🔍 Checking user position display:', {
-                        currentUserRank: !!currentUserRank,
-                        hasRank: currentUserRank?.rank,
-                        sessionUser: session?.user?.id
-                    });
-                    return null;
-                })()}
-
-                {/* TEMP: Always show a test position for debugging */}
                 <div className="fixed-user-position-container" style={{
                     position: 'sticky',
                     bottom: '80px',
@@ -254,13 +238,18 @@ export default function LeaderboardPage() {
                     marginTop: '10px',
                     borderRadius: '10px',
                     border: '2px solid #00F5FF',
-                    zIndex: 1000
+                    zIndex: 1000,
+                    width: '100%',
+                    maxWidth: '600px',
+                    margin: '10px auto 0 auto'
                 }}>
                     <div className="user-position-card">
                         <div className="rank-separator" style={{
                             textAlign: 'center',
                             color: '#00F5FF',
-                            marginBottom: '10px'
+                            marginBottom: '10px',
+                            fontSize: '14px',
+                            fontWeight: '500'
                         }}>
                             <span className="dots">•••</span>
                             <span className="your-rank-text" style={{ margin: '0 10px' }}>Your Position</span>
@@ -271,78 +260,50 @@ export default function LeaderboardPage() {
                             justifyContent: 'space-between',
                             alignItems: 'center',
                             backgroundColor: 'rgba(255,255,255,0.1)',
-                            padding: '15px',
+                            padding: '12px 15px',
                             borderRadius: '8px',
-                            border: currentUserRank ? '2px solid #00F5FF' : '2px solid #orange'
+                            border: currentUserRank ? '2px solid #00F5FF' : '2px solid #FF6B35',
+                            flexWrap: 'wrap',
+                            gap: '10px'
                         }}>
-                            <div>
-                                <div style={{ color: '#00F5FF', fontSize: '18px', fontWeight: 'bold' }}>
+                            <div style={{ flex: '1', minWidth: '120px' }}>
+                                <div style={{
+                                    color: '#00F5FF',
+                                    fontSize: '18px',
+                                    fontWeight: 'bold',
+                                    lineHeight: '1.2'
+                                }}>
                                     #{currentUserRank?.rank || '1001'}
                                 </div>
-                                <div style={{ color: '#white', fontSize: '14px' }}>
+                                <div style={{
+                                    color: 'white',
+                                    fontSize: '14px',
+                                    marginTop: '2px'
+                                }}>
                                     {currentUserRank?.username || session?.user?.name || 'You'}
                                 </div>
-                                <div style={{ color: '#00F5FF', fontSize: '16px', fontWeight: 'bold' }}>
+                                <div style={{
+                                    color: '#00F5FF',
+                                    fontSize: '16px',
+                                    fontWeight: 'bold',
+                                    marginTop: '4px'
+                                }}>
                                     {currentUserRank?.highest_score || '9'} points
                                 </div>
                             </div>
-                            <div style={{ color: '#FFD700', fontSize: '14px' }}>
+                            <div style={{
+                                color: '#FFD700',
+                                fontSize: '14px',
+                                textAlign: 'right',
+                                fontWeight: '500'
+                            }}>
                                 {currentUserRank?.rank && currentUserRank.rank <= 10 ? 'Prize Winner!' : 'No Prize'}
                             </div>
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#888', marginTop: '5px' }}>
-                            DEBUG: Session ID: {session?.user?.id?.slice(0, 8) || 'Not logged in'}
                         </div>
                     </div>
                 </div>
 
-                {currentUserRank && currentUserRank.rank ? (
-                    <div className="fixed-user-position-container" style={{
-                        position: 'sticky',
-                        bottom: '80px',
-                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                        padding: '10px',
-                        marginTop: '10px',
-                        borderRadius: '10px',
-                        border: '2px solid #00F5FF',
-                        zIndex: 1000
-                    }}>
-                        <div className="user-position-card">
-                            <div className="rank-separator" style={{
-                                textAlign: 'center',
-                                color: '#00F5FF',
-                                marginBottom: '10px'
-                            }}>
-                                <span className="dots">•••</span>
-                                <span className="your-rank-text" style={{ margin: '0 10px' }}>Your Position</span>
-                                <span className="dots">•••</span>
-                            </div>
-                            <PlayerRankCard
-                                player={currentUserRank}
-                                prizeAmount={currentUserRank.rank <= 10 ? ((currentTournament.total_prize_pool * 0.7) * (
-                                    currentUserRank.rank === 1 ? 0.4 :
-                                        currentUserRank.rank === 2 ? 0.22 :
-                                            currentUserRank.rank === 3 ? 0.14 :
-                                                currentUserRank.rank === 4 ? 0.06 :
-                                                    currentUserRank.rank === 5 ? 0.05 :
-                                                        0.04 / (currentUserRank.rank - 5)
-                                )).toFixed(2) : null}
-                                isCurrentUser={true}
-                                isTopThree={currentUserRank.rank <= 3}
-                            />
-                        </div>
-                    </div>
-                ) : (
-                    <div style={{
-                        padding: '10px',
-                        color: 'red',
-                        textAlign: 'center',
-                        backgroundColor: 'rgba(255,0,0,0.2)',
-                        margin: '10px'
-                    }}>
-                        DEBUG: User position not found. User ID: {session?.user?.id || 'Not logged in'}
-                    </div>
-                )}                <div className="bottom-nav-container">
+                <div className="bottom-nav-container">
                     <div className="space-nav-icons">
                         <button
                             className="space-nav-btn home-nav"
