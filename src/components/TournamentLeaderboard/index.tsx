@@ -63,11 +63,20 @@ export const TournamentLeaderboard = ({
             // Find current user's rank and notify parent
             if (currentUserId) {
                 const userRank = players.find((player: LeaderboardPlayer) => player.user_id === currentUserId);
+                console.log('🔍 Finding user rank:', {
+                    currentUserId,
+                    totalPlayers: players.length,
+                    userFound: !!userRank,
+                    userRank: userRank?.rank,
+                    userScore: userRank?.highest_score
+                });
 
                 // Notify parent component of user rank
                 if (onUserRankUpdate) {
                     onUserRankUpdate(userRank || null);
                 }
+            } else {
+                console.log('🔍 No currentUserId provided');
             }
 
         } catch (err) {
