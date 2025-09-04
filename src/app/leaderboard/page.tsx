@@ -3,7 +3,19 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Page } from '@/components/PageLayout';
 import { TournamentLeaderboard } from '@/components/TournamentLeaderboard';
+import { PlayerRankCard } from '@/components/PlayerRankCard';
 import { useSession } from 'next-auth/react';
+
+interface LeaderboardPlayer {
+    id: string;
+    user_id: string;
+    username: string | null;
+    wallet: string;
+    highest_score: number;
+    tournament_day: string;
+    created_at: string;
+    rank?: number;
+}
 
 interface TournamentData {
     id: string;
@@ -18,9 +30,24 @@ interface TournamentData {
 export default function LeaderboardPage() {
     const { data: session } = useSession();
     const [currentTournament, setCurrentTournament] = useState<TournamentData | null>(null);
+    const [currentUserRank, setCurrentUserRank] = useState<LeaderboardPlayer | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [currentTime, setCurrentTime] = useState(new Date());
+
+    const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
+        setCurrentUserRank(userRank);
+    }, []);
+
+    const calculatePrizeForRank = useCallback((rank: number, totalPrizePool: number): string | null => {
+        if (rank > 10) return null;
+
+        const prizePercentages = [50, 25, 15, 3, 2, 2, 1, 1, 0.5, 0.5];
+        const percentage = prizePercentages[rank - 1] || 0;
+        const prizeAmount = (totalPrizePool * percentage) / 100;
+
+        return prizeAmount.toFixed(2);
+    }, []);
 
     const fetchCurrentTournament = useCallback(async () => {
         try {
@@ -209,8 +236,51 @@ export default function LeaderboardPage() {
                         currentUserId={session?.user?.walletAddress || session?.user?.id || null}
                         isGracePeriod={timeRemaining?.status === 'grace'}
                         totalPrizePool={currentTournament.total_prize_pool}
+                        onUserRankUpdate={handleUserRankUpdate}
                     />
                 </div>
+
+                {/* Fixed user position at bottom - always visible */}
+                {(currentUserRank || session?.user) && (
+                    <div className="fixed-user-position-container" style={{
+                        position: 'sticky',
+                        bottom: '80px',
+                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                        padding: '10px',
+                        marginTop: '10px',
+                        borderRadius: '10px',
+                        border: '2px solid #00F5FF',
+                        zIndex: 1000,
+                        width: '100%',
+                        maxWidth: '600px',
+                        margin: '10px auto 0 auto'
+                    }}>
+                        {currentUserRank ? (
+                            <PlayerRankCard
+                                player={currentUserRank}
+                                prizeAmount={calculatePrizeForRank(currentUserRank.rank || 1001, currentTournament.total_prize_pool)}
+                                isCurrentUser={true}
+                                isTopThree={false}
+                            />
+                        ) : session?.user && (
+                            <PlayerRankCard
+                                player={{
+                                    id: 'current-user',
+                                    user_id: session.user.id || '',
+                                    username: session.user.username || session.user.name || null,
+                                    wallet: session.user.walletAddress || session.user.id || '',
+                                    highest_score: 0,
+                                    tournament_day: currentTournament.tournament_day,
+                                    created_at: new Date().toISOString(),
+                                    rank: 1001
+                                }}
+                                prizeAmount={null}
+                                isCurrentUser={true}
+                                isTopThree={false}
+                            />
+                        )}
+                    </div>
+                )}
 
                 <div className="bottom-nav-container">
                     <div className="space-nav-icons">
