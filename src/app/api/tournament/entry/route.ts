@@ -41,10 +41,10 @@ async function updateUserTournamentCount(supabase: any, userId: string) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function updateTournamentPlayerCount(supabase: any, tournamentId: string) {
     try {
-        // Count unique users in user_tournament_records for this tournament and get payment data
+        // Count unique users in user_tournament_records for this tournament and get ALL payment data
         const { data, error } = await supabase
             .from('user_tournament_records')
-            .select('user_id, verified_paid_amount, standard_paid_amount')
+            .select('user_id, verified_paid_amount, standard_paid_amount, total_continue_payments')
             .eq('tournament_id', tournamentId);
 
         if (error) {
@@ -53,10 +53,21 @@ async function updateTournamentPlayerCount(supabase: any, tournamentId: string) 
         }
 
         const uniquePlayerCount = data?.length || 0;
+        // Calculate total prize pool from ALL payments: entry payments + continue payments
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const totalPrizePool = data?.reduce((sum: number, record: any) =>
-            sum + (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0), 0
-        ) * 0.7 || 0; // 70% goes to prize pool
+        const totalCollected = data?.reduce((sum: number, record: any) => {
+            const entryPayments = (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0);
+            const continuePayments = record.total_continue_payments || 0;
+            return sum + entryPayments + continuePayments;
+        }, 0) || 0;
+
+        const totalPrizePool = totalCollected * 0.7; // 70% goes to prize pool
+
+        console.log('💰 Prize pool calculation:', {
+            totalCollected,
+            totalPrizePool,
+            entries: data?.length
+        });
 
         // Update tournament with player count and prize pool
         const { error: updateError } = await supabase
