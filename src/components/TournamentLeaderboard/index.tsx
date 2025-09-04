@@ -20,16 +20,18 @@ interface TournamentLeaderboardProps {
     isGracePeriod?: boolean;
     refreshTrigger?: number; // Add this to trigger manual refresh
     totalPrizePool?: number; // Add real prize pool
+    onUserRankUpdate?: (userRank: LeaderboardPlayer | null) => void; // Callback for user rank
 }
 
 export const TournamentLeaderboard = ({
     currentUserId = null,
     isGracePeriod = false,
     refreshTrigger = 0,
-    totalPrizePool = 0
+    totalPrizePool = 0,
+    onUserRankUpdate
 }: TournamentLeaderboardProps) => {
     const [topPlayers, setTopPlayers] = useState<LeaderboardPlayer[]>([]);
-    const [currentUserRank, setCurrentUserRank] = useState<LeaderboardPlayer | null>(null);
+    const [allPlayers, setAllPlayers] = useState<LeaderboardPlayer[]>([]);
     const [loading, setLoading] = useState(true);
 
     const fetchLeaderboardData = useCallback(async () => {
@@ -47,7 +49,7 @@ export const TournamentLeaderboard = ({
 
             if (players.length === 0) {
                 setTopPlayers([]);
-                setCurrentUserRank(null);
+                setAllPlayers([]);
                 return;
             }
 
@@ -55,10 +57,17 @@ export const TournamentLeaderboard = ({
             const top10 = players.slice(0, 10);
             setTopPlayers(top10);
 
-            // Find current user's rank
+            // Store all players for infinite scroll
+            setAllPlayers(players);
+
+            // Find current user's rank and notify parent
             if (currentUserId) {
                 const userRank = players.find((player: LeaderboardPlayer) => player.user_id === currentUserId);
-                setCurrentUserRank(userRank || null);
+
+                // Notify parent component of user rank
+                if (onUserRankUpdate) {
+                    onUserRankUpdate(userRank || null);
+                }
             }
 
         } catch (err) {
@@ -66,7 +75,7 @@ export const TournamentLeaderboard = ({
         } finally {
             setLoading(false);
         }
-    }, [currentUserId]);
+    }, [currentUserId, onUserRankUpdate]);
 
     useEffect(() => {
         fetchLeaderboardData();
@@ -132,7 +141,7 @@ export const TournamentLeaderboard = ({
             </div>
 
             <div className="leaderboard-list">
-                {topPlayers.map((player) => (
+                {allPlayers.map((player) => (
                     <PlayerRankCard
                         key={player.id}
                         player={player}
@@ -142,23 +151,6 @@ export const TournamentLeaderboard = ({
                     />
                 ))}
             </div>
-
-            {/* Always show user's current position if they have played */}
-            {currentUserRank && currentUserRank.rank && (
-                <div className="current-user-rank">
-                    <div className="rank-separator">
-                        <span className="dots">•••</span>
-                        <span className="your-rank-text">Your Position</span>
-                        <span className="dots">•••</span>
-                    </div>
-                    <PlayerRankCard
-                        player={currentUserRank}
-                        prizeAmount={null}
-                        isCurrentUser={true}
-                        isTopThree={false}
-                    />
-                </div>
-            )}
         </div>
     );
 };

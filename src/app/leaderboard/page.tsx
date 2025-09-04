@@ -3,7 +3,19 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Page } from '@/components/PageLayout';
 import { TournamentLeaderboard } from '@/components/TournamentLeaderboard';
+import { PlayerRankCard } from '@/components/PlayerRankCard';
 import { useSession } from 'next-auth/react';
+
+interface LeaderboardPlayer {
+    id: string;
+    user_id: string;
+    username: string | null;
+    wallet: string;
+    highest_score: number;
+    tournament_day: string;
+    created_at: string;
+    rank?: number;
+}
 
 interface TournamentData {
     id: string;
@@ -18,9 +30,14 @@ interface TournamentData {
 export default function LeaderboardPage() {
     const { data: session } = useSession();
     const [currentTournament, setCurrentTournament] = useState<TournamentData | null>(null);
+    const [currentUserRank, setCurrentUserRank] = useState<LeaderboardPlayer | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [currentTime, setCurrentTime] = useState(new Date());
+
+    const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
+        setCurrentUserRank(userRank);
+    }, []);
 
     const fetchCurrentTournament = useCallback(async () => {
         try {
@@ -209,8 +226,47 @@ export default function LeaderboardPage() {
                         currentUserId={session?.user?.id || null}
                         isGracePeriod={timeRemaining?.status === 'grace'}
                         totalPrizePool={currentTournament.total_prize_pool}
+                        onUserRankUpdate={handleUserRankUpdate}
                     />
                 </div>
+
+                {/* Fixed user position at bottom - always visible */}
+                {currentUserRank && currentUserRank.rank && (
+                    <div className="fixed-user-position-container" style={{
+                        position: 'sticky',
+                        bottom: '80px',
+                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                        padding: '10px',
+                        marginTop: '10px',
+                        borderRadius: '10px',
+                        border: '2px solid #00F5FF'
+                    }}>
+                        <div className="user-position-card">
+                            <div className="rank-separator" style={{
+                                textAlign: 'center',
+                                color: '#00F5FF',
+                                marginBottom: '10px'
+                            }}>
+                                <span className="dots">•••</span>
+                                <span className="your-rank-text" style={{ margin: '0 10px' }}>Your Position</span>
+                                <span className="dots">•••</span>
+                            </div>
+                            <PlayerRankCard
+                                player={currentUserRank}
+                                prizeAmount={currentUserRank.rank <= 10 ? ((currentTournament.total_prize_pool * 0.7) * (
+                                    currentUserRank.rank === 1 ? 0.4 :
+                                        currentUserRank.rank === 2 ? 0.22 :
+                                            currentUserRank.rank === 3 ? 0.14 :
+                                                currentUserRank.rank === 4 ? 0.06 :
+                                                    currentUserRank.rank === 5 ? 0.05 :
+                                                        0.04 / (currentUserRank.rank - 5)
+                                )).toFixed(2) : null}
+                                isCurrentUser={true}
+                                isTopThree={currentUserRank.rank <= 3}
+                            />
+                        </div>
+                    </div>
+                )}
 
                 <div className="bottom-nav-container">
                     <div className="space-nav-icons">
