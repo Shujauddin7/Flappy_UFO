@@ -36,6 +36,7 @@ export default function LeaderboardPage() {
     const [currentTime, setCurrentTime] = useState(new Date());
 
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
+        console.log('🎯 handleUserRankUpdate called:', userRank);
         setCurrentUserRank(userRank);
     }, []);
 
@@ -258,11 +259,13 @@ export default function LeaderboardPage() {
                     {/* Debug info - show what we have */}
                     {process.env.NODE_ENV === 'development' && (
                         <div style={{ fontSize: '10px', color: '#888', marginBottom: '5px' }}>
-                            Debug:
-                            WalletAddr={session?.user?.walletAddress || 'none'} |
-                            Username={session?.user?.username || 'none'} |
-                            UserId={session?.user?.id || 'none'} |
-                            Found={currentUserRank ? `${currentUserRank.username}@${currentUserRank.rank}` : 'null'}
+                            Debug:<br/>
+                            WalletAddr={session?.user?.walletAddress || 'none'}<br/>
+                            Username={session?.user?.username || 'none'}<br/>
+                            UserId={session?.user?.id || 'none'}<br/>
+                            Found={currentUserRank ? `${currentUserRank.username}@${currentUserRank.rank}` : 'null'}<br/>
+                            HasSession={session ? 'yes' : 'no'}<br/>
+                            CallbackCalled={currentUserRank ? 'yes' : 'no'}
                         </div>
                     )}
 
