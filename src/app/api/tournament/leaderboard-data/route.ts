@@ -30,6 +30,11 @@ export async function GET() {
 
         const tournamentDay = tournamentDate.toISOString().split('T')[0];
 
+        // Debug: Log what tournament day we're fetching (development only)
+        if (process.env.NODE_ENV === 'development') {
+            console.log(`🔍 Fetching leaderboard for tournament_day: ${tournamentDay} (UTC: ${now.toISOString()})`);
+        }
+
         // Fetch all players for this tournament, ordered by score
         const { data: players, error } = await supabase
             .from('user_tournament_records')

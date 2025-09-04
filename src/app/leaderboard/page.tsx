@@ -262,26 +262,10 @@ export default function LeaderboardPage() {
                         </div>
                     )}
 
-                    {currentUserRank ? (
+                    {currentUserRank && (
                         <PlayerRankCard
                             player={currentUserRank}
                             prizeAmount={calculatePrizeForRank(currentUserRank.rank || 1001, currentTournament.total_prize_pool)}
-                            isCurrentUser={true}
-                            isTopThree={false}
-                        />
-                    ) : (
-                        <PlayerRankCard
-                            player={{
-                                id: 'current-user',
-                                user_id: session?.user?.id || '',
-                                username: session?.user?.username || session?.user?.name || 'You',
-                                wallet: session?.user?.walletAddress || session?.user?.id || '',
-                                highest_score: 0,
-                                tournament_day: currentTournament.tournament_day,
-                                created_at: new Date().toISOString(),
-                                rank: 1001
-                            }}
-                            prizeAmount={null}
                             isCurrentUser={true}
                             isTopThree={false}
                         />
