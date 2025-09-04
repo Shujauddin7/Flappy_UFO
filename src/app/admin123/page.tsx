@@ -7,6 +7,53 @@ export default function AdminSignOutPage() {
     const { data: session } = useSession();
     const router = useRouter();
 
+    const handleTriggerTournament = async () => {
+        try {
+            console.log('🚀 Triggering tournament creation...');
+
+            const response = await fetch('/api/tournament/trigger-now', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                alert('✅ Tournament created successfully!\n\n' + result.message);
+                console.log('✅ Tournament trigger success:', result);
+            } else {
+                alert('❌ Failed to create tournament:\n\n' + (result.error || 'Unknown error'));
+                console.error('❌ Tournament trigger failed:', result);
+            }
+        } catch (error) {
+            console.error('❌ Tournament trigger error:', error);
+            alert('❌ Error triggering tournament:\n\n' + (error instanceof Error ? error.message : 'Unknown error'));
+        }
+    };
+
+    const handleDeleteTestTournament = async () => {
+        try {
+            console.log('🗑️ Deleting test tournament...');
+
+            const response = await fetch('/api/tournament/delete-test', {
+                method: 'DELETE'
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                alert('✅ Test tournament deleted successfully!');
+                console.log('✅ Delete success:', result);
+            } else {
+                alert('❌ Failed to delete test tournament:\n\n' + (result.error || 'Unknown error'));
+                console.error('❌ Delete failed:', result);
+            }
+        } catch (error) {
+            console.error('❌ Delete error:', error);
+            alert('❌ Error deleting tournament:\n\n' + (error instanceof Error ? error.message : 'Unknown error'));
+        }
+    };
+
     const handleSignOut = async () => {
         console.log('Admin SignOut: Starting COMPLETE sign out process');
 
@@ -146,6 +193,31 @@ export default function AdminSignOutPage() {
                                 {session.user?.walletAddress}
                             </span>
                         </p>
+
+                        {/* Tournament Management Section */}
+                        <div className="bg-blue-900/30 p-4 rounded-lg border border-blue-500/30 mb-4">
+                            <h3 className="text-blue-300 font-bold mb-4">🏆 Tournament Management</h3>
+
+                            <button
+                                onClick={handleTriggerTournament}
+                                className="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-bold transition-all duration-200 mb-3"
+                            >
+                                🚀 Create Tournament Now
+                            </button>
+
+                            <button
+                                onClick={handleDeleteTestTournament}
+                                className="w-full bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-bold transition-all duration-200 mb-3"
+                            >
+                                🗑️ Delete Test Tournament
+                            </button>
+
+                            <p className="text-xs text-blue-300">
+                                Creates real automated tournament for immediate testing
+                            </p>
+                        </div>
+
+                        {/* User Management Section */}
 
                         <button
                             onClick={handleSignOut}

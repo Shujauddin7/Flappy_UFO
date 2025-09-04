@@ -40,8 +40,18 @@ export async function POST(req: NextRequest) {
 
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-        // Get current tournament info - get actual tournament UUID
-        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+        // Get current tournament info using tournament boundary logic (15:30 UTC)
+        const now = new Date();
+        const utcHour = now.getUTCHours();
+        const utcMinute = now.getUTCMinutes();
+
+        // Tournament day starts at 15:30 UTC, so if it's before 15:30, use yesterday's date
+        const tournamentDate = new Date(now);
+        if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
+            tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
+        }
+
+        const today = tournamentDate.toISOString().split('T')[0]; // YYYY-MM-DD format
 
         // Get today's tournament UUID from tournaments table
         const { data: tournament, error: tournamentError } = await supabase

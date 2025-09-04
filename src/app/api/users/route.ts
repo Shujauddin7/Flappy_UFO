@@ -43,21 +43,58 @@ export async function POST(request: NextRequest) {
         // Use service key for admin operations
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-        // Try to insert new user or update existing one with new schema
-        const { data, error } = await supabase
+        // Check if user exists first
+        const { data: existingUser, error: checkError } = await supabase
             .from('users')
-            .upsert({
-                wallet: wallet,
-                username: username || null,
-                world_id: world_id || null,
-                total_tournaments_played: 0,
-                total_games_played: 0,
-                highest_score_ever: 0,
+            .select('wallet')
+            .eq('wallet', wallet)
+            .single();
+
+        if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = not found
+            console.error('❌ Error checking existing user:', checkError);
+            return NextResponse.json({
+                error: `Database check failed: ${checkError.message}`
+            }, { status: 500 });
+        }
+
+        let data, error;
+
+        if (existingUser) {
+            // User exists - only update username, preserve stats and world_id
+            const updateData: { updated_at: string; username?: string | null } = {
                 updated_at: new Date().toISOString()
-            }, {
-                onConflict: 'wallet'
-            })
-            .select();
+            };
+            if (username !== undefined) updateData.username = username;
+            // Do NOT update world_id here - it should only be set during verification
+
+            const result = await supabase
+                .from('users')
+                .update(updateData)
+                .eq('wallet', wallet)
+                .select();
+
+            data = result.data;
+            error = result.error;
+            console.log('✅ Updated existing user (preserved stats)');
+        } else {
+            // User doesn't exist - create new user with initial stats
+            const result = await supabase
+                .from('users')
+                .insert({
+                    wallet: wallet,
+                    username: username || null,
+                    world_id: world_id || null,
+                    total_tournaments_played: 0,
+                    total_games_played: 0,
+                    highest_score_ever: 0,
+                    updated_at: new Date().toISOString()
+                })
+                .select();
+
+            data = result.data;
+            error = result.error;
+            console.log('✅ Created new user with initial stats');
+        }
 
         if (error) {
             console.error('❌ Database error:', error);
@@ -66,8 +103,8 @@ export async function POST(request: NextRequest) {
             }, { status: 500 });
         }
 
-        console.log('✅ User saved successfully:', data);
-        return NextResponse.json({ success: true, user: data[0] });
+        console.log('✅ User operation completed successfully:', data);
+        return NextResponse.json({ success: true, user: data?.[0] || null });
 
     } catch (error) {
         console.error('❌ API route error:', error);

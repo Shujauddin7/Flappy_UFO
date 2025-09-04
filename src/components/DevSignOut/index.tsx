@@ -32,16 +32,14 @@ function DevSignOut() {
                     console.warn('DevSignOut: Failed to clear verification status:', verificationError);
                     // Continue with sign out even if verification clear fails
                 }
+
+                // Note: Tournament data reset removed to prevent accidental data loss
+                // If you need to reset tournament data, use the admin panel instead
             }
 
-            // Clear any additional local storage or session data first
-            if (typeof window !== 'undefined') {
-                localStorage.clear();
-                sessionStorage.clear();
-                // Add a flag to indicate we just signed out - this will force verification check
-                localStorage.setItem('justSignedOut', 'true');
-                console.log('DevSignOut: Cleared local/session storage and set sign-out flag');
-            }
+            // Per Plan.md: Only clear verification from database, NOT localStorage
+            // localStorage should only contain Practice Mode coins with tamper protection
+            console.log('DevSignOut: Cleared verification from database only - localStorage preserved per Plan.md');
 
             // Sign out without redirect to stay in the app
             await signOut({
@@ -91,7 +89,7 @@ function DevSignOut() {
             <button
                 onClick={handleSignOut}
                 className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg transition-all duration-200 border border-red-400"
-                title="Development only - Sign out and reload to test authentication flow and reset verification status"
+                title="Development only - Sign out, reset verification & tournament data, and reload to test fresh authentication flow"
             >
                 🚪 DEV: Sign Out & Reset
             </button>

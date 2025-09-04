@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSessionPersistence } from '@/hooks/useSessionPersistence';
 import { Page } from '@/components/PageLayout';
 import { useGameAuth } from '@/hooks/useGameAuth';
 import dynamic from 'next/dynamic';
@@ -37,9 +37,11 @@ export default function GameHomepage() {
     const { isAuthenticating, authenticate } = useGameAuth();
 
     // Import useSession to get user wallet
-    const { data: session } = useSession();
+    // Use prebuilt World App session management per Plan.md
+    const { session } = useSessionPersistence();
 
     // Verification status state
+    // Verification state - managed properly with World App session per Plan.md
     const [isVerifiedToday, setIsVerifiedToday] = useState<boolean>(false);
     const [verificationLoading, setVerificationLoading] = useState<boolean>(false);
 
@@ -91,13 +93,6 @@ export default function GameHomepage() {
     // Check verification status when user session changes
     useEffect(() => {
         if (session?.user?.walletAddress) {
-            // Check if user just signed out - if so, force fresh verification check
-            const justSignedOut = localStorage.getItem('justSignedOut');
-            if (justSignedOut) {
-                localStorage.removeItem('justSignedOut');
-                console.log('🔄 User just signed out and back in - forcing fresh verification check');
-                setIsVerifiedToday(false); // Reset to force verification
-            }
             checkVerificationStatus();
         } else {
             setIsVerifiedToday(false);
@@ -1090,8 +1085,8 @@ export default function GameHomepage() {
                             </button>
                             <button
                                 className="space-nav-btn prizes-nav"
-                                onClick={() => alert('Galactic Leaderboard & Cosmic Prizes')}
-                                aria-label="Cosmic Prizes"
+                                onClick={() => window.location.href = '/leaderboard'}
+                                aria-label="Leaderboard"
                             >
                                 <div className="space-icon">🏆</div>
 
@@ -1173,8 +1168,8 @@ export default function GameHomepage() {
                             </button>
                             <button
                                 className="space-nav-btn prizes-nav"
-                                onClick={() => alert('Galactic Leaderboard & Cosmic Prizes')}
-                                aria-label="Cosmic Prizes"
+                                onClick={() => window.location.href = '/leaderboard'}
+                                aria-label="Leaderboard"
                             >
                                 <div className="space-icon">🏆</div>
 

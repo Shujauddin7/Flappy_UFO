@@ -24,14 +24,18 @@ async function updateUserStatistics(userId: string, newScore: number, shouldUpda
         });
 
         if (updateError) {
+            console.error('❌ Error updating user stats:', updateError);
             return false;
         }
 
         return true;
-    } catch {
+    } catch (error) {
+        console.error('❌ Exception updating user stats:', error);
         return false;
     }
-} export async function POST(req: NextRequest) {
+}
+
+export async function POST(req: NextRequest) {
     try {
         // Environment-specific database configuration (following Plan.md specification)
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
@@ -108,13 +112,24 @@ async function updateUserStatistics(userId: string, newScore: number, shouldUpda
             });
         }
 
-        // Find the user tournament record - either by record_id or by user_id + today's date
-        const today = new Date().toISOString().split('T')[0];
+        // Find the user tournament record - either by record_id or by user_id + tournament day
+        // Calculate tournament day using same logic as tournament system (15:30 UTC boundary)
+        const now = new Date();
+        const utcHour = now.getUTCHours();
+        const utcMinute = now.getUTCMinutes();
+
+        // Tournament day starts at 15:30 UTC, so if it's before 15:30, use yesterday's date
+        const tournamentDate = new Date(now);
+        if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
+            tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
+        }
+
+        const tournamentDay = tournamentDate.toISOString().split('T')[0];
         let recordQuery = supabase
             .from('user_tournament_records')
             .select('id, user_id, highest_score, tournament_day, tournament_id, verified_at, verified_games_played, unverified_games_played, total_games_played, verified_entry_paid, standard_entry_paid, verified_paid_at, standard_paid_at, verified_entry_games, standard_entry_games, total_continues_used, total_continue_payments')
             .eq('user_id', user.id)
-            .eq('tournament_day', today);
+            .eq('tournament_day', tournamentDay);
 
         if (user_tournament_record_id) {
             recordQuery = recordQuery.eq('id', user_tournament_record_id);
@@ -196,7 +211,7 @@ async function updateUserStatistics(userId: string, newScore: number, shouldUpda
                 tournament_id: record.tournament_id,
                 username: user.username || null, // Use the actual username from users table
                 wallet: walletToCheck,
-                tournament_day: today,
+                tournament_day: tournamentDay,
                 score: score,
                 game_duration_ms: game_duration,
                 was_verified_game: isVerifiedGame, // Properly determined based on entry payment

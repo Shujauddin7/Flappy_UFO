@@ -2,6 +2,52 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { createClient } from '@supabase/supabase-js';
 
+// Helper function to update tournament prize pool (includes entry + continue payments)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function updateTournamentPrizePool(supabase: any, tournamentId: string) {
+    try {
+        // Get ALL payment data for this tournament
+        const { data, error } = await supabase
+            .from('user_tournament_records')
+            .select('verified_paid_amount, standard_paid_amount, total_continue_payments')
+            .eq('tournament_id', tournamentId);
+
+        if (error) {
+            console.error('❌ Error fetching tournament payments:', error);
+            return;
+        }
+
+        // Calculate total prize pool from ALL payments: entry payments + continue payments
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const totalCollected = data?.reduce((sum: number, record: any) => {
+            const entryPayments = (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0);
+            const continuePayments = record.total_continue_payments || 0;
+            return sum + entryPayments + continuePayments;
+        }, 0) || 0;
+
+        const totalPrizePool = totalCollected * 0.7; // 70% goes to prize pool
+
+        console.log('💰 Prize pool recalculation after continue:', {
+            totalCollected,
+            totalPrizePool
+        });
+
+        // Update tournament prize pool
+        const { error: updateError } = await supabase
+            .from('tournaments')
+            .update({ total_prize_pool: totalPrizePool })
+            .eq('id', tournamentId);
+
+        if (updateError) {
+            console.error('❌ Error updating tournament prize pool:', updateError);
+        } else {
+            console.log('✅ Tournament prize pool updated:', totalPrizePool);
+        }
+    } catch (error) {
+        console.error('❌ Error in updateTournamentPrizePool:', error);
+    }
+}
+
 export async function POST(req: NextRequest) {
     try {
         const session = await auth();
@@ -24,7 +70,19 @@ export async function POST(req: NextRequest) {
 
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
         const wallet = session.user.walletAddress;
-        const today = new Date().toISOString().split('T')[0];
+
+        // Calculate tournament day using tournament boundary logic (15:30 UTC)
+        const now = new Date();
+        const utcHour = now.getUTCHours();
+        const utcMinute = now.getUTCMinutes();
+
+        // Tournament day starts at 15:30 UTC, so if it's before 15:30, use yesterday's date
+        const tournamentDate = new Date(now);
+        if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
+            tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
+        }
+
+        const today = tournamentDate.toISOString().split('T')[0];
 
         // Get user
         const { data: user, error: userError } = await supabase
@@ -80,9 +138,13 @@ export async function POST(req: NextRequest) {
                 details: updateError.message
             }, { status: 500 });
         }
+
+        // Update tournament prize pool to include this continue payment (70% rule)
+        await updateTournamentPrizePool(supabase, tournament.id);
+
         return NextResponse.json({
             success: true,
-            message: 'Continue payment recorded successfully',
+            message: 'Continue payment recorded and prize pool updated',
             data: {
                 user_tournament_record_id: tournamentRecord.id,
                 total_continues_used: (tournamentRecord.total_continues_used || 0) + 1,

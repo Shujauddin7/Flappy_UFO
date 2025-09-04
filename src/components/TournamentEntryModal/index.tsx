@@ -160,8 +160,8 @@ export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
                     </button>
                     <button
                         className="space-nav-btn prizes-nav"
-                        onClick={() => alert('Galactic Leaderboard & Cosmic Prizes')}
-                        aria-label="Cosmic Prizes"
+                        onClick={() => window.location.href = '/leaderboard'}
+                        aria-label="Leaderboard"
                     >
                         <div className="space-icon">🏆</div>
                     </button>

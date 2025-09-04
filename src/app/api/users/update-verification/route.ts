@@ -71,8 +71,18 @@ export async function POST(req: NextRequest) {
             }, { status: 500 });
         }
 
-        // Get current tournament info (get actual tournament UUID)
-        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+        // Get current tournament info using tournament boundary logic (15:30 UTC)
+        const now = new Date();
+        const utcHour = now.getUTCHours();
+        const utcMinute = now.getUTCMinutes();
+
+        // Tournament day starts at 15:30 UTC, so if it's before 15:30, use yesterday's date
+        const tournamentDate = new Date(now);
+        if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
+            tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
+        }
+
+        const today = tournamentDate.toISOString().split('T')[0]; // YYYY-MM-DD format
 
         // Get today's tournament UUID from tournaments table
         const { data: tournament, error: tournamentError } = await supabase
@@ -94,7 +104,7 @@ export async function POST(req: NextRequest) {
             .from('users')
             .update({
                 world_id: nullifier_hash,
-                last_verified_date: new Date(verification_date).toISOString().split('T')[0],
+                last_verified_date: today, // Use tournament-day calculated today, not verification_date
                 last_verified_tournament_id: tournament.id,
                 updated_at: new Date().toISOString()
             })
@@ -120,66 +130,68 @@ export async function POST(req: NextRequest) {
 
         const user = userData;
 
-        // IMPORTANT: Also update user_tournament_records table with verification data
-        // Check if user has a tournament record for today
-        const { data: tournamentRecord } = await supabase
+        // IMPORTANT: Safely get or create user tournament record using ON CONFLICT
+        // Don't use the database function as it uses CURRENT_DATE instead of tournament boundary logic
+        const { data: tournamentRecord, error: recordError } = await supabase
             .from('user_tournament_records')
+            .upsert({
+                user_id: user.id,
+                tournament_id: tournament.id,
+                username: user.username,
+                wallet: wallet,
+                tournament_day: today, // Use the correct tournament boundary date
+                world_id_proof: { nullifier_hash }, // Store World ID proof
+                verified_at: new Date(verification_date).toISOString(), // Store full timestamp
+                updated_at: new Date().toISOString()
+            }, {
+                onConflict: 'user_id,tournament_id',
+                ignoreDuplicates: false // Update existing record
+            })
             .select('id')
-            .eq('user_id', user.id)
-            .eq('tournament_id', tournament.id)
-            .eq('tournament_day', today)
             .single();
 
-        if (tournamentRecord) {
-            // Update existing tournament record with verification data
-            const { error: updateRecordError } = await supabase
-                .from('user_tournament_records')
-                .update({
-                    world_id_proof: { nullifier_hash }, // Store World ID proof
-                    verified_at: new Date(verification_date).toISOString(), // Store full timestamp
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', tournamentRecord.id);
+        if (recordError) {
+            console.error('❌ Error upserting tournament record:', recordError);
+            return NextResponse.json({
+                success: false,
+                error: `Failed to create/update tournament record: ${recordError.message}`
+            }, { status: 500 });
+        }
 
-            if (updateRecordError) {
-                console.error('❌ Error updating tournament record verification:', updateRecordError);
-                return NextResponse.json({
-                    success: false,
-                    error: `Failed to update tournament verification: ${updateRecordError.message}`
-                }, { status: 500 });
-            } else {
-                console.log('✅ Tournament record updated with verification data');
-            }
-        } else {
-            // Create a new tournament record with verification data
-            console.log('ℹ️ No tournament record found, creating one with verification data');
-            const { error: createRecordError } = await supabase
-                .from('user_tournament_records')
-                .insert({
-                    user_id: user.id,
-                    tournament_id: tournament.id,
-                    username: user.username,
-                    wallet: wallet,
-                    tournament_day: today,
-                    world_id_proof: { nullifier_hash },
-                    verified_at: new Date(verification_date).toISOString(),
-                    highest_score: 0,
-                    total_games_played: 0,
-                    verified_games_played: 0,
-                    unverified_games_played: 0,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                });
+        console.log('✅ Tournament record created/updated with verification data:', tournamentRecord.id);
 
-            if (createRecordError) {
-                console.error('❌ Error creating tournament record with verification:', createRecordError);
-                return NextResponse.json({
-                    success: false,
-                    error: `Failed to create tournament record: ${createRecordError.message}`
-                }, { status: 500 });
-            } else {
-                console.log('✅ Tournament record created with verification data');
+        // Update tournament table with player count and prize pool
+        try {
+            // Count unique users in user_tournament_records for this tournament
+            const { data: playerData, error: playerCountError } = await supabase
+                .from('user_tournament_records')
+                .select('user_id, verified_paid_amount, standard_paid_amount')
+                .eq('tournament_id', tournament.id);
+
+            if (!playerCountError && playerData) {
+                const uniquePlayerCount = playerData.length;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const totalPrizePool = playerData.reduce((sum: number, record: any) =>
+                    sum + (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0), 0
+                ) * 0.7; // 70% goes to prize pool
+
+                // Update tournament with player count and prize pool
+                const { error: updateError } = await supabase
+                    .from('tournaments')
+                    .update({
+                        total_players: uniquePlayerCount,
+                        total_prize_pool: totalPrizePool
+                    })
+                    .eq('id', tournament.id);
+
+                if (updateError) {
+                    console.error('❌ Error updating tournament stats:', updateError);
+                } else {
+                    console.log('✅ Tournament stats updated:', { players: uniquePlayerCount, prize_pool: totalPrizePool });
+                }
             }
+        } catch (error) {
+            console.error('❌ Error updating tournament stats:', error);
         }
 
         console.log('✅ User verification status updated:', {

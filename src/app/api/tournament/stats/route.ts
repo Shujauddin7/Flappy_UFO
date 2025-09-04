@@ -28,7 +28,23 @@ export async function GET(req: NextRequest) {
 
         // Get query parameters
         const searchParams = req.nextUrl.searchParams;
-        const tournamentDay = searchParams.get('tournament_day') || new Date().toISOString().split('T')[0];
+
+        // Calculate tournament day using same logic as tournament system (15:30 UTC boundary)
+        let defaultTournamentDay;
+        if (!searchParams.get('tournament_day')) {
+            const now = new Date();
+            const utcHour = now.getUTCHours();
+            const utcMinute = now.getUTCMinutes();
+
+            // Tournament day starts at 15:30 UTC, so if it's before 15:30, use yesterday's date
+            const tournamentDate = new Date(now);
+            if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
+                tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
+            }
+            defaultTournamentDay = tournamentDate.toISOString().split('T')[0];
+        }
+
+        const tournamentDay = searchParams.get('tournament_day') || defaultTournamentDay;
 
         console.log('🔍 Fetching tournament stats for:', tournamentDay);
 

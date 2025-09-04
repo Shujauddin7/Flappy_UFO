@@ -10,6 +10,8 @@ src/components/MobileDebugConsole/
 
 # Development documentation (exclude from production)  
 toself.md
+to-implement.md
+to_implement.md
 STEP-BY-STEP-SIGNIN.md
 URGENT_WORLD_PORTAL_UPDATE.md
 complete-database-schema.sql
@@ -48,6 +50,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# Environment variables file (contains secrets - DO NOT COMMIT)
+vercel-env-vars.txt
+
 # Database and sensitive files
 /src/lib/supabase.ts
 /src/lib/database.ts
@@ -55,6 +60,7 @@ yarn-error.log*
 .env.local
 .env.development
 .env.production
+database.md
 
 # vercel
 .vercel

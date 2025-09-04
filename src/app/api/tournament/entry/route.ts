@@ -37,14 +37,14 @@ async function updateUserTournamentCount(supabase: any, userId: string) {
     }
 }
 
-// Helper function to update tournament player count
+// Helper function to update tournament player count and prize pool
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function updateTournamentPlayerCount(supabase: any, tournamentId: string) {
     try {
-        // Count unique users in user_tournament_records for this tournament
+        // Count unique users in user_tournament_records for this tournament and get ALL payment data
         const { data, error } = await supabase
             .from('user_tournament_records')
-            .select('user_id')
+            .select('user_id, verified_paid_amount, standard_paid_amount, total_continue_payments')
             .eq('tournament_id', tournamentId);
 
         if (error) {
@@ -53,20 +53,35 @@ async function updateTournamentPlayerCount(supabase: any, tournamentId: string) 
         }
 
         const uniquePlayerCount = data?.length || 0;
+        // Calculate total prize pool from ALL payments: entry payments + continue payments
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const totalCollected = data?.reduce((sum: number, record: any) => {
+            const entryPayments = (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0);
+            const continuePayments = record.total_continue_payments || 0;
+            return sum + entryPayments + continuePayments;
+        }, 0) || 0;
 
-        // Update tournament with player count
+        const totalPrizePool = totalCollected * 0.7; // 70% goes to prize pool
+
+        console.log('💰 Prize pool calculation:', {
+            totalCollected,
+            totalPrizePool,
+            entries: data?.length
+        });
+
+        // Update tournament with player count and prize pool
         const { error: updateError } = await supabase
             .from('tournaments')
             .update({
                 total_players: uniquePlayerCount,
-                updated_at: new Date().toISOString()
+                total_prize_pool: totalPrizePool
             })
             .eq('id', tournamentId);
 
         if (updateError) {
             console.error('❌ Error updating tournament player count:', updateError);
         } else {
-            console.log('✅ Tournament player count updated:', uniquePlayerCount);
+            console.log('✅ Tournament stats updated:', { players: uniquePlayerCount, prize_pool: totalPrizePool });
         }
     } catch (error) {
         console.error('❌ Error in updateTournamentPlayerCount:', error);
@@ -124,9 +139,19 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Wallet mismatch' }, { status: 403 });
         }
 
-        // Get or create today's tournament
-        const today = new Date().toISOString().split('T')[0];
-        console.log('🔍 Looking for tournament on date:', today);
+        // Get or create today's tournament using same logic as cron job
+        // Tournament day starts at 15:30 UTC, so if it's before 15:30, use yesterday's date
+        const now = new Date();
+        const utcHour = now.getUTCHours();
+        const utcMinute = now.getUTCMinutes();
+
+        const tournamentDate = new Date(now);
+        if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
+            tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
+        }
+
+        const today = tournamentDate.toISOString().split('T')[0];
+        console.log('🔍 Looking for tournament on date:', today, '(using tournament boundary logic)');
 
         // First, try to get existing tournament for today
         const { data: tournament, error: tournamentFetchError } = await supabase
@@ -261,34 +286,52 @@ export async function POST(req: NextRequest) {
             payment_reference
         });
 
-        // Use the database function to get or create user tournament record
-        const { data: recordId, error: recordError } = await supabase
-            .rpc('get_or_create_user_tournament_record', {
-                p_user_id: user.id,
-                p_tournament_id: finalTournament.id,
-                p_username: user.username, // Use the actual username from user table
-                p_wallet: wallet
-            });
+        // Create or get user tournament record using UPSERT to prevent duplicate key issues
+        // Don't use the database function as it uses CURRENT_DATE instead of tournament boundary logic
+        const { data: tournamentRecord, error: recordError } = await supabase
+            .from('user_tournament_records')
+            .upsert({
+                user_id: user.id,
+                tournament_id: finalTournament.id,
+                username: user.username,
+                wallet: wallet,
+                tournament_day: today, // Use the correct tournament boundary date
+                updated_at: new Date().toISOString()
+            }, {
+                onConflict: 'user_id,tournament_id',
+                ignoreDuplicates: false // Update existing record
+            })
+            .select('id')
+            .single();
 
         if (recordError) {
-            console.error('❌ Error getting/creating tournament record:', recordError);
+            console.error('❌ Error upserting tournament record:', recordError);
             return NextResponse.json({
-                error: `Failed to create tournament record: ${recordError.message}`
+                error: `Failed to create/update tournament record: ${recordError.message}`
             }, { status: 500 });
         }
 
-        console.log('✅ Tournament record ID obtained:', recordId, 'with username:', user.username);
+        const recordId = tournamentRecord.id;
+        console.log('✅ Tournament record created/updated:', recordId, 'with username:', user.username);
 
-        // Update tournament total players count
-        await updateTournamentPlayerCount(supabase, finalTournament.id);
+        // Now update the payment information (preserve existing payments)
+        // First get current payment status to avoid overwriting existing payments
+        const { data: currentRecord, error: fetchError } = await supabase
+            .from('user_tournament_records')
+            .select('verified_entry_paid, verified_paid_amount, verified_payment_ref, verified_paid_at, standard_entry_paid, standard_paid_amount, standard_payment_ref, standard_paid_at, current_entry_type')
+            .eq('id', recordId)
+            .single();
 
-        // Update user's total tournament count
-        await updateUserTournamentCount(supabase, user.id);
+        if (fetchError) {
+            console.error('❌ Error fetching current payment status:', fetchError);
+            return NextResponse.json({
+                error: `Failed to fetch current payment status: ${fetchError.message}`
+            }, { status: 500 });
+        }
 
-        // Now update the payment information (only existing columns)
-        // Determine entry type based on PAYMENT AMOUNT, not verification status
+        // Determine entry type based on PAYMENT AMOUNT
         // 0.9 WLD = Verified entry (discounted price)
-        // 1.0 WLD = Standard entry (regular price)
+        // 1.0+ WLD = Standard entry (regular price)
         const isVerifiedEntryByAmount = paid_amount <= 0.9;
 
         const paymentUpdate: {
@@ -307,20 +350,38 @@ export async function POST(req: NextRequest) {
         };
 
         if (isVerifiedEntryByAmount) {
+            // Update verified payment fields while preserving standard payment
             paymentUpdate.verified_entry_paid = true;
-            paymentUpdate.verified_paid_amount = paid_amount;
-            paymentUpdate.verified_payment_ref = payment_reference;
+            // ACCUMULATE payments instead of overwriting
+            paymentUpdate.verified_paid_amount = (currentRecord.verified_paid_amount || 0) + paid_amount;
+            paymentUpdate.verified_payment_ref = payment_reference; // Store latest payment reference
             paymentUpdate.verified_paid_at = new Date().toISOString();
-            paymentUpdate.current_entry_type = 'verified'; // Set current entry type
-        } else {
-            paymentUpdate.standard_entry_paid = true;
-            paymentUpdate.standard_paid_amount = paid_amount;
-            paymentUpdate.standard_payment_ref = payment_reference;
-            paymentUpdate.standard_paid_at = new Date().toISOString();
-            paymentUpdate.current_entry_type = 'standard'; // Set current entry type
-        }
+            paymentUpdate.current_entry_type = 'verified';
 
-        const { data: updatedRecord, error: updateError } = await supabase
+            // Preserve existing standard payment fields
+            if (currentRecord.standard_entry_paid) {
+                paymentUpdate.standard_entry_paid = currentRecord.standard_entry_paid;
+                paymentUpdate.standard_paid_amount = currentRecord.standard_paid_amount;
+                paymentUpdate.standard_payment_ref = currentRecord.standard_payment_ref;
+                paymentUpdate.standard_paid_at = currentRecord.standard_paid_at;
+            }
+        } else {
+            // Update standard payment fields while preserving verified payment
+            paymentUpdate.standard_entry_paid = true;
+            // ACCUMULATE payments instead of overwriting
+            paymentUpdate.standard_paid_amount = (currentRecord.standard_paid_amount || 0) + paid_amount;
+            paymentUpdate.standard_payment_ref = payment_reference; // Store latest payment reference
+            paymentUpdate.standard_paid_at = new Date().toISOString();
+            paymentUpdate.current_entry_type = 'standard';
+
+            // Preserve existing verified payment fields
+            if (currentRecord.verified_entry_paid) {
+                paymentUpdate.verified_entry_paid = currentRecord.verified_entry_paid;
+                paymentUpdate.verified_paid_amount = currentRecord.verified_paid_amount;
+                paymentUpdate.verified_payment_ref = currentRecord.verified_payment_ref;
+                paymentUpdate.verified_paid_at = currentRecord.verified_paid_at;
+            }
+        } const { data: updatedRecord, error: updateError } = await supabase
             .from('user_tournament_records')
             .update(paymentUpdate)
             .eq('id', recordId)
@@ -333,6 +394,12 @@ export async function POST(req: NextRequest) {
                 error: `Failed to update payment information: ${updateError.message}`
             }, { status: 500 });
         }
+
+        // Update tournament total players count and prize pool after payment update
+        await updateTournamentPlayerCount(supabase, finalTournament.id);
+
+        // Update user's total tournament count
+        await updateUserTournamentCount(supabase, user.id);
 
         console.log('✅ Tournament record created/updated successfully:', {
             record_id: recordId,
