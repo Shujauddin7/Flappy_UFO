@@ -254,6 +254,14 @@ export default function LeaderboardPage() {
                     maxWidth: '600px',
                     margin: '10px auto 0 auto'
                 }}>
+                    {/* Debug info - show what we have */}
+                    {process.env.NODE_ENV === 'development' && (
+                        <div style={{ fontSize: '10px', color: '#888', marginBottom: '5px' }}>
+                            Debug: User={session?.user?.walletAddress || session?.user?.id || 'none'} |
+                            Found={currentUserRank ? `${currentUserRank.username}@${currentUserRank.rank}` : 'null'}
+                        </div>
+                    )}
+
                     {currentUserRank ? (
                         <PlayerRankCard
                             player={currentUserRank}

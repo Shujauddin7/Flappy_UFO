@@ -93,6 +93,13 @@ export const TournamentLeaderboard = ({
         }
     }, [fetchLeaderboardData, isGracePeriod]);
 
+    // Force refresh when currentUserId changes (user logs in/out)
+    useEffect(() => {
+        if (currentUserId) {
+            fetchLeaderboardData();
+        }
+    }, [currentUserId, fetchLeaderboardData]);
+
     // Add effect for manual refresh trigger
     useEffect(() => {
         if (refreshTrigger > 0) {
