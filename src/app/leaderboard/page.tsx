@@ -5,6 +5,7 @@ import { Page } from '@/components/PageLayout';
 import { TournamentLeaderboard } from '@/components/TournamentLeaderboard';
 import { PlayerRankCard } from '@/components/PlayerRankCard';
 import { useSession } from 'next-auth/react';
+import MobileDebugConsole from '@/components/MobileDebugConsole';
 
 interface LeaderboardPlayer {
     id: string;
@@ -37,8 +38,13 @@ export default function LeaderboardPage() {
 
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
         console.log('🎯 handleUserRankUpdate called:', userRank);
+        console.log('🔍 Session data:', {
+            walletAddress: session?.user?.walletAddress,
+            username: session?.user?.username,
+            userId: session?.user?.id
+        });
         setCurrentUserRank(userRank);
-    }, []);
+    }, [session]);
 
     const calculatePrizeForRank = useCallback((rank: number, totalPrizePool: number): string | null => {
         if (rank > 10) return null;
@@ -76,6 +82,11 @@ export default function LeaderboardPage() {
     useEffect(() => {
         fetchCurrentTournament();
 
+        // Debug session data
+        console.log('🔍 Full session object:', session);
+        console.log('🔍 Session wallet:', session?.user?.walletAddress);
+        console.log('🔍 Session username:', session?.user?.username);
+
         // Update time every second for live countdown
         const timeInterval = setInterval(() => {
             setCurrentTime(new Date());
@@ -84,7 +95,7 @@ export default function LeaderboardPage() {
         return () => {
             clearInterval(timeInterval);
         };
-    }, [fetchCurrentTournament]);
+    }, [fetchCurrentTournament, session]);
 
     // Calculate time remaining for tournament (updates every second)
     const getTimeRemaining = () => {
@@ -232,6 +243,15 @@ export default function LeaderboardPage() {
                 </div>
 
                 <div className="leaderboard-section">
+                    {/* Debug info before TournamentLeaderboard */}
+                    {process.env.NODE_ENV === 'development' && (
+                        <div style={{ fontSize: '10px', color: '#888', marginBottom: '10px', padding: '5px', background: 'rgba(255,255,255,0.1)' }}>
+                            DEBUG - Props to TournamentLeaderboard:<br />
+                            currentUserId: {session?.user?.walletAddress || 'null'}<br />
+                            currentUsername: {session?.user?.username || 'null'}<br />
+                        </div>
+                    )}
+
                     <TournamentLeaderboard
                         tournamentId={currentTournament.id}
                         currentUserId={session?.user?.walletAddress || null}
@@ -299,6 +319,7 @@ export default function LeaderboardPage() {
                     </div>
                 </div>
             </Page.Main>
+            <MobileDebugConsole />
         </Page>
     );
 }
