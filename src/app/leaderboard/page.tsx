@@ -82,10 +82,21 @@ export default function LeaderboardPage() {
     useEffect(() => {
         fetchCurrentTournament();
 
-        // Debug session data
+        // Enhanced debug session data
+        console.log('🔍 === SESSION DEBUG START ===');
         console.log('🔍 Full session object:', session);
-        console.log('🔍 Session wallet:', session?.user?.walletAddress);
-        console.log('🔍 Session username:', session?.user?.username);
+        console.log('🔍 Session status:', session ? 'ACTIVE' : 'NULL/UNDEFINED');
+        console.log('🔍 Session wallet:', session?.user?.walletAddress || 'MISSING');
+        console.log('🔍 Session username:', session?.user?.username || 'MISSING');
+        console.log('🔍 Session user ID:', session?.user?.id || 'MISSING');
+        console.log('🔍 === SESSION DEBUG END ===');
+
+        // Log when session changes
+        if (session) {
+            console.log('✅ Session is active - user should appear in fixed card');
+        } else {
+            console.log('❌ No session - fixed card will be empty');
+        }
 
         // Update time every second for live countdown
         const timeInterval = setInterval(() => {
@@ -279,14 +290,18 @@ export default function LeaderboardPage() {
                     {/* Debug info - show what we have */}
                     {process.env.NODE_ENV === 'development' && (
                         <div style={{ fontSize: '10px', color: '#888', marginBottom: '5px' }}>
-                            Debug:<br />
-                            WalletAddr={session?.user?.walletAddress || 'none'}<br />
-                            Username={session?.user?.username || 'none'}<br />
-                            UserId={session?.user?.id || 'none'}<br />
-                            Found={currentUserRank ? `${currentUserRank.username || 'no-username'}@rank-${currentUserRank.rank}` : 'null'}<br />
-                            FoundWallet={currentUserRank ? currentUserRank.wallet : 'none'}<br />
-                            HasSession={session ? 'yes' : 'no'}<br />
-                            CallbackCalled={currentUserRank ? 'yes' : 'no'}
+                            Debug Fixed Card:<br />
+                            SessionExists={session ? 'YES' : 'NO'}<br />
+                            WalletAddr={session?.user?.walletAddress || 'NONE'}<br />
+                            Username={session?.user?.username || 'NONE'}<br />
+                            UserId={session?.user?.id || 'NONE'}<br />
+                            UserRankFound={currentUserRank ? 'YES' : 'NO'}<br />
+                            {currentUserRank && (
+                                <>FoundUser={currentUserRank.username || 'no-username'}@rank-{currentUserRank.rank}<br />
+                                    FoundWallet={currentUserRank.wallet}<br /></>
+                            )}
+                            CallbackCalled={currentUserRank ? 'YES' : 'NO'}<br />
+                            ExpectedWallet=0xedfbfe394cd0d087484a35c935a7cf491a156f0f
                         </div>
                     )}
 
@@ -297,6 +312,32 @@ export default function LeaderboardPage() {
                             isCurrentUser={true}
                             isTopThree={false}
                         />
+                    )}
+
+                    {/* Show helpful message if user should be here but isn't */}
+                    {!currentUserRank && session?.user?.walletAddress && (
+                        <div style={{
+                            textAlign: 'center',
+                            color: '#888',
+                            fontSize: '12px',
+                            padding: '10px',
+                            fontStyle: 'italic'
+                        }}>
+                            {session.user.username || 'Your'} position will appear here after playing
+                        </div>
+                    )}
+
+                    {/* Show sign-in prompt if no session */}
+                    {!session && (
+                        <div style={{
+                            textAlign: 'center',
+                            color: '#00F5FF',
+                            fontSize: '12px',
+                            padding: '10px',
+                            fontWeight: 'bold'
+                        }}>
+                            🔐 Sign in to see your rank
+                        </div>
                     )}
                 </div>
 

@@ -33,12 +33,12 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Remove automatic authentication - session will be null for public routes
-  const session = null;
+  // Allow NextAuth SessionProvider to handle session management properly
+  // Session will be restored from JWT tokens automatically
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <ClientProviders session={session}>{children}</ClientProviders>
+        <ClientProviders session={null}>{children}</ClientProviders>
       </body>
     </html>
   );
