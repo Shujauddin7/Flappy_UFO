@@ -37,10 +37,10 @@ export default function ClientProviders({
       <MiniKitProvider>
         <SessionProvider
           session={session}
-          refetchInterval={0} // Disable periodic session fetching - JWT handles persistence
-          refetchOnWindowFocus={false} // Disable refetch on focus for permanent sessions
+          refetchInterval={5 * 60} // Refetch every 5 minutes to keep session alive
+          refetchOnWindowFocus={true} // Refetch when user returns to page
           refetchWhenOffline={false} // Don't refetch when coming back online
-          // Enhanced session options for dev environment persistence
+          // Enhanced session options for proper session restoration
           basePath="/api/auth"
         >
           {children}

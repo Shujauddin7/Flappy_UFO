@@ -29,7 +29,7 @@ interface TournamentData {
 }
 
 export default function LeaderboardPage() {
-    const { data: session } = useSession();
+    const { data: session, status } = useSession();
     const [currentTournament, setCurrentTournament] = useState<TournamentData | null>(null);
     const [currentUserRank, setCurrentUserRank] = useState<LeaderboardPlayer | null>(null);
     const [loading, setLoading] = useState(true);
@@ -85,7 +85,8 @@ export default function LeaderboardPage() {
         // Enhanced debug session data
         console.log('🔍 === SESSION DEBUG START ===');
         console.log('🔍 Full session object:', session);
-        console.log('🔍 Session status:', session ? 'ACTIVE' : 'NULL/UNDEFINED');
+        console.log('🔍 Session status:', status); // loading, authenticated, unauthenticated
+        console.log('🔍 Session active:', session ? 'ACTIVE' : 'NULL/UNDEFINED');
         console.log('🔍 Session wallet:', session?.user?.walletAddress || 'MISSING');
         console.log('🔍 Session username:', session?.user?.username || 'MISSING');
         console.log('🔍 Session user ID:', session?.user?.id || 'MISSING');
@@ -106,7 +107,7 @@ export default function LeaderboardPage() {
         return () => {
             clearInterval(timeInterval);
         };
-    }, [fetchCurrentTournament, session]);
+    }, [fetchCurrentTournament, session, status]);
 
     // Calculate time remaining for tournament (updates every second)
     const getTimeRemaining = () => {
@@ -291,6 +292,7 @@ export default function LeaderboardPage() {
                     {process.env.NODE_ENV === 'development' && (
                         <div style={{ fontSize: '10px', color: '#888', marginBottom: '5px' }}>
                             Debug Fixed Card:<br />
+                            SessionStatus={status}<br />
                             SessionExists={session ? 'YES' : 'NO'}<br />
                             WalletAddr={session?.user?.walletAddress || 'NONE'}<br />
                             Username={session?.user?.username || 'NONE'}<br />
@@ -301,11 +303,10 @@ export default function LeaderboardPage() {
                                     FoundWallet={currentUserRank.wallet}<br /></>
                             )}
                             CallbackCalled={currentUserRank ? 'YES' : 'NO'}<br />
-                            ExpectedWallet=0xedfbfe394cd0d087484a35c935a7cf491a156f0f
+                            ExpectedWallet=0xedfbfe394cd0d087484a35c935a7cf491a156f0f<br />
+                            NextAuthJWT={typeof window !== 'undefined' ? document.cookie.includes('authjs') ? 'Present' : 'Missing' : 'SSR'}
                         </div>
-                    )}
-
-                    {currentUserRank && (
+                    )}                    {currentUserRank && (
                         <PlayerRankCard
                             player={currentUserRank}
                             prizeAmount={calculatePrizeForRank(currentUserRank.rank || 1001, currentTournament.total_prize_pool)}
@@ -337,6 +338,21 @@ export default function LeaderboardPage() {
                             fontWeight: 'bold'
                         }}>
                             🔐 Sign in to see your rank
+                            <br />
+                            <button
+                                onClick={() => window.location.href = '/'}
+                                style={{
+                                    marginTop: '5px',
+                                    padding: '5px 10px',
+                                    background: '#00F5FF',
+                                    color: 'black',
+                                    border: 'none',
+                                    borderRadius: '5px',
+                                    fontSize: '10px'
+                                }}
+                            >
+                                Go to Home & Sign In
+                            </button>
                         </div>
                     )}
                 </div>
