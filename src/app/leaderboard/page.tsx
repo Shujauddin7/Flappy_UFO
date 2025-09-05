@@ -234,7 +234,7 @@ export default function LeaderboardPage() {
                 <div className="leaderboard-section">
                     <TournamentLeaderboard
                         tournamentId={currentTournament.id}
-                        currentUserId={session?.user?.walletAddress || session?.user?.id || null}
+                        currentUserId={session?.user?.walletAddress || null}
                         currentUsername={session?.user?.username || null}
                         isGracePeriod={timeRemaining?.status === 'grace'}
                         totalPrizePool={currentTournament.total_prize_pool}
@@ -263,7 +263,8 @@ export default function LeaderboardPage() {
                             WalletAddr={session?.user?.walletAddress || 'none'}<br />
                             Username={session?.user?.username || 'none'}<br />
                             UserId={session?.user?.id || 'none'}<br />
-                            Found={currentUserRank ? `${currentUserRank.username}@${currentUserRank.rank}` : 'null'}<br />
+                            Found={currentUserRank ? `${currentUserRank.username || 'no-username'}@rank-${currentUserRank.rank}` : 'null'}<br />
+                            FoundWallet={currentUserRank ? currentUserRank.wallet : 'none'}<br />
                             HasSession={session ? 'yes' : 'no'}<br />
                             CallbackCalled={currentUserRank ? 'yes' : 'no'}
                         </div>

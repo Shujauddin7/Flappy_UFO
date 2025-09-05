@@ -66,32 +66,25 @@ export const TournamentLeaderboard = ({
             if ((currentUserId || currentUsername) && onUserRankUpdate) {
                 let userRank = null;
 
-                // Strategy 1: Username match (most reliable for this app)
-                if (currentUsername) {
+                // Strategy 1: Direct wallet match (most reliable for this app since wallet is unique)
+                if (currentUserId) {
+                    userRank = players.find((player: LeaderboardPlayer) =>
+                        player.wallet === currentUserId ||
+                        (player.wallet && currentUserId && player.wallet.toLowerCase() === currentUserId.toLowerCase())
+                    );
+                }
+
+                // Strategy 2: Username match (secondary option)
+                if (!userRank && currentUsername) {
                     userRank = players.find((player: LeaderboardPlayer) =>
                         player.username === currentUsername
                     );
                 }
 
-                // Strategy 2: Direct wallet match
-                if (!userRank && currentUserId) {
-                    userRank = players.find((player: LeaderboardPlayer) =>
-                        player.wallet === currentUserId
-                    );
-                }
-
-                // Strategy 3: Direct user_id match
+                // Strategy 3: Direct user_id match (legacy support)
                 if (!userRank && currentUserId) {
                     userRank = players.find((player: LeaderboardPlayer) =>
                         player.user_id === currentUserId
-                    );
-                }
-
-                // Strategy 4: Case-insensitive wallet match
-                if (!userRank && currentUserId) {
-                    userRank = players.find((player: LeaderboardPlayer) =>
-                        player.wallet &&
-                        player.wallet.toLowerCase() === currentUserId.toLowerCase()
                     );
                 }
 
@@ -101,7 +94,7 @@ export const TournamentLeaderboard = ({
                         currentUserId,
                         currentUsername,
                         playersCount: players.length,
-                        foundUser: userRank ? `${userRank.username} (rank ${userRank.rank})` : 'Not found',
+                        foundUser: userRank ? `${userRank.username || 'no-username'} (rank ${userRank.rank}, wallet: ${userRank.wallet})` : 'Not found',
                         firstFewPlayers: players.slice(0, 3).map((p: LeaderboardPlayer) => ({
                             username: p.username,
                             wallet: p.wallet,
@@ -193,12 +186,11 @@ export const TournamentLeaderboard = ({
 
             <div className="leaderboard-list">
                 {allPlayers.map((player) => {
-                    // Check if this player is the current user using same matching logic
+                    // Check if this player is the current user using same matching logic as above
                     const isCurrentUser = currentUserId && (
                         player.wallet === currentUserId ||
-                        player.user_id === currentUserId ||
                         (player.wallet && currentUserId && player.wallet.toLowerCase() === currentUserId.toLowerCase())
-                    );
+                    ) || (currentUsername && player.username === currentUsername);
 
                     return (
                         <PlayerRankCard

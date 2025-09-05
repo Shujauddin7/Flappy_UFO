@@ -226,11 +226,15 @@ export async function POST(req: NextRequest) {
         // If user doesn't exist, create them
         if (userError && userError.code === 'PGRST116') {
             console.log('👤 User not found, creating new user...');
+
+            // Get username from session if available
+            const usernameFromSession = session?.user?.username || null;
+
             const { data: newUser, error: createError } = await supabase
                 .from('users')
                 .insert({
                     wallet: wallet,
-                    username: null,
+                    username: usernameFromSession, // Use session username
                     world_id: null,
                     total_tournaments_played: 0,
                     total_games_played: 0,
@@ -260,6 +264,22 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({
                 error: 'User setup failed'
             }, { status: 500 });
+        }
+
+        // Update username if user exists but has no username and session has one
+        if (!user.username && session?.user?.username) {
+            console.log('👤 Updating user username from session...');
+            const { data: updatedUser, error: updateError } = await supabase
+                .from('users')
+                .update({ username: session.user.username })
+                .eq('id', user.id)
+                .select('id, last_verified_date, last_verified_tournament_id, username, world_id')
+                .single();
+
+            if (!updateError && updatedUser) {
+                user = updatedUser;
+                console.log('✅ User username updated:', user.username);
+            }
         }
 
         // Check verification status - user must be verified for today's tournament
