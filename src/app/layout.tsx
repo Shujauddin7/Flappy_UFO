@@ -28,17 +28,19 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Allow NextAuth SessionProvider to handle session management properly
-  // Session will be restored from JWT tokens automatically
+  // Get the session on the server side to pass to SessionProvider
+  const { auth } = await import('@/auth');
+  const session = await auth();
+
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <ClientProviders session={null}>{children}</ClientProviders>
+        <ClientProviders session={session}>{children}</ClientProviders>
       </body>
     </html>
   );
