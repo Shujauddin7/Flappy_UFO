@@ -348,10 +348,29 @@ export default function LeaderboardPage() {
                                     color: 'black',
                                     border: 'none',
                                     borderRadius: '5px',
-                                    fontSize: '10px'
+                                    fontSize: '10px',
+                                    marginRight: '5px'
                                 }}
                             >
                                 Go to Home & Sign In
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    console.log('🔍 Testing session refresh...');
+                                    // Force reload to trigger session check
+                                    window.location.reload();
+                                }}
+                                style={{
+                                    marginTop: '5px',
+                                    padding: '5px 10px',
+                                    background: '#FF6B6B',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '5px',
+                                    fontSize: '10px'
+                                }}
+                            >
+                                Refresh Page
                             </button>
                         </div>
                     )}
