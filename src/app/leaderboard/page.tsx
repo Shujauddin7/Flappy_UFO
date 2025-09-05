@@ -288,25 +288,25 @@ export default function LeaderboardPage() {
                     maxWidth: '600px',
                     margin: '10px auto 0 auto'
                 }}>
-                    {/* Debug info - show what we have */}
-                    {process.env.NODE_ENV === 'development' && (
-                        <div style={{ fontSize: '10px', color: '#888', marginBottom: '5px' }}>
-                            Debug Fixed Card:<br />
-                            SessionStatus={status}<br />
-                            SessionExists={session ? 'YES' : 'NO'}<br />
-                            WalletAddr={session?.user?.walletAddress || 'NONE'}<br />
-                            Username={session?.user?.username || 'NONE'}<br />
-                            UserId={session?.user?.id || 'NONE'}<br />
-                            UserRankFound={currentUserRank ? 'YES' : 'NO'}<br />
-                            {currentUserRank && (
-                                <>FoundUser={currentUserRank.username || 'no-username'}@rank-{currentUserRank.rank}<br />
-                                    FoundWallet={currentUserRank.wallet}<br /></>
-                            )}
-                            CallbackCalled={currentUserRank ? 'YES' : 'NO'}<br />
-                            ExpectedWallet=0xedfbfe394cd0d087484a35c935a7cf491a156f0f<br />
-                            NextAuthJWT={typeof window !== 'undefined' ? document.cookie.includes('authjs') ? 'Present' : 'Missing' : 'SSR'}
-                        </div>
-                    )}                    {currentUserRank && (
+                    {/* Debug info - show what we have - ALWAYS VISIBLE FOR DEBUGGING */}
+                    <div style={{ fontSize: '10px', color: '#888', marginBottom: '5px', backgroundColor: 'rgba(255,255,255,0.1)', padding: '5px', borderRadius: '3px' }}>
+                        Debug Fixed Card:<br />
+                        SessionStatus={status}<br />
+                        SessionExists={session ? 'YES' : 'NO'}<br />
+                        WalletAddr={session?.user?.walletAddress || 'NONE'}<br />
+                        Username={session?.user?.username || 'NONE'}<br />
+                        UserId={session?.user?.id || 'NONE'}<br />
+                        UserRankFound={currentUserRank ? 'YES' : 'NO'}<br />
+                        {currentUserRank && (
+                            <>FoundUser={currentUserRank.username || 'no-username'}@rank-{currentUserRank.rank}<br />
+                                FoundWallet={currentUserRank.wallet}<br /></>
+                        )}
+                        CallbackCalled={currentUserRank ? 'YES' : 'NO'}<br />
+                        ExpectedWallet=0xedfbfe394cd0d087484a35c935a7cf491a156f0f<br />
+                        NextAuthJWT={typeof window !== 'undefined' ? document.cookie.includes('authjs') ? 'Present' : 'Missing' : 'SSR'}
+                    </div>
+
+                    {currentUserRank && (
                         <PlayerRankCard
                             player={currentUserRank}
                             prizeAmount={calculatePrizeForRank(currentUserRank.rank || 1001, currentTournament.total_prize_pool)}
