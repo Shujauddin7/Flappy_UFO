@@ -36,20 +36,10 @@ export const walletAuth = async () => {
     console.log(result.finalPayload);
   }
 
-  const signInResult = await signIn('credentials', {
+  return await signIn('credentials', {
     redirect: false, // Don't auto-redirect
     nonce,
     signedNonce,
     finalPayloadJson: JSON.stringify(result.finalPayload),
   });
-
-  console.log('🔍 SignIn result:', signInResult);
-
-  if (signInResult?.error) {
-    console.error('❌ Sign-in failed:', signInResult.error);
-    throw new Error(`Authentication failed: ${signInResult.error}`);
-  }
-
-  console.log('✅ Sign-in successful');
-  return signInResult;
 };

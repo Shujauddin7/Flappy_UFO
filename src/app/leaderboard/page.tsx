@@ -5,7 +5,6 @@ import { Page } from '@/components/PageLayout';
 import { TournamentLeaderboard } from '@/components/TournamentLeaderboard';
 import { PlayerRankCard } from '@/components/PlayerRankCard';
 import { useSession } from 'next-auth/react';
-import MobileDebugConsole from '@/components/MobileDebugConsole';
 
 interface LeaderboardPlayer {
     id: string;
@@ -29,22 +28,25 @@ interface TournamentData {
 }
 
 export default function LeaderboardPage() {
-    const { data: session, status } = useSession();
+    const { data: session } = useSession();
     const [currentTournament, setCurrentTournament] = useState<TournamentData | null>(null);
     const [currentUserRank, setCurrentUserRank] = useState<LeaderboardPlayer | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [currentTime, setCurrentTime] = useState(new Date());
+    const [shouldShowFixedCard, setShouldShowFixedCard] = useState(false);
 
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
-        console.log('🎯 handleUserRankUpdate called:', userRank);
-        console.log('🔍 Session data:', {
-            walletAddress: session?.user?.walletAddress,
-            username: session?.user?.username,
-            userId: session?.user?.id
-        });
         setCurrentUserRank(userRank);
-    }, [session]);
+
+        // Smart visibility logic like 8 Ball Pool
+        if (userRank && userRank.rank) {
+            // Show fixed card only if user is NOT in top 10 (outside visible area)
+            setShouldShowFixedCard(userRank.rank > 10);
+        } else {
+            setShouldShowFixedCard(false);
+        }
+    }, []);
 
     const calculatePrizeForRank = useCallback((rank: number, totalPrizePool: number): string | null => {
         if (rank > 10) return null;
@@ -82,23 +84,6 @@ export default function LeaderboardPage() {
     useEffect(() => {
         fetchCurrentTournament();
 
-        // Enhanced debug session data
-        console.log('🔍 === SESSION DEBUG START ===');
-        console.log('🔍 Full session object:', session);
-        console.log('🔍 Session status:', status); // loading, authenticated, unauthenticated
-        console.log('🔍 Session active:', session ? 'ACTIVE' : 'NULL/UNDEFINED');
-        console.log('🔍 Session wallet:', session?.user?.walletAddress || 'MISSING');
-        console.log('🔍 Session username:', session?.user?.username || 'MISSING');
-        console.log('🔍 Session user ID:', session?.user?.id || 'MISSING');
-        console.log('🔍 === SESSION DEBUG END ===');
-
-        // Log when session changes
-        if (session) {
-            console.log('✅ Session is active - user should appear in fixed card');
-        } else {
-            console.log('❌ No session - fixed card will be empty');
-        }
-
         // Update time every second for live countdown
         const timeInterval = setInterval(() => {
             setCurrentTime(new Date());
@@ -107,7 +92,7 @@ export default function LeaderboardPage() {
         return () => {
             clearInterval(timeInterval);
         };
-    }, [fetchCurrentTournament, session, status]);
+    }, [fetchCurrentTournament]);
 
     // Calculate time remaining for tournament (updates every second)
     const getTimeRemaining = () => {
@@ -255,15 +240,6 @@ export default function LeaderboardPage() {
                 </div>
 
                 <div className="leaderboard-section">
-                    {/* Debug info before TournamentLeaderboard */}
-                    {process.env.NODE_ENV === 'development' && (
-                        <div style={{ fontSize: '10px', color: '#888', marginBottom: '10px', padding: '5px', background: 'rgba(255,255,255,0.1)' }}>
-                            DEBUG - Props to TournamentLeaderboard:<br />
-                            currentUserId: {session?.user?.walletAddress || 'null'}<br />
-                            currentUsername: {session?.user?.username || 'null'}<br />
-                        </div>
-                    )}
-
                     <TournamentLeaderboard
                         tournamentId={currentTournament.id}
                         currentUserId={session?.user?.walletAddress || null}
@@ -274,109 +250,29 @@ export default function LeaderboardPage() {
                     />
                 </div>
 
-                {/* Fixed user position at bottom - always visible */}
-                <div className="fixed-user-position-container" style={{
-                    position: 'sticky',
-                    bottom: '80px',
-                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                    padding: '10px',
-                    marginTop: '10px',
-                    borderRadius: '10px',
-                    border: '2px solid #00F5FF',
-                    zIndex: 1000,
-                    width: '100%',
-                    maxWidth: '600px',
-                    margin: '10px auto 0 auto'
-                }}>
-                    {/* Debug info - show what we have - ALWAYS VISIBLE FOR DEBUGGING */}
-                    <div style={{ fontSize: '10px', color: '#888', marginBottom: '5px', backgroundColor: 'rgba(255,255,255,0.1)', padding: '5px', borderRadius: '3px' }}>
-                        Debug Fixed Card:<br />
-                        SessionStatus={status}<br />
-                        SessionExists={session ? 'YES' : 'NO'}<br />
-                        WalletAddr={session?.user?.walletAddress || 'NONE'}<br />
-                        Username={session?.user?.username || 'NONE'}<br />
-                        UserId={session?.user?.id || 'NONE'}<br />
-                        UserRankFound={currentUserRank ? 'YES' : 'NO'}<br />
-                        {currentUserRank && (
-                            <>FoundUser={currentUserRank.username || 'no-username'}@rank-{currentUserRank.rank}<br />
-                                FoundWallet={currentUserRank.wallet}<br /></>
-                        )}
-                        CallbackCalled={currentUserRank ? 'YES' : 'NO'}<br />
-                        ExpectedWallet=0xedfbfe394cd0d087484a35c935a7cf491a156f0f<br />
-                        NextAuthJWT={typeof window !== 'undefined' ? document.cookie.includes('authjs') ? 'Present' : 'Missing' : 'SSR'}
-                    </div>
-
-                    {currentUserRank && (
+                {/* Smart fixed user position - only show when user is outside top 10 */}
+                {shouldShowFixedCard && currentUserRank && (
+                    <div className="fixed-user-position-container" style={{
+                        position: 'sticky',
+                        bottom: '80px',
+                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                        padding: '10px',
+                        marginTop: '10px',
+                        borderRadius: '10px',
+                        border: '2px solid #00F5FF',
+                        zIndex: 1000,
+                        width: '100%',
+                        maxWidth: '600px',
+                        margin: '10px auto 0 auto'
+                    }}>
                         <PlayerRankCard
                             player={currentUserRank}
                             prizeAmount={calculatePrizeForRank(currentUserRank.rank || 1001, currentTournament.total_prize_pool)}
                             isCurrentUser={true}
                             isTopThree={false}
                         />
-                    )}
-
-                    {/* Show helpful message if user should be here but isn't */}
-                    {!currentUserRank && session?.user?.walletAddress && (
-                        <div style={{
-                            textAlign: 'center',
-                            color: '#888',
-                            fontSize: '12px',
-                            padding: '10px',
-                            fontStyle: 'italic'
-                        }}>
-                            {session.user.username || 'Your'} position will appear here after playing
-                        </div>
-                    )}
-
-                    {/* Show sign-in prompt if no session */}
-                    {!session && (
-                        <div style={{
-                            textAlign: 'center',
-                            color: '#00F5FF',
-                            fontSize: '12px',
-                            padding: '10px',
-                            fontWeight: 'bold'
-                        }}>
-                            🔐 Sign in to see your rank
-                            <br />
-                            <button
-                                onClick={() => window.location.href = '/'}
-                                style={{
-                                    marginTop: '5px',
-                                    padding: '5px 10px',
-                                    background: '#00F5FF',
-                                    color: 'black',
-                                    border: 'none',
-                                    borderRadius: '5px',
-                                    fontSize: '10px',
-                                    marginRight: '5px'
-                                }}
-                            >
-                                Go to Home & Sign In
-                            </button>
-                            <button
-                                onClick={async () => {
-                                    console.log('🔍 Testing session refresh...');
-                                    // Force reload to trigger session check
-                                    window.location.reload();
-                                }}
-                                style={{
-                                    marginTop: '5px',
-                                    padding: '5px 10px',
-                                    background: '#FF6B6B',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '5px',
-                                    fontSize: '10px'
-                                }}
-                            >
-                                Refresh Page
-                            </button>
-                        </div>
-                    )}
-                </div>
-
-                <div className="bottom-nav-container">
+                    </div>
+                )}                <div className="bottom-nav-container">
                     <div className="space-nav-icons">
                         <button
                             className="space-nav-btn home-nav"
@@ -395,7 +291,6 @@ export default function LeaderboardPage() {
                     </div>
                 </div>
             </Page.Main>
-            <MobileDebugConsole />
         </Page>
     );
 }

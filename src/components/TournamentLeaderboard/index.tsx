@@ -88,22 +88,6 @@ export const TournamentLeaderboard = ({
                     );
                 }
 
-                // Debug logging in development
-                if (process.env.NODE_ENV === 'development') {
-                    console.log('🔍 User matching debug:', {
-                        currentUserId,
-                        currentUsername,
-                        playersCount: players.length,
-                        foundUser: userRank ? `${userRank.username || 'no-username'} (rank ${userRank.rank}, wallet: ${userRank.wallet})` : 'Not found',
-                        firstFewPlayers: players.slice(0, 3).map((p: LeaderboardPlayer) => ({
-                            username: p.username,
-                            wallet: p.wallet,
-                            user_id: p.user_id,
-                            rank: p.rank
-                        }))
-                    });
-                }
-
                 // Always notify parent, even if null
                 onUserRankUpdate(userRank || null);
             }
