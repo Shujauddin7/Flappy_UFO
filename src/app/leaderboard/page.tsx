@@ -38,15 +38,13 @@ export default function LeaderboardPage() {
 
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
         setCurrentUserRank(userRank);
-
-        // Smart visibility logic like 8 Ball Pool
-        if (userRank && userRank.rank) {
-            // Show fixed card only if user is NOT in top 10 (outside visible area)
-            setShouldShowFixedCard(userRank.rank > 10);
-        } else {
-            setShouldShowFixedCard(false);
-        }
+        // We'll handle visibility based on scroll position, not rank number
     }, []);
+
+    const handleUserCardVisibility = useCallback((isVisible: boolean) => {
+        // Show fixed card only when user's actual card is NOT visible in viewport
+        setShouldShowFixedCard(!isVisible && currentUserRank !== null);
+    }, [currentUserRank]);
 
     const calculatePrizeForRank = useCallback((rank: number, totalPrizePool: number): string | null => {
         if (rank > 10) return null;
@@ -247,10 +245,11 @@ export default function LeaderboardPage() {
                         isGracePeriod={timeRemaining?.status === 'grace'}
                         totalPrizePool={currentTournament.total_prize_pool}
                         onUserRankUpdate={handleUserRankUpdate}
+                        onUserCardVisibility={handleUserCardVisibility}
                     />
                 </div>
 
-                {/* Smart fixed user position - only show when user is outside top 10 */}
+                {/* 8 Ball Pool style fixed card - shows when user's card is not visible in viewport */}
                 {shouldShowFixedCard && currentUserRank && (
                     <div className="fixed-user-position-container" style={{
                         position: 'sticky',

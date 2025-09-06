@@ -22,6 +22,7 @@ interface TournamentLeaderboardProps {
     refreshTrigger?: number; // Add this to trigger manual refresh
     totalPrizePool?: number; // Add real prize pool
     onUserRankUpdate?: (userRank: LeaderboardPlayer | null) => void; // Callback for user rank
+    onUserCardVisibility?: (isVisible: boolean) => void; // Callback for user card visibility
 }
 
 export const TournamentLeaderboard = ({
@@ -30,11 +31,42 @@ export const TournamentLeaderboard = ({
     isGracePeriod = false,
     refreshTrigger = 0,
     totalPrizePool = 0,
-    onUserRankUpdate
+    onUserRankUpdate,
+    onUserCardVisibility
 }: TournamentLeaderboardProps) => {
     const [topPlayers, setTopPlayers] = useState<LeaderboardPlayer[]>([]);
     const [allPlayers, setAllPlayers] = useState<LeaderboardPlayer[]>([]);
     const [loading, setLoading] = useState(true);
+    const [currentUserData, setCurrentUserData] = useState<LeaderboardPlayer | null>(null);
+
+    // Setup intersection observer for user card visibility
+    useEffect(() => {
+        if (!currentUserData || !onUserCardVisibility) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    onUserCardVisibility(entry.isIntersecting);
+                });
+            },
+            {
+                threshold: 0.1, // Trigger when 10% of the card is visible
+                rootMargin: '-80px 0px' // Account for fixed navigation at bottom
+            }
+        );
+
+        // Find and observe the user's card element
+        const userCardElement = document.querySelector(`[data-user-id="${currentUserData.wallet}"]`);
+        if (userCardElement) {
+            observer.observe(userCardElement);
+        }
+
+        return () => {
+            if (userCardElement) {
+                observer.unobserve(userCardElement);
+            }
+        };
+    }, [currentUserData, onUserCardVisibility]);
 
     const fetchLeaderboardData = useCallback(async () => {
         try {
@@ -90,6 +122,9 @@ export const TournamentLeaderboard = ({
 
                 // Always notify parent, even if null
                 onUserRankUpdate(userRank || null);
+
+                // Set current user data for intersection observer
+                setCurrentUserData(userRank || null);
             }
         } catch (err) {
             console.error('Failed to fetch leaderboard:', err);
@@ -177,13 +212,18 @@ export const TournamentLeaderboard = ({
                     ) || (currentUsername && player.username === currentUsername);
 
                     return (
-                        <PlayerRankCard
+                        <div
                             key={player.id}
-                            player={player}
-                            prizeAmount={player.rank && player.rank <= 10 ? getPrizeAmount(player.rank, totalPrizePool) : null}
-                            isCurrentUser={Boolean(isCurrentUser)}
-                            isTopThree={player.rank !== undefined && player.rank <= 3}
-                        />
+                            data-user-id={player.wallet}
+                            className={isCurrentUser ? "current-user-card" : ""}
+                        >
+                            <PlayerRankCard
+                                player={player}
+                                prizeAmount={player.rank && player.rank <= 10 ? getPrizeAmount(player.rank, totalPrizePool) : null}
+                                isCurrentUser={Boolean(isCurrentUser)}
+                                isTopThree={player.rank !== undefined && player.rank <= 3}
+                            />
+                        </div>
                     );
                 })}
             </div>
