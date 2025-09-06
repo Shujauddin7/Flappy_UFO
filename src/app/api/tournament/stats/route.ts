@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 export async function GET(req: NextRequest) {
-    console.log('📈 Tournament stats API called');
 
     try {
         // Environment-specific database configuration (following Plan.md specification)
@@ -46,7 +45,6 @@ export async function GET(req: NextRequest) {
 
         const tournamentDay = searchParams.get('tournament_day') || defaultTournamentDay;
 
-        console.log('🔍 Fetching tournament stats for:', tournamentDay);
 
         // Get comprehensive tournament statistics
         const { data: statsData, error: statsError } = await supabase
@@ -119,7 +117,6 @@ export async function GET(req: NextRequest) {
         // Calculate prize pool (70% of total collected including continues)
         stats.prize_pool = (stats.total_collected + stats.continue_revenue) * 0.7;
 
-        console.log('✅ Tournament stats calculated:', stats);
 
         return NextResponse.json({
             success: true,

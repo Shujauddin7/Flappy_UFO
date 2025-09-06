@@ -30,8 +30,6 @@ export async function POST(req: NextRequest) {
   if (verifyRes.success) {
     // Verification successful - World ID proof is valid
     // The actual nullifier_hash will be handled client-side in world-id-verification.ts
-    console.log('✅ World ID verification successful for action:', action);
-    console.log('🆔 Nullifier Hash:', payload.nullifier_hash);
     
     return NextResponse.json({ 
       success: true, 

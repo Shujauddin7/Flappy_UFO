@@ -4,12 +4,10 @@ import { signOut } from 'next-auth/react';
 import { useSession } from 'next-auth/react';
 
 function DevSignOut() {
-    console.log('DevSignOut component loaded, NODE_ENV:', process.env.NODE_ENV);
 
     const { data: session } = useSession();
 
     const handleSignOut = async (event: React.MouseEvent<HTMLButtonElement>) => {
-        console.log('DevSignOut: Sign out clicked');
 
         // Show loading state
         const button = event.target as HTMLButtonElement;
@@ -27,9 +25,7 @@ function DevSignOut() {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ wallet: session.user.walletAddress })
                     });
-                    console.log('DevSignOut: Cleared verification status from database');
                 } catch (verificationError) {
-                    console.warn('DevSignOut: Failed to clear verification status:', verificationError);
                     // Continue with sign out even if verification clear fails
                 }
 
@@ -39,14 +35,12 @@ function DevSignOut() {
 
             // Per Plan.md: Only clear verification from database, NOT localStorage
             // localStorage should only contain Practice Mode coins with tamper protection
-            console.log('DevSignOut: Cleared verification from database only - localStorage preserved per Plan.md');
 
             // Sign out without redirect to stay in the app
             await signOut({
                 redirect: false
             });
 
-            console.log('✅ DevSignOut: Successfully signed out');
 
             // Force reload to ensure complete state reset including verification status
             if (typeof window !== 'undefined') {
@@ -78,11 +72,9 @@ function DevSignOut() {
         process.env.NEXT_PUBLIC_SHOW_DEV_SIGNOUT !== 'false';
 
     if (!showDevSignOut) {
-        console.log('DevSignOut: Hidden (not in dev environment or explicitly disabled)');
         return null;
     }
 
-    console.log('DevSignOut: Rendering button in development mode');
 
     return (
         <div className="mt-4">

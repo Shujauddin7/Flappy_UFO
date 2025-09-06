@@ -9,7 +9,6 @@ export default function AdminSignOutPage() {
 
     const handleTriggerTournament = async () => {
         try {
-            console.log('🚀 Triggering tournament creation...');
 
             const response = await fetch('/api/tournament/trigger-now', {
                 method: 'POST',
@@ -20,7 +19,6 @@ export default function AdminSignOutPage() {
 
             if (response.ok) {
                 alert('✅ Tournament created successfully!\n\n' + result.message);
-                console.log('✅ Tournament trigger success:', result);
             } else {
                 alert('❌ Failed to create tournament:\n\n' + (result.error || 'Unknown error'));
                 console.error('❌ Tournament trigger failed:', result);
@@ -33,7 +31,6 @@ export default function AdminSignOutPage() {
 
     const handleDeleteTestTournament = async () => {
         try {
-            console.log('🗑️ Deleting test tournament...');
 
             const response = await fetch('/api/tournament/delete-test', {
                 method: 'DELETE'
@@ -43,7 +40,6 @@ export default function AdminSignOutPage() {
 
             if (response.ok) {
                 alert('✅ Test tournament deleted successfully!');
-                console.log('✅ Delete success:', result);
             } else {
                 alert('❌ Failed to delete test tournament:\n\n' + (result.error || 'Unknown error'));
                 console.error('❌ Delete failed:', result);
@@ -55,7 +51,6 @@ export default function AdminSignOutPage() {
     };
 
     const handleSignOut = async () => {
-        console.log('Admin SignOut: Starting COMPLETE sign out process');
 
         try {
             // Clear verification status from database if we have a session
@@ -66,7 +61,6 @@ export default function AdminSignOutPage() {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ wallet: session.user.walletAddress })
                     });
-                    console.log('Admin SignOut: Cleared verification status from database');
                 } catch (verificationError) {
                     console.warn('Admin SignOut: Failed to clear verification status:', verificationError);
                 }
@@ -90,7 +84,6 @@ export default function AdminSignOutPage() {
                 localStorage.setItem('justSignedOut', 'true');
                 localStorage.setItem('forceReauth', 'true');
 
-                console.log('Admin SignOut: CLEARED ALL BROWSER DATA');
             }
 
             // Sign out from NextAuth
@@ -98,7 +91,6 @@ export default function AdminSignOutPage() {
                 redirect: false
             });
 
-            console.log('✅ Admin SignOut: Complete sign out finished');
 
             // Force hard reload to completely reset everything
             if (typeof window !== 'undefined') {
@@ -116,7 +108,6 @@ export default function AdminSignOutPage() {
 
     // Add a force clear function for when no session is detected but user is still somehow logged in
     const handleForceClear = async () => {
-        console.log('Admin: Force clearing all data');
 
         if (typeof window !== 'undefined') {
             // Nuclear option - clear everything
@@ -138,7 +129,6 @@ export default function AdminSignOutPage() {
         try {
             await signOut({ redirect: false });
         } catch {
-            console.log('No session to sign out from');
         }
 
         // Hard redirect
