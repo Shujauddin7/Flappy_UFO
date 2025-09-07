@@ -100,10 +100,11 @@ export default function LeaderboardPage() {
         const utcHour = now.getUTCHours();
         const utcMinute = now.getUTCMinutes();
         const utcSecond = now.getUTCSeconds();
+        const utcDay = now.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
 
-        // Check if we're in grace period (15:00-15:30 UTC)
-        if (utcHour === 15 && utcMinute >= 0 && utcMinute < 30) {
-            const totalSecondsLeft = (29 - utcMinute) * 60 + (60 - utcSecond);
+        // Check if we're in grace period (Sunday 15:30-16:00 UTC)
+        if (utcDay === 0 && utcHour === 15 && utcMinute >= 30) {
+            const totalSecondsLeft = (59 - utcMinute) * 60 + (60 - utcSecond);
             const minutesLeft = Math.floor(totalSecondsLeft / 60);
             const secondsLeft = totalSecondsLeft % 60;
             return {
@@ -112,23 +113,36 @@ export default function LeaderboardPage() {
             };
         }
 
-        // Calculate time until next grace period (15:00 UTC tomorrow or today)
-        const tomorrow = new Date(now);
-        tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-        tomorrow.setUTCHours(15, 0, 0, 0);
+        // Calculate time until next Sunday 15:30 UTC
+        const nextSunday = new Date(now);
+        const daysUntilSunday = (7 - utcDay) % 7; // Days until next Sunday
 
-        const today15 = new Date(now);
-        today15.setUTCHours(15, 0, 0, 0);
+        // If it's Sunday but before 15:30, next tournament is today
+        if (utcDay === 0 && (utcHour < 15 || (utcHour === 15 && utcMinute < 30))) {
+            nextSunday.setUTCHours(15, 30, 0, 0);
+        } else {
+            // Next tournament is next Sunday
+            nextSunday.setUTCDate(nextSunday.getUTCDate() + (daysUntilSunday || 7));
+            nextSunday.setUTCHours(15, 30, 0, 0);
+        }
 
-        const nextGrace = now > today15 ? tomorrow : today15;
-        const msUntilGrace = nextGrace.getTime() - now.getTime();
-        const hoursLeft = Math.floor(msUntilGrace / (1000 * 60 * 60));
-        const minutesLeft = Math.floor((msUntilGrace % (1000 * 60 * 60)) / (1000 * 60));
-        const secondsLeft = Math.floor((msUntilGrace % (1000 * 60)) / 1000);
+        const msUntilNext = nextSunday.getTime() - now.getTime();
+        const daysLeft = Math.floor(msUntilNext / (1000 * 60 * 60 * 24));
+        const hoursLeft = Math.floor((msUntilNext % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutesLeft = Math.floor((msUntilNext % (1000 * 60 * 60)) / (1000 * 60));
+        const secondsLeft = Math.floor((msUntilNext % (1000 * 60)) / 1000);
+
+        // Format time display based on how much time is left
+        let timeDisplay = '';
+        if (daysLeft > 0) {
+            timeDisplay = `${daysLeft}d ${hoursLeft}h ${minutesLeft}m ${secondsLeft}s until tournament ends`;
+        } else {
+            timeDisplay = `${hoursLeft}h ${minutesLeft}m ${secondsLeft}s until tournament ends`;
+        }
 
         return {
             status: 'active',
-            timeLeft: `${hoursLeft}h ${minutesLeft}m ${secondsLeft}s until tournament ends`
+            timeLeft: timeDisplay
         };
     };
 
@@ -230,8 +244,19 @@ export default function LeaderboardPage() {
                                 </div>
                             )}
                             <div className="tournament-stats">
-                                <span className="players-count">👥 {currentTournament.total_players} Players</span>
-                                <span className="prize-pool">💎 {currentTournament.total_prize_pool.toFixed(2)} WLD Prize Pool</span>
+                                <div>
+                                    <span className="players-count">👥 {currentTournament.total_players} Players</span>
+                                    <span className="prize-pool">💎 {currentTournament.total_prize_pool.toFixed(2)} WLD Prize Pool</span>
+                                </div>
+                                <div className="protection-level">
+                                    {currentTournament.total_players >= 72 ? (
+                                        <span className="protection-high">🛡️ Level 3 Protection (95% Prize Pool)</span>
+                                    ) : currentTournament.total_players >= 30 ? (
+                                        <span className="protection-medium">🛡️ Level 2 Protection (85% Prize Pool)</span>
+                                    ) : (
+                                        <span className="protection-low">🛡️ Level 1 Protection (70% Prize Pool)</span>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>

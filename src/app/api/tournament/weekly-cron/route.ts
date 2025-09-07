@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
         // If it's Sunday and past 15:30, use current Sunday
         // Otherwise use the previous Sunday
         const tournamentDate = new Date(now);
-
+        
         if (utcDay === 0 && (utcHour > 15 || (utcHour === 15 && utcMinute >= 30))) {
             // It's Sunday after 15:30 UTC, use current Sunday
             // Keep current date

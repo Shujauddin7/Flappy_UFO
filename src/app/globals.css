@@ -1025,10 +1025,45 @@ body {
 
 .tournament-stats {
   display: flex;
-  justify-content: center;
-  gap: 1rem;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
   font-size: 0.85rem;
   color: #B0B3B8;
+}
+
+.tournament-stats>div:first-child {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.protection-level {
+  display: flex;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  backdrop-filter: blur(6px);
+}
+
+.protection-high {
+  color: #00FF88;
+  background: rgba(0, 255, 136, 0.15);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+}
+
+.protection-medium {
+  color: #FFD700;
+  background: rgba(255, 215, 0, 0.15);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.protection-low {
+  color: #FF6B6B;
+  background: rgba(255, 107, 107, 0.15);
+  border: 1px solid rgba(255, 107, 107, 0.3);
 }
 
 .tournament-leaderboard {

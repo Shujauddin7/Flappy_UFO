@@ -28,18 +28,27 @@ export async function GET(req: NextRequest) {
         // Get query parameters
         const searchParams = req.nextUrl.searchParams;
 
-        // Calculate tournament day using same logic as tournament system (15:30 UTC boundary)
+        // Calculate tournament day using same logic as tournament system (Sunday 15:30 UTC boundary)
+        // Updated for weekly tournaments - find current week's Sunday
         let defaultTournamentDay;
         if (!searchParams.get('tournament_day')) {
             const now = new Date();
+            const utcDay = now.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
             const utcHour = now.getUTCHours();
             const utcMinute = now.getUTCMinutes();
 
-            // Tournament day starts at 15:30 UTC, so if it's before 15:30, use yesterday's date
+            // Weekly tournament starts every Sunday at 15:30 UTC
             const tournamentDate = new Date(now);
-            if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
-                tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
+
+            if (utcDay === 0 && (utcHour > 15 || (utcHour === 15 && utcMinute >= 30))) {
+                // It's Sunday after 15:30 UTC, use current Sunday
+                // Keep current date
+            } else {
+                // Go back to the most recent Sunday
+                const daysBack = utcDay === 0 ? 7 : utcDay; // If Sunday before 15:30, go back 7 days
+                tournamentDate.setUTCDate(tournamentDate.getUTCDate() - daysBack);
             }
+
             defaultTournamentDay = tournamentDate.toISOString().split('T')[0];
         }
 
@@ -109,18 +118,53 @@ export async function GET(req: NextRequest) {
                 statsData.reduce((sum, record) => sum + (record.highest_score || 0), 0) / statsData.length
                 : 0,
 
-            // Prize pool calculation
-            prize_pool: 0,
             tournament_day: tournamentDay
         };
 
-        // Calculate prize pool (70% of total collected including continues)
-        stats.prize_pool = (stats.total_collected + stats.continue_revenue) * 0.7;
+        // Calculate total revenue (entry fees + continues)
+        const totalRevenue = stats.total_collected + stats.continue_revenue;
+
+        // Dynamic prize pool calculation based on player count (same logic as dynamic-prizes API)
+        let prizePoolPercentage: number;
+        let adminFeePercentage: number;
+        let protectionLevel: string;
+
+        if (stats.total_players >= 72) {
+            prizePoolPercentage = 70;
+            adminFeePercentage = 30;
+            protectionLevel = 'normal';
+        } else if (stats.total_players >= 30) {
+            prizePoolPercentage = 85;
+            adminFeePercentage = 15;
+            protectionLevel = 'protection';
+        } else {
+            prizePoolPercentage = 95;
+            adminFeePercentage = 5;
+            protectionLevel = 'maximum_protection';
+        }
+
+        const prizePoolAmount = totalRevenue * (prizePoolPercentage / 100);
+        const adminFeeAmount = totalRevenue * (adminFeePercentage / 100);
+
+        // Add dynamic prize pool info to stats
+        const enhancedStats = {
+            ...stats,
+            total_revenue: totalRevenue,
+            prize_pool: {
+                amount: prizePoolAmount,
+                percentage: prizePoolPercentage
+            },
+            admin_fee: {
+                amount: adminFeeAmount,
+                percentage: adminFeePercentage
+            },
+            protection_level: protectionLevel
+        };
 
 
         return NextResponse.json({
             success: true,
-            data: stats
+            data: enhancedStats
         });
 
     } catch (error) {
