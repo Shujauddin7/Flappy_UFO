@@ -124,18 +124,18 @@ export async function GET(req: NextRequest) {
         // Calculate total revenue (entry fees + continues)
         const totalRevenue = stats.total_collected + stats.continue_revenue;
 
-        // Dynamic prize pool calculation based on player count (same logic as dynamic-prizes API)
+        // Dynamic prize pool calculation based on WLD AMOUNT COLLECTED (as planned)
         let prizePoolPercentage: number;
         let adminFeePercentage: number;
         let protectionLevel: string;
         let protectionLevelNumber: number;
 
-        if (stats.total_players >= 72) {
+        if (totalRevenue >= 72) {
             prizePoolPercentage = 70;
             adminFeePercentage = 30;
             protectionLevel = 'normal';
             protectionLevelNumber = 1;
-        } else if (stats.total_players >= 30) {
+        } else if (totalRevenue >= 30) {
             prizePoolPercentage = 85;
             adminFeePercentage = 15;
             protectionLevel = 'protection';
