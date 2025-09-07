@@ -113,18 +113,24 @@ export async function POST(req: NextRequest) {
         }
 
         // Find the user tournament record - either by record_id or by user_id + tournament day
-        // Calculate tournament day using same logic as tournament system (15:30 UTC boundary)
+        // Calculate tournament day using same logic as weekly tournament system (Sunday 15:30 UTC boundary)
         const now = new Date();
         const utcHour = now.getUTCHours();
         const utcMinute = now.getUTCMinutes();
 
-        // Tournament day starts at 15:30 UTC, so if it's before 15:30, use yesterday's date
+        // Tournament week starts at 15:30 UTC Sunday, so if it's before 15:30, use last week's Sunday
         const tournamentDate = new Date(now);
         if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
             tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
         }
 
-        const tournamentDay = tournamentDate.toISOString().split('T')[0];
+        // Get the Sunday of this week for tournament_day
+        const dayOfWeek = tournamentDate.getUTCDay(); // 0 = Sunday
+        const daysToSubtract = dayOfWeek; // Days since last Sunday
+        const tournamentSunday = new Date(tournamentDate);
+        tournamentSunday.setUTCDate(tournamentDate.getUTCDate() - daysToSubtract);
+
+        const tournamentDay = tournamentSunday.toISOString().split('T')[0];
         let recordQuery = supabase
             .from('user_tournament_records')
             .select('id, user_id, highest_score, tournament_day, tournament_id, verified_at, verified_games_played, unverified_games_played, total_games_played, verified_entry_paid, standard_entry_paid, verified_paid_at, standard_paid_at, verified_entry_games, standard_entry_games, total_continues_used, total_continue_payments')

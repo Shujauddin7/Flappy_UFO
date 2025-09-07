@@ -139,8 +139,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Wallet mismatch' }, { status: 403 });
         }
 
-        // Get or create today's tournament using same logic as cron job
-        // Tournament day starts at 15:30 UTC, so if it's before 15:30, use yesterday's date
+        // Get or create current week's tournament using same logic as weekly-cron
+        // Tournament week starts at 15:30 UTC Sunday, so if it's before 15:30, use last week's Sunday
         const now = new Date();
         const utcHour = now.getUTCHours();
         const utcMinute = now.getUTCMinutes();
@@ -150,8 +150,14 @@ export async function POST(req: NextRequest) {
             tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
         }
 
-        const today = tournamentDate.toISOString().split('T')[0];
-        console.log('🔍 Looking for tournament on date:', today, '(using tournament boundary logic)');
+        // Get the Sunday of this week for tournament_day
+        const dayOfWeek = tournamentDate.getUTCDay(); // 0 = Sunday
+        const daysToSubtract = dayOfWeek; // Days since last Sunday
+        const tournamentSunday = new Date(tournamentDate);
+        tournamentSunday.setUTCDate(tournamentDate.getUTCDate() - daysToSubtract);
+
+        const today = tournamentSunday.toISOString().split('T')[0];
+        console.log('🔍 Looking for weekly tournament on date:', today, '(using weekly tournament boundary logic)');
 
         // First, try to get existing tournament for today
         const { data: tournament, error: tournamentFetchError } = await supabase
@@ -173,11 +179,11 @@ export async function POST(req: NextRequest) {
         // Ensure we have a tournament (either existing or newly created)
         let finalTournament = tournament;
 
-        // If no tournament exists for today, create one
+        // If no tournament exists for this week, create one
         if (!finalTournament) {
-            console.log('🏆 Creating new tournament for today:', today);
-            const startTime = new Date(today + 'T15:30:00Z'); // 15:30 UTC
-            const endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000); // 24 hours later
+            console.log('🏆 Creating new weekly tournament for week starting:', today);
+            const startTime = new Date(today + 'T15:30:00Z'); // 15:30 UTC Sunday
+            const endTime = new Date(startTime.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days later
 
             const { data: newTournament, error: tournamentCreateError } = await supabase
                 .from('tournaments')

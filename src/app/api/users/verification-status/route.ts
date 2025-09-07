@@ -40,20 +40,26 @@ export async function POST(req: NextRequest) {
 
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-        // Get current tournament info using tournament boundary logic (15:30 UTC)
+        // Get current tournament info using weekly tournament boundary logic (Sunday 15:30 UTC)
         const now = new Date();
         const utcHour = now.getUTCHours();
         const utcMinute = now.getUTCMinutes();
 
-        // Tournament day starts at 15:30 UTC, so if it's before 15:30, use yesterday's date
+        // Tournament week starts at 15:30 UTC Sunday, so if it's before 15:30, use last week's Sunday
         const tournamentDate = new Date(now);
         if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
             tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
         }
 
-        const today = tournamentDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+        // Get the Sunday of this week for tournament_day
+        const dayOfWeek = tournamentDate.getUTCDay(); // 0 = Sunday
+        const daysToSubtract = dayOfWeek; // Days since last Sunday
+        const tournamentSunday = new Date(tournamentDate);
+        tournamentSunday.setUTCDate(tournamentDate.getUTCDate() - daysToSubtract);
 
-        // Get today's tournament UUID from tournaments table
+        const today = tournamentSunday.toISOString().split('T')[0]; // YYYY-MM-DD format
+
+        // Get current week's tournament UUID from tournaments table
         const { data: tournament, error: tournamentError } = await supabase
             .from('tournaments')
             .select('id')
@@ -61,7 +67,7 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (tournamentError || !tournament) {
-            console.log('ℹ️ No tournament found for today:', today);
+            console.log('ℹ️ No tournament found for week starting:', today);
             // Return not verified if no tournament exists
             return NextResponse.json({
                 success: true,

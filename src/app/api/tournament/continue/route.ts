@@ -71,18 +71,24 @@ export async function POST(req: NextRequest) {
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
         const wallet = session.user.walletAddress;
 
-        // Calculate tournament day using tournament boundary logic (15:30 UTC)
+        // Calculate tournament day using weekly tournament boundary logic (Sunday 15:30 UTC)
         const now = new Date();
         const utcHour = now.getUTCHours();
         const utcMinute = now.getUTCMinutes();
 
-        // Tournament day starts at 15:30 UTC, so if it's before 15:30, use yesterday's date
+        // Tournament week starts at 15:30 UTC Sunday, so if it's before 15:30, use last week's Sunday
         const tournamentDate = new Date(now);
         if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
             tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
         }
 
-        const today = tournamentDate.toISOString().split('T')[0];
+        // Get the Sunday of this week for tournament_day
+        const dayOfWeek = tournamentDate.getUTCDay(); // 0 = Sunday
+        const daysToSubtract = dayOfWeek; // Days since last Sunday
+        const tournamentSunday = new Date(tournamentDate);
+        tournamentSunday.setUTCDate(tournamentDate.getUTCDate() - daysToSubtract);
+
+        const today = tournamentSunday.toISOString().split('T')[0];
 
         // Get user
         const { data: user, error: userError } = await supabase

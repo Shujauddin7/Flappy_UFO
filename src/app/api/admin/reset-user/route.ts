@@ -51,19 +51,25 @@ export async function POST(req: NextRequest) {
             console.log('✅ User verification status cleared');
         }
 
-        // 2. Delete user tournament records for today (fresh start)
-        // Calculate tournament day using tournament boundary logic (15:30 UTC)
+        // 2. Delete user tournament records for current week (fresh start)
+        // Calculate tournament day using weekly tournament boundary logic (Sunday 15:30 UTC)
         const now = new Date();
         const utcHour = now.getUTCHours();
         const utcMinute = now.getUTCMinutes();
 
-        // Tournament day starts at 15:30 UTC, so if it's before 15:30, use yesterday's date
+        // Tournament week starts at 15:30 UTC Sunday, so if it's before 15:30, use last week's Sunday
         const tournamentDate = new Date(now);
         if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
             tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
         }
 
-        const today = tournamentDate.toISOString().split('T')[0];
+        // Get the Sunday of this week for tournament_day
+        const dayOfWeek = tournamentDate.getUTCDay(); // 0 = Sunday
+        const daysToSubtract = dayOfWeek; // Days since last Sunday
+        const tournamentSunday = new Date(tournamentDate);
+        tournamentSunday.setUTCDate(tournamentDate.getUTCDate() - daysToSubtract);
+
+        const today = tournamentSunday.toISOString().split('T')[0];
         const { error: deleteRecordsError } = await supabase
             .from('user_tournament_records')
             .delete()
@@ -73,10 +79,10 @@ export async function POST(req: NextRequest) {
         if (deleteRecordsError) {
             console.error('❌ Error deleting tournament records:', deleteRecordsError);
         } else {
-            console.log('✅ Tournament records deleted for today');
+            console.log('✅ Tournament records deleted for current week');
         }
 
-        // 3. Delete game scores for today (fresh start)
+        // 3. Delete game scores for current week (fresh start)
         const { error: deleteScoresError } = await supabase
             .from('game_scores')
             .delete()
