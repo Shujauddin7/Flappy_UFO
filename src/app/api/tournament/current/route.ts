@@ -26,24 +26,33 @@ export async function GET() {
         // Initialize Supabase client with service role key for full permissions
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-        // Calculate tournament day using Plan.md logic: 15:30 UTC boundary (not calendar day)
+        // Calculate tournament day using same logic as weekly-cron
         const now = new Date();
+        const utcDay = now.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
         const utcHour = now.getUTCHours();
         const utcMinute = now.getUTCMinutes();
 
-        // Tournament day starts at 15:30 UTC, so if it's before 15:30, use yesterday's date
+        // Tournament week starts at 15:30 UTC Sunday, so if it's before 15:30, use last week's Sunday
         const tournamentDate = new Date(now);
         if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
             tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
         }
 
-        const tournamentDay = tournamentDate.toISOString().split('T')[0];
+        // Get the Sunday of this week for tournament_day
+        const dayOfWeek = tournamentDate.getUTCDay(); // 0 = Sunday
+        const daysToSubtract = dayOfWeek; // Days since last Sunday
+        const tournamentSunday = new Date(tournamentDate);
+        tournamentSunday.setUTCDate(tournamentDate.getUTCDate() - daysToSubtract);
 
-        console.log('🗓️ Looking for tournament:', {
+        const tournamentDay = tournamentSunday.toISOString().split('T')[0];
+
+        console.log('🗓️ Looking for weekly tournament:', {
             current_utc: now.toISOString(),
             tournament_day: tournamentDay,
+            utc_day: utcDay,
             utc_hour: utcHour,
-            utc_minute: utcMinute
+            utc_minute: utcMinute,
+            tournament_sunday: tournamentSunday.toISOString()
         });
 
         // Fetch current tournament using proper tournament day logic
