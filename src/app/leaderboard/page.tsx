@@ -23,6 +23,9 @@ interface TournamentData {
     is_active: boolean;
     total_players: number;
     total_prize_pool: number;
+    total_collected: number;
+    admin_fee: number;
+    protection_level: number;
     start_time: string;
     end_time: string;
 }
@@ -247,11 +250,12 @@ export default function LeaderboardPage() {
                                 <div>
                                     <span className="players-count">👥 {currentTournament.total_players} Players</span>
                                     <span className="prize-pool">💎 {currentTournament.total_prize_pool.toFixed(2)} WLD Prize Pool</span>
+                                    <span className="total-collected">💰 {currentTournament.total_collected.toFixed(2)} WLD Collected</span>
                                 </div>
                                 <div className="protection-level">
-                                    {currentTournament.total_players >= 72 ? (
+                                    {currentTournament.protection_level === 3 ? (
                                         <span className="protection-high">🛡️ Level 3 Protection (95% Prize Pool)</span>
-                                    ) : currentTournament.total_players >= 30 ? (
+                                    ) : currentTournament.protection_level === 2 ? (
                                         <span className="protection-medium">🛡️ Level 2 Protection (85% Prize Pool)</span>
                                     ) : (
                                         <span className="protection-low">🛡️ Level 1 Protection (70% Prize Pool)</span>
