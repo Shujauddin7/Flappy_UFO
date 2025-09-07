@@ -31,19 +31,26 @@ export async function GET(req: NextRequest) {
         const limit = parseInt(searchParams.get('limit') || '10');
         const offset = parseInt(searchParams.get('offset') || '0');
 
-        // Calculate tournament day using same logic as tournament system (15:30 UTC boundary)
+        // Calculate tournament day using weekly tournament logic: Sunday 15:30 UTC boundary
         let defaultTournamentDay;
         if (!searchParams.get('tournament_day')) {
             const now = new Date();
             const utcHour = now.getUTCHours();
             const utcMinute = now.getUTCMinutes();
 
-            // Tournament day starts at 15:30 UTC, so if it's before 15:30, use yesterday's date
+            // Tournament week starts at 15:30 UTC Sunday, so if it's before 15:30, use last week's Sunday
             const tournamentDate = new Date(now);
             if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
                 tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
             }
-            defaultTournamentDay = tournamentDate.toISOString().split('T')[0];
+
+            // Get the Sunday of this week for tournament_day
+            const dayOfWeek = tournamentDate.getUTCDay(); // 0 = Sunday
+            const daysToSubtract = dayOfWeek; // Days since last Sunday
+            const tournamentSunday = new Date(tournamentDate);
+            tournamentSunday.setUTCDate(tournamentDate.getUTCDate() - daysToSubtract);
+
+            defaultTournamentDay = tournamentSunday.toISOString().split('T')[0];
         }
 
         const tournamentDay = searchParams.get('tournament_day') || defaultTournamentDay;
