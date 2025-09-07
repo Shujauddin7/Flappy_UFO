@@ -25,7 +25,7 @@ function DevSignOut() {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ wallet: session.user.walletAddress })
                     });
-                } catch (verificationError) {
+                } catch {
                     // Continue with sign out even if verification clear fails
                 }
 
