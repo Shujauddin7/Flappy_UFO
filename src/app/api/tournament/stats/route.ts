@@ -128,23 +128,44 @@ export async function GET(req: NextRequest) {
         let prizePoolPercentage: number;
         let adminFeePercentage: number;
         let protectionLevel: string;
+        let protectionLevelNumber: number;
 
         if (stats.total_players >= 72) {
             prizePoolPercentage = 70;
             adminFeePercentage = 30;
             protectionLevel = 'normal';
+            protectionLevelNumber = 1;
         } else if (stats.total_players >= 30) {
             prizePoolPercentage = 85;
             adminFeePercentage = 15;
             protectionLevel = 'protection';
+            protectionLevelNumber = 2;
         } else {
             prizePoolPercentage = 95;
             adminFeePercentage = 5;
             protectionLevel = 'maximum_protection';
+            protectionLevelNumber = 3;
         }
 
         const prizePoolAmount = totalRevenue * (prizePoolPercentage / 100);
         const adminFeeAmount = totalRevenue * (adminFeePercentage / 100);
+
+        // Update tournaments table with calculated values (NEW)
+        const { error: updateError } = await supabase
+            .from('tournaments')
+            .update({
+                total_players: stats.total_players,
+                total_collected: totalRevenue,
+                total_prize_pool: prizePoolAmount,
+                admin_fee: adminFeeAmount,
+                protection_level: protectionLevelNumber
+            })
+            .eq('tournament_day', tournamentDay);
+
+        if (updateError) {
+            console.error('❌ Error updating tournament stats:', updateError);
+            // Don't fail the API, just log the error
+        }
 
         // Add dynamic prize pool info to stats
         const enhancedStats = {
@@ -158,7 +179,8 @@ export async function GET(req: NextRequest) {
                 amount: adminFeeAmount,
                 percentage: adminFeePercentage
             },
-            protection_level: protectionLevel
+            protection_level: protectionLevel,
+            protection_level_number: protectionLevelNumber
         };
 
 
