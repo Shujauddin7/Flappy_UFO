@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
         // If it's Sunday and past 15:30, use current Sunday
         // Otherwise use the previous Sunday
         const tournamentDate = new Date(now);
-        
+
         if (utcDay === 0 && (utcHour > 15 || (utcHour === 15 && utcMinute >= 30))) {
             // It's Sunday after 15:30 UTC, use current Sunday
             // Keep current date
@@ -168,6 +168,9 @@ export async function GET(req: NextRequest) {
                     is_active: true,
                     total_players: 0,
                     total_prize_pool: 0.0,
+                    total_collected: 0.0,
+                    admin_fee: 0.0,
+                    protection_level: 3,  // Start with maximum protection (95%) for 0 WLD collected
                     start_time: tournamentStartTime.toISOString(),
                     end_time: tournamentEndTime.toISOString(),
                     created_at: new Date().toISOString()
