@@ -250,7 +250,6 @@ export default function LeaderboardPage() {
                                 <div>
                                     <span className="players-count">👥 {currentTournament.total_players} Players</span>
                                     <span className="prize-pool">💎 {currentTournament.total_prize_pool.toFixed(2)} WLD Prize Pool</span>
-                                    <span className="total-collected">💰 {currentTournament.total_collected.toFixed(2)} WLD Collected</span>
                                 </div>
                                 <div className="protection-level">
                                     {currentTournament.protection_level === 3 ? (

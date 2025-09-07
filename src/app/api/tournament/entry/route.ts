@@ -37,7 +37,7 @@ async function updateUserTournamentCount(supabase: any, userId: string) {
     }
 }
 
-// Helper function to update tournament player count and prize pool
+// Helper function to update tournament player count and analytics (total_collected, admin_fee, protection_level)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function updateTournamentPlayerCount(supabase: any, tournamentId: string) {
     try {
@@ -53,35 +53,66 @@ async function updateTournamentPlayerCount(supabase: any, tournamentId: string) 
         }
 
         const uniquePlayerCount = data?.length || 0;
-        // Calculate total prize pool from ALL payments: entry payments + continue payments
+        // Calculate total revenue from ALL payments: entry payments + continue payments
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const totalCollected = data?.reduce((sum: number, record: any) => {
+        const totalRevenue = data?.reduce((sum: number, record: any) => {
             const entryPayments = (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0);
             const continuePayments = record.total_continue_payments || 0;
             return sum + entryPayments + continuePayments;
         }, 0) || 0;
 
-        const totalPrizePool = totalCollected * 0.7; // 70% goes to prize pool
+        // Calculate protection level based on WLD amount collected (as per Plan.md)
+        let prizePoolPercentage: number;
+        let adminFeePercentage: number;
+        let protectionLevelNumber: number;
 
-        console.log('💰 Prize pool calculation:', {
-            totalCollected,
+        if (totalRevenue >= 72) {
+            prizePoolPercentage = 70;
+            adminFeePercentage = 30;
+            protectionLevelNumber = 1;
+        } else if (totalRevenue >= 30) {
+            prizePoolPercentage = 85;
+            adminFeePercentage = 15;
+            protectionLevelNumber = 2;
+        } else {
+            prizePoolPercentage = 95;
+            adminFeePercentage = 5;
+            protectionLevelNumber = 3;
+        }
+
+        const totalPrizePool = totalRevenue * (prizePoolPercentage / 100);
+        const adminFeeAmount = totalRevenue * (adminFeePercentage / 100);
+
+        console.log('💰 Tournament analytics update:', {
+            totalRevenue,
             totalPrizePool,
+            adminFeeAmount,
+            protectionLevel: protectionLevelNumber,
             entries: data?.length
         });
 
-        // Update tournament with player count and prize pool
+        // Update tournament with all analytics
         const { error: updateError } = await supabase
             .from('tournaments')
             .update({
                 total_players: uniquePlayerCount,
-                total_prize_pool: totalPrizePool
+                total_prize_pool: totalPrizePool,
+                total_collected: totalRevenue,
+                admin_fee: adminFeeAmount,
+                protection_level: protectionLevelNumber
             })
             .eq('id', tournamentId);
 
         if (updateError) {
-            console.error('❌ Error updating tournament player count:', updateError);
+            console.error('❌ Error updating tournament analytics:', updateError);
         } else {
-            console.log('✅ Tournament stats updated:', { players: uniquePlayerCount, prize_pool: totalPrizePool });
+            console.log('✅ Tournament analytics updated:', {
+                players: uniquePlayerCount,
+                prize_pool: totalPrizePool,
+                total_collected: totalRevenue,
+                admin_fee: adminFeeAmount,
+                protection_level: protectionLevelNumber
+            });
         }
     } catch (error) {
         console.error('❌ Error in updateTournamentPlayerCount:', error);
