@@ -52,7 +52,8 @@ export default function LeaderboardPage() {
     const calculatePrizeForRank = useCallback((rank: number, totalPrizePool: number): string | null => {
         if (rank > 10) return null;
 
-        const prizePercentages = [50, 25, 15, 3, 2, 2, 1, 1, 0.5, 0.5];
+        // Prize distribution per Plan.md - Rank Distribution (Top 10 Winners Only)
+        const prizePercentages = [40, 22, 14, 6, 5, 4, 3, 2, 2, 2];
         const percentage = prizePercentages[rank - 1] || 0;
         const prizeAmount = (totalPrizePool * percentage) / 100;
 
