@@ -124,31 +124,17 @@ export async function GET(req: NextRequest) {
         // Calculate total revenue (entry fees + continues)
         const totalRevenue = stats.total_collected + stats.continue_revenue;
 
-        // Dynamic prize pool calculation based on WLD AMOUNT COLLECTED (as planned)
-        let prizePoolPercentage: number;
-        let adminFeePercentage: number;
-        let protectionLevel: string;
-        let protectionLevelNumber: number;
-
-        if (totalRevenue >= 72) {
-            prizePoolPercentage = 70;
-            adminFeePercentage = 30;
-            protectionLevel = 'normal';
-            protectionLevelNumber = 1;
-        } else if (totalRevenue >= 30) {
-            prizePoolPercentage = 85;
-            adminFeePercentage = 15;
-            protectionLevel = 'protection';
-            protectionLevelNumber = 2;
-        } else {
-            prizePoolPercentage = 95;
-            adminFeePercentage = 5;
-            protectionLevel = 'maximum_protection';
-            protectionLevelNumber = 3;
-        }
-
-        const prizePoolAmount = totalRevenue * (prizePoolPercentage / 100);
-        const adminFeeAmount = totalRevenue * (adminFeePercentage / 100);
+        // New guarantee system (simple 70/30 split + guarantee when needed)
+        const adminFeePercentage = 30;
+        const prizePoolPercentage = 70;
+        
+        const adminFee = totalRevenue * (adminFeePercentage / 100);
+        const basePrizePool = totalRevenue * (prizePoolPercentage / 100);
+        
+        // Add guarantee if needed (when revenue < 72 WLD)
+        const guaranteeAmount = totalRevenue < 72 ? 10 : 0;
+        const finalPrizePool = basePrizePool + guaranteeAmount;
+        const adminNetResult = adminFee - guaranteeAmount;
 
         // Update tournaments table with calculated values (NEW)
         const { error: updateError } = await supabase
@@ -156,9 +142,10 @@ export async function GET(req: NextRequest) {
             .update({
                 total_players: stats.total_players,
                 total_collected: totalRevenue,
-                total_prize_pool: prizePoolAmount,
-                admin_fee: adminFeeAmount,
-                protection_level: protectionLevelNumber
+                total_prize_pool: finalPrizePool,
+                admin_fee: adminFee,
+                guarantee_amount: guaranteeAmount,
+                admin_net_result: adminNetResult
             })
             .eq('tournament_day', tournamentDay);
 
@@ -172,15 +159,18 @@ export async function GET(req: NextRequest) {
             ...stats,
             total_revenue: totalRevenue,
             prize_pool: {
-                amount: prizePoolAmount,
+                base_amount: basePrizePool,
+                guarantee_amount: guaranteeAmount,
+                final_amount: finalPrizePool,
                 percentage: prizePoolPercentage
             },
             admin_fee: {
-                amount: adminFeeAmount,
-                percentage: adminFeePercentage
+                amount: adminFee,
+                percentage: adminFeePercentage,
+                guarantee_cost: guaranteeAmount,
+                net_result: adminNetResult
             },
-            protection_level: protectionLevel,
-            protection_level_number: protectionLevelNumber
+            guarantee_applied: guaranteeAmount > 0
         };
 
 
