@@ -52,43 +52,33 @@ export async function GET(req: NextRequest) {
             return sum + verifiedAmount + standardAmount + continueAmount;
         }, 0);
 
-        // Dynamic prize pool logic (from newprize.md)
-        let prizePoolPercentage: number;
-        let adminFeePercentage: number;
-        let protectionLevel: string;
-
-        if (totalRevenue >= 72) {
-            prizePoolPercentage = 70;
-            adminFeePercentage = 30;
-            protectionLevel = 'normal';
-        } else if (totalRevenue >= 30) {
-            prizePoolPercentage = 85;
-            adminFeePercentage = 15;
-            protectionLevel = 'protection';
-        } else {
-            prizePoolPercentage = 95;
-            adminFeePercentage = 5;
-            protectionLevel = 'maximum_protection';
-        }
-
-        const prizePoolAmount = totalRevenue * (prizePoolPercentage / 100);
-        const adminFeeAmount = totalRevenue * (adminFeePercentage / 100);
+        // New guarantee system (simple 70/30 split + guarantee when needed)
+        const adminFeePercentage = 30;
+        const prizePoolPercentage = 70;
+        
+        const adminFee = totalRevenue * (adminFeePercentage / 100);
+        const basePrizePool = totalRevenue * (prizePoolPercentage / 100);
+        
+        // Add guarantee if needed (when revenue < 72 WLD)
+        const guaranteeAmount = totalRevenue < 72 ? 10 : 0;
+        const finalPrizePool = basePrizePool + guaranteeAmount;
+        const adminNetResult = adminFee - guaranteeAmount;
 
         // Prize distribution percentages (same as Plan.md)
         const prizeDistribution = [
-            { rank: 1, percentage: 40, amount: prizePoolAmount * 0.40 },
-            { rank: 2, percentage: 22, amount: prizePoolAmount * 0.22 },
-            { rank: 3, percentage: 14, amount: prizePoolAmount * 0.14 },
-            { rank: 4, percentage: 6, amount: prizePoolAmount * 0.06 },
-            { rank: 5, percentage: 5, amount: prizePoolAmount * 0.05 },
-            { rank: 6, percentage: 4, amount: prizePoolAmount * 0.04 },
-            { rank: 7, percentage: 3, amount: prizePoolAmount * 0.03 },
-            { rank: 8, percentage: 2, amount: prizePoolAmount * 0.02 },
-            { rank: 9, percentage: 2, amount: prizePoolAmount * 0.02 },
-            { rank: 10, percentage: 2, amount: prizePoolAmount * 0.02 }
+            { rank: 1, percentage: 40, amount: finalPrizePool * 0.40 },
+            { rank: 2, percentage: 22, amount: finalPrizePool * 0.22 },
+            { rank: 3, percentage: 14, amount: finalPrizePool * 0.14 },
+            { rank: 4, percentage: 6, amount: finalPrizePool * 0.06 },
+            { rank: 5, percentage: 5, amount: finalPrizePool * 0.05 },
+            { rank: 6, percentage: 4, amount: finalPrizePool * 0.04 },
+            { rank: 7, percentage: 3, amount: finalPrizePool * 0.03 },
+            { rank: 8, percentage: 2, amount: finalPrizePool * 0.02 },
+            { rank: 9, percentage: 2, amount: finalPrizePool * 0.02 },
+            { rank: 10, percentage: 2, amount: finalPrizePool * 0.02 }
         ];
 
-        console.log(`💰 Prize calculation: ${totalRevenue} WLD → ${prizePoolPercentage}% pool (${protectionLevel})`);
+        console.log(`💰 Prize calculation: ${totalRevenue} WLD → ${prizePoolPercentage}% pool + ${guaranteeAmount} WLD guarantee`);
 
         return NextResponse.json({
             success: true,
@@ -96,13 +86,17 @@ export async function GET(req: NextRequest) {
             total_revenue: totalRevenue,
             prize_pool: {
                 percentage: prizePoolPercentage,
-                amount: prizePoolAmount
+                base_amount: basePrizePool,
+                guarantee_amount: guaranteeAmount,
+                final_amount: finalPrizePool
             },
             admin_fee: {
                 percentage: adminFeePercentage,
-                amount: adminFeeAmount
+                amount: adminFee,
+                guarantee_cost: guaranteeAmount,
+                net_result: adminNetResult
             },
-            protection_level: protectionLevel,
+            guarantee_applied: guaranteeAmount > 0,
             prize_distribution: prizeDistribution,
             total_players: tournamentRecords.length
         });
