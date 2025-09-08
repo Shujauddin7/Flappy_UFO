@@ -150,6 +150,30 @@ export async function POST(req: NextRequest) {
         // Initialize Supabase client with environment-specific credentials
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+        // GRACE PERIOD VALIDATION - Check if we're in the Sunday grace period (15:00-15:30 UTC)
+        const currentTime = new Date();
+        const currentUtcDay = currentTime.getUTCDay(); // 0 = Sunday
+        const currentUtcHour = currentTime.getUTCHours();
+        const currentUtcMinute = currentTime.getUTCMinutes();
+
+        // Grace period: Sunday 15:00-15:30 UTC (no new entries allowed)
+        const isGracePeriod = currentUtcDay === 0 && currentUtcHour === 15 && currentUtcMinute >= 0 && currentUtcMinute < 30;
+
+        if (isGracePeriod) {
+            console.log('🚫 Tournament entry blocked - Grace period active:', {
+                utc_time: currentTime.toISOString(),
+                utc_day: currentUtcDay,
+                utc_hour: currentUtcHour,
+                utc_minute: currentUtcMinute
+            });
+            return NextResponse.json({
+                error: 'Tournament entries are closed during the grace period',
+                message: 'New entries are not allowed during Sunday 15:00-15:30 UTC while prizes are being calculated',
+                grace_period: true,
+                retry_after: '15:30 UTC Sunday'
+            }, { status: 423 }); // 423 Locked status code
+        }
+
         // Get session using the new auth() function
         const session = await auth();
         if (!session?.user?.walletAddress) {
@@ -172,12 +196,12 @@ export async function POST(req: NextRequest) {
 
         // Get or create current week's tournament using same logic as weekly-cron
         // Tournament week starts at 15:30 UTC Sunday, so if it's before 15:30, use last week's Sunday
-        const now = new Date();
-        const utcHour = now.getUTCHours();
-        const utcMinute = now.getUTCMinutes();
+        const tournamentTime = new Date();
+        const tournamentUtcHour = tournamentTime.getUTCHours();
+        const tournamentUtcMinute = tournamentTime.getUTCMinutes();
 
-        const tournamentDate = new Date(now);
-        if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
+        const tournamentDate = new Date(tournamentTime);
+        if (tournamentUtcHour < 15 || (tournamentUtcHour === 15 && tournamentUtcMinute < 30)) {
             tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
         }
 

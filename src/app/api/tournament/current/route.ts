@@ -86,7 +86,8 @@ export async function GET() {
         }
 
         // Calculate tournament status based on Plan.md timing rules
-        const isGracePeriod = utcHour === 15 && utcMinute >= 0 && utcMinute < 30;
+        // Grace period: Sunday 15:00-15:30 UTC (weekly tournaments)
+        const isGracePeriod = utcDay === 0 && utcHour === 15 && utcMinute >= 0 && utcMinute < 30;
 
         const tournamentStatus = {
             is_grace_period: isGracePeriod,

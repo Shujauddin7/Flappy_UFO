@@ -105,14 +105,14 @@ export default function LeaderboardPage() {
         const utcSecond = now.getUTCSeconds();
         const utcDay = now.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
 
-        // Check if we're in grace period (Sunday 15:30-16:00 UTC)
-        if (utcDay === 0 && utcHour === 15 && utcMinute >= 30) {
-            const totalSecondsLeft = (59 - utcMinute) * 60 + (60 - utcSecond);
+        // Check if we're in grace period (Sunday 15:00-15:30 UTC)
+        if (utcDay === 0 && utcHour === 15 && utcMinute >= 0 && utcMinute < 30) {
+            const totalSecondsLeft = (30 - utcMinute - 1) * 60 + (60 - utcSecond);
             const minutesLeft = Math.floor(totalSecondsLeft / 60);
             const secondsLeft = totalSecondsLeft % 60;
             return {
                 status: 'grace',
-                timeLeft: `${minutesLeft}m ${secondsLeft}s until new tournament`
+                timeLeft: `${minutesLeft}m ${secondsLeft}s calculating prizes...`
             };
         }
 

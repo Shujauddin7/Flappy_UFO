@@ -61,6 +61,9 @@ export default function FlappyGame({
     continueFromScore = 0
 }: FlappyGameProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [isGracePeriod, setIsGracePeriod] = useState(false);
+    const [gracePeriodMessage, setGracePeriodMessage] = useState('');
+
     const gameStateRef = useRef<GameState>({
         ufo: { x: 100, y: 300, velocity: 0, rotation: 0 },
         obstacles: [],
@@ -100,6 +103,42 @@ export default function FlappyGame({
             planetImagesRef.current[planet] = img;
         });
     }, []);
+
+    // Check for grace period (Sunday 15:00-15:30 UTC) - only for tournament mode
+    useEffect(() => {
+        if (gameMode !== 'tournament') {
+            setIsGracePeriod(false);
+            setGracePeriodMessage('');
+            return;
+        }
+
+        const checkGracePeriod = () => {
+            const now = new Date();
+            const utcDay = now.getUTCDay(); // 0 = Sunday
+            const utcHour = now.getUTCHours();
+            const utcMinute = now.getUTCMinutes();
+
+            // Grace period: Sunday 15:00-15:30 UTC
+            const inGracePeriod = utcDay === 0 && utcHour === 15 && utcMinute >= 0 && utcMinute < 30;
+
+            if (inGracePeriod) {
+                const minutesRemaining = 30 - utcMinute;
+                setIsGracePeriod(true);
+                setGracePeriodMessage(`Tournament ends in ${minutesRemaining} minutes. Calculating prizes...`);
+            } else {
+                setIsGracePeriod(false);
+                setGracePeriodMessage('');
+            }
+        };
+
+        // Check immediately
+        checkGracePeriod();
+
+        // Check every 30 seconds during tournament mode
+        const interval = setInterval(checkGracePeriod, 30000);
+
+        return () => clearInterval(interval);
+    }, [gameMode]);
 
     // Create simple space obstacles - back to basics
     const createObstacles = useCallback((x: number, currentScore: number) => {
@@ -692,6 +731,31 @@ export default function FlappyGame({
                     zIndex: 10
                 }}
             />
+
+            {/* Grace Period Warning Overlay */}
+            {isGracePeriod && gameMode === 'tournament' && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: '20px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        backgroundColor: 'rgba(255, 165, 0, 0.95)',
+                        color: '#000',
+                        padding: '12px 20px',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: 'bold',
+                        zIndex: 1000,
+                        textAlign: 'center',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                        maxWidth: '90vw',
+                        border: '2px solid #ff6b35'
+                    }}
+                >
+                    ⚠️ {gracePeriodMessage}
+                </div>
+            )}
         </Page>
     );
 }
