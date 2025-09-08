@@ -168,8 +168,8 @@ export const TournamentLeaderboard = ({
         };
 
         const percentage = prizeDistribution[rank] || 0;
-        const prizePool = totalPrizePool * 0.7; // 70% of total pool
-        return (prizePool * percentage / 100).toFixed(2);
+        // totalPrizePool is already the 70% prize pool amount, no need to multiply by 0.7 again
+        return (totalPrizePool * percentage / 100).toFixed(2);
     };
 
     if (loading) {
