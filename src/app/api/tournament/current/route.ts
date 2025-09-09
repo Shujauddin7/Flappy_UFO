@@ -26,40 +26,13 @@ export async function GET() {
         // Initialize Supabase client with service role key for full permissions
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-        // Calculate tournament day using same logic as weekly-cron
         const now = new Date();
-        const utcDay = now.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
-        const utcHour = now.getUTCHours();
-        const utcMinute = now.getUTCMinutes();
+        console.log('🗓️ Looking for active tournament at:', now.toISOString());
 
-        // Tournament week starts at 15:30 UTC Sunday, so if it's before 15:30, use last week's Sunday
-        const tournamentDate = new Date(now);
-        if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
-            tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
-        }
-
-        // Get the Sunday of this week for tournament_day
-        const dayOfWeek = tournamentDate.getUTCDay(); // 0 = Sunday
-        const daysToSubtract = dayOfWeek; // Days since last Sunday
-        const tournamentSunday = new Date(tournamentDate);
-        tournamentSunday.setUTCDate(tournamentDate.getUTCDate() - daysToSubtract);
-
-        const tournamentDay = tournamentSunday.toISOString().split('T')[0];
-
-        console.log('🗓️ Looking for weekly tournament:', {
-            current_utc: now.toISOString(),
-            tournament_day: tournamentDay,
-            utc_day: utcDay,
-            utc_hour: utcHour,
-            utc_minute: utcMinute,
-            tournament_sunday: tournamentSunday.toISOString()
-        });
-
-        // Fetch current tournament using proper tournament day logic
+        // Fetch any active tournament (simplified logic)
         const { data: tournament, error: tournamentError } = await supabase
             .from('tournaments')
             .select('*')
-            .eq('tournament_day', tournamentDay)
             .eq('is_active', true)
             .single();
 
@@ -71,10 +44,9 @@ export async function GET() {
                 return NextResponse.json({
                     error: 'No active tournament found',
                     debug_info: {
-                        looking_for_day: tournamentDay,
                         current_utc: now.toISOString(),
-                        tournament_boundary: '15:30 UTC',
-                        next_tournament_creation: 'Today at 15:30 UTC via cron job'
+                        tournament_boundary: '15:30 UTC Sunday',
+                        suggestion: 'Create tournament via create-manual API'
                     }
                 }, { status: 404 });
             }
@@ -85,13 +57,17 @@ export async function GET() {
             }, { status: 500 });
         }
 
-        // Calculate tournament status based on Plan.md timing rules
-        const isGracePeriod = utcHour === 15 && utcMinute >= 0 && utcMinute < 30;
+        // Calculate tournament status based on end time
+        const endTime = new Date(tournament.end_time);
+        const gracePeriodStart = new Date(endTime);
+        gracePeriodStart.setUTCMinutes(gracePeriodStart.getUTCMinutes() - 30); // 30 minutes before end
+
+        const isGracePeriod = now >= gracePeriodStart && now < endTime;
 
         const tournamentStatus = {
             is_grace_period: isGracePeriod,
             current_utc: now.toISOString(),
-            tournament_day: tournamentDay,
+            tournament_day: tournament.tournament_day,
             entries_allowed: !isGracePeriod
         };
 
