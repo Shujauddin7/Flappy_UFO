@@ -71,39 +71,22 @@ export async function POST(req: NextRequest) {
             }, { status: 500 });
         }
 
-        // Get current tournament info using weekly tournament boundary logic (Sunday 15:30 UTC)
-        const now = new Date();
-        const utcHour = now.getUTCHours();
-        const utcMinute = now.getUTCMinutes();
-
-        // Tournament week starts at 15:30 UTC Sunday, so if it's before 15:30, use last week's Sunday
-        const tournamentDate = new Date(now);
-        if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
-            tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
-        }
-
-        // Get the Sunday of this week for tournament_day
-        const dayOfWeek = tournamentDate.getUTCDay(); // 0 = Sunday
-        const daysToSubtract = dayOfWeek; // Days since last Sunday
-        const tournamentSunday = new Date(tournamentDate);
-        tournamentSunday.setUTCDate(tournamentDate.getUTCDate() - daysToSubtract);
-
-        const today = tournamentSunday.toISOString().split('T')[0]; // YYYY-MM-DD format
-
-        // Get current week's tournament UUID from tournaments table
+        // Find current active tournament (simplified approach)
         const { data: tournament, error: tournamentError } = await supabase
             .from('tournaments')
-            .select('id')
-            .eq('tournament_day', today)
+            .select('id, tournament_day')
+            .eq('is_active', true)
             .single();
 
         if (tournamentError || !tournament) {
-            console.error('❌ No tournament found for week starting:', today, tournamentError);
+            console.error('❌ No active tournament found:', tournamentError);
             return NextResponse.json({
                 success: false,
-                error: 'No active tournament found for current week'
+                error: 'No active tournament found'
             }, { status: 404 });
         }
+
+        const today = tournament.tournament_day;
 
         // Update user verification status with atomic operation (fixed approach)
         const { data: userData, error: userError } = await supabase
