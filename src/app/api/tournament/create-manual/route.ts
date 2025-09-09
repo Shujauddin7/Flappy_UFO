@@ -38,7 +38,17 @@ export async function POST() {
             .single();
 
         if (existingTournament) {
-            // Reactivate existing tournament
+            // Deactivate all other tournaments first (CRITICAL FIX)
+            const { error: deactivateOthersError } = await supabase
+                .from('tournaments')
+                .update({ is_active: false })
+                .neq('id', existingTournament.id);
+
+            if (deactivateOthersError) {
+                console.error('❌ Error deactivating other tournaments:', deactivateOthersError);
+            }
+
+            // Then reactivate the target tournament
             const { data: reactivated, error: updateError } = await supabase
                 .from('tournaments')
                 .update({ is_active: true })

@@ -29,7 +29,7 @@ export async function GET() {
         const now = new Date();
         console.log('🗓️ Looking for active tournament at:', now.toISOString());
 
-        // Fetch any active tournament (simplified logic)
+        // Fetch current active tournament (simplified logic)
         const { data: tournament, error: tournamentError } = await supabase
             .from('tournaments')
             .select('*')
@@ -38,23 +38,21 @@ export async function GET() {
 
         if (tournamentError) {
             console.log('❌ Tournament fetch error:', tournamentError);
-
-            // If no tournament found, provide helpful debugging info
-            if (tournamentError.code === 'PGRST116') {
-                return NextResponse.json({
-                    error: 'No active tournament found',
-                    debug_info: {
-                        current_utc: now.toISOString(),
-                        tournament_boundary: '15:30 UTC Sunday',
-                        suggestion: 'Create tournament via create-manual API'
-                    }
-                }, { status: 404 });
-            }
-
             return NextResponse.json({
                 error: 'Failed to fetch tournament',
                 details: tournamentError.message
             }, { status: 500 });
+        }
+
+        if (!tournament) {
+            return NextResponse.json({
+                error: 'No active tournament found',
+                debug_info: {
+                    current_utc: now.toISOString(),
+                    tournament_boundary: '15:30 UTC Sunday',
+                    suggestion: 'Create tournament via create-manual API'
+                }
+            }, { status: 404 });
         }
 
         // Calculate tournament status based on end time
