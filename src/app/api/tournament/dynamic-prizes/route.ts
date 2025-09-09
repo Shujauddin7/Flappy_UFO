@@ -55,10 +55,10 @@ export async function GET(req: NextRequest) {
         // New guarantee system (simple 70/30 split + guarantee when needed)
         const adminFeePercentage = 30;
         const prizePoolPercentage = 70;
-        
+
         const adminFee = totalRevenue * (adminFeePercentage / 100);
         const basePrizePool = totalRevenue * (prizePoolPercentage / 100);
-        
+
         // Add guarantee if needed (when revenue < 72 WLD)
         const guaranteeAmount = totalRevenue < 72 ? 10 : 0;
         const finalPrizePool = basePrizePool + guaranteeAmount;

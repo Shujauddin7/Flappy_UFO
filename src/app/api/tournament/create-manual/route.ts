@@ -71,10 +71,10 @@ export async function POST() {
         tournamentStartTime.setUTCHours(15, 30, 0, 0);
 
         const tournamentEndTime = new Date(tournamentStartTime);
-        tournamentEndTime.setUTCDate(tournamentEndTime.getUTCDate() + 1);
-        tournamentEndTime.setUTCHours(15, 0, 0, 0);
+        tournamentEndTime.setUTCDate(tournamentEndTime.getUTCDate() + 7); // 7 days for weekly tournament
+        tournamentEndTime.setUTCHours(15, 30, 0, 0); // Next Sunday 15:30 UTC
 
-        // Reset ALL users' verification status (as per Plan.md - verification resets daily)
+        // Reset ALL users' verification status (as per Plan.md - verification resets weekly)
         console.log('🔄 Resetting user verification status...');
         const { error: resetVerificationError } = await supabase
             .from('users')
@@ -95,7 +95,11 @@ export async function POST() {
                 end_time: tournamentEndTime.toISOString(),
                 is_active: true,
                 total_players: 0,
-                total_prize_pool: 0
+                total_prize_pool: 0,
+                total_collected: 0.0,
+                admin_fee: 0.0,
+                guarantee_amount: 0.0,
+                admin_net_result: 0.0
             }])
             .select()
             .single();

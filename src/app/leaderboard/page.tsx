@@ -25,14 +25,26 @@ interface TournamentData {
     total_prize_pool: number;
     total_collected: number;
     admin_fee: number;
-    protection_level: number;
+    guarantee_amount?: number;
+    admin_net_result?: number;
     start_time: string;
     end_time: string;
+}
+
+interface PrizePoolData {
+    prize_pool: {
+        base_amount: number;
+        guarantee_amount: number;
+        final_amount: number;
+    };
+    guarantee_applied: boolean;
+    admin_net_result: number;
 }
 
 export default function LeaderboardPage() {
     const { data: session } = useSession();
     const [currentTournament, setCurrentTournament] = useState<TournamentData | null>(null);
+    const [prizePoolData, setPrizePoolData] = useState<PrizePoolData | null>(null);
     const [currentUserRank, setCurrentUserRank] = useState<LeaderboardPlayer | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -73,6 +85,15 @@ export default function LeaderboardPage() {
             }
 
             setCurrentTournament(data.tournament);
+
+            // Fetch dynamic prize pool data (with guarantee logic)
+            const prizeResponse = await fetch('/api/tournament/dynamic-prizes');
+            const prizeData = await prizeResponse.json();
+
+            if (prizeResponse.ok) {
+                setPrizePoolData(prizeData);
+            }
+
             setError(null);
         } catch (err) {
             console.error('Failed to fetch tournament:', err);
@@ -249,16 +270,12 @@ export default function LeaderboardPage() {
                             <div className="tournament-stats">
                                 <div>
                                     <span className="players-count">👥 {currentTournament.total_players} Players</span>
-                                    <span className="prize-pool">💎 {currentTournament.total_prize_pool.toFixed(2)} WLD Prize Pool</span>
+                                    <span className="prize-pool">
+                                        💎 {prizePoolData?.prize_pool?.base_amount?.toFixed(2) || currentTournament.total_prize_pool.toFixed(2)} WLD Prize Pool
+                                    </span>
                                 </div>
-                                <div className="protection-level">
-                                    {currentTournament.protection_level === 3 ? (
-                                        <span className="protection-high">🛡️ Level 3 Protection (95% Prize Pool)</span>
-                                    ) : currentTournament.protection_level === 2 ? (
-                                        <span className="protection-medium">🛡️ Level 2 Protection (85% Prize Pool)</span>
-                                    ) : (
-                                        <span className="protection-low">🛡️ Level 1 Protection (70% Prize Pool)</span>
-                                    )}
+                                <div className="guarantee-info">
+                                    <span className="guarantee-text">🎯 Top 10 Winners Always Profit</span>
                                 </div>
                             </div>
                         </div>
@@ -271,7 +288,7 @@ export default function LeaderboardPage() {
                         currentUserId={session?.user?.walletAddress || null}
                         currentUsername={session?.user?.username || null}
                         isGracePeriod={timeRemaining?.status === 'grace'}
-                        totalPrizePool={currentTournament.total_prize_pool}
+                        totalPrizePool={prizePoolData?.prize_pool?.final_amount || currentTournament.total_prize_pool}
                         onUserRankUpdate={handleUserRankUpdate}
                         onUserCardVisibility={handleUserCardVisibility}
                     />
@@ -294,7 +311,7 @@ export default function LeaderboardPage() {
                     }}>
                         <PlayerRankCard
                             player={currentUserRank}
-                            prizeAmount={calculatePrizeForRank(currentUserRank.rank || 1001, currentTournament.total_prize_pool)}
+                            prizeAmount={calculatePrizeForRank(currentUserRank.rank || 1001, prizePoolData?.prize_pool?.final_amount || currentTournament.total_prize_pool)}
                             isCurrentUser={true}
                             isTopThree={false}
                         />
