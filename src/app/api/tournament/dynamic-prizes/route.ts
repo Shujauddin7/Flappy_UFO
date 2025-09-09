@@ -6,13 +6,7 @@ export async function GET(req: NextRequest) {
 
     try {
         const searchParams = req.nextUrl.searchParams;
-        const tournamentDay = searchParams.get('tournament_day');
-
-        if (!tournamentDay) {
-            return NextResponse.json({
-                error: 'tournament_day parameter is required'
-            }, { status: 400 });
-        }
+        let tournamentDay = searchParams.get('tournament_day');
 
         // Same environment configuration as your existing APIs
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
@@ -26,6 +20,23 @@ export async function GET(req: NextRequest) {
         }
 
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+        // If no tournament_day provided, get from current active tournament
+        if (!tournamentDay) {
+            const { data: activeTournament, error: tournamentError } = await supabase
+                .from('tournaments')
+                .select('tournament_day')
+                .eq('is_active', true)
+                .single();
+
+            if (tournamentError || !activeTournament) {
+                return NextResponse.json({
+                    error: 'No active tournament found'
+                }, { status: 404 });
+            }
+
+            tournamentDay = activeTournament.tournament_day;
+        }
 
         // Calculate total revenue for the tournament using your existing database structure
         const { data: tournamentRecords, error: revenueError } = await supabase

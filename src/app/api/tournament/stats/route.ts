@@ -27,32 +27,24 @@ export async function GET(req: NextRequest) {
 
         // Get query parameters
         const searchParams = req.nextUrl.searchParams;
+        let tournamentDay = searchParams.get('tournament_day');
 
-        // Calculate tournament day using same logic as tournament system (Sunday 15:30 UTC boundary)
-        // Updated for weekly tournaments - find current week's Sunday
-        let defaultTournamentDay;
-        if (!searchParams.get('tournament_day')) {
-            const now = new Date();
-            const utcDay = now.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
-            const utcHour = now.getUTCHours();
-            const utcMinute = now.getUTCMinutes();
+        // If no tournament_day provided, get from current active tournament
+        if (!tournamentDay) {
+            const { data: activeTournament, error: tournamentError } = await supabase
+                .from('tournaments')
+                .select('tournament_day')
+                .eq('is_active', true)
+                .single();
 
-            // Weekly tournament starts every Sunday at 15:30 UTC
-            const tournamentDate = new Date(now);
-
-            if (utcDay === 0 && (utcHour > 15 || (utcHour === 15 && utcMinute >= 30))) {
-                // It's Sunday after 15:30 UTC, use current Sunday
-                // Keep current date
-            } else {
-                // Go back to the most recent Sunday
-                const daysBack = utcDay === 0 ? 7 : utcDay; // If Sunday before 15:30, go back 7 days
-                tournamentDate.setUTCDate(tournamentDate.getUTCDate() - daysBack);
+            if (tournamentError || !activeTournament) {
+                return NextResponse.json({
+                    error: 'No active tournament found'
+                }, { status: 404 });
             }
 
-            defaultTournamentDay = tournamentDate.toISOString().split('T')[0];
+            tournamentDay = activeTournament.tournament_day;
         }
-
-        const tournamentDay = searchParams.get('tournament_day') || defaultTournamentDay;
 
 
         // Get comprehensive tournament statistics
