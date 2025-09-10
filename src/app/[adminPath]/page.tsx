@@ -260,8 +260,8 @@ export default function AdminDashboard() {
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className={`px-6 py-3 rounded-lg font-semibold transition-colors ${activeTab === tab
-                                    ? 'bg-white text-purple-900'
-                                    : 'bg-purple-800 text-white hover:bg-purple-700'
+                                ? 'bg-white text-purple-900'
+                                : 'bg-purple-800 text-white hover:bg-purple-700'
                                 }`}
                         >
                             {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -379,9 +379,9 @@ export default function AdminDashboard() {
                                                 <td className="py-3 px-4 font-bold text-yellow-400">{winner.final_amount.toFixed(4)} WLD</td>
                                                 <td className="py-3 px-4">
                                                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${winner.payment_status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' :
-                                                            winner.payment_status === 'sent' ? 'bg-blue-500/20 text-blue-300' :
-                                                                winner.payment_status === 'confirmed' ? 'bg-green-500/20 text-green-300' :
-                                                                    'bg-red-500/20 text-red-300'
+                                                        winner.payment_status === 'sent' ? 'bg-blue-500/20 text-blue-300' :
+                                                            winner.payment_status === 'confirmed' ? 'bg-green-500/20 text-green-300' :
+                                                                'bg-red-500/20 text-red-300'
                                                         }`}>
                                                         {winner.payment_status}
                                                     </span>
