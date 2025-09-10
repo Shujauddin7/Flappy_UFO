@@ -3,9 +3,6 @@
 # Database schema files (development only)
 supabase-*.sql
 
-# Admin dashboard (sensitive - exclude from repository)
-src/app/sayeedashuj007/
-
 # Development tools (exclude from production)
 src/components/DevTools/
 src/components/MobileDebugConsole/
