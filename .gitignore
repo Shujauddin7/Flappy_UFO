@@ -4,9 +4,7 @@
 supabase-*.sql
 
 # Admin dashboard (sensitive - exclude from repository)
-src/app/Sayeedashuj007@/
-src/app/admin/
-src/app/admin123/
+src/app/sayeedashuj007/
 
 # Development tools (exclude from production)
 src/components/DevTools/
