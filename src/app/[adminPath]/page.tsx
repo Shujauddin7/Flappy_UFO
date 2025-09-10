@@ -1,7 +1,7 @@
 "use client";
 
 import { signOut, useSession } from 'next-auth/react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { MiniKit, Tokens, tokenToDecimals } from '@worldcoin/minikit-js';
 
@@ -37,7 +37,6 @@ interface PrizePoolData {
 export default function AdminDashboard() {
     const { data: session } = useSession();
     const router = useRouter();
-    const params = useParams();
     const [activeTab, setActiveTab] = useState<'overview' | 'payouts' | 'history'>('overview');
     const [currentTournament, setCurrentTournament] = useState<TournamentData | null>(null);
     const [winners, setWinners] = useState<Winner[]>([]);
@@ -45,15 +44,14 @@ export default function AdminDashboard() {
     const [loading, setLoading] = useState(false);
     const [payoutInProgress, setPayoutInProgress] = useState(false);
 
-    // Check if user is admin AND if they're accessing the correct admin path
+    // Check if user is admin
     const isAdmin = session?.user?.walletAddress === process.env.NEXT_PUBLIC_ADMIN_WALLET;
-    const validAdminPath = params.adminPath === process.env.NEXT_PUBLIC_ADMIN_PATH;
 
     useEffect(() => {
         if (!session) return;
-        
-        // Security: Check both admin wallet AND correct path
-        if (!isAdmin || !validAdminPath) {
+
+        // Security: Check admin wallet only (path obscurity through dynamic routing)
+        if (!isAdmin) {
             router.push('/');
             return;
         }
@@ -64,12 +62,12 @@ export default function AdminDashboard() {
         };
 
         const updateWinnersWithPrizePool = (baseAmount: number, guaranteeAmount: number) => {
-            setWinners(prevWinners => 
+            setWinners(prevWinners =>
                 prevWinners.map(winner => {
                     const basePrize = winner.base_amount * baseAmount;
                     const guaranteeBonus = guaranteeAmount / 10; // Split guarantee equally among top 10
                     const finalAmount = basePrize + guaranteeBonus;
-                    
+
                     return {
                         ...winner,
                         guarantee_bonus: guaranteeBonus,
@@ -84,7 +82,7 @@ export default function AdminDashboard() {
                 const response = await fetch(`/api/tournament/leaderboard-data?tournament_id=${tournamentId}`);
                 if (response.ok) {
                     const leaderboard = await response.json();
-                    
+
                     // Calculate payouts for top 10
                     const winnersData = leaderboard.slice(0, 10).map((player: { wallet_address: string; username?: string; score: number }, index: number) => ({
                         rank: index + 1,
@@ -110,15 +108,15 @@ export default function AdminDashboard() {
                 const response = await fetch(`/api/admin/tournament-analytics?tournament_id=${tournamentId}`);
                 if (response.ok) {
                     const analytics = await response.json();
-                    
+
                     const totalCollected = analytics.total_collected || 0;
                     const adminFee = totalCollected * 0.1; // 10% admin fee
                     const baseAmount = totalCollected - adminFee;
-                    
+
                     // Check if guarantee is needed (revenue < 72 WLD = 7.2 WLD after admin fee)
                     const guaranteeNeeded = baseAmount < 7.2;
                     const guaranteeAmount = guaranteeNeeded ? (10 - baseAmount) : 0; // 1 WLD per top 10 winner
-                    
+
                     setPrizePool({
                         base_amount: baseAmount,
                         guarantee_amount: guaranteeAmount,
@@ -142,7 +140,7 @@ export default function AdminDashboard() {
                 if (response.ok) {
                     const tournament = await response.json();
                     setCurrentTournament(tournament);
-                    
+
                     if (tournament?.tournament_id) {
                         await loadWinners(tournament.tournament_id);
                         await loadPrizePool(tournament.tournament_id);
@@ -156,15 +154,15 @@ export default function AdminDashboard() {
         };
 
         loadCurrentTournament();
-    }, [session, isAdmin, validAdminPath, router, params.adminPath]);
+    }, [session, isAdmin, router]);
 
     const handlePayout = async (winnerAddress: string, amount: number, rank: number) => {
         setPayoutInProgress(true);
-        
+
         try {
             // Convert WLD to wei (18 decimals)
             const amountInWei = tokenToDecimals(amount, Tokens.WLD);
-            
+
             const payload = {
                 reference: `tournament_prize_rank_${rank}_${Date.now()}`,
                 to: winnerAddress,
@@ -197,7 +195,7 @@ export default function AdminDashboard() {
         } catch (error) {
             console.error('Payout error:', error);
             alert(`Payment failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            
+
             // Update winner status to failed
             setWinners(prevWinners =>
                 prevWinners.map(winner =>
@@ -213,7 +211,7 @@ export default function AdminDashboard() {
 
     const handlePayoutAll = async () => {
         setPayoutInProgress(true);
-        
+
         for (const winner of winners) {
             if (winner.payment_status === 'pending' && winner.final_amount > 0) {
                 await handlePayout(winner.wallet_address, winner.final_amount, winner.rank);
@@ -221,7 +219,7 @@ export default function AdminDashboard() {
                 await new Promise(resolve => setTimeout(resolve, 2000));
             }
         }
-        
+
         setPayoutInProgress(false);
     };
 
@@ -233,7 +231,7 @@ export default function AdminDashboard() {
         );
     }
 
-    if (!isAdmin || !validAdminPath) {
+    if (!isAdmin) {
         return (
             <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center">
                 <div className="text-white text-xl">Access denied. Admin privileges required.</div>
@@ -261,11 +259,10 @@ export default function AdminDashboard() {
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
-                            className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
-                                activeTab === tab
+                            className={`px-6 py-3 rounded-lg font-semibold transition-colors ${activeTab === tab
                                     ? 'bg-white text-purple-900'
                                     : 'bg-purple-800 text-white hover:bg-purple-700'
-                            }`}
+                                }`}
                         >
                             {tab.charAt(0).toUpperCase() + tab.slice(1)}
                         </button>
@@ -282,20 +279,20 @@ export default function AdminDashboard() {
                 {activeTab === 'overview' && currentTournament && (
                     <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 mb-8">
                         <h2 className="text-2xl font-bold text-white mb-6">Tournament Overview</h2>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="bg-white/20 rounded-lg p-4">
                                 <h3 className="text-lg font-semibold text-white mb-2">Tournament Status</h3>
                                 <p className="text-2xl font-bold text-green-400">{currentTournament.status}</p>
                                 <p className="text-sm text-gray-300">Day: {currentTournament.tournament_day}</p>
                             </div>
-                            
+
                             <div className="bg-white/20 rounded-lg p-4">
                                 <h3 className="text-lg font-semibold text-white mb-2">Participants</h3>
                                 <p className="text-2xl font-bold text-blue-400">{currentTournament.participant_count}</p>
                                 <p className="text-sm text-gray-300">Total players</p>
                             </div>
-                            
+
                             <div className="bg-white/20 rounded-lg p-4">
                                 <h3 className="text-lg font-semibold text-white mb-2">Revenue</h3>
                                 <p className="text-2xl font-bold text-yellow-400">{currentTournament.total_collected.toFixed(2)} WLD</p>
@@ -381,12 +378,11 @@ export default function AdminDashboard() {
                                                 <td className="py-3 px-4">{winner.guarantee_bonus.toFixed(4)} WLD</td>
                                                 <td className="py-3 px-4 font-bold text-yellow-400">{winner.final_amount.toFixed(4)} WLD</td>
                                                 <td className="py-3 px-4">
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                                                        winner.payment_status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' :
-                                                        winner.payment_status === 'sent' ? 'bg-blue-500/20 text-blue-300' :
-                                                        winner.payment_status === 'confirmed' ? 'bg-green-500/20 text-green-300' :
-                                                        'bg-red-500/20 text-red-300'
-                                                    }`}>
+                                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${winner.payment_status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' :
+                                                            winner.payment_status === 'sent' ? 'bg-blue-500/20 text-blue-300' :
+                                                                winner.payment_status === 'confirmed' ? 'bg-green-500/20 text-green-300' :
+                                                                    'bg-red-500/20 text-red-300'
+                                                        }`}>
                                                         {winner.payment_status}
                                                     </span>
                                                 </td>
