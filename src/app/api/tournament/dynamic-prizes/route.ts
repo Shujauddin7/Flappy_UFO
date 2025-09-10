@@ -63,33 +63,53 @@ export async function GET(req: NextRequest) {
             return sum + verifiedAmount + standardAmount + continueAmount;
         }, 0);
 
-        // New guarantee system (simple 70/30 split + guarantee when needed)
+        // Count total players for guarantee calculation
+        const totalPlayers = tournamentRecords.length;
+
+        // New guarantee system (simple 70/30 split + 1 WLD per top 10 winner when revenue < 72 WLD)
         const adminFeePercentage = 30;
         const prizePoolPercentage = 70;
 
         const adminFee = totalRevenue * (adminFeePercentage / 100);
         const basePrizePool = totalRevenue * (prizePoolPercentage / 100);
 
-        // Add guarantee if needed (when revenue < 72 WLD)
-        const guaranteeAmount = totalRevenue < 72 ? 10 : 0;
+        // Calculate how many top 10 winners will exist (max 10, but could be fewer if fewer players)
+        const top10Winners = Math.min(totalPlayers, 10);
+
+        // Add guarantee if needed (1 WLD per top 10 winner when revenue < 72 WLD) - ADMIN ONLY, not user-facing
+        const guaranteeAmount = totalRevenue < 72 ? top10Winners * 1.0 : 0;
         const finalPrizePool = basePrizePool + guaranteeAmount;
         const adminNetResult = adminFee - guaranteeAmount;
 
-        // Prize distribution percentages (same as Plan.md)
-        const prizeDistribution = [
-            { rank: 1, percentage: 40, amount: finalPrizePool * 0.40 },
-            { rank: 2, percentage: 22, amount: finalPrizePool * 0.22 },
-            { rank: 3, percentage: 14, amount: finalPrizePool * 0.14 },
-            { rank: 4, percentage: 6, amount: finalPrizePool * 0.06 },
-            { rank: 5, percentage: 5, amount: finalPrizePool * 0.05 },
-            { rank: 6, percentage: 4, amount: finalPrizePool * 0.04 },
-            { rank: 7, percentage: 3, amount: finalPrizePool * 0.03 },
-            { rank: 8, percentage: 2, amount: finalPrizePool * 0.02 },
-            { rank: 9, percentage: 2, amount: finalPrizePool * 0.02 },
-            { rank: 10, percentage: 2, amount: finalPrizePool * 0.02 }
+        // Prize distribution for USERS (based on actual collected only, no guarantee shown)
+        const userFacingPrizePool = basePrizePool; // Users see only 70% of collected, not guarantee
+        const userPrizeDistribution = [
+            { rank: 1, percentage: 40, amount: userFacingPrizePool * 0.40 },
+            { rank: 2, percentage: 22, amount: userFacingPrizePool * 0.22 },
+            { rank: 3, percentage: 14, amount: userFacingPrizePool * 0.14 },
+            { rank: 4, percentage: 6, amount: userFacingPrizePool * 0.06 },
+            { rank: 5, percentage: 5, amount: userFacingPrizePool * 0.05 },
+            { rank: 6, percentage: 4, amount: userFacingPrizePool * 0.04 },
+            { rank: 7, percentage: 3, amount: userFacingPrizePool * 0.03 },
+            { rank: 8, percentage: 2, amount: userFacingPrizePool * 0.02 },
+            { rank: 9, percentage: 2, amount: userFacingPrizePool * 0.02 },
+            { rank: 10, percentage: 2, amount: userFacingPrizePool * 0.02 }
         ];
 
-        console.log(`💰 Prize calculation: ${totalRevenue} WLD → ${prizePoolPercentage}% pool + ${guaranteeAmount} WLD guarantee`);
+        // Actual payout amounts (with guarantee applied) - used for admin/payout calculations
+        const guaranteeBonusPerWinner = totalRevenue < 72 ? 1.0 : 0;
+        const actualPayoutDistribution = [
+            { rank: 1, percentage: 40, amount: (userFacingPrizePool * 0.40) + guaranteeBonusPerWinner },
+            { rank: 2, percentage: 22, amount: (userFacingPrizePool * 0.22) + guaranteeBonusPerWinner },
+            { rank: 3, percentage: 14, amount: (userFacingPrizePool * 0.14) + guaranteeBonusPerWinner },
+            { rank: 4, percentage: 6, amount: (userFacingPrizePool * 0.06) + guaranteeBonusPerWinner },
+            { rank: 5, percentage: 5, amount: (userFacingPrizePool * 0.05) + guaranteeBonusPerWinner },
+            { rank: 6, percentage: 4, amount: (userFacingPrizePool * 0.04) + guaranteeBonusPerWinner },
+            { rank: 7, percentage: 3, amount: (userFacingPrizePool * 0.03) + guaranteeBonusPerWinner },
+            { rank: 8, percentage: 2, amount: (userFacingPrizePool * 0.02) + guaranteeBonusPerWinner },
+            { rank: 9, percentage: 2, amount: (userFacingPrizePool * 0.02) + guaranteeBonusPerWinner },
+            { rank: 10, percentage: 2, amount: (userFacingPrizePool * 0.02) + guaranteeBonusPerWinner }
+        ]; console.log(`💰 Prize calculation: ${totalRevenue} WLD → ${prizePoolPercentage}% pool + ${guaranteeAmount} WLD guarantee`);
 
         return NextResponse.json({
             success: true,
@@ -98,8 +118,9 @@ export async function GET(req: NextRequest) {
             prize_pool: {
                 percentage: prizePoolPercentage,
                 base_amount: basePrizePool,
+                user_facing_amount: userFacingPrizePool, // What users see (no guarantee)
                 guarantee_amount: guaranteeAmount,
-                final_amount: finalPrizePool
+                final_amount: finalPrizePool // What admin actually pays (with guarantee)
             },
             admin_fee: {
                 percentage: adminFeePercentage,
@@ -108,7 +129,8 @@ export async function GET(req: NextRequest) {
                 net_result: adminNetResult
             },
             guarantee_applied: guaranteeAmount > 0,
-            prize_distribution: prizeDistribution,
+            prize_distribution: userPrizeDistribution, // User-facing prizes (no guarantee shown)
+            admin_payout_distribution: actualPayoutDistribution, // Actual payout amounts
             total_players: tournamentRecords.length
         });
 

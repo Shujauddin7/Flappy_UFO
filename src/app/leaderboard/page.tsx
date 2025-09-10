@@ -64,7 +64,8 @@ export default function LeaderboardPage() {
     const calculatePrizeForRank = useCallback((rank: number, totalPrizePool: number): string | null => {
         if (rank > 10) return null;
 
-        const prizePercentages = [50, 25, 15, 3, 2, 2, 1, 1, 0.5, 0.5];
+        // Plan.md compliant prize percentages
+        const prizePercentages = [40, 22, 14, 6, 5, 4, 3, 2, 2, 2];
         const percentage = prizePercentages[rank - 1] || 0;
         const prizeAmount = (totalPrizePool * percentage) / 100;
 
@@ -288,7 +289,7 @@ export default function LeaderboardPage() {
                         currentUserId={session?.user?.walletAddress || null}
                         currentUsername={session?.user?.username || null}
                         isGracePeriod={timeRemaining?.status === 'grace'}
-                        totalPrizePool={prizePoolData?.prize_pool?.final_amount || currentTournament.total_prize_pool}
+                        totalPrizePool={prizePoolData?.prize_pool?.base_amount || currentTournament.total_prize_pool}
                         onUserRankUpdate={handleUserRankUpdate}
                         onUserCardVisibility={handleUserCardVisibility}
                     />
@@ -311,7 +312,7 @@ export default function LeaderboardPage() {
                     }}>
                         <PlayerRankCard
                             player={currentUserRank}
-                            prizeAmount={calculatePrizeForRank(currentUserRank.rank || 1001, prizePoolData?.prize_pool?.final_amount || currentTournament.total_prize_pool)}
+                            prizeAmount={calculatePrizeForRank(currentUserRank.rank || 1001, prizePoolData?.prize_pool?.base_amount || currentTournament.total_prize_pool)}
                             isCurrentUser={true}
                             isTopThree={false}
                         />

@@ -25,13 +25,17 @@ async function updateTournamentPrizePool(supabase: any, tournamentId: string) {
             return sum + entryPayments + continuePayments;
         }, 0) || 0;
 
-        // NEW GUARANTEE SYSTEM (per Plan.md): Admin adds 10 WLD when total collected < 72 WLD
+        // Count total players for guarantee calculation
+        const totalPlayers = data?.length || 0;
+
+        // NEW GUARANTEE SYSTEM (per Plan.md): Admin adds 1 WLD per top 10 winner when total collected < 72 WLD
         let guaranteeAmount = 0;
         const adminFeeAmount = totalRevenue * 0.30; // Always 30%
         const basePrizePool = totalRevenue * 0.70; // Always 70%
 
         if (totalRevenue < 72) {
-            guaranteeAmount = 10; // Admin adds 10 WLD
+            const top10Winners = Math.min(totalPlayers, 10);
+            guaranteeAmount = top10Winners * 1.0; // Admin adds 1 WLD per top 10 winner
         }
 
         const totalPrizePool = basePrizePool + guaranteeAmount; // 70% + guarantee (if needed)

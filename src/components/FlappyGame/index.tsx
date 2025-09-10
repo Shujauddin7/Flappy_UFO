@@ -74,6 +74,7 @@ export default function FlappyGame({
     const [, setGameState] = useState(gameStateRef.current);
     const gameLoopRef = useRef<number | undefined>(undefined);
     const planetImagesRef = useRef<{ [key: string]: HTMLImageElement }>({});
+    const lastTimeRef = useRef<number>(0); // For deltaTime calculation
 
     // Reset game state when component mounts
     useEffect(() => {
@@ -89,6 +90,10 @@ export default function FlappyGame({
             gameStatus: 'ready',
             gameEndCalled: false
         };
+
+        // Reset deltaTime calculation
+        lastTimeRef.current = 0;
+
         setGameState({ ...gameStateRef.current });
     }, [gameMode, continueFromScore]);
 
@@ -250,9 +255,10 @@ export default function FlappyGame({
     const handleJump = useCallback(() => {
         if (gameStateRef.current.gameStatus === 'ready') {
             gameStateRef.current.gameStatus = 'playing';
+            lastTimeRef.current = 0; // Reset deltaTime when starting
         }
         if (gameStateRef.current.gameStatus === 'playing') {
-            gameStateRef.current.ufo.velocity = -8; // Balanced jump strength
+            gameStateRef.current.ufo.velocity = -8; // Balanced jump strength (frame-rate independent)
             gameStateRef.current.ufo.rotation = -20; // Visual feedback
 
             // Jump particles
@@ -326,28 +332,35 @@ export default function FlappyGame({
 
         return false;
     }, [createParticles, gameMode]);    // Main game loop
-    const gameLoop = useCallback(() => {
+    const gameLoop = useCallback((currentTime: number = 0) => {
         const canvas = canvasRef.current;
         const ctx = canvas?.getContext('2d');
         if (!canvas || !ctx) return;
 
+        // Calculate deltaTime for frame-rate independent movement
+        const deltaTime = lastTimeRef.current === 0 ? 16.67 : currentTime - lastTimeRef.current; // Default to ~60fps on first frame
+        lastTimeRef.current = currentTime;
+
+        // Target 60fps as baseline (16.67ms per frame)
+        const timeMultiplier = deltaTime / 16.67;
+
         const state = gameStateRef.current;
 
         if (state.gameStatus === 'playing') {
-            // UFO physics - balanced and smooth (make it faster)
-            state.ufo.velocity += 0.5; // Gentle gravity - keep constant
-            state.ufo.y += state.ufo.velocity;
+            // UFO physics - balanced and smooth (now frame-rate independent)
+            state.ufo.velocity += 0.5 * timeMultiplier; // Gentle gravity - keep constant
+            state.ufo.y += state.ufo.velocity * timeMultiplier;
 
             // Rotation based on velocity
             state.ufo.rotation = Math.max(-30, Math.min(30, state.ufo.velocity * 2));
 
-            // Move obstacles at consistent speed (make it faster)
+            // Move obstacles at consistent speed (now frame-rate independent)
             state.obstacles = state.obstacles.filter(obstacle => {
-                obstacle.x -= 4.5; // Faster speed for better gameplay feel
+                obstacle.x -= 4.5 * timeMultiplier; // Faster speed for better gameplay feel
 
-                // Move planets up and down if they have movement
+                // Move planets up and down if they have movement (frame-rate independent)
                 if (obstacle.type === 'planet' && obstacle.moveSpeed && obstacle.moveSpeed > 0 && obstacle.baseY !== undefined) {
-                    obstacle.y += obstacle.moveDirection! * obstacle.moveSpeed;
+                    obstacle.y += obstacle.moveDirection! * obstacle.moveSpeed * timeMultiplier;
 
                     // Bounce at boundaries (keep within reasonable limits)
                     if (obstacle.y < obstacle.baseY - 30 || obstacle.y > obstacle.baseY + 30) {
@@ -377,13 +390,13 @@ export default function FlappyGame({
                 state.obstacles.push(...newObstacles);
             }
 
-            // Update particles
+            // Update particles (frame-rate independent)
             state.particles = state.particles.filter(particle => {
-                particle.x += particle.vx;
-                particle.y += particle.vy;
-                particle.vx *= 0.95;
-                particle.vy *= 0.95;
-                particle.life--;
+                particle.x += particle.vx * timeMultiplier;
+                particle.y += particle.vy * timeMultiplier;
+                particle.vx *= Math.pow(0.95, timeMultiplier);
+                particle.vy *= Math.pow(0.95, timeMultiplier);
+                particle.life -= timeMultiplier;
                 return particle.life > 0;
             });
 
@@ -415,13 +428,13 @@ export default function FlappyGame({
         ctx.fillStyle = backgroundGradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Animated starfield
+        // Animated starfield (frame-rate independent)
         ctx.globalAlpha = 1;
         for (let i = 0; i < 100; i++) {
-            const x = ((i * 150 + Date.now() * 0.02) % (canvas.width + 100)) - 50;
+            const x = ((i * 150 + currentTime * 0.02) % (canvas.width + 100)) - 50;
             const y = (i * 234) % canvas.height;
             const size = Math.random() * 2;
-            const twinkle = 0.4 + Math.sin(Date.now() * 0.003 + i) * 0.6;
+            const twinkle = 0.4 + Math.sin(currentTime * 0.003 + i) * 0.6;
 
             ctx.fillStyle = '#ffffff';
             ctx.globalAlpha = twinkle;
@@ -508,8 +521,8 @@ export default function FlappyGame({
                 }
 
             } else if (obstacle.type === 'coin') {
-                // Animated coin
-                const time = Date.now() * 0.005;
+                // Animated coin (frame-rate independent)
+                const time = currentTime * 0.005;
                 const scale = 1 + Math.sin(time) * 0.2;
 
                 ctx.save();
