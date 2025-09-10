@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
         // Get today's tournament
         const { data: tournament, error: tournamentError } = await supabase
             .from('tournaments')
-            .select('id')
+            .select('id, tournament_day')
             .eq('tournament_day', today)
             .eq('is_active', true)
             .single();
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'No active tournament found' }, { status: 404 });
         }
 
-        // Find the user's tournament record for today
+        // Find the user's tournament record for the active tournament
         const { data: tournamentRecord, error: recordError } = await supabase
             .from('user_tournament_records')
             .select('id, total_continues_used, total_continue_payments')

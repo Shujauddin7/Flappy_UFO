@@ -376,7 +376,9 @@ export async function POST(req: NextRequest) {
                 paymentUpdate.verified_payment_ref = currentRecord.verified_payment_ref;
                 paymentUpdate.verified_paid_at = currentRecord.verified_paid_at;
             }
-        } const { data: updatedRecord, error: updateError } = await supabase
+        }
+
+        const { data: updatedRecord, error: updateError } = await supabase
             .from('user_tournament_records')
             .update(paymentUpdate)
             .eq('id', recordId)
