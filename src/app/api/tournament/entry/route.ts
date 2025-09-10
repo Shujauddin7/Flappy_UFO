@@ -83,13 +83,7 @@ async function updateTournamentPlayerCount(supabase: any, tournamentId: string) 
         const totalPrizePool = totalRevenue * (prizePoolPercentage / 100);
         const adminFeeAmount = totalRevenue * (adminFeePercentage / 100);
 
-        console.log('💰 Tournament analytics update:', {
-            totalRevenue,
-            totalPrizePool,
-            adminFeeAmount,
-            protectionLevel: protectionLevelNumber,
-            entries: data?.length
-        });
+        // Remove this broken console.log section
 
         // Update tournament with all analytics
         const { error: updateError } = await supabase
@@ -170,80 +164,24 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Wallet mismatch' }, { status: 403 });
         }
 
-        // Get or create current week's tournament using same logic as weekly-cron
-        // Tournament week starts at 15:30 UTC Sunday, so if it's before 15:30, use last week's Sunday
-        const now = new Date();
-        const utcHour = now.getUTCHours();
-        const utcMinute = now.getUTCMinutes();
-
-        const tournamentDate = new Date(now);
-        if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
-            tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
-        }
-
-        // Get the Sunday of this week for tournament_day
-        const dayOfWeek = tournamentDate.getUTCDay(); // 0 = Sunday
-        const daysToSubtract = dayOfWeek; // Days since last Sunday
-        const tournamentSunday = new Date(tournamentDate);
-        tournamentSunday.setUTCDate(tournamentDate.getUTCDate() - daysToSubtract);
-
-        const today = tournamentSunday.toISOString().split('T')[0];
-        console.log('🔍 Looking for weekly tournament on date:', today, '(using weekly tournament boundary logic)');
-
-        // First, try to get existing tournament for today
+        // Get current active tournament (don't create - tournaments are created via admin/create-tournament only)
         const { data: tournament, error: tournamentFetchError } = await supabase
             .from('tournaments')
             .select('id, tournament_day')
-            .eq('tournament_day', today)
             .eq('is_active', true)
             .single();
 
         console.log('🔍 Tournament fetch result:', { tournament, error: tournamentFetchError });
 
-        if (tournamentFetchError && tournamentFetchError.code !== 'PGRST116') {
-            console.error('❌ Error fetching tournament:', tournamentFetchError);
+        if (tournamentFetchError || !tournament) {
+            console.error('❌ No active tournament found:', tournamentFetchError);
             return NextResponse.json({
-                error: `Database error fetching tournament: ${tournamentFetchError.message}`
-            }, { status: 500 });
+                error: 'No active tournament found. Please contact support.',
+                details: tournamentFetchError?.message || 'No tournament available'
+            }, { status: 404 });
         }
 
-        // Ensure we have a tournament (either existing or newly created)
-        let finalTournament = tournament;
-
-        // If no tournament exists for this week, create one
-        if (!finalTournament) {
-            console.log('🏆 Creating new weekly tournament for week starting:', today);
-            const startTime = new Date(today + 'T15:30:00Z'); // 15:30 UTC Sunday
-            const endTime = new Date(startTime.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days later
-
-            const { data: newTournament, error: tournamentCreateError } = await supabase
-                .from('tournaments')
-                .insert({
-                    tournament_day: today,
-                    start_time: startTime.toISOString(),
-                    end_time: endTime.toISOString(),
-                    is_active: true
-                })
-                .select()
-                .single();
-
-            console.log('🏆 Tournament creation result:', { newTournament, error: tournamentCreateError });
-
-            if (tournamentCreateError) {
-                console.error('❌ Error creating tournament:', tournamentCreateError);
-                return NextResponse.json({
-                    error: `Failed to create tournament: ${tournamentCreateError.message}`
-                }, { status: 500 });
-            }
-
-            finalTournament = newTournament;
-        }
-
-        // Ensure we have a valid tournament
-        if (!finalTournament) {
-            console.error('❌ Failed to get or create tournament');
-            return NextResponse.json({ error: 'Tournament setup failed' }, { status: 500 });
-        }
+        const finalTournament = tournament;
 
         // Get user ID and current verification status from users table, create if doesn't exist
         console.log('👤 Looking for user with wallet:', wallet);
@@ -320,16 +258,16 @@ export async function POST(req: NextRequest) {
         }
 
         // Check verification status - user must be verified for today's tournament
-        const actuallyVerified = is_verified_entry &&
-            user.last_verified_date === today &&
-            user.last_verified_tournament_id === finalTournament.id;
+        // Check if user is verified for this tournament (verification is tournament-specific)
+        const actuallyVerified = !!(user.last_verified_date === finalTournament.tournament_day &&
+            user.last_verified_tournament_id === finalTournament.id);
 
         console.log('🔍 Verification check:', {
             frontend_says_verified: is_verified_entry,
             user_last_verified_date: user.last_verified_date,
             user_last_verified_tournament: user.last_verified_tournament_id,
             current_tournament_id: finalTournament.id,
-            today,
+            tournament_day: finalTournament.tournament_day,
             final_verification_status: actuallyVerified
         });
 
@@ -337,7 +275,7 @@ export async function POST(req: NextRequest) {
         console.log('🎮 Getting or creating user tournament record:', {
             user_id: user.id,
             tournament_id: finalTournament.id,
-            tournament_day: today,
+            tournament_day: finalTournament.tournament_day,
             is_verified_entry: actuallyVerified,
             paid_amount,
             payment_reference
@@ -352,7 +290,7 @@ export async function POST(req: NextRequest) {
                 tournament_id: finalTournament.id,
                 username: user.username,
                 wallet: wallet,
-                tournament_day: today, // Use the correct tournament boundary date
+                tournament_day: finalTournament.tournament_day, // Use the active tournament date
                 updated_at: new Date().toISOString()
             }, {
                 onConflict: 'user_id,tournament_id',
@@ -468,7 +406,7 @@ export async function POST(req: NextRequest) {
                 frontend_claimed: is_verified_entry,
                 database_verified: actuallyVerified,
                 user_last_verified_date: user.last_verified_date,
-                tournament_date: today
+                tournament_date: finalTournament.tournament_day
             }
         });
 
