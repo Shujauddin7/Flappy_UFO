@@ -45,12 +45,19 @@ export default function AdminDashboard() {
     const [payoutInProgress, setPayoutInProgress] = useState(false);
 
     // Check if user is admin
-    const isAdmin = session?.user?.walletAddress === process.env.NEXT_PUBLIC_ADMIN_WALLET;
+    const adminWallet = process.env.NEXT_PUBLIC_ADMIN_WALLET;
+    const isAdmin = adminWallet && session?.user?.walletAddress === adminWallet;
 
     useEffect(() => {
         if (!session) return;
 
         // Security: Check admin wallet only (path obscurity through dynamic routing)
+        if (!adminWallet) {
+            console.error('Admin wallet not configured');
+            router.push('/');
+            return;
+        }
+
         if (!isAdmin) {
             router.push('/');
             return;
@@ -154,7 +161,7 @@ export default function AdminDashboard() {
         };
 
         loadCurrentTournament();
-    }, [session, isAdmin, router]);
+    }, [session, isAdmin, router, adminWallet]);
 
     const handlePayout = async (winnerAddress: string, amount: number, rank: number) => {
         setPayoutInProgress(true);
@@ -227,6 +234,14 @@ export default function AdminDashboard() {
         return (
             <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center">
                 <div className="text-white text-xl">Please sign in to access admin panel</div>
+            </div>
+        );
+    }
+
+    if (!adminWallet) {
+        return (
+            <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center">
+                <div className="text-white text-xl">Admin configuration error. Please contact support.</div>
             </div>
         );
     }
