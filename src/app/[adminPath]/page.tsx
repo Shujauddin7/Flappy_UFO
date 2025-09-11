@@ -1,7 +1,7 @@
 "use client";
 
 import { signOut, useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
 // Dynamic import to prevent SSR issues
@@ -50,6 +50,7 @@ interface PrizePoolData {
 export default function AdminDashboard() {
     const { data: session } = useSession();
     const router = useRouter();
+    const params = useParams();
     const [activeTab, setActiveTab] = useState<'overview' | 'payouts' | 'history'>('overview');
     const [currentTournament, setCurrentTournament] = useState<TournamentData | null>(null);
     const [winners, setWinners] = useState<Winner[]>([]);
@@ -62,9 +63,16 @@ export default function AdminDashboard() {
     const isAdmin = adminWallet && session?.user?.walletAddress === adminWallet;
 
     useEffect(() => {
+        // Safety check: if somehow this catches root path or unexpected paths, redirect to home
+        const adminPath = params?.adminPath as string;
+        if (!adminPath || adminPath === '' || typeof window !== 'undefined' && window.location.pathname === '/') {
+            router.replace('/');
+            return;
+        }
+
         // Early returns to prevent unnecessary execution
         if (!session) return;
-
+        
         // Security: Check admin wallet only (path obscurity through dynamic routing)
         if (!adminWallet) {
             console.error('Admin wallet not configured');
@@ -75,9 +83,7 @@ export default function AdminDashboard() {
         if (!isAdmin) {
             router.push('/');
             return;
-        }
-
-        const calculateBasePrize = (rank: number): number => {
+        }        const calculateBasePrize = (rank: number): number => {
             const prizeDistribution = [0.35, 0.25, 0.15, 0.10, 0.05, 0.03, 0.025, 0.02, 0.015, 0.01];
             return prizeDistribution[rank - 1] || 0;
         };
@@ -191,7 +197,7 @@ export default function AdminDashboard() {
         };
 
         loadCurrentTournament();
-    }, [session, isAdmin, router, adminWallet]);
+    }, [session, isAdmin, router, adminWallet, params?.adminPath]);
 
     const handlePayout = async (winnerAddress: string, amount: number, rank: number) => {
         setPayoutInProgress(true);
@@ -293,8 +299,8 @@ export default function AdminDashboard() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-pink-900 p-6">
-            <div className="max-w-7xl mx-auto">
+        <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-pink-900 p-6 overflow-y-auto">
+            <div className="max-w-7xl mx-auto pb-20">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-8">
                     <h1 className="text-4xl font-bold text-white">Admin Dashboard</h1>
