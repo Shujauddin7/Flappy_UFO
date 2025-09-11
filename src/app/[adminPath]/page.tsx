@@ -67,7 +67,9 @@ export default function AdminDashboard() {
     // Check if this is a valid admin path immediately
     useEffect(() => {
         const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
-        if (currentPath === '/sayeedashuj007/' || currentPath === '/sayeedashuj007') {
+        const validAdminPath = process.env.NEXT_PUBLIC_ADMIN_PATH;
+
+        if (validAdminPath && (currentPath === `/${validAdminPath}/` || currentPath === `/${validAdminPath}`)) {
             setIsValidAdminPath(true);
         } else {
             // Silently redirect without showing any admin content
