@@ -72,7 +72,7 @@ export default function AdminDashboard() {
 
         // Early returns to prevent unnecessary execution
         if (!session) return;
-        
+
         // Security: Check admin wallet only (path obscurity through dynamic routing)
         if (!adminWallet) {
             console.error('Admin wallet not configured');
@@ -83,7 +83,7 @@ export default function AdminDashboard() {
         if (!isAdmin) {
             router.push('/');
             return;
-        }        const calculateBasePrize = (rank: number): number => {
+        } const calculateBasePrize = (rank: number): number => {
             const prizeDistribution = [0.35, 0.25, 0.15, 0.10, 0.05, 0.03, 0.025, 0.02, 0.015, 0.01];
             return prizeDistribution[rank - 1] || 0;
         };
