@@ -122,7 +122,7 @@ export default function GameHomepage() {
                     try {
                         const response = await fetch('/api/tournament/current');
                         const data = await response.json();
-                        
+
                         if (data.status && !data.status.entries_allowed) {
                             // Tournament entries not allowed (grace period or ended)
                             if (data.status.is_grace_period) {
@@ -132,7 +132,7 @@ export default function GameHomepage() {
                             }
                             return;
                         }
-                        
+
                         // Tournament entries allowed, go to tournament entry screen
                         setCurrentScreen('tournamentEntry');
                     } catch (error) {
