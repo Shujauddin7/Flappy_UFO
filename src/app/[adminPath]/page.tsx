@@ -114,14 +114,15 @@ export default function AdminDashboard() {
             try {
                 const response = await fetch(`/api/tournament/leaderboard-data?tournament_id=${tournamentId}`);
                 if (response.ok) {
-                    const leaderboard = await response.json();
+                    const data = await response.json();
+                    const leaderboard = data.players || data; // Handle both response formats
 
                     // Calculate payouts for top 10
-                    const winnersData = leaderboard.slice(0, 10).map((player: { wallet_address: string; username?: string; score: number }, index: number) => ({
+                    const winnersData = leaderboard.slice(0, 10).map((player: { wallet?: string; wallet_address?: string; username?: string; highest_score?: number; score?: number }, index: number) => ({
                         rank: index + 1,
-                        wallet_address: player.wallet_address,
+                        wallet_address: player.wallet || player.wallet_address,
                         username: player.username || `Player ${index + 1}`,
-                        score: player.score,
+                        score: player.highest_score || player.score,
                         base_amount: calculateBasePrize(index + 1),
                         guarantee_bonus: 0, // Will be calculated based on revenue
                         final_amount: 0, // Will be calculated
