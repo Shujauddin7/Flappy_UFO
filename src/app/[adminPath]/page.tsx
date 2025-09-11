@@ -215,16 +215,27 @@ export default function AdminDashboard() {
         setPayoutInProgress(true);
 
         try {
+            console.log('🚀 Starting payout process...');
+            console.log('Winner:', winnerAddress, 'Amount:', amount, 'Rank:', rank);
+
             // Load MiniKit dynamically
+            console.log('📦 Loading MiniKit...');
             const miniKitModules = await loadMiniKit();
             if (!miniKitModules) {
-                throw new Error('MiniKit not available');
+                throw new Error('MiniKit not available - Make sure you are in World App');
             }
 
             const { MiniKit, Tokens, tokenToDecimals } = miniKitModules;
+            console.log('✅ MiniKit loaded successfully');
+
+            // Check if MiniKit is ready
+            if (!MiniKit.isInstalled()) {
+                throw new Error('World App not detected. Please open this page in World App.');
+            }
 
             // Convert WLD to wei (18 decimals)
             const amountInWei = tokenToDecimals(amount, Tokens.WLD);
+            console.log('💰 Amount in wei:', amountInWei.toString());
 
             const payload = {
                 reference: `tournament_prize_rank_${rank}_${Date.now()}`,
@@ -236,12 +247,14 @@ export default function AdminDashboard() {
                 description: `Tournament Prize - Rank ${rank}`
             };
 
-            console.log('Sending payment payload:', payload);
+            console.log('📋 Payment payload:', payload);
+            console.log('🔄 Opening World App payment interface...');
 
             const result = await MiniKit.commandsAsync.pay(payload);
-            console.log('Payment result:', result);
+            console.log('✅ Payment result:', result);
 
             if (result.finalPayload) {
+                console.log('🎉 Payment successful!');
                 // Update winner status
                 setWinners(prevWinners =>
                     prevWinners.map(winner =>
@@ -251,13 +264,19 @@ export default function AdminDashboard() {
                     )
                 );
 
-                alert(`Payment sent successfully to rank ${rank}!`);
+                alert(`✅ Payment sent successfully to rank ${rank}!\nTransaction: ${payload.reference}`);
             } else {
-                throw new Error('Payment failed - no response payload');
+                throw new Error('Payment was cancelled or failed - no response payload received');
             }
         } catch (error) {
-            console.error('Payout error:', error);
-            alert(`Payment failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            console.error('❌ Payout error:', error);
+
+            let errorMessage = 'Unknown error';
+            if (error instanceof Error) {
+                errorMessage = error.message;
+            }
+
+            alert(`❌ Payment failed: ${errorMessage}\n\nTips:\n- Make sure you are in World App\n- Check console for details\n- Try again in a few seconds`);
 
             // Update winner status to failed
             setWinners(prevWinners =>
@@ -268,6 +287,7 @@ export default function AdminDashboard() {
                 )
             );
         } finally {
+            console.log('🏁 Payout process ended');
             setPayoutInProgress(false);
         }
     };
