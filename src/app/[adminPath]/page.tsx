@@ -126,26 +126,24 @@ export default function AdminDashboard() {
             }
         };
 
-        const loadPrizePool = async (tournamentId: string) => {
+        const loadPrizePool = async (tournamentId: string, tournamentDay: string) => {
             try {
-                const response = await fetch(`/api/admin/tournament-analytics?tournament_id=${tournamentId}`);
+                const response = await fetch(`/api/admin/tournament-analytics?tournament_day=${tournamentDay}`);
                 if (response.ok) {
-                    const analytics = await response.json();
+                    const result = await response.json();
+                    const analytics = result.data; // API returns { success: true, data: {...} }
 
                     const totalCollected = analytics.total_collected || 0;
-                    const adminFee = totalCollected * 0.1; // 10% admin fee
-                    const baseAmount = totalCollected - adminFee;
-
-                    // Check if guarantee is needed (revenue < 72 WLD = 7.2 WLD after admin fee)
-                    const guaranteeNeeded = baseAmount < 7.2;
-                    const guaranteeAmount = guaranteeNeeded ? (10 - baseAmount) : 0; // 1 WLD per top 10 winner
+                    const adminFee = analytics.admin_fee || 0;
+                    const guaranteeAmount = analytics.guarantee_amount || 0;
+                    const baseAmount = analytics.total_prize_pool || 0;
 
                     setPrizePool({
                         base_amount: baseAmount,
                         guarantee_amount: guaranteeAmount,
                         admin_fee: adminFee,
                         total_collected: totalCollected,
-                        guarantee_needed: guaranteeNeeded
+                        guarantee_needed: guaranteeAmount > 0
                     });
 
                     // Update winners with final amounts
@@ -180,7 +178,7 @@ export default function AdminDashboard() {
 
                     if (tournament?.id) {
                         await loadWinners(tournament.id);
-                        await loadPrizePool(tournament.id);
+                        await loadPrizePool(tournament.id, tournament.tournament_day);
                     }
                 } else {
                     console.warn('Failed to load tournament:', response.status);
