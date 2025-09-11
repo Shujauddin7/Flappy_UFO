@@ -77,6 +77,7 @@ export default function AdminDashboard() {
     useEffect(() => {
         // Early returns to prevent unnecessary execution
         if (!session) return;
+        if (!isValidAdminPath) return; // Don't execute admin logic for invalid paths
 
         // Security: Check admin wallet only (path obscurity through dynamic routing)
         if (!adminWallet) {
@@ -202,7 +203,12 @@ export default function AdminDashboard() {
         };
 
         loadCurrentTournament();
-    }, [session, isAdmin, router, adminWallet, params?.adminPath]);
+    }, [session, isAdmin, router, adminWallet, params?.adminPath, isValidAdminPath]);
+
+    // Early return if not a valid admin path - prevents any admin content from rendering
+    if (!isValidAdminPath) {
+        return null; // No admin content rendered for invalid paths
+    }
 
     const handlePayout = async (winnerAddress: string, amount: number, rank: number) => {
         setPayoutInProgress(true);
