@@ -44,10 +44,25 @@ export default function AdminDashboard() {
     const [prizePool, setPrizePool] = useState<PrizePoolData | null>(null);
     const [loading, setLoading] = useState(false);
     const [isValidAdminPath, setIsValidAdminPath] = useState(false);
+    const [selectedAdminWallet, setSelectedAdminWallet] = useState<string>('');
 
-    // Check if user is admin
-    const adminWallet = process.env.NEXT_PUBLIC_ADMIN_WALLET;
-    const isAdmin = adminWallet && session?.user?.walletAddress === adminWallet;
+    // Multi-admin wallet system
+    const primaryAdminWallet = process.env.NEXT_PUBLIC_ADMIN_WALLET;
+    const backupAdminWallet = process.env.NEXT_PUBLIC_BACKUP_ADMIN_WALLET;
+
+    // Get all valid admin wallets (filter out undefined)
+    const validAdminWallets = [primaryAdminWallet, backupAdminWallet].filter(Boolean) as string[];
+
+    // Check if user is any valid admin
+    const currentUserWallet = session?.user?.walletAddress;
+    const isAdmin = currentUserWallet && validAdminWallets.includes(currentUserWallet);
+
+    // Set default selected admin wallet to current user's wallet if they're admin
+    useEffect(() => {
+        if (isAdmin && currentUserWallet && !selectedAdminWallet) {
+            setSelectedAdminWallet(currentUserWallet);
+        }
+    }, [isAdmin, currentUserWallet, selectedAdminWallet]);
 
     // Check if this is a valid admin path immediately
     useEffect(() => {
@@ -190,7 +205,7 @@ export default function AdminDashboard() {
         };
 
         loadCurrentTournament();
-    }, [session, isAdmin, router, adminWallet, params?.adminPath, isValidAdminPath]);
+    }, [session, isAdmin, router, params?.adminPath, isValidAdminPath]);
 
     // Early return if not a valid admin path - prevents any admin content from rendering
     if (!isValidAdminPath) {
@@ -266,6 +281,31 @@ export default function AdminDashboard() {
                         Sign Out
                     </button>
                 </div>
+
+                {/* Admin Wallet Selection */}
+                {validAdminWallets.length > 1 && (
+                    <div className="bg-blue-500/20 border border-blue-500/50 rounded-lg p-4 mb-6">
+                        <h3 className="text-lg font-semibold text-white mb-3">🔐 Choose Admin Wallet</h3>
+                        <div className="flex flex-wrap gap-3">
+                            {validAdminWallets.map((wallet, index) => (
+                                <button
+                                    key={wallet}
+                                    onClick={() => setSelectedAdminWallet(wallet)}
+                                    className={`px-4 py-2 rounded-lg transition-colors font-mono text-sm ${selectedAdminWallet === wallet
+                                            ? 'bg-blue-600 text-white'
+                                            : 'bg-white/20 text-gray-300 hover:bg-white/30'
+                                        }`}
+                                >
+                                    {index === 0 ? '👑 Primary' : '🔄 Backup'}: {wallet.slice(0, 6)}...{wallet.slice(-4)}
+                                    {currentUserWallet === wallet && ' (You)'}
+                                </button>
+                            ))}
+                        </div>
+                        <p className="text-xs text-gray-400 mt-2">
+                            💡 Switch wallets if your World App has pending transactions
+                        </p>
+                    </div>
+                )}
 
                 {/* Navigation Tabs */}
                 <div className="flex space-x-4 mb-8">
@@ -477,6 +517,7 @@ export default function AdminDashboard() {
                                                             amount={winner.final_amount}
                                                             rank={winner.rank}
                                                             username={winner.username}
+                                                            selectedAdminWallet={selectedAdminWallet}
                                                             onPaymentSuccess={handlePaymentSuccess}
                                                             onPaymentError={handlePaymentError}
                                                             disabled={false}

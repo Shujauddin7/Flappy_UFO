@@ -8,6 +8,7 @@ interface AdminPayoutProps {
     amount: number;
     rank: number;
     username: string;
+    selectedAdminWallet: string;
     onPaymentSuccess: (winnerAddress: string, transactionId: string) => void;
     onPaymentError: (winnerAddress: string, error: string) => void;
     disabled?: boolean;
@@ -18,6 +19,7 @@ export const AdminPayout = ({
     amount,
     rank,
     username,
+    selectedAdminWallet,
     onPaymentSuccess,
     onPaymentError,
     disabled = false
@@ -38,6 +40,7 @@ export const AdminPayout = ({
 
             console.log('🚀 Starting payout to:', username, winnerAddress);
             console.log('💰 Amount:', amount, 'WLD');
+            console.log('🔐 Using admin wallet:', selectedAdminWallet);
 
             // Use the same proven MiniKit payment flow as game entry
             const result = await MiniKit.commandsAsync.pay({
@@ -86,24 +89,29 @@ export const AdminPayout = ({
     };
 
     return (
-        <LiveFeedback
-            label={{
-                failed: 'Payment failed',
-                pending: 'Processing payment...',
-                success: 'Payment sent!',
-            }}
-            state={buttonState}
-            className="w-full"
-        >
-            <Button
-                onClick={handlePayout}
-                disabled={buttonState === 'pending' || disabled}
-                size="sm"
-                variant="primary"
-                className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white px-4 py-1 rounded text-sm transition-colors"
+        <div>
+            <LiveFeedback
+                label={{
+                    failed: 'Payment failed - Try again',
+                    pending: 'Processing payment...',
+                    success: 'Payment sent!',
+                }}
+                state={buttonState}
+                className="w-full"
             >
-                Pay {amount.toFixed(4)} WLD
-            </Button>
-        </LiveFeedback>
+                <Button
+                    onClick={handlePayout}
+                    disabled={buttonState === 'pending' || disabled}
+                    size="sm"
+                    variant="primary"
+                    className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white px-4 py-1 rounded text-sm transition-colors"
+                >
+                    Pay {amount.toFixed(4)} WLD
+                </Button>
+            </LiveFeedback>
+            <p className="text-xs text-gray-400 mt-1">
+                From: {selectedAdminWallet.slice(0, 6)}...{selectedAdminWallet.slice(-4)}
+            </p>
+        </div>
     );
 };
