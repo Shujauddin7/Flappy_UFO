@@ -80,9 +80,9 @@ export default function AdminDashboard() {
         if (!session) return;
         if (!isValidAdminPath) return; // Don't execute admin logic for invalid paths
 
-        // Security: Check admin wallet only (path obscurity through dynamic routing)
-        if (!adminWallet) {
-            console.error('Admin wallet not configured');
+        // Security: Check admin wallet configuration (path obscurity through dynamic routing)
+        if (validAdminWallets.length === 0) {
+            console.error('No admin wallets configured');
             router.push('/');
             return;
         }
@@ -205,7 +205,7 @@ export default function AdminDashboard() {
         };
 
         loadCurrentTournament();
-    }, [session, isAdmin, router, params?.adminPath, isValidAdminPath]);
+    }, [session, isAdmin, router, params?.adminPath, isValidAdminPath, validAdminWallets.length]);
 
     // Early return if not a valid admin path - prevents any admin content from rendering
     if (!isValidAdminPath) {
@@ -252,7 +252,7 @@ export default function AdminDashboard() {
         );
     }
 
-    if (!adminWallet) {
+    if (validAdminWallets.length === 0) {
         return (
             <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center">
                 <div className="text-white text-xl">Admin configuration error. Please contact support.</div>
@@ -292,8 +292,8 @@ export default function AdminDashboard() {
                                     key={wallet}
                                     onClick={() => setSelectedAdminWallet(wallet)}
                                     className={`px-4 py-2 rounded-lg transition-colors font-mono text-sm ${selectedAdminWallet === wallet
-                                            ? 'bg-blue-600 text-white'
-                                            : 'bg-white/20 text-gray-300 hover:bg-white/30'
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-white/20 text-gray-300 hover:bg-white/30'
                                         }`}
                                 >
                                     {index === 0 ? '👑 Primary' : '🔄 Backup'}: {wallet.slice(0, 6)}...{wallet.slice(-4)}
