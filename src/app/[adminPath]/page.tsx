@@ -3,7 +3,20 @@
 import { signOut, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { MiniKit, Tokens, tokenToDecimals } from '@worldcoin/minikit-js';
+
+// Dynamic import to prevent SSR issues
+const loadMiniKit = async () => {
+    if (typeof window !== 'undefined') {
+        try {
+            const { MiniKit, Tokens, tokenToDecimals } = await import('@worldcoin/minikit-js');
+            return { MiniKit, Tokens, tokenToDecimals };
+        } catch (error) {
+            console.warn('MiniKit not available:', error);
+            return null;
+        }
+    }
+    return null;
+};
 
 interface TournamentData {
     tournament_id: string;
@@ -49,6 +62,7 @@ export default function AdminDashboard() {
     const isAdmin = adminWallet && session?.user?.walletAddress === adminWallet;
 
     useEffect(() => {
+        // Early returns to prevent unnecessary execution
         if (!session) return;
 
         // Security: Check admin wallet only (path obscurity through dynamic routing)
@@ -104,6 +118,8 @@ export default function AdminDashboard() {
                     }));
 
                     setWinners(winnersData);
+                } else {
+                    console.warn('Failed to load winners:', response.status);
                 }
             } catch (error) {
                 console.error('Error loading winners:', error);
@@ -134,6 +150,8 @@ export default function AdminDashboard() {
 
                     // Update winners with final amounts
                     updateWinnersWithPrizePool(baseAmount, guaranteeAmount);
+                } else {
+                    console.warn('Failed to load prize pool:', response.status);
                 }
             } catch (error) {
                 console.error('Error loading prize pool:', error);
@@ -145,13 +163,27 @@ export default function AdminDashboard() {
             try {
                 const response = await fetch('/api/tournament/current');
                 if (response.ok) {
-                    const tournament = await response.json();
-                    setCurrentTournament(tournament);
+                    const data = await response.json();
+                    const tournament = data.tournament; // API returns { tournament: {...} }
 
-                    if (tournament?.tournament_id) {
-                        await loadWinners(tournament.tournament_id);
-                        await loadPrizePool(tournament.tournament_id);
+                    // Map the API response to our expected format
+                    const mappedTournament = {
+                        tournament_id: tournament.id,
+                        tournament_day: tournament.tournament_day,
+                        total_collected: tournament.total_collected,
+                        participant_count: tournament.total_players,
+                        status: tournament.is_active ? 'active' : 'ended',
+                        created_at: tournament.created_at
+                    };
+
+                    setCurrentTournament(mappedTournament);
+
+                    if (tournament?.id) {
+                        await loadWinners(tournament.id);
+                        await loadPrizePool(tournament.id);
                     }
+                } else {
+                    console.warn('Failed to load tournament:', response.status);
                 }
             } catch (error) {
                 console.error('Error loading tournament:', error);
@@ -167,6 +199,14 @@ export default function AdminDashboard() {
         setPayoutInProgress(true);
 
         try {
+            // Load MiniKit dynamically
+            const miniKitModules = await loadMiniKit();
+            if (!miniKitModules) {
+                throw new Error('MiniKit not available');
+            }
+
+            const { MiniKit, Tokens, tokenToDecimals } = miniKitModules;
+
             // Convert WLD to wei (18 decimals)
             const amountInWei = tokenToDecimals(amount, Tokens.WLD);
 
