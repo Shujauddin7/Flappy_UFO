@@ -3,20 +3,7 @@
 import { signOut, useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
-
-// Dynamic import to prevent SSR issues
-const loadMiniKit = async () => {
-    if (typeof window !== 'undefined') {
-        try {
-            const { MiniKit, Tokens, tokenToDecimals } = await import('@worldcoin/minikit-js');
-            return { MiniKit, Tokens, tokenToDecimals };
-        } catch (error) {
-            console.warn('MiniKit not available:', error);
-            return null;
-        }
-    }
-    return null;
-};
+import { AdminPayout } from '@/components/AdminPayout';
 
 interface TournamentData {
     tournament_id: string;
@@ -56,7 +43,6 @@ export default function AdminDashboard() {
     const [winners, setWinners] = useState<Winner[]>([]);
     const [prizePool, setPrizePool] = useState<PrizePoolData | null>(null);
     const [loading, setLoading] = useState(false);
-    const [payoutInProgress, setPayoutInProgress] = useState(false);
     const [isValidAdminPath, setIsValidAdminPath] = useState(false);
 
     // Check if user is admin
@@ -211,99 +197,31 @@ export default function AdminDashboard() {
         return null; // No admin content rendered for invalid paths
     }
 
-    const handlePayout = async (winnerAddress: string, amount: number, rank: number) => {
-        setPayoutInProgress(true);
+    // Simple callback handlers for the AdminPayout component
+    const handlePaymentSuccess = (winnerAddress: string, transactionId: string) => {
+        console.log('✅ Payment successful for:', winnerAddress);
 
-        try {
-            console.log('🚀 Starting payout process...');
-            console.log('Winner:', winnerAddress, 'Amount:', amount, 'Rank:', rank);
-
-            // Load MiniKit dynamically
-            console.log('📦 Loading MiniKit...');
-            const miniKitModules = await loadMiniKit();
-            if (!miniKitModules) {
-                throw new Error('MiniKit not available - Make sure you are in World App');
-            }
-
-            const { MiniKit, Tokens, tokenToDecimals } = miniKitModules;
-            console.log('✅ MiniKit loaded successfully');
-
-            // Check if MiniKit is ready
-            if (!MiniKit.isInstalled()) {
-                throw new Error('World App not detected. Please open this page in World App.');
-            }
-
-            // Convert WLD to wei (18 decimals)
-            const amountInWei = tokenToDecimals(amount, Tokens.WLD);
-            console.log('💰 Amount in wei:', amountInWei.toString());
-
-            const payload = {
-                reference: `tournament_prize_rank_${rank}_${Date.now()}`,
-                to: winnerAddress,
-                tokens: [{
-                    symbol: Tokens.WLD,
-                    token_amount: amountInWei.toString()
-                }],
-                description: `Tournament Prize - Rank ${rank}`
-            };
-
-            console.log('📋 Payment payload:', payload);
-            console.log('🔄 Opening World App payment interface...');
-
-            const result = await MiniKit.commandsAsync.pay(payload);
-            console.log('✅ Payment result:', result);
-
-            if (result.finalPayload) {
-                console.log('🎉 Payment successful!');
-                // Update winner status
-                setWinners(prevWinners =>
-                    prevWinners.map(winner =>
-                        winner.wallet_address === winnerAddress
-                            ? { ...winner, payment_status: 'sent' as const, transaction_id: payload.reference }
-                            : winner
-                    )
-                );
-
-                alert(`✅ Payment sent successfully to rank ${rank}!\nTransaction: ${payload.reference}`);
-            } else {
-                throw new Error('Payment was cancelled or failed - no response payload received');
-            }
-        } catch (error) {
-            console.error('❌ Payout error:', error);
-
-            let errorMessage = 'Unknown error';
-            if (error instanceof Error) {
-                errorMessage = error.message;
-            }
-
-            alert(`❌ Payment failed: ${errorMessage}\n\nTips:\n- Make sure you are in World App\n- Check console for details\n- Try again in a few seconds`);
-
-            // Update winner status to failed
-            setWinners(prevWinners =>
-                prevWinners.map(winner =>
-                    winner.wallet_address === winnerAddress
-                        ? { ...winner, payment_status: 'failed' as const }
-                        : winner
-                )
-            );
-        } finally {
-            console.log('🏁 Payout process ended');
-            setPayoutInProgress(false);
-        }
+        // Update winner status to sent
+        setWinners(prevWinners =>
+            prevWinners.map(winner =>
+                winner.wallet_address === winnerAddress
+                    ? { ...winner, payment_status: 'sent' as const, transaction_id: transactionId }
+                    : winner
+            )
+        );
     };
 
-    const handlePayoutAll = async () => {
-        setPayoutInProgress(true);
+    const handlePaymentError = (winnerAddress: string, error: string) => {
+        console.error('❌ Payment failed for:', winnerAddress, error);
 
-        for (const winner of winners) {
-            if (winner.payment_status === 'pending' && winner.final_amount > 0) {
-                await handlePayout(winner.wallet_address, winner.final_amount, winner.rank);
-                // Add delay between payments to avoid rate limiting
-                await new Promise(resolve => setTimeout(resolve, 2000));
-            }
-        }
-
-        setPayoutInProgress(false);
+        // Update winner status to failed
+        setWinners(prevWinners =>
+            prevWinners.map(winner =>
+                winner.wallet_address === winnerAddress
+                    ? { ...winner, payment_status: 'failed' as const }
+                    : winner
+            )
+        );
     };
 
     // Don't render anything until we've verified this is a valid admin path
@@ -506,13 +424,10 @@ export default function AdminDashboard() {
                     <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-bold text-white">Tournament Payouts</h2>
-                            <button
-                                onClick={handlePayoutAll}
-                                disabled={payoutInProgress || winners.every(w => w.payment_status !== 'pending')}
-                                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
-                            >
-                                {payoutInProgress ? 'Processing...' : 'Payout All Pending'}
-                            </button>
+                            <div className="text-center">
+                                <p className="text-sm text-gray-400 mb-1">Use individual Pay buttons below</p>
+                                <p className="text-xs text-gray-500">Each payment opens World App payment interface</p>
+                            </div>
                         </div>
 
                         {winners.length > 0 ? (
@@ -557,13 +472,15 @@ export default function AdminDashboard() {
                                                 </td>
                                                 <td className="py-3 px-4">
                                                     {winner.payment_status === 'pending' && (
-                                                        <button
-                                                            onClick={() => handlePayout(winner.wallet_address, winner.final_amount, winner.rank)}
-                                                            disabled={payoutInProgress}
-                                                            className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white px-4 py-1 rounded text-sm transition-colors"
-                                                        >
-                                                            Pay
-                                                        </button>
+                                                        <AdminPayout
+                                                            winnerAddress={winner.wallet_address}
+                                                            amount={winner.final_amount}
+                                                            rank={winner.rank}
+                                                            username={winner.username}
+                                                            onPaymentSuccess={handlePaymentSuccess}
+                                                            onPaymentError={handlePaymentError}
+                                                            disabled={false}
+                                                        />
                                                     )}
                                                     {winner.transaction_id && (
                                                         <p className="text-xs text-gray-400 mt-1 font-mono">
