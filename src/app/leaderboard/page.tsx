@@ -122,40 +122,36 @@ export default function LeaderboardPage() {
         if (!currentTournament) return null;
 
         const now = currentTime;
-        const utcHour = now.getUTCHours();
-        const utcMinute = now.getUTCMinutes();
-        const utcSecond = now.getUTCSeconds();
-        const utcDay = now.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
+        const tournamentEndTime = new Date(currentTournament.end_time);
+        const msUntilEnd = tournamentEndTime.getTime() - now.getTime();
 
-        // Check if we're in grace period (Sunday 15:30-16:00 UTC)
-        if (utcDay === 0 && utcHour === 15 && utcMinute >= 30) {
-            const totalSecondsLeft = (59 - utcMinute) * 60 + (60 - utcSecond);
-            const minutesLeft = Math.floor(totalSecondsLeft / 60);
-            const secondsLeft = totalSecondsLeft % 60;
+        // Tournament has ended
+        if (msUntilEnd <= 0) {
             return {
-                status: 'grace',
-                timeLeft: `${minutesLeft}m ${secondsLeft}s until new tournament`
+                status: 'ended',
+                timeLeft: 'Tournament ended'
             };
         }
 
-        // Calculate time until next Sunday 15:30 UTC
-        const nextSunday = new Date(now);
-        const daysUntilSunday = (7 - utcDay) % 7; // Days until next Sunday
+        // Check if we're in grace period (30 minutes before end)
+        const gracePeriodStart = new Date(tournamentEndTime);
+        gracePeriodStart.setUTCMinutes(gracePeriodStart.getUTCMinutes() - 30);
+        const isGracePeriod = now >= gracePeriodStart && now < tournamentEndTime;
 
-        // If it's Sunday but before 15:30, next tournament is today
-        if (utcDay === 0 && (utcHour < 15 || (utcHour === 15 && utcMinute < 30))) {
-            nextSunday.setUTCHours(15, 30, 0, 0);
-        } else {
-            // Next tournament is next Sunday
-            nextSunday.setUTCDate(nextSunday.getUTCDate() + (daysUntilSunday || 7));
-            nextSunday.setUTCHours(15, 30, 0, 0);
+        if (isGracePeriod) {
+            const minutesLeft = Math.floor(msUntilEnd / (1000 * 60));
+            const secondsLeft = Math.floor((msUntilEnd % (1000 * 60)) / 1000);
+            return {
+                status: 'grace',
+                timeLeft: `${minutesLeft}m ${secondsLeft}s until tournament ends`
+            };
         }
 
-        const msUntilNext = nextSunday.getTime() - now.getTime();
-        const daysLeft = Math.floor(msUntilNext / (1000 * 60 * 60 * 24));
-        const hoursLeft = Math.floor((msUntilNext % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutesLeft = Math.floor((msUntilNext % (1000 * 60 * 60)) / (1000 * 60));
-        const secondsLeft = Math.floor((msUntilNext % (1000 * 60)) / 1000);
+        // Calculate time until tournament end using actual end_time
+        const daysLeft = Math.floor(msUntilEnd / (1000 * 60 * 60 * 24));
+        const hoursLeft = Math.floor((msUntilEnd % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutesLeft = Math.floor((msUntilEnd % (1000 * 60 * 60)) / (1000 * 60));
+        const secondsLeft = Math.floor((msUntilEnd % (1000 * 60)) / 1000);
 
         // Format time display based on how much time is left
         let timeDisplay = '';

@@ -118,8 +118,28 @@ export default function GameHomepage() {
                     setGameMode(mode);
                     setCurrentScreen('playing');
                 } else {
-                    // For tournament mode, go to tournament entry screen
-                    setCurrentScreen('tournamentEntry');
+                    // For tournament mode, check tournament status first
+                    try {
+                        const response = await fetch('/api/tournament/current');
+                        const data = await response.json();
+                        
+                        if (data.status && !data.status.entries_allowed) {
+                            // Tournament entries not allowed (grace period or ended)
+                            if (data.status.is_grace_period) {
+                                alert('Tournament is in grace period - no new entries allowed. Existing players can still play!');
+                            } else {
+                                alert('Tournament has ended. Please wait for the next tournament.');
+                            }
+                            return;
+                        }
+                        
+                        // Tournament entries allowed, go to tournament entry screen
+                        setCurrentScreen('tournamentEntry');
+                    } catch (error) {
+                        console.error('Error checking tournament status:', error);
+                        alert('Unable to check tournament status. Please try again.');
+                        return;
+                    }
                 }
             } else {
                 // Authentication failed
