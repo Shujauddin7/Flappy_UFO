@@ -57,19 +57,24 @@ export default function AdminDashboard() {
     const [prizePool, setPrizePool] = useState<PrizePoolData | null>(null);
     const [loading, setLoading] = useState(false);
     const [payoutInProgress, setPayoutInProgress] = useState(false);
+    const [isValidAdminPath, setIsValidAdminPath] = useState(false);
 
     // Check if user is admin
     const adminWallet = process.env.NEXT_PUBLIC_ADMIN_WALLET;
     const isAdmin = adminWallet && session?.user?.walletAddress === adminWallet;
 
+    // Check if this is a valid admin path immediately
     useEffect(() => {
-        // Safety check: if somehow this catches root path or unexpected paths, redirect to home
-        const adminPath = params?.adminPath as string;
-        if (!adminPath || adminPath === '' || typeof window !== 'undefined' && window.location.pathname === '/') {
+        const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+        if (currentPath === '/sayeedashuj007/' || currentPath === '/sayeedashuj007') {
+            setIsValidAdminPath(true);
+        } else {
+            // Silently redirect without showing any admin content
             router.replace('/');
-            return;
         }
+    }, [router]);
 
+    useEffect(() => {
         // Early returns to prevent unnecessary execution
         if (!session) return;
 
@@ -274,6 +279,11 @@ export default function AdminDashboard() {
         setPayoutInProgress(false);
     };
 
+    // Don't render anything until we've verified this is a valid admin path
+    if (!isValidAdminPath) {
+        return null; // Return nothing instead of showing admin content
+    }
+
     if (!session) {
         return (
             <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center">
@@ -299,7 +309,7 @@ export default function AdminDashboard() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-pink-900 p-6 overflow-y-auto">
+        <div className="h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-pink-900 p-6 overflow-y-auto">
             <div className="max-w-7xl mx-auto pb-20">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-8">
@@ -388,6 +398,79 @@ export default function AdminDashboard() {
                                 )}
                             </div>
                         )}
+
+                        {/* Tournament Schedule & Payout Timing */}
+                        <div className="mt-6 bg-white/20 rounded-lg p-4">
+                            <h3 className="text-lg font-semibold text-white mb-4">🕒 Tournament Schedule & Payouts</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-3">
+                                    <h4 className="text-md font-semibold text-blue-300">Tournament Timeline:</h4>
+                                    <div className="space-y-2 text-sm">
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-300">Start:</span>
+                                            <span className="text-green-400">Monday 15:30 UTC</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-300">End:</span>
+                                            <span className="text-red-400">Sunday 15:30 UTC</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-300">Duration:</span>
+                                            <span className="text-white">7 days</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    <h4 className="text-md font-semibold text-purple-300">Payout Process:</h4>
+                                    <div className="space-y-2 text-sm">
+                                        <div className="flex items-center space-x-2">
+                                            <span className="text-yellow-400">⏰</span>
+                                            <span className="text-gray-300">Payouts available after tournament ends</span>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <span className="text-green-400">✅</span>
+                                            <span className="text-gray-300">Process payouts via &ldquo;Payouts&rdquo; tab</span>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <span className="text-blue-400">💳</span>
+                                            <span className="text-gray-300">Real WLD payments via World App</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="mt-4 p-3 bg-blue-500/20 border border-blue-500/50 rounded-lg">
+                                <p className="text-blue-300 font-semibold">💡 Admin Workflow</p>
+                                <p className="text-sm text-blue-200">Wait for tournament to end → Go to &ldquo;Payouts&rdquo; tab → Review winners → Process payments</p>
+                            </div>
+                        </div>
+
+                        {/* Quick Actions */}
+                        <div className="mt-6 bg-white/20 rounded-lg p-4">
+                            <h3 className="text-lg font-semibold text-white mb-4">⚡ Quick Actions</h3>
+                            <div className="flex flex-wrap gap-3">
+                                <button
+                                    onClick={() => setActiveTab('payouts')}
+                                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                                >
+                                    <span>💰</span>
+                                    <span>Process Payouts</span>
+                                </button>
+                                <button
+                                    onClick={() => window.open('https://flappyufo-git-dev-shujauddin.vercel.app/leaderboard', '_blank')}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                                >
+                                    <span>🏆</span>
+                                    <span>View Leaderboard</span>
+                                </button>
+                                <button
+                                    onClick={() => window.open('https://flappyufo-git-dev-shujauddin.vercel.app/', '_blank')}
+                                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                                >
+                                    <span>🎮</span>
+                                    <span>View Game</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
 
