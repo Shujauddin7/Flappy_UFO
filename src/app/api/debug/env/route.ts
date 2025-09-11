@@ -14,6 +14,12 @@ export async function GET() {
         SUPABASE_PROD_SERVICE_KEY: process.env.SUPABASE_PROD_SERVICE_KEY ? '✅ Set' : '❌ Missing',
         SUPABASE_DEV_SERVICE_KEY: process.env.SUPABASE_DEV_SERVICE_KEY ? '✅ Set' : '❌ Missing',
 
+        // Admin wallet configuration
+        NEXT_PUBLIC_ADMIN_WALLET: process.env.NEXT_PUBLIC_ADMIN_WALLET ? '✅ Set' : '❌ Missing',
+        NEXT_PUBLIC_BACKUP_ADMIN_WALLET: process.env.NEXT_PUBLIC_BACKUP_ADMIN_WALLET ? '✅ Set' : '❌ Missing',
+        PRIMARY_WALLET: process.env.NEXT_PUBLIC_ADMIN_WALLET ? `${process.env.NEXT_PUBLIC_ADMIN_WALLET.slice(0, 6)}...${process.env.NEXT_PUBLIC_ADMIN_WALLET.slice(-4)}` : 'Not set',
+        BACKUP_WALLET: process.env.NEXT_PUBLIC_BACKUP_ADMIN_WALLET ? `${process.env.NEXT_PUBLIC_BACKUP_ADMIN_WALLET.slice(0, 6)}...${process.env.NEXT_PUBLIC_BACKUP_ADMIN_WALLET.slice(-4)}` : 'Not set',
+
         // Current detection logic (following Plan.md specification)
         isProduction: process.env.NEXT_PUBLIC_ENV === 'prod',
 
