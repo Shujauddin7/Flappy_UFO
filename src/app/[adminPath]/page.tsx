@@ -118,18 +118,28 @@ export default function AdminDashboard() {
                     const data = await response.json();
                     const leaderboard = data.players || data; // Handle both response formats
 
+                    // Get already paid winners from prizes table
+                    const paidResponse = await fetch(`/api/admin/paid-winners?tournament_id=${tournamentId}`);
+                    const paidWinners = paidResponse.ok ? await paidResponse.json() : { winners: [] };
+                    const paidWalletsSet = new Set(paidWinners.winners?.map((w: { wallet: string }) => w.wallet) || []);
+
                     // Calculate payouts for top 10
-                    const winnersData = leaderboard.slice(0, 10).map((player: { wallet?: string; wallet_address?: string; username?: string; highest_score?: number; score?: number }, index: number) => ({
-                        rank: index + 1,
-                        wallet_address: player.wallet || player.wallet_address,
-                        username: player.username || `Player ${index + 1}`,
-                        score: player.highest_score || player.score,
-                        base_amount: calculateBasePrize(index + 1),
-                        guarantee_bonus: 0, // Will be calculated based on revenue
-                        final_amount: 0, // Will be calculated
-                        payment_status: 'pending' as const,
-                        transaction_id: undefined
-                    }));
+                    const winnersData = leaderboard.slice(0, 10).map((player: { wallet?: string; wallet_address?: string; username?: string; highest_score?: number; score?: number }, index: number) => {
+                        const walletAddress = player.wallet || player.wallet_address;
+                        const isPaid = paidWalletsSet.has(walletAddress);
+
+                        return {
+                            rank: index + 1,
+                            wallet_address: walletAddress,
+                            username: player.username || `Player ${index + 1}`,
+                            score: player.highest_score || player.score,
+                            base_amount: calculateBasePrize(index + 1),
+                            guarantee_bonus: 0, // Will be calculated based on revenue
+                            final_amount: 0, // Will be calculated
+                            payment_status: isPaid ? ('sent' as const) : ('pending' as const),
+                            transaction_id: undefined
+                        };
+                    });
 
                     setWinners(winnersData);
                 } else {
@@ -518,6 +528,8 @@ export default function AdminDashboard() {
                                                             rank={winner.rank}
                                                             username={winner.username}
                                                             selectedAdminWallet={selectedAdminWallet}
+                                                            tournamentId={currentTournament?.tournament_id || ''}
+                                                            finalScore={winner.score}
                                                             onPaymentSuccess={handlePaymentSuccess}
                                                             onPaymentError={handlePaymentError}
                                                             disabled={false}

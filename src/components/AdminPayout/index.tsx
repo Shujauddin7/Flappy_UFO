@@ -9,6 +9,8 @@ interface AdminPayoutProps {
     rank: number;
     username: string;
     selectedAdminWallet: string;
+    tournamentId: string;
+    finalScore: number;
     onPaymentSuccess: (winnerAddress: string, transactionId: string) => void;
     onPaymentError: (winnerAddress: string, error: string) => void;
     disabled?: boolean;
@@ -20,6 +22,8 @@ export const AdminPayout = ({
     rank,
     username,
     selectedAdminWallet,
+    tournamentId,
+    finalScore,
     onPaymentSuccess,
     onPaymentError,
     disabled = false
@@ -61,6 +65,32 @@ export const AdminPayout = ({
             if (result.finalPayload.status === 'success') {
                 console.log('✅ Payment successful!', result.finalPayload);
                 setButtonState('success');
+
+                // Save payment to database (prizes table)
+                try {
+                    const saveResponse = await fetch('/api/admin/update-payment-status', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            winnerWallet: winnerAddress,
+                            transactionId: result.finalPayload.reference || id,
+                            tournamentId: tournamentId,
+                            rank: rank,
+                            finalScore: finalScore,
+                            prizeAmount: amount,
+                            username: username
+                        })
+                    });
+
+                    const saveData = await saveResponse.json();
+                    if (!saveData.success) {
+                        console.warn('⚠️ Payment successful but recording failed:', saveData.error);
+                    } else {
+                        console.log('✅ Payment recorded in database');
+                    }
+                } catch (saveError) {
+                    console.warn('⚠️ Payment successful but recording failed:', saveError);
+                }
 
                 // Call success callback
                 onPaymentSuccess(winnerAddress, result.finalPayload.reference || id);
