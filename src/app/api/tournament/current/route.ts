@@ -55,23 +55,41 @@ export async function GET() {
             }, { status: 404 });
         }
 
-        // Calculate tournament status based on end time
+        // Calculate tournament status based on start and end times
+        const startTime = new Date(tournament.start_time);
         const endTime = new Date(tournament.end_time);
-        const gracePeriodStart = new Date(endTime);
-        gracePeriodStart.setUTCMinutes(gracePeriodStart.getUTCMinutes() - 30); // 30 minutes before end
 
+        // Tournament is active between start_time and end_time
+        const isActive = now >= startTime && now < endTime;
+        const hasEnded = now >= endTime;
+        const hasNotStarted = now < startTime;
+
+        // Grace period is the last 30 minutes of the tournament
+        const gracePeriodStart = new Date(endTime);
+        gracePeriodStart.setUTCMinutes(gracePeriodStart.getUTCMinutes() - 30);
         const isGracePeriod = now >= gracePeriodStart && now < endTime;
 
         const tournamentStatus = {
+            is_active: isActive,
+            has_ended: hasEnded,
+            has_not_started: hasNotStarted,
             is_grace_period: isGracePeriod,
             current_utc: now.toISOString(),
+            start_time: tournament.start_time,
+            end_time: tournament.end_time,
             tournament_day: tournament.tournament_day,
-            entries_allowed: !isGracePeriod
+            entries_allowed: isActive && !isGracePeriod  // Allow entries when active but not in grace period
         };
 
         console.log('✅ Tournament found:', {
             tournament_id: tournament.id,
             tournament_day: tournament.tournament_day,
+            start_time: tournament.start_time,
+            end_time: tournament.end_time,
+            current_time: now.toISOString(),
+            is_active: isActive,
+            has_ended: hasEnded,
+            entries_allowed: tournamentStatus.entries_allowed,
             total_players: tournament.total_players,
             total_prize_pool: tournament.total_prize_pool,
             status: tournamentStatus

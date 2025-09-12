@@ -105,15 +105,23 @@ export default function GameHomepage() {
             const response = await fetch('/api/tournament/current');
             const data = await response.json();
 
-            if (data.tournament) {
-                const now = new Date();
-                const endTime = new Date(data.tournament.end_time);
-                const isActive = now < endTime;
-
-                if (!isActive) {
+            if (data.tournament && data.status) {
+                // Use the new API response structure
+                if (data.status.has_ended) {
                     alert('❌ Tournament has ended! You can no longer participate.');
                     return false;
                 }
+
+                if (data.status.has_not_started) {
+                    alert('❌ Tournament has not started yet! Please wait.');
+                    return false;
+                }
+
+                if (!data.status.entries_allowed) {
+                    alert('❌ Tournament entries are not allowed at this time.');
+                    return false;
+                }
+
                 return true;
             } else {
                 alert('❌ No active tournament found!');
