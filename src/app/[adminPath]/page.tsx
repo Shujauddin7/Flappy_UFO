@@ -124,12 +124,19 @@ export default function AdminDashboard() {
                     // Get already paid winners from prizes table
                     const paidResponse = await fetch(`/api/admin/paid-winners?tournament_id=${tournamentId}`);
                     const paidWinners = paidResponse.ok ? await paidResponse.json() : { winners: [] };
-                    const paidWalletsSet = new Set(paidWinners.winners?.map((w: { wallet: string }) => w.wallet) || []);
+
+                    // Create a map for better lookup performance with transaction hashes
+                    const paidWalletsMap = new Map<string, string>(
+                        paidWinners.winners?.map((w: { wallet: string; transaction_hash: string }) =>
+                            [w.wallet, w.transaction_hash || '']
+                        ) || []
+                    );
 
                     // Calculate payouts for top 10
                     const winnersData = leaderboard.slice(0, 10).map((player: { wallet?: string; wallet_address?: string; username?: string; highest_score?: number; score?: number }, index: number) => {
-                        const walletAddress = player.wallet || player.wallet_address;
-                        const isPaid = paidWalletsSet.has(walletAddress);
+                        const walletAddress = player.wallet || player.wallet_address || '';
+                        const transactionHash = paidWalletsMap.get(walletAddress);
+                        const isPaid = Boolean(transactionHash);
 
                         return {
                             rank: index + 1,
@@ -140,7 +147,7 @@ export default function AdminDashboard() {
                             guarantee_bonus: 0, // Will be calculated based on revenue
                             final_amount: 0, // Will be calculated
                             payment_status: isPaid ? ('sent' as const) : ('pending' as const),
-                            transaction_id: undefined
+                            transaction_id: transactionHash || undefined
                         };
                     });
 
@@ -226,10 +233,10 @@ export default function AdminDashboard() {
     }
 
     // Simple callback handlers for the AdminPayout component
-    const handlePaymentSuccess = (winnerAddress: string, transactionId: string) => {
+    const handlePaymentSuccess = async (winnerAddress: string, transactionId: string) => {
         console.log('✅ Payment successful for:', winnerAddress);
 
-        // Update winner status to sent
+        // Update winner status to sent immediately for UI feedback
         setWinners(prevWinners =>
             prevWinners.map(winner =>
                 winner.wallet_address === winnerAddress
@@ -237,6 +244,34 @@ export default function AdminDashboard() {
                     : winner
             )
         );
+
+        // Reload paid winners from database to ensure persistence
+        if (currentTournament?.tournament_id) {
+            try {
+                const paidResponse = await fetch(`/api/admin/paid-winners?tournament_id=${currentTournament.tournament_id}`);
+                if (paidResponse.ok) {
+                    const paidWinners = await paidResponse.json();
+                    const paidWalletsMap = new Map<string, string>(
+                        paidWinners.winners?.map((w: { wallet: string; transaction_hash: string }) =>
+                            [w.wallet, w.transaction_hash || '']
+                        ) || []
+                    );
+
+                    // Update winners with persistent payment status from database
+                    setWinners(prevWinners =>
+                        prevWinners.map((winner): Winner => {
+                            const transactionHash = paidWalletsMap.get(winner.wallet_address);
+                            if (transactionHash) {
+                                return { ...winner, payment_status: 'sent' as const, transaction_id: transactionHash };
+                            }
+                            return winner;
+                        })
+                    );
+                }
+            } catch (error) {
+                console.warn('Failed to reload payment status from database:', error);
+            }
+        }
     };
 
     const handlePaymentError = (winnerAddress: string, error: string) => {
