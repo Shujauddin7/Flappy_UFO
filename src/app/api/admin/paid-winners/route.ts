@@ -10,12 +10,16 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: 'Tournament ID required' }, { status: 400 });
         }
 
+        console.log('🔍 Fetching paid winners for tournament:', tournamentId);
+
         // Get all paid winners from prizes table for this tournament
         const { data: paidWinners, error } = await supabase
             .from('prizes')
             .select('wallet, final_rank, transaction_hash, sent_at')
             .eq('tournament_id', tournamentId)
             .order('final_rank', { ascending: true });
+
+        console.log('📊 Paid winners query result:', { paidWinners, error });
 
         if (error) {
             console.error('Error fetching paid winners:', error);

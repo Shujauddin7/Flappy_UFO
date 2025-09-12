@@ -103,8 +103,8 @@ export default function AdminDashboard() {
             setWinners(prevWinners =>
                 prevWinners.map(winner => {
                     const basePrize = winner.base_amount * baseAmount;
-                    // Guarantee bonus distributed proportionally based on rank percentage
-                    const guaranteeBonus = winner.base_amount * guaranteeAmount;
+                    // Guarantee bonus: 1 WLD per top 10 winner (equally distributed)
+                    const guaranteeBonus = guaranteeAmount > 0 ? 1.0 : 0.0;
                     const finalAmount = basePrize + guaranteeBonus;
 
                     return {
