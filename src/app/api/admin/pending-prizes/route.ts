@@ -68,8 +68,8 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ error: 'Failed to update pending prize' }, { status: 500 });
             }
 
-            return NextResponse.json({ 
-                success: true, 
+            return NextResponse.json({
+                success: true,
                 message: 'Pending prize attempt updated',
                 attempt_count: existing.attempt_count + 1
             });
@@ -96,8 +96,8 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ error: 'Failed to create pending prize' }, { status: 500 });
             }
 
-            return NextResponse.json({ 
-                success: true, 
+            return NextResponse.json({
+                success: true,
                 message: 'Pending prize created',
                 attempt_count: 1
             });

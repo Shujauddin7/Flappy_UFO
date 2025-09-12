@@ -106,7 +106,7 @@ export const AdminPayout = ({
                         console.warn('⚠️ Payment successful but recording failed:', saveData.error);
                     } else {
                         console.log('✅ Payment recorded in prizes table');
-                        
+
                         // Step 5b: Remove from pending_prizes table (success)
                         try {
                             await fetch(`/api/admin/pending-prizes?tournament_id=${tournamentId}&rank=${rank}&wallet=${winnerAddress}`, {

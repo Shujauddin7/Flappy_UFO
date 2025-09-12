@@ -301,7 +301,7 @@ export default function AdminDashboard() {
                 console.log('📊 Database payment status:', paidWinners);
 
                 const paidWalletsMap = new Map<string, string>(
-                    paidWinners.winners?.map((w: { wallet: string; transaction_hash: string }) => 
+                    paidWinners.winners?.map((w: { wallet: string; transaction_hash: string }) =>
                         [w.wallet, w.transaction_hash || '']
                     ) || []
                 );
