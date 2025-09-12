@@ -99,6 +99,33 @@ export default function GameHomepage() {
         }
     }, [session?.user?.walletAddress, checkVerificationStatus]);
 
+    // Check if tournament is still active before allowing payments
+    const checkTournamentActive = useCallback(async () => {
+        try {
+            const response = await fetch('/api/tournament/current');
+            const data = await response.json();
+
+            if (data.tournament) {
+                const now = new Date();
+                const endTime = new Date(data.tournament.end_time);
+                const isActive = now < endTime;
+
+                if (!isActive) {
+                    alert('❌ Tournament has ended! You can no longer participate.');
+                    return false;
+                }
+                return true;
+            } else {
+                alert('❌ No active tournament found!');
+                return false;
+            }
+        } catch (error) {
+            console.error('Error checking tournament status:', error);
+            alert('❌ Failed to check tournament status. Please try again.');
+            return false;
+        }
+    }, []);
+
     // Handle game start with authentication
     const handleGameStart = async (mode: GameMode) => {
         try {
@@ -158,6 +185,12 @@ export default function GameHomepage() {
         if (isProcessingEntry) {
             console.log('⚠️ Tournament entry operation already in progress, ignoring...');
             return;
+        }
+
+        // Check if tournament is still active BEFORE payment
+        const tournamentActive = await checkTournamentActive();
+        if (!tournamentActive) {
+            return; // Stop here if tournament ended
         }
 
         try {
@@ -361,6 +394,12 @@ export default function GameHomepage() {
 
     // Handle tournament continue payment
     const handleTournamentContinue = async (score: number) => {
+        // Check if tournament is still active BEFORE payment
+        const tournamentActive = await checkTournamentActive();
+        if (!tournamentActive) {
+            return; // Stop here if tournament ended
+        }
+
         try {
             const { MiniKit, Tokens, tokenToDecimals } = await import('@worldcoin/minikit-js');
 
