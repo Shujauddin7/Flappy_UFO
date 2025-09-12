@@ -159,11 +159,17 @@ export default function GameHomepage() {
                         const data = await response.json();
 
                         if (data.status && !data.status.entries_allowed) {
-                            // Tournament entries not allowed (grace period or ended)
-                            if (data.status.is_grace_period) {
-                                alert('Tournament is in grace period - no new entries allowed. Existing players can still play!');
+                            // Tournament entries not allowed - check why
+                            if (data.status.has_not_started) {
+                                const startTime = new Date(data.tournament.start_time);
+                                const minutesUntilStart = Math.ceil((startTime.getTime() - new Date().getTime()) / 60000);
+                                alert(`⏰ Tournament has not started yet. Starts in ${minutesUntilStart} minutes!`);
+                            } else if (data.status.has_ended) {
+                                alert('❌ Tournament has ended. Please wait for the next tournament.');
+                            } else if (data.status.is_grace_period) {
+                                alert('⏳ Tournament is in grace period - no new entries allowed. Existing players can still play!');
                             } else {
-                                alert('Tournament has ended. Please wait for the next tournament.');
+                                alert('❌ Tournament entries are not allowed at this time.');
                             }
                             return;
                         }
