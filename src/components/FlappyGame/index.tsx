@@ -72,9 +72,45 @@ export default function FlappyGame({
     });
 
     const [, setGameState] = useState(gameStateRef.current);
+    const [tournamentEnded, setTournamentEnded] = useState(false);
     const gameLoopRef = useRef<number | undefined>(undefined);
     const planetImagesRef = useRef<{ [key: string]: HTMLImageElement }>({});
     const lastTimeRef = useRef<number>(0); // For deltaTime calculation
+
+    // Check tournament status if in tournament mode
+    useEffect(() => {
+        if (gameMode === 'tournament') {
+            const checkTournamentStatus = async () => {
+                try {
+                    const response = await fetch('/api/tournament/current');
+                    const data = await response.json();
+
+                    if (data.tournament) {
+                        const now = new Date();
+                        const endTime = new Date(data.tournament.end_time);
+                        const hasEnded = now >= endTime;
+
+                        if (hasEnded) {
+                            setTournamentEnded(true);
+                            // If game is currently playing and tournament ended, end the game
+                            if (gameStateRef.current.gameStatus === 'playing') {
+                                gameStateRef.current.gameStatus = 'gameOver';
+                                setGameState({ ...gameStateRef.current });
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error checking tournament status:', error);
+                }
+            };
+
+            checkTournamentStatus();
+            // Check tournament status every 30 seconds
+            const statusInterval = setInterval(checkTournamentStatus, 30000);
+
+            return () => clearInterval(statusInterval);
+        }
+    }, [gameMode]);
 
     // Reset game state when component mounts
     useEffect(() => {
@@ -253,6 +289,11 @@ export default function FlappyGame({
 
     // UFO controls
     const handleJump = useCallback(() => {
+        // Don't allow playing if tournament has ended
+        if (gameMode === 'tournament' && tournamentEnded) {
+            return;
+        }
+
         if (gameStateRef.current.gameStatus === 'ready') {
             gameStateRef.current.gameStatus = 'playing';
             lastTimeRef.current = 0; // Reset deltaTime when starting
@@ -269,7 +310,7 @@ export default function FlappyGame({
             );
             gameStateRef.current.particles.push(...jumpParticles);
         }
-    }, [createParticles]);
+    }, [createParticles, gameMode, tournamentEnded]);
 
     // Collision detection - fair and forgiving
     const checkCollisions = useCallback(() => {
@@ -691,6 +732,33 @@ export default function FlappyGame({
 
     return (
         <Page>
+            {/* Tournament ended overlay */}
+            {gameMode === 'tournament' && tournamentEnded && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    width: '100vw',
+                    height: '100vh',
+                    background: 'rgba(0, 0, 0, 0.8)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 50,
+                    color: '#white',
+                    textAlign: 'center',
+                    padding: '20px'
+                }}>
+                    <div>
+                        <h2 style={{ color: '#FF6B6B', marginBottom: '10px' }}>🏆 Tournament Ended</h2>
+                        <p style={{ color: '#white', fontSize: '16px' }}>
+                            The tournament has finished!<br />
+                            Check the leaderboard to see final results.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             <canvas
                 ref={canvasRef}
                 className="game-canvas"

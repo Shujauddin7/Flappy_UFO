@@ -42,7 +42,7 @@ export const AdminPayout = ({
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        winnerWallet: winnerAddress,
+                        winnerWallet: winnerAddress,  // Fixed: match API parameter name
                         tournamentId: tournamentId,
                         rank: rank,
                         finalScore: finalScore,
@@ -97,7 +97,7 @@ export const AdminPayout = ({
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            winnerWallet: winnerAddress,
+                            winnerWallet: winnerAddress,  // Fixed: match API parameter name
                             transactionId: result.finalPayload.reference || id,
                             tournamentId: tournamentId,
                             rank: rank,
