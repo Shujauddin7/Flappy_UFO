@@ -36,7 +36,26 @@ export const AdminPayout = ({
         setButtonState('pending');
 
         try {
-            // Get payment reference from backend
+            // Step 1: Create pending prize record (attempt tracking)
+            const pendingResponse = await fetch('/api/admin/pending-prizes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    winnerWallet: winnerAddress,
+                    tournamentId: tournamentId,
+                    rank: rank,
+                    finalScore: finalScore,
+                    prizeAmount: amount,
+                    username: username,
+                    tournamentDay: new Date().toISOString().split('T')[0]
+                })
+            });
+
+            if (!pendingResponse.ok) {
+                throw new Error('Failed to create pending prize record');
+            }
+
+            // Step 2: Get payment reference from backend
             const res = await fetch('/api/initiate-payment', {
                 method: 'POST',
             });
@@ -46,7 +65,7 @@ export const AdminPayout = ({
             console.log('💰 Amount:', amount, 'WLD');
             console.log('🔐 Using admin wallet:', selectedAdminWallet);
 
-            // Use the same proven MiniKit payment flow as game entry
+            // Step 3: Use the same proven MiniKit payment flow as game entry
             const result = await MiniKit.commandsAsync.pay({
                 reference: id,
                 to: winnerAddress,
@@ -61,12 +80,12 @@ export const AdminPayout = ({
 
             console.log('🔄 Payment result:', result);
 
-            // Use the same success check as working game entry flow
+            // Step 4: Handle payment result
             if (result.finalPayload.status === 'success') {
                 console.log('✅ Payment successful!', result.finalPayload);
                 setButtonState('success');
 
-                // Save payment to database (prizes table)
+                // Step 5a: Save successful payment to prizes table
                 try {
                     const saveResponse = await fetch('/api/admin/update-payment-status', {
                         method: 'POST',
@@ -86,7 +105,17 @@ export const AdminPayout = ({
                     if (!saveData.success) {
                         console.warn('⚠️ Payment successful but recording failed:', saveData.error);
                     } else {
-                        console.log('✅ Payment recorded in database');
+                        console.log('✅ Payment recorded in prizes table');
+                        
+                        // Step 5b: Remove from pending_prizes table (success)
+                        try {
+                            await fetch(`/api/admin/pending-prizes?tournament_id=${tournamentId}&rank=${rank}&wallet=${winnerAddress}`, {
+                                method: 'DELETE'
+                            });
+                            console.log('✅ Removed from pending prizes');
+                        } catch (deleteError) {
+                            console.warn('⚠️ Failed to remove from pending prizes:', deleteError);
+                        }
                     }
                 } catch (saveError) {
                     console.warn('⚠️ Payment successful but recording failed:', saveError);

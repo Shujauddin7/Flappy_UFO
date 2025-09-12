@@ -287,6 +287,46 @@ export default function AdminDashboard() {
         );
     };
 
+    // Force refresh payment status from database (for troubleshooting)
+    const forceRefreshPaymentStatus = async () => {
+        if (!currentTournament?.tournament_id) return;
+
+        console.log('🔄 Force refreshing payment status from database...');
+        setLoading(true);
+
+        try {
+            const paidResponse = await fetch(`/api/admin/paid-winners?tournament_id=${currentTournament.tournament_id}`);
+            if (paidResponse.ok) {
+                const paidWinners = await paidResponse.json();
+                console.log('📊 Database payment status:', paidWinners);
+
+                const paidWalletsMap = new Map<string, string>(
+                    paidWinners.winners?.map((w: { wallet: string; transaction_hash: string }) => 
+                        [w.wallet, w.transaction_hash || '']
+                    ) || []
+                );
+
+                // Update winners with persistent payment status from database
+                setWinners(prevWinners =>
+                    prevWinners.map((winner): Winner => {
+                        const transactionHash = paidWalletsMap.get(winner.wallet_address);
+                        if (transactionHash) {
+                            console.log(`✅ ${winner.username} (${winner.wallet_address}) - PAID in database`);
+                            return { ...winner, payment_status: 'sent' as const, transaction_id: transactionHash };
+                        } else {
+                            console.log(`⏳ ${winner.username} (${winner.wallet_address}) - PENDING in database`);
+                            return { ...winner, payment_status: 'pending' as const, transaction_id: undefined };
+                        }
+                    })
+                );
+            }
+        } catch (error) {
+            console.error('Failed to refresh payment status:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // Don't render anything until we've verified this is a valid admin path
     if (!isValidAdminPath) {
         return null; // Return nothing instead of showing admin content
@@ -512,9 +552,19 @@ export default function AdminDashboard() {
                     <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-bold text-white">Tournament Payouts</h2>
-                            <div className="text-center">
-                                <p className="text-sm text-gray-400 mb-1">Use individual Pay buttons below</p>
-                                <p className="text-xs text-gray-500">Each payment opens World App payment interface</p>
+                            <div className="flex items-center space-x-4">
+                                <button
+                                    onClick={forceRefreshPaymentStatus}
+                                    disabled={loading}
+                                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 text-sm"
+                                >
+                                    <span>🔄</span>
+                                    <span>{loading ? 'Refreshing...' : 'Refresh Status'}</span>
+                                </button>
+                                <div className="text-center">
+                                    <p className="text-sm text-gray-400 mb-1">Use individual Pay buttons below</p>
+                                    <p className="text-xs text-gray-500">Each payment opens World App payment interface</p>
+                                </div>
                             </div>
                         </div>
 
