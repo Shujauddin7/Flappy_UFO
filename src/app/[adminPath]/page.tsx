@@ -66,16 +66,17 @@ export default function AdminDashboard() {
 
     // Check if this is a valid admin path immediately
     useEffect(() => {
-        const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
         const validAdminPath = process.env.NEXT_PUBLIC_ADMIN_PATH;
+        const providedAdminPath = params.adminPath as string;
 
-        if (validAdminPath && (currentPath === `/${validAdminPath}/` || currentPath === `/${validAdminPath}`)) {
+        // Check if the provided admin path matches the configured admin path
+        if (validAdminPath && providedAdminPath === validAdminPath) {
             setIsValidAdminPath(true);
         } else {
             // Silently redirect without showing any admin content
             router.replace('/');
         }
-    }, [router]);
+    }, [router, params.adminPath]);
 
     useEffect(() => {
         // Early returns to prevent unnecessary execution
