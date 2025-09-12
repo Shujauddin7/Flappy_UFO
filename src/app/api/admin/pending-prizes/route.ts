@@ -33,15 +33,30 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        // Get user_id from wallet
-        const { data: user } = await supabase
+        // Get user_id from wallet, create user if not exists
+        let { data: user } = await supabase
             .from('users')
             .select('id')
             .eq('wallet', winnerWallet)
             .single();
 
         if (!user) {
-            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+            // Create user if not exists (they might only exist in user_tournament_records)
+            const { data: newUser, error: createError } = await supabase
+                .from('users')
+                .insert({
+                    wallet: winnerWallet,
+                    username: username || null
+                })
+                .select('id')
+                .single();
+
+            if (createError) {
+                console.error('Error creating user:', createError);
+                return NextResponse.json({ error: 'Failed to create user record' }, { status: 500 });
+            }
+
+            user = newUser;
         }
 
         // Check if pending prize already exists for this user/tournament/rank

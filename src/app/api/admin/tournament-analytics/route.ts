@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
                     guarantee_amount: tournament.guarantee_amount || 0,
                     admin_net_result: tournament.admin_net_result || 0,
                     system_description: tournament.total_collected < 72 ?
-                        'Guarantee Active: 70% + 10 WLD guarantee (admin pays)' :
+                        `Guarantee Active: 70% + ${tournament.guarantee_amount} WLD guarantee (1 WLD per top 10 winner)` :
                         'Normal Operation: 70% prize pool, 30% admin fee'
                 }
             });

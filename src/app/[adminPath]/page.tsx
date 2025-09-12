@@ -94,7 +94,8 @@ export default function AdminDashboard() {
             router.push('/');
             return;
         } const calculateBasePrize = (rank: number): number => {
-            const prizeDistribution = [0.35, 0.25, 0.15, 0.10, 0.05, 0.03, 0.025, 0.02, 0.015, 0.01];
+            // Plan.md percentages: 40%, 22%, 14%, 6%, 5%, 4%, 3%, 2%, 2%, 2%
+            const prizeDistribution = [0.40, 0.22, 0.14, 0.06, 0.05, 0.04, 0.03, 0.02, 0.02, 0.02];
             return prizeDistribution[rank - 1] || 0;
         };
 
@@ -102,7 +103,8 @@ export default function AdminDashboard() {
             setWinners(prevWinners =>
                 prevWinners.map(winner => {
                     const basePrize = winner.base_amount * baseAmount;
-                    const guaranteeBonus = guaranteeAmount / 10; // Split guarantee equally among top 10
+                    // Guarantee bonus distributed proportionally based on rank percentage
+                    const guaranteeBonus = winner.base_amount * guaranteeAmount;
                     const finalAmount = basePrize + guaranteeBonus;
 
                     return {
