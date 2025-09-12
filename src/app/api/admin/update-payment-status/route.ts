@@ -33,38 +33,28 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        // Get user_id from wallet, create user if not exists
-        let { data: user } = await supabase
-            .from('users')
-            .select('id')
+        // Get user_id from user_tournament_records (players already exist there)
+        const { data: userRecord } = await supabase
+            .from('user_tournament_records')
+            .select('user_id, tournament_day')
             .eq('wallet', winnerWallet)
+            .eq('tournament_id', tournamentId)
             .single();
 
-        if (!user) {
-            // Create user if not exists (they might only exist in user_tournament_records)
-            const { data: newUser, error: createError } = await supabase
-                .from('users')
-                .insert({
-                    wallet: winnerWallet,
-                    username: username || null
-                })
-                .select('id')
-                .single();
-
-            if (createError) {
-                console.error('Error creating user:', createError);
-                return NextResponse.json({ error: 'Failed to create user record' }, { status: 500 });
-            }
-
-            user = newUser;
+        if (!userRecord) {
+            console.error('❌ User not found in tournament records for wallet:', winnerWallet, 'tournament:', tournamentId);
+            return NextResponse.json({ error: 'User not found in tournament records' }, { status: 404 });
         }
 
+        const userId = userRecord.user_id;
+        const tournamentDay = userRecord.tournament_day;
+
         console.log('💾 Saving payment to prizes table:', {
-            user_id: user.id,
+            user_id: userId,
             tournament_id: tournamentId,
             username: username,
             wallet: winnerWallet,
-            tournament_day: new Date().toISOString().split('T')[0],
+            tournament_day: tournamentDay,
             final_rank: rank,
             final_score: finalScore || 0,
             prize_amount: prizeAmount,
@@ -75,11 +65,11 @@ export async function POST(req: NextRequest) {
         const { error } = await supabase
             .from('prizes')
             .insert({
-                user_id: user.id,
+                user_id: userId,
                 tournament_id: tournamentId,
                 username: username,
                 wallet: winnerWallet,
-                tournament_day: new Date().toISOString().split('T')[0], // Current date
+                tournament_day: tournamentDay,
                 final_rank: rank,
                 final_score: finalScore || 0,
                 prize_amount: prizeAmount,
