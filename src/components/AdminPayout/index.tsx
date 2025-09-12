@@ -36,23 +36,29 @@ export const AdminPayout = ({
         setButtonState('pending');
 
         try {
-            // Step 1: Create pending prize record (attempt tracking)
-            const pendingResponse = await fetch('/api/admin/pending-prizes', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    winnerWallet: winnerAddress,
-                    tournamentId: tournamentId,
-                    rank: rank,
-                    finalScore: finalScore,
-                    prizeAmount: amount,
-                    username: username,
-                    tournamentDay: new Date().toISOString().split('T')[0]
-                })
-            });
+            // Step 1: Try to create pending prize record (optional - don't fail if this fails)
+            try {
+                const pendingResponse = await fetch('/api/admin/pending-prizes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        winnerWallet: winnerAddress,
+                        tournamentId: tournamentId,
+                        rank: rank,
+                        finalScore: finalScore,
+                        prizeAmount: amount,
+                        username: username,
+                        tournamentDay: new Date().toISOString().split('T')[0]
+                    })
+                });
 
-            if (!pendingResponse.ok) {
-                throw new Error('Failed to create pending prize record');
+                if (pendingResponse.ok) {
+                    console.log('✅ Pending prize record created');
+                } else {
+                    console.warn('⚠️ Failed to create pending prize record, continuing with payment...');
+                }
+            } catch (pendingError) {
+                console.warn('⚠️ Pending prize creation failed, continuing with payment...', pendingError);
             }
 
             // Step 2: Get payment reference from backend
