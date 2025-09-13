@@ -578,13 +578,6 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
-                        {/* Debug Info */}
-                        <div className="mb-4 p-3 bg-gray-800 rounded text-xs text-gray-300">
-                            <p>Debug: Winners array length: {winners.length}</p>
-                            <p>Debug: Current tournament ID: {currentTournament?.tournament_id || 'none'}</p>
-                            <p>Debug: Selected admin wallet: {selectedAdminWallet || 'none'}</p>
-                        </div>
-
                         {winners.length > 0 ? (
                             <div className="overflow-x-auto">
                                 <table className="w-full text-white">
@@ -606,7 +599,7 @@ export default function AdminDashboard() {
                                             if (!winner || typeof winner.rank !== 'number') {
                                                 return null;
                                             }
-                                            
+
                                             return (
                                                 <tr key={winner.rank} className="border-b border-white/10">
                                                     <td className="py-3 px-4 font-bold">#{winner.rank}</td>
@@ -614,8 +607,8 @@ export default function AdminDashboard() {
                                                         <div>
                                                             <p className="font-semibold">{winner.username || `Player ${winner.rank}`}</p>
                                                             <p className="text-xs text-gray-400 font-mono">
-                                                                {winner.wallet_address ? 
-                                                                    `${winner.wallet_address.slice(0, 6)}...${winner.wallet_address.slice(-4)}` : 
+                                                                {winner.wallet_address ?
+                                                                    `${winner.wallet_address.slice(0, 6)}...${winner.wallet_address.slice(-4)}` :
                                                                     'No address'
                                                                 }
                                                             </p>
