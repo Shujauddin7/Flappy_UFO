@@ -74,16 +74,9 @@ body {
   justify-content: flex-start;
   /* Different alignment for leaderboard */
   padding: 0.5rem 1rem;
-  min-height: 100vh;
-  overflow-y: auto;
-  overflow-x: hidden;
-  /* Hide scrollbar but keep functionality */
-  scrollbar-width: none;
-  /* Firefox */
-  -ms-overflow-style: none;
-  /* IE and Edge */
-  -webkit-overflow-scrolling: touch;
-  /* Enable smooth scrolling on iOS */
+  height: 100vh;
+  overflow: hidden;
+  /* Prevent container from scrolling, let children handle it */
 }
 
 .leaderboard-container::-webkit-scrollbar {
@@ -1206,6 +1199,16 @@ body {
   flex: 1;
   overflow-y: auto;
   padding: 0 0.5rem;
+  /* Hide scrollbar but keep functionality */
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
+}
+
+/* Hide scrollbar for WebKit browsers (Chrome, Safari, Edge) */
+.leaderboard-section::-webkit-scrollbar {
+  display: none;
 }
 
 .tournament-info {
