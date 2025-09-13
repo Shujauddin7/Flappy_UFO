@@ -54,19 +54,10 @@ body {
   align-items: center;
   pointer-events: none;
   background: transparent !important;
-  overflow: hidden;
-  /* Prevent scrolling on normal screens */
   /* Override any default backgrounds */
 }
 
-/* Only allow scrolling on very small screens */
-@media (max-height: 600px) {
-  .game-select-screen {
-    overflow-y: auto;
-    justify-content: flex-start;
-    padding: 1rem 1rem 0.5rem;
-  }
-}
+
 
 .leaderboard-container {
   position: relative;
@@ -259,8 +250,8 @@ body {
 }
 
 .game-modes {
-  flex: none;
-  /* Don't expand to fill space */
+  flex: 1;
+  /* Take available space between header and footer */
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -270,8 +261,6 @@ body {
   /* Reduced from 350px */
   align-items: center;
   justify-content: center;
-  margin: 1rem 0;
-  /* Add specific margin instead of flex: 1 */
 }
 
 .mode-card {
@@ -1231,10 +1220,8 @@ body {
   /* Firefox */
   -ms-overflow-style: none;
   /* IE and Edge */
-  /* Enable momentum scrolling on iOS */
   -webkit-overflow-scrolling: touch;
-  /* Ensure touch events work properly */
-  touch-action: pan-y;
+  /* Enable momentum scrolling on mobile */
 }
 
 /* Hide scrollbar for WebKit browsers (Chrome, Safari, Edge) */
