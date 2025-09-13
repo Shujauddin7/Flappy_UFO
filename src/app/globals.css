@@ -48,9 +48,7 @@ body {
 .leaderboard-container {
   position: relative;
   z-index: 10;
-  height: 100vh;
-  height: 100dvh;
-  /* Use dvh for better mobile support */
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -64,11 +62,7 @@ body {
   justify-content: flex-start;
   /* Different alignment for leaderboard */
   padding: 0.5rem 1rem;
-  height: 100vh;
-  height: 100dvh;
-  /* Use dvh for better mobile support */
-  max-height: 100vh;
-  max-height: 100dvh;
+  min-height: 100vh;
   overflow-y: auto;
   overflow-x: hidden;
   /* Hide scrollbar but keep functionality */
