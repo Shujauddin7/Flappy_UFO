@@ -578,6 +578,13 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
+                        {/* Debug Info */}
+                        <div className="mb-4 p-3 bg-gray-800 rounded text-xs text-gray-300">
+                            <p>Debug: Winners array length: {winners.length}</p>
+                            <p>Debug: Current tournament ID: {currentTournament?.tournament_id || 'none'}</p>
+                            <p>Debug: Selected admin wallet: {selectedAdminWallet || 'none'}</p>
+                        </div>
+
                         {winners.length > 0 ? (
                             <div className="overflow-x-auto">
                                 <table className="w-full text-white">
@@ -594,53 +601,63 @@ export default function AdminDashboard() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {winners.map((winner) => (
-                                            <tr key={winner.rank} className="border-b border-white/10">
-                                                <td className="py-3 px-4 font-bold">#{winner.rank}</td>
-                                                <td className="py-3 px-4">
-                                                    <div>
-                                                        <p className="font-semibold">{winner.username}</p>
-                                                        <p className="text-xs text-gray-400 font-mono">
-                                                            {winner.wallet_address.slice(0, 6)}...{winner.wallet_address.slice(-4)}
-                                                        </p>
-                                                    </div>
-                                                </td>
-                                                <td className="py-3 px-4">{winner.score.toLocaleString()}</td>
-                                                <td className="py-3 px-4">{(winner.final_amount - winner.guarantee_bonus).toFixed(4)} WLD</td>
-                                                <td className="py-3 px-4">{winner.guarantee_bonus.toFixed(4)} WLD</td>
-                                                <td className="py-3 px-4 font-bold text-yellow-400">{winner.final_amount.toFixed(4)} WLD</td>
-                                                <td className="py-3 px-4">
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${winner.payment_status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' :
-                                                        winner.payment_status === 'sent' ? 'bg-blue-500/20 text-blue-300' :
-                                                            winner.payment_status === 'confirmed' ? 'bg-green-500/20 text-green-300' :
-                                                                'bg-red-500/20 text-red-300'
-                                                        }`}>
-                                                        {winner.payment_status}
-                                                    </span>
-                                                </td>
-                                                <td className="py-3 px-4">
-                                                    {winner.payment_status === 'pending' && winner.wallet_address && (
-                                                        <AdminPayout
-                                                            winnerAddress={winner.wallet_address}
-                                                            amount={winner.final_amount || 0}
-                                                            rank={winner.rank}
-                                                            username={winner.username || `Player ${winner.rank}`}
-                                                            selectedAdminWallet={selectedAdminWallet || ''}
-                                                            tournamentId={currentTournament?.tournament_id || ''}
-                                                            finalScore={winner.score || 0}
-                                                            onPaymentSuccess={handlePaymentSuccess}
-                                                            onPaymentError={handlePaymentError}
-                                                            disabled={false}
-                                                        />
-                                                    )}
-                                                    {winner.transaction_id && (
-                                                        <p className="text-xs text-gray-400 mt-1 font-mono">
-                                                            TX: {winner.transaction_id.slice(0, 8)}...
-                                                        </p>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {winners.map((winner) => {
+                                            // Safety checks for each winner data
+                                            if (!winner || typeof winner.rank !== 'number') {
+                                                return null;
+                                            }
+                                            
+                                            return (
+                                                <tr key={winner.rank} className="border-b border-white/10">
+                                                    <td className="py-3 px-4 font-bold">#{winner.rank}</td>
+                                                    <td className="py-3 px-4">
+                                                        <div>
+                                                            <p className="font-semibold">{winner.username || `Player ${winner.rank}`}</p>
+                                                            <p className="text-xs text-gray-400 font-mono">
+                                                                {winner.wallet_address ? 
+                                                                    `${winner.wallet_address.slice(0, 6)}...${winner.wallet_address.slice(-4)}` : 
+                                                                    'No address'
+                                                                }
+                                                            </p>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-3 px-4">{(winner.score || 0).toLocaleString()}</td>
+                                                    <td className="py-3 px-4">{((winner.final_amount || 0) - (winner.guarantee_bonus || 0)).toFixed(4)} WLD</td>
+                                                    <td className="py-3 px-4">{(winner.guarantee_bonus || 0).toFixed(4)} WLD</td>
+                                                    <td className="py-3 px-4 font-bold text-yellow-400">{(winner.final_amount || 0).toFixed(4)} WLD</td>
+                                                    <td className="py-3 px-4">
+                                                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${winner.payment_status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' :
+                                                            winner.payment_status === 'sent' ? 'bg-blue-500/20 text-blue-300' :
+                                                                winner.payment_status === 'confirmed' ? 'bg-green-500/20 text-green-300' :
+                                                                    'bg-red-500/20 text-red-300'
+                                                            }`}>
+                                                            {winner.payment_status || 'unknown'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-3 px-4">
+                                                        {winner.payment_status === 'pending' && winner.wallet_address && (
+                                                            <AdminPayout
+                                                                winnerAddress={winner.wallet_address}
+                                                                amount={winner.final_amount || 0}
+                                                                rank={winner.rank}
+                                                                username={winner.username || `Player ${winner.rank}`}
+                                                                selectedAdminWallet={selectedAdminWallet || ''}
+                                                                tournamentId={currentTournament?.tournament_id || ''}
+                                                                finalScore={winner.score || 0}
+                                                                onPaymentSuccess={handlePaymentSuccess}
+                                                                onPaymentError={handlePaymentError}
+                                                                disabled={false}
+                                                            />
+                                                        )}
+                                                        {winner.transaction_id && (
+                                                            <p className="text-xs text-gray-400 mt-1 font-mono">
+                                                                TX: {winner.transaction_id.slice(0, 8)}...
+                                                            </p>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
