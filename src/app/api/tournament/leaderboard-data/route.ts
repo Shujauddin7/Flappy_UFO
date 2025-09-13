@@ -40,15 +40,18 @@ export async function GET() {
         if (process.env.NODE_ENV === 'development') {
         }
 
-        // Fetch all players for this tournament, ordered by score
-        // Include players with zero scores as per user requirements - all scores should be shown
+        // Fetch all players for this tournament who have:
+        // 1. Actually PAID for entry (verified OR standard entry paid)
+        // 2. Have submitted at least one score (highest_score > 0)
+        // This prevents showing users with 0 scores before they submit their first game
         const { data: players, error } = await supabase
             .from('user_tournament_records')
             .select('*')
             .eq('tournament_day', tournamentDay)
-            .gte('highest_score', 0) // Include zero scores (changed from gt to gte)
+            .gt('highest_score', 0) // Only show users who have submitted scores
+            .or('verified_entry_paid.eq.true,standard_entry_paid.eq.true') // Only paid entries
             .order('highest_score', { ascending: false })
-            .order('created_at', { ascending: true }); // Tie-breaker: earlier submission wins
+            .order('first_game_at', { ascending: true }); // Tie-breaker: earlier first game wins
 
         if (error) {
             console.error('Error fetching leaderboard:', error);
