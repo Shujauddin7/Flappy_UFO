@@ -11,10 +11,18 @@ function ErudaLoader() {
     const searchParams = useSearchParams();
 
     useEffect(() => {
+        // Never load in production environment
+        const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod' ||
+            (typeof window !== 'undefined' && window.location.hostname === 'flappyufo.vercel.app');
+
+        if (isProduction) {
+            return;
+        }
+
         const debugKey = process.env.NEXT_PUBLIC_DEBUG_KEY;
         const debugParam = searchParams.get('debug');
 
-        // Only load Eruda if the debug parameter matches the secret key
+        // Only load Eruda if the debug parameter matches the secret key and not in production
         if (debugKey && debugParam === debugKey) {
             // Check if Eruda is already loaded to avoid duplicate loading
             if (window.eruda) {
