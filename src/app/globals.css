@@ -49,6 +49,8 @@ body {
   position: relative;
   z-index: 10;
   height: 100vh;
+  height: 100dvh;
+  /* Use dvh for better mobile support */
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -62,8 +64,11 @@ body {
   justify-content: flex-start;
   /* Different alignment for leaderboard */
   padding: 0.5rem 1rem;
-  height: auto;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  /* Use dvh for better mobile support */
+  max-height: 100vh;
+  max-height: 100dvh;
   overflow-y: auto;
   overflow-x: hidden;
   /* Hide scrollbar but keep functionality */
@@ -71,6 +76,8 @@ body {
   /* Firefox */
   -ms-overflow-style: none;
   /* IE and Edge */
+  -webkit-overflow-scrolling: touch;
+  /* Enable smooth scrolling on iOS */
 }
 
 .leaderboard-container::-webkit-scrollbar {
@@ -1808,17 +1815,18 @@ body {
   margin: 0 auto 1.5rem;
   padding: 1rem;
   background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(0, 245, 255, 0.3);
   border-radius: 20px;
   backdrop-filter: blur(20px);
   position: relative;
   overflow: hidden;
   transition: all 0.3s ease;
+  box-shadow: 0 0 20px rgba(0, 245, 255, 0.1), 0 15px 35px rgba(0, 0, 0, 0.3);
 }
 
 .tournament-info-box:hover {
-  border-color: rgba(0, 245, 255, 0.3);
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 245, 255, 0.1);
+  border-color: rgba(0, 245, 255, 0.5);
+  box-shadow: 0 0 30px rgba(0, 245, 255, 0.2), 0 15px 35px rgba(0, 0, 0, 0.3);
 }
 
 .tournament-header {
@@ -1964,10 +1972,12 @@ body {
   font-size: 1rem;
   cursor: pointer;
   transition: all 0.3s ease;
-  padding: 0.2rem;
+  padding: 0.4rem;
   border-radius: 4px;
   position: relative;
-  z-index: 2;
+  z-index: 100;
+  pointer-events: auto;
+  margin-left: 0.5rem;
 }
 
 .prize-arrow-btn:hover {

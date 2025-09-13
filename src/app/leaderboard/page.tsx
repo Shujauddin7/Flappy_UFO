@@ -417,13 +417,18 @@ export default function LeaderboardPage() {
                         <div className="prize-info-box">
                             <span className="prize-info-text">
                                 When the game ends, the prize will be shared to the top winners
-                                <button
-                                    className="prize-arrow-btn"
-                                    onClick={() => setShowPrizeBreakdown(!showPrizeBreakdown)}
-                                >
-                                    {showPrizeBreakdown ? '▲' : '▼'}
-                                </button>
                             </span>
+                            <button
+                                className="prize-arrow-btn"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setShowPrizeBreakdown(!showPrizeBreakdown);
+                                }}
+                                type="button"
+                            >
+                                {showPrizeBreakdown ? '▲' : '▼'}
+                            </button>
                         </div>
 
                         {/* Prize Breakdown - Always Visible with 2 per row */}
