@@ -25,54 +25,53 @@ async function updateTournamentPrizePool(supabase: any, tournamentId: string) {
             return sum + entryPayments + continuePayments;
         }, 0) || 0;
 
-        // Calculate protection level based on WLD amount collected (as per Plan.md)
-        let prizePoolPercentage: number;
-        let adminFeePercentage: number;
-        let protectionLevelNumber: number;
+        // Count total players for guarantee calculation
+        const totalPlayers = data?.length || 0;
 
-        if (totalRevenue >= 72) {
-            prizePoolPercentage = 70;
-            adminFeePercentage = 30;
-            protectionLevelNumber = 1;
-        } else if (totalRevenue >= 30) {
-            prizePoolPercentage = 85;
-            adminFeePercentage = 15;
-            protectionLevelNumber = 2;
-        } else {
-            prizePoolPercentage = 95;
-            adminFeePercentage = 5;
-            protectionLevelNumber = 3;
+        // NEW GUARANTEE SYSTEM (per Plan.md): Admin adds 1 WLD per top 10 winner when total collected < 72 WLD
+        let guaranteeAmount = 0;
+        const adminFeeAmount = totalRevenue * 0.30; // Always 30%
+        const basePrizePool = totalRevenue * 0.70; // Always 70%
+
+        if (totalRevenue < 72) {
+            const top10Winners = Math.min(totalPlayers, 10);
+            guaranteeAmount = top10Winners * 1.0; // Admin adds 1 WLD per top 10 winner
         }
 
-        const totalPrizePool = totalRevenue * (prizePoolPercentage / 100);
-        const adminFeeAmount = totalRevenue * (adminFeePercentage / 100);
+        const totalPrizePool = basePrizePool + guaranteeAmount; // 70% + guarantee (if needed)
+        const adminNetResult = adminFeeAmount - guaranteeAmount; // Can be negative
 
-        console.log('💰 Tournament analytics recalculation after continue:', {
+        console.log('💰 Tournament analytics recalculation after continue (NEW guarantee system):', {
             totalRevenue,
+            basePrizePool,
+            guaranteeAmount,
             totalPrizePool,
             adminFeeAmount,
-            protectionLevel: protectionLevelNumber
+            adminNetResult
         });
 
-        // Update tournament with all analytics
+        // Update tournament with NEW guarantee system
         const { error: updateError } = await supabase
             .from('tournaments')
             .update({
                 total_prize_pool: totalPrizePool,
                 total_collected: totalRevenue,
                 admin_fee: adminFeeAmount,
-                protection_level: protectionLevelNumber
+                guarantee_amount: guaranteeAmount,
+                admin_net_result: adminNetResult
             })
             .eq('id', tournamentId);
 
         if (updateError) {
             console.error('❌ Error updating tournament analytics:', updateError);
         } else {
-            console.log('✅ Tournament analytics updated:', {
-                prize_pool: totalPrizePool,
+            console.log('✅ Tournament analytics updated with guarantee system:', {
                 total_collected: totalRevenue,
+                base_prize_pool: basePrizePool,
+                guarantee_amount: guaranteeAmount,
+                total_prize_pool: totalPrizePool,
                 admin_fee: adminFeeAmount,
-                protection_level: protectionLevelNumber
+                admin_net_result: adminNetResult
             });
         }
     } catch (error) {
@@ -136,7 +135,7 @@ export async function POST(req: NextRequest) {
         // Get today's tournament
         const { data: tournament, error: tournamentError } = await supabase
             .from('tournaments')
-            .select('id')
+            .select('id, tournament_day')
             .eq('tournament_day', today)
             .eq('is_active', true)
             .single();
@@ -145,7 +144,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'No active tournament found' }, { status: 404 });
         }
 
-        // Find the user's tournament record for today
+        // Find the user's tournament record for the active tournament
         const { data: tournamentRecord, error: recordError } = await supabase
             .from('user_tournament_records')
             .select('id, total_continues_used, total_continue_payments')

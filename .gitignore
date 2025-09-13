@@ -3,7 +3,6 @@
 # Database schema files (development only)
 supabase-*.sql
 
-
 # Development tools (exclude from production)
 src/components/DevTools/
 src/components/MobileDebugConsole/
@@ -79,3 +78,4 @@ to_implement.md
 analytics_table_design.md
 newprize.md
 analytics_table_design.md
+finalprize.md

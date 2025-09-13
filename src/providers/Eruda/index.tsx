@@ -14,8 +14,17 @@ function ErudaLoader() {
         const debugKey = process.env.NEXT_PUBLIC_DEBUG_KEY;
         const debugParam = searchParams.get('debug');
 
-        // Only load Eruda if the debug parameter matches the secret key
-        if (debugKey && debugParam === debugKey) {
+        // Check if accessing with the secret debug key
+        const hasValidDebugKey = debugKey && debugParam === debugKey;
+
+        // Check if on production environment
+        const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod' ||
+            (typeof window !== 'undefined' && window.location.hostname === 'flappyufo.vercel.app');
+
+        // Only load Eruda if:
+        // 1. Has valid debug key (works on both dev and prod)
+        // 2. OR if not in production (dev environment without key)
+        if (hasValidDebugKey || !isProduction) {
             // Check if Eruda is already loaded to avoid duplicate loading
             if (window.eruda) {
                 return;

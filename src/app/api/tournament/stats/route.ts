@@ -27,32 +27,24 @@ export async function GET(req: NextRequest) {
 
         // Get query parameters
         const searchParams = req.nextUrl.searchParams;
+        let tournamentDay = searchParams.get('tournament_day');
 
-        // Calculate tournament day using same logic as tournament system (Sunday 15:30 UTC boundary)
-        // Updated for weekly tournaments - find current week's Sunday
-        let defaultTournamentDay;
-        if (!searchParams.get('tournament_day')) {
-            const now = new Date();
-            const utcDay = now.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
-            const utcHour = now.getUTCHours();
-            const utcMinute = now.getUTCMinutes();
+        // If no tournament_day provided, get from current active tournament
+        if (!tournamentDay) {
+            const { data: activeTournament, error: tournamentError } = await supabase
+                .from('tournaments')
+                .select('tournament_day')
+                .eq('is_active', true)
+                .single();
 
-            // Weekly tournament starts every Sunday at 15:30 UTC
-            const tournamentDate = new Date(now);
-
-            if (utcDay === 0 && (utcHour > 15 || (utcHour === 15 && utcMinute >= 30))) {
-                // It's Sunday after 15:30 UTC, use current Sunday
-                // Keep current date
-            } else {
-                // Go back to the most recent Sunday
-                const daysBack = utcDay === 0 ? 7 : utcDay; // If Sunday before 15:30, go back 7 days
-                tournamentDate.setUTCDate(tournamentDate.getUTCDate() - daysBack);
+            if (tournamentError || !activeTournament) {
+                return NextResponse.json({
+                    error: 'No active tournament found'
+                }, { status: 404 });
             }
 
-            defaultTournamentDay = tournamentDate.toISOString().split('T')[0];
+            tournamentDay = activeTournament.tournament_day;
         }
-
-        const tournamentDay = searchParams.get('tournament_day') || defaultTournamentDay;
 
 
         // Get comprehensive tournament statistics
@@ -124,31 +116,17 @@ export async function GET(req: NextRequest) {
         // Calculate total revenue (entry fees + continues)
         const totalRevenue = stats.total_collected + stats.continue_revenue;
 
-        // Dynamic prize pool calculation based on WLD AMOUNT COLLECTED (as planned)
-        let prizePoolPercentage: number;
-        let adminFeePercentage: number;
-        let protectionLevel: string;
-        let protectionLevelNumber: number;
+        // New guarantee system (simple 70/30 split + guarantee when needed)
+        const adminFeePercentage = 30;
+        const prizePoolPercentage = 70;
 
-        if (totalRevenue >= 72) {
-            prizePoolPercentage = 70;
-            adminFeePercentage = 30;
-            protectionLevel = 'normal';
-            protectionLevelNumber = 1;
-        } else if (totalRevenue >= 30) {
-            prizePoolPercentage = 85;
-            adminFeePercentage = 15;
-            protectionLevel = 'protection';
-            protectionLevelNumber = 2;
-        } else {
-            prizePoolPercentage = 95;
-            adminFeePercentage = 5;
-            protectionLevel = 'maximum_protection';
-            protectionLevelNumber = 3;
-        }
+        const adminFee = totalRevenue * (adminFeePercentage / 100);
+        const basePrizePool = totalRevenue * (prizePoolPercentage / 100);
 
-        const prizePoolAmount = totalRevenue * (prizePoolPercentage / 100);
-        const adminFeeAmount = totalRevenue * (adminFeePercentage / 100);
+        // Add guarantee if needed (when revenue < 72 WLD)
+        const guaranteeAmount = totalRevenue < 72 ? 10 : 0;
+        const finalPrizePool = basePrizePool + guaranteeAmount;
+        const adminNetResult = adminFee - guaranteeAmount;
 
         // Update tournaments table with calculated values (NEW)
         const { error: updateError } = await supabase
@@ -156,9 +134,10 @@ export async function GET(req: NextRequest) {
             .update({
                 total_players: stats.total_players,
                 total_collected: totalRevenue,
-                total_prize_pool: prizePoolAmount,
-                admin_fee: adminFeeAmount,
-                protection_level: protectionLevelNumber
+                total_prize_pool: finalPrizePool,
+                admin_fee: adminFee,
+                guarantee_amount: guaranteeAmount,
+                admin_net_result: adminNetResult
             })
             .eq('tournament_day', tournamentDay);
 
@@ -172,15 +151,18 @@ export async function GET(req: NextRequest) {
             ...stats,
             total_revenue: totalRevenue,
             prize_pool: {
-                amount: prizePoolAmount,
+                base_amount: basePrizePool,
+                guarantee_amount: guaranteeAmount,
+                final_amount: finalPrizePool,
                 percentage: prizePoolPercentage
             },
             admin_fee: {
-                amount: adminFeeAmount,
-                percentage: adminFeePercentage
+                amount: adminFee,
+                percentage: adminFeePercentage,
+                guarantee_cost: guaranteeAmount,
+                net_result: adminNetResult
             },
-            protection_level: protectionLevel,
-            protection_level_number: protectionLevelNumber
+            guarantee_applied: guaranteeAmount > 0
         };
 
 

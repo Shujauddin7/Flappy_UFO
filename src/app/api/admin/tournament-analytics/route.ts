@@ -40,13 +40,7 @@ export async function GET(req: NextRequest) {
                 }, { status: 404 });
             }
 
-            // Get protection level name
-            const protectionNames: Record<number, string> = {
-                1: 'Level 1: Normal Operation (70% Prize Pool)',
-                2: 'Level 2: Medium Protection (85% Prize Pool)',
-                3: 'Level 3: Maximum Protection (95% Prize Pool)'
-            };
-
+            // NEW GUARANTEE SYSTEM (per Plan.md) - no more protection levels
             return NextResponse.json({
                 success: true,
                 data: {
@@ -55,10 +49,11 @@ export async function GET(req: NextRequest) {
                     total_collected: tournament.total_collected,
                     total_prize_pool: tournament.total_prize_pool,
                     admin_fee: tournament.admin_fee,
-                    protection_level: tournament.protection_level,
-                    protection_name: protectionNames[tournament.protection_level] || 'Unknown',
-                    admin_fee_percentage: tournament.protection_level === 1 ? 30 :
-                        tournament.protection_level === 2 ? 15 : 5
+                    guarantee_amount: tournament.guarantee_amount || 0,
+                    admin_net_result: tournament.admin_net_result || 0,
+                    system_description: tournament.total_collected < 72 ?
+                        `Guarantee Active: 70% + ${tournament.guarantee_amount} WLD guarantee (1 WLD per top 10 winner)` :
+                        'Normal Operation: 70% prize pool, 30% admin fee'
                 }
             });
 

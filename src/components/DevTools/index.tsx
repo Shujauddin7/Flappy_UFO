@@ -1,6 +1,8 @@
 "use client";
 
 import { useSession, signOut } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
 interface ExtendedUser {
     id?: string;
@@ -12,26 +14,31 @@ interface ExtendedUser {
     wallet_address?: string;
 }
 
-export default function DevTools() {
+function DevToolsContent() {
     const { data: session, status } = useSession();
+    const searchParams = useSearchParams();
 
-    // Show dev tools in development OR on dev deployment URLs, never in production
+    // Show dev tools in development OR on dev deployment URLs OR with secret debug key
     const isLocalDev = process.env.NODE_ENV === 'development';
     const isDevDeployment = typeof window !== 'undefined' &&
         (window.location.hostname.includes('flappyufo-git-dev-shujauddin') ||
             window.location.hostname.includes('msshuj') ||
             window.location.href.includes('git-dev-shujauddin'));
-    const isProductionDeployment = typeof window !== 'undefined' &&
-        window.location.hostname === 'flappyufo.vercel.app';
 
-    // Show if: (local dev OR dev deployment) AND not production deployment  
-    const showDevTools = (isLocalDev || isDevDeployment) &&
-        !isProductionDeployment &&
+    // Check for secret debug key access
+    const debugKey = process.env.NEXT_PUBLIC_DEBUG_KEY;
+    const debugParam = searchParams.get('debug');
+    const hasValidDebugKey = debugKey && debugParam === debugKey;
+
+    // Show if: (local dev OR dev deployment OR has valid debug key) AND show dev tools is enabled
+    const showDevTools = (isLocalDev || isDevDeployment || hasValidDebugKey) &&
         process.env.NEXT_PUBLIC_SHOW_DEV_TOOLS !== 'false';
 
     if (!showDevTools) {
         return null;
-    } return (
+    }
+
+    return (
         <div className="dev-tools" style={{
             position: 'fixed',
             top: '10px',
@@ -158,5 +165,13 @@ export default function DevTools() {
                 </>
             )}
         </div>
+    );
+}
+
+export default function DevTools() {
+    return (
+        <Suspense fallback={null}>
+            <DevToolsContent />
+        </Suspense>
     );
 }

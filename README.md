@@ -1,5 +1,3 @@
-## 🛸 Flappy UFO - Create a Mini App
-
 [Mini apps](https://docs.worldcoin.org/mini-apps) enable third-party developers to create native-like applications within World App.
 
 This template is a way for you to quickly get started with authentication and examples of some of the trickier commands.

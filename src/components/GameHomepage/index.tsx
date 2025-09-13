@@ -99,6 +99,41 @@ export default function GameHomepage() {
         }
     }, [session?.user?.walletAddress, checkVerificationStatus]);
 
+    // Check if tournament is still active before allowing payments
+    const checkTournamentActive = useCallback(async () => {
+        try {
+            const response = await fetch('/api/tournament/current');
+            const data = await response.json();
+
+            if (data.tournament && data.status) {
+                // Use the new API response structure
+                if (data.status.has_ended) {
+                    alert('❌ Tournament has ended! You can no longer participate.');
+                    return false;
+                }
+
+                if (data.status.has_not_started) {
+                    alert('❌ Tournament has not started yet! Please wait.');
+                    return false;
+                }
+
+                if (!data.status.entries_allowed) {
+                    alert('❌ Tournament entries are not allowed at this time.');
+                    return false;
+                }
+
+                return true;
+            } else {
+                alert('❌ No active tournament found!');
+                return false;
+            }
+        } catch (error) {
+            console.error('Error checking tournament status:', error);
+            alert('❌ Failed to check tournament status. Please try again.');
+            return false;
+        }
+    }, []);
+
     // Handle game start with authentication
     const handleGameStart = async (mode: GameMode) => {
         try {
@@ -118,8 +153,34 @@ export default function GameHomepage() {
                     setGameMode(mode);
                     setCurrentScreen('playing');
                 } else {
-                    // For tournament mode, go to tournament entry screen
-                    setCurrentScreen('tournamentEntry');
+                    // For tournament mode, check tournament status first
+                    try {
+                        const response = await fetch('/api/tournament/current');
+                        const data = await response.json();
+
+                        if (data.status && !data.status.entries_allowed) {
+                            // Tournament entries not allowed - check why
+                            if (data.status.has_not_started) {
+                                const startTime = new Date(data.tournament.start_time);
+                                const minutesUntilStart = Math.ceil((startTime.getTime() - new Date().getTime()) / 60000);
+                                alert(`⏰ Tournament has not started yet. Starts in ${minutesUntilStart} minutes!`);
+                            } else if (data.status.has_ended) {
+                                alert('❌ Tournament has ended. Please wait for the next tournament.');
+                            } else if (data.status.is_grace_period) {
+                                alert('⏳ Tournament is in grace period - no new entries allowed. Existing players can still play!');
+                            } else {
+                                alert('❌ Tournament entries are not allowed at this time.');
+                            }
+                            return;
+                        }
+
+                        // Tournament entries allowed, go to tournament entry screen
+                        setCurrentScreen('tournamentEntry');
+                    } catch (error) {
+                        console.error('Error checking tournament status:', error);
+                        alert('Unable to check tournament status. Please try again.');
+                        return;
+                    }
                 }
             } else {
                 // Authentication failed
@@ -138,6 +199,12 @@ export default function GameHomepage() {
         if (isProcessingEntry) {
             console.log('⚠️ Tournament entry operation already in progress, ignoring...');
             return;
+        }
+
+        // Check if tournament is still active BEFORE payment
+        const tournamentActive = await checkTournamentActive();
+        if (!tournamentActive) {
+            return; // Stop here if tournament ended
         }
 
         try {
@@ -341,6 +408,12 @@ export default function GameHomepage() {
 
     // Handle tournament continue payment
     const handleTournamentContinue = async (score: number) => {
+        // Check if tournament is still active BEFORE payment
+        const tournamentActive = await checkTournamentActive();
+        if (!tournamentActive) {
+            return; // Stop here if tournament ended
+        }
+
         try {
             const { MiniKit, Tokens, tokenToDecimals } = await import('@worldcoin/minikit-js');
 

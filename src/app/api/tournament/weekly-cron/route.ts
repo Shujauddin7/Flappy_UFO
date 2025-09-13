@@ -170,7 +170,8 @@ export async function GET(req: NextRequest) {
                     total_prize_pool: 0.0,
                     total_collected: 0.0,
                     admin_fee: 0.0,
-                    protection_level: 3,  // Start with maximum protection (95%) for 0 WLD collected
+                    guarantee_amount: 0.0,
+                    admin_net_result: 0.0,
                     start_time: tournamentStartTime.toISOString(),
                     end_time: tournamentEndTime.toISOString(),
                     created_at: new Date().toISOString()
