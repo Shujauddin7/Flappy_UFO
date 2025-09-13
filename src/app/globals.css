@@ -50,8 +50,10 @@ body {
 .game-select-screen {
   position: relative;
   z-index: 10;
-  min-height: 100dvh; /* Use min-height instead of fixed height */
-  height: auto; /* Allow flexible height */
+  min-height: 100dvh;
+  /* Use min-height instead of fixed height */
+  height: auto;
+  /* Allow flexible height */
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -59,7 +61,8 @@ body {
   pointer-events: none;
   background: transparent !important;
   /* Override any default backgrounds */
-  overflow-y: auto; /* Allow scrolling if content exceeds viewport */
+  overflow-y: auto;
+  /* Allow scrolling if content exceeds viewport */
 }
 
 
@@ -740,8 +743,10 @@ body {
 @media (max-width: 500px) {
   .game-select-screen {
     padding: 1rem 1rem 0.5rem;
-    min-height: 100dvh; /* Use min-height instead of fixed height */
-    height: auto; /* Allow height to adjust to content */
+    min-height: 100dvh;
+    /* Use min-height instead of fixed height */
+    height: auto;
+    /* Allow height to adjust to content */
   }
 
   .epic-title-section {
@@ -752,46 +757,58 @@ body {
   .game-modes {
     gap: 1rem;
     max-width: 320px;
-    flex: 1; /* Take available space but allow shrinking */
-    min-height: 0; /* Allow shrinking below initial size */
+    flex: 1;
+    /* Take available space but allow shrinking */
+    min-height: 0;
+    /* Allow shrinking below initial size */
   }
 
   .mode-card {
-    padding: 1rem; /* Reduced padding */
+    padding: 1rem;
+    /* Reduced padding */
     border-radius: 16px;
   }
 
   .mode-content {
-    gap: 0.6rem; /* Reduced gap between elements */
+    gap: 0.6rem;
+    /* Reduced gap between elements */
   }
 
   .mode-icon {
-    font-size: 1.8rem; /* Slightly smaller icon */
-    margin-bottom: 0.5rem; /* Reduced margin */
+    font-size: 1.8rem;
+    /* Slightly smaller icon */
+    margin-bottom: 0.5rem;
+    /* Reduced margin */
   }
 
   .mode-name {
-    font-size: 1.2rem; /* Increased text size for better readability */
+    font-size: 1.2rem;
+    /* Increased text size for better readability */
     margin-bottom: 0.3rem;
   }
 
   .mode-desc {
-    font-size: 0.9rem; /* Increased text size for better readability */
+    font-size: 0.9rem;
+    /* Increased text size for better readability */
     margin-bottom: 0.8rem;
   }
 
   .mode-features {
-    margin-bottom: 1rem; /* Reduced margin */
+    margin-bottom: 1rem;
+    /* Reduced margin */
   }
 
   .feature {
-    font-size: 0.85rem; /* Increased text size for better readability */
+    font-size: 0.85rem;
+    /* Increased text size for better readability */
     padding: 0.2rem 0;
   }
 
   .mode-button {
-    padding: 0.9rem 1.5rem; /* Better button padding */
-    font-size: 0.9rem; /* Increased text size for better readability */
+    padding: 0.9rem 1.5rem;
+    /* Better button padding */
+    font-size: 0.9rem;
+    /* Increased text size for better readability */
   }
 
   .choose-word {
@@ -822,7 +839,8 @@ body {
 
   .bottom-nav-container {
     padding: 0 1rem 0.8rem;
-    flex-shrink: 0; /* Ensure navigation is always visible */
+    flex-shrink: 0;
+    /* Ensure navigation is always visible */
   }
 }
 
@@ -1414,16 +1432,23 @@ body {
 }
 
 .leaderboard-section {
-  flex: 1; /* Take all available space */
-  overflow-y: auto; /* Enable scrolling */
-  overflow-x: hidden; /* Prevent horizontal scroll */
+  flex: 1;
+  /* Take all available space */
+  overflow-y: auto;
+  /* Enable scrolling */
+  overflow-x: hidden;
+  /* Prevent horizontal scroll */
   padding: 0 0.5rem;
   width: 100%;
-  max-width: 600px; /* Constrain width for better UX */
-  min-height: 0; /* Allow flex shrinking */
+  max-width: 600px;
+  /* Constrain width for better UX */
+  min-height: 0;
+  /* Allow flex shrinking */
   /* Hide scrollbar but keep functionality */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
 }
 
 /* Hide scrollbar for WebKit browsers (Chrome, Safari, Edge) */
@@ -1510,7 +1535,8 @@ body {
 
 .tournament-leaderboard {
   width: 100%;
-  height: 100%; /* Fill the entire leaderboard section */
+  height: 100%;
+  /* Fill the entire leaderboard section */
   display: flex;
   flex-direction: column;
 }
@@ -1533,7 +1559,8 @@ body {
   align-items: center;
   margin-bottom: 1rem;
   padding: 0 0.5rem;
-  flex-shrink: 0; /* Don't let header shrink */
+  flex-shrink: 0;
+  /* Don't let header shrink */
 }
 
 .leaderboard-header h3 {
@@ -1552,13 +1579,19 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  flex: 1; /* Take remaining space after header */
-  overflow-y: auto; /* Enable scrolling within the list */
-  overflow-x: hidden; /* Prevent horizontal scroll */
-  padding-bottom: 1rem; /* Add some bottom padding for better UX */
+  flex: 1;
+  /* Take remaining space after header */
+  overflow-y: auto;
+  /* Enable scrolling within the list */
+  overflow-x: hidden;
+  /* Prevent horizontal scroll */
+  padding-bottom: 1rem;
+  /* Add some bottom padding for better UX */
   /* Hide scrollbar but keep functionality */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
 }
 
 .player-rank-card {
