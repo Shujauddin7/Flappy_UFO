@@ -2653,3 +2653,75 @@ body {
     height: 100%;
   }
 }
+
+/* RESTORE MAIN BRANCH MOBILE RESPONSIVENESS */
+@media (max-width: 500px) {
+  .game-select-screen {
+    padding: 1.5rem 1rem 1rem;
+  }
+
+  .game-modes {
+    gap: 1rem;
+    max-width: 320px;
+  }
+
+  .mode-card {
+    padding: 1.2rem;
+  }
+
+  .mode-icon {
+    font-size: 2rem;
+  }
+
+  .choose-word {
+    font-size: 1.4rem;
+  }
+
+  .destiny-word {
+    font-size: 1.8rem;
+  }
+
+  .space-nav-icons {
+    max-width: 250px;
+    gap: 1.5rem;
+  }
+
+  .space-nav-btn {
+    padding: 0.8rem 1rem;
+    min-width: 90px;
+  }
+
+  .space-icon {
+    font-size: 1.5rem;
+  }
+
+  .nav-label {
+    font-size: 0.7rem;
+  }
+
+  .bottom-nav-container {
+    padding: 0 1rem 1rem;
+  }
+}
+
+@media (max-height: 700px) {
+  .game-select-screen {
+    padding: 1rem;
+  }
+
+  .epic-title-section {
+    margin-bottom: 1rem;
+  }
+
+  .mode-card {
+    padding: 1rem;
+  }
+
+  .mode-features {
+    margin-bottom: 1rem;
+  }
+
+  .space-nav-btn {
+    padding: 0.8rem 1rem;
+  }
+}
