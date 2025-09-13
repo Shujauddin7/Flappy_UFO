@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { supabase } from '@/lib/supabase';
+import { createServerSupabaseClient } from '@/lib/supabase';
 
 export async function POST(req: NextRequest) {
     try {
@@ -18,6 +18,9 @@ export async function POST(req: NextRequest) {
         if (!validAdminWallets.includes(session.user.walletAddress)) {
             return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
         }
+
+        // Use service role client to bypass RLS
+        const supabase = createServerSupabaseClient();
 
         const {
             winnerWallet,
@@ -131,6 +134,9 @@ export async function DELETE(req: NextRequest) {
         if (!validAdminWallets.includes(session.user.walletAddress)) {
             return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
         }
+
+        // Use service role client to bypass RLS
+        const supabase = createServerSupabaseClient();
 
         const { searchParams } = new URL(req.url);
         const tournamentId = searchParams.get('tournament_id');

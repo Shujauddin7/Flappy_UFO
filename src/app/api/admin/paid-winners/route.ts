@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createServerSupabaseClient } from '@/lib/supabase';
 
 export async function GET(req: NextRequest) {
     try {
@@ -11,6 +11,9 @@ export async function GET(req: NextRequest) {
         }
 
         console.log('🔍 Fetching paid winners for tournament:', tournamentId);
+
+        // Use service role client to bypass RLS
+        const supabase = createServerSupabaseClient();
 
         // Get all paid winners from prizes table for this tournament
         const { data: paidWinners, error } = await supabase
