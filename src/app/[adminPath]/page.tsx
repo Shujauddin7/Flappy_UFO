@@ -277,7 +277,7 @@ export default function AdminDashboard() {
     };
 
     const handlePaymentError = (winnerAddress: string, error: string) => {
-        console.error('❌ Payment failed for:', winnerAddress, error);
+        console.log('❌ Payment failed for:', winnerAddress, error);
 
         // Update winner status to failed
         setWinners(prevWinners =>
