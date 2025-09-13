@@ -258,14 +258,17 @@ export default function AdminDashboard() {
         // Wait a moment for the database transaction to complete
         // The AdminPayout component saves to database before calling this callback,
         // but we need to ensure the transaction is committed before we reload
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        console.log('⏳ Waiting for database transaction to complete...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
         // Reload paid winners from database to ensure persistence
         if (currentTournament?.tournament_id) {
+            console.log('🔄 Reloading payment status from database...');
             try {
                 const paidResponse = await fetch(`/api/admin/paid-winners?tournament_id=${currentTournament.tournament_id}`);
                 if (paidResponse.ok) {
                     const paidWinners = await paidResponse.json();
+                    console.log('📊 Database reload result:', paidWinners);
                     const paidWalletsMap = new Map<string, string>(
                         paidWinners.winners?.map((w: { wallet: string; transaction_hash: string }) =>
                             [w.wallet, w.transaction_hash || '']
@@ -277,14 +280,17 @@ export default function AdminDashboard() {
                         prevWinners.map((winner): Winner => {
                             const transactionHash = paidWalletsMap.get(winner.wallet_address);
                             if (transactionHash) {
+                                console.log(`✅ Confirmed payment for ${winner.username}: ${transactionHash}`);
                                 return { ...winner, payment_status: 'sent' as const, transaction_id: transactionHash };
                             }
                             return winner;
                         })
                     );
+                } else {
+                    console.warn('Failed to reload payment status:', paidResponse.status);
                 }
             } catch (error) {
-                console.warn('Failed to reload payment status from database:', error);
+                console.error('Failed to reload payment status from database:', error);
             }
         }
     };
@@ -403,6 +409,15 @@ export default function AdminDashboard() {
                                     {currentUserWallet === wallet && ' (You)'}
                                 </button>
                             ))}
+                        </div>
+                        <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-3 mt-3">
+                            <h4 className="text-sm font-semibold text-yellow-300 mb-2">⚠️ Important: World App Payment Restrictions</h4>
+                            <ul className="text-xs text-yellow-200 space-y-1">
+                                <li>• World App can only send payments from YOUR logged-in wallet</li>
+                                <li>• You cannot send from a different &quot;admin wallet&quot; - MiniKit uses your authenticated wallet</li>
+                                <li>• If you need to pay from a different wallet, log out and log back in with that wallet</li>
+                                <li>• The &quot;admin wallet&quot; selection above is just for display - payments still come from you</li>
+                            </ul>
                         </div>
                         <p className="text-xs text-gray-400 mt-2">
                             💡 Switch wallets if your World App has pending transactions
@@ -635,6 +650,7 @@ export default function AdminDashboard() {
                                                     <td className="py-3 px-4">
                                                         {winner.payment_status === 'pending' && winner.wallet_address && (
                                                             <AdminPayout
+                                                                key={`payout-${winner.wallet_address}-${winner.rank}`}
                                                                 winnerAddress={winner.wallet_address}
                                                                 amount={winner.final_amount || 0}
                                                                 rank={winner.rank}

@@ -69,9 +69,12 @@ export const AdminPayout = ({
 
             console.log('🚀 Starting payout to:', username, winnerAddress);
             console.log('💰 Amount:', amount, 'WLD');
-            console.log('🔐 Using admin wallet:', selectedAdminWallet);
+            console.log('🔐 Selected admin wallet:', selectedAdminWallet);
+            console.log('👤 Target wallet:', winnerAddress);
+            console.log('⚡ MiniKit available:', !!MiniKit);
 
             // Step 3: Use MiniKit payment flow - this opens World App payment interface
+            // NOTE: MiniKit uses the authenticated user's wallet, not selectedAdminWallet
             const result = await MiniKit.commandsAsync.pay({
                 reference: id,
                 to: winnerAddress,
@@ -86,8 +89,8 @@ export const AdminPayout = ({
 
             console.log('🔄 Payment result:', result);
 
-            // Step 4: Handle payment result
-            if (result.finalPayload.status === 'success') {
+            // Step 4: Handle payment result - Improved error detection
+            if (result.finalPayload && result.finalPayload.status === 'success' && result.finalPayload.reference) {
                 console.log('✅ Payment successful!', result.finalPayload);
                 setButtonState('success');
 
@@ -110,6 +113,7 @@ export const AdminPayout = ({
                     const saveData = await saveResponse.json();
                     if (!saveData.success) {
                         console.warn('⚠️ Payment successful but recording failed:', saveData.error);
+                        throw new Error(`Database recording failed: ${saveData.error}`);
                     } else {
                         console.log('✅ Payment recorded in prizes table');
 
@@ -126,15 +130,17 @@ export const AdminPayout = ({
 
                     // Wait for database operations to complete before calling success callback
                     console.log('⏳ Waiting for database operations to complete...');
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                    await new Promise(resolve => setTimeout(resolve, 1000));
 
                     // Call success callback - this updates the UI
                     onPaymentSuccess(winnerAddress, result.finalPayload.reference || id);
 
                 } catch (saveError) {
-                    console.warn('⚠️ Payment successful but recording failed:', saveError);
-                    // Still call success callback even if recording failed, since payment went through
-                    onPaymentSuccess(winnerAddress, result.finalPayload.reference || id);
+                    console.error('⚠️ Payment successful but database operations failed:', saveError);
+                    setButtonState('failed');
+                    const errorMessage = saveError instanceof Error ? saveError.message : 'Unknown database error';
+                    onPaymentError(winnerAddress, `Payment succeeded but database update failed: ${errorMessage}`);
+                    return;
                 }
 
                 // Auto-reset after 3 seconds
@@ -143,7 +149,10 @@ export const AdminPayout = ({
                 }, 3000);
 
             } else {
-                throw new Error('Payment failed or was cancelled');
+                // Payment failed, cancelled, or invalid result
+                console.error('❌ Payment failed or cancelled:', result);
+                const failureReason = result.finalPayload?.status || 'cancelled';
+                throw new Error(`Payment ${failureReason}: User cancelled or payment failed`);
             }
 
         } catch (error) {
