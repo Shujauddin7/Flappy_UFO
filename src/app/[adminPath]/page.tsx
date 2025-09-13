@@ -93,7 +93,9 @@ export default function AdminDashboard() {
         if (!isAdmin) {
             router.push('/');
             return;
-        } const calculateBasePrize = (rank: number): number => {
+        }
+
+        const calculateBasePrize = (rank: number): number => {
             // Plan.md percentages: 40%, 22%, 14%, 6%, 5%, 4%, 3%, 2%, 2%, 2%
             const prizeDistribution = [0.40, 0.22, 0.14, 0.06, 0.05, 0.04, 0.03, 0.02, 0.02, 0.02];
             return prizeDistribution[rank - 1] || 0;
