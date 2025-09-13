@@ -88,9 +88,12 @@ export const AdminPayout = ({
             });
 
             console.log('🔄 Payment result:', result);
+            console.log('🔍 Final payload:', result.finalPayload);
+            console.log('🔍 Status:', result.finalPayload?.status);
+            console.log('🔍 Reference available:', 'reference' in result.finalPayload ? result.finalPayload.reference : 'No reference');
 
-            // Step 4: Handle payment result - Improved error detection
-            if (result.finalPayload && result.finalPayload.status === 'success' && result.finalPayload.reference) {
+            // Step 4: Handle payment result - Fixed validation (reference is optional)
+            if (result.finalPayload && result.finalPayload.status === 'success') {
                 console.log('✅ Payment successful!', result.finalPayload);
                 setButtonState('success');
 
