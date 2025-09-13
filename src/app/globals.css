@@ -50,8 +50,8 @@ body {
 .game-select-screen {
   position: relative;
   z-index: 10;
-  height: 100dvh;
-  /* Use dynamic viewport height for mobile */
+  min-height: 100dvh; /* Use min-height instead of fixed height */
+  height: auto; /* Allow flexible height */
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -59,6 +59,7 @@ body {
   pointer-events: none;
   background: transparent !important;
   /* Override any default backgrounds */
+  overflow-y: auto; /* Allow scrolling if content exceeds viewport */
 }
 
 
@@ -75,7 +76,7 @@ body {
   align-items: center;
   padding: 0.5rem 1rem;
   overflow: hidden;
-  /* Prevent container from scrolling, let children handle it */
+  /* Prevent root container from scrolling, let leaderboard section handle it */
   pointer-events: none;
   background: transparent !important;
   /* Override any default backgrounds */
@@ -738,20 +739,59 @@ body {
 /* Mobile responsive */
 @media (max-width: 500px) {
   .game-select-screen {
-    padding: 1.5rem 1rem 1rem;
+    padding: 1rem 1rem 0.5rem;
+    min-height: 100dvh; /* Use min-height instead of fixed height */
+    height: auto; /* Allow height to adjust to content */
+  }
+
+  .epic-title-section {
+    margin-bottom: 1.5rem;
+    flex-shrink: 0;
   }
 
   .game-modes {
     gap: 1rem;
     max-width: 320px;
+    flex: 1; /* Take available space but allow shrinking */
+    min-height: 0; /* Allow shrinking below initial size */
   }
 
   .mode-card {
-    padding: 1.2rem;
+    padding: 1rem; /* Reduced padding */
+    border-radius: 16px;
+  }
+
+  .mode-content {
+    gap: 0.6rem; /* Reduced gap between elements */
   }
 
   .mode-icon {
-    font-size: 2rem;
+    font-size: 1.8rem; /* Slightly smaller icon */
+    margin-bottom: 0.5rem; /* Reduced margin */
+  }
+
+  .mode-name {
+    font-size: 1.2rem; /* Increased text size for better readability */
+    margin-bottom: 0.3rem;
+  }
+
+  .mode-desc {
+    font-size: 0.9rem; /* Increased text size for better readability */
+    margin-bottom: 0.8rem;
+  }
+
+  .mode-features {
+    margin-bottom: 1rem; /* Reduced margin */
+  }
+
+  .feature {
+    font-size: 0.85rem; /* Increased text size for better readability */
+    padding: 0.2rem 0;
+  }
+
+  .mode-button {
+    padding: 0.9rem 1.5rem; /* Better button padding */
+    font-size: 0.9rem; /* Increased text size for better readability */
   }
 
   .choose-word {
@@ -781,44 +821,177 @@ body {
   }
 
   .bottom-nav-container {
-    padding: 0 1rem 1rem;
+    padding: 0 1rem 0.8rem;
+    flex-shrink: 0; /* Ensure navigation is always visible */
   }
 }
 
 @media (max-height: 700px) {
   .game-select-screen {
-    padding: 1rem;
+    padding: 0.8rem 1rem 0.5rem;
+    min-height: 100dvh;
+    height: auto;
   }
 
   .epic-title-section {
-    margin-bottom: 1rem;
+    margin-bottom: 0.8rem;
+    flex-shrink: 0;
   }
 
   .mode-card {
-    padding: 1rem;
+    padding: 0.9rem;
+  }
+
+  .mode-content {
+    gap: 0.5rem;
   }
 
   .mode-features {
-    margin-bottom: 1rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .mode-button {
+    padding: 0.8rem 1.5rem;
   }
 
   .bottom-nav-container {
-    padding: 0 1.5rem 0.8rem;
+    padding: 0.5rem 1.5rem 0.5rem;
+    flex-shrink: 0;
   }
 
   .space-nav-btn {
-    padding: 0.8rem 1rem;
+    padding: 0.7rem 0.9rem;
   }
 }
 
 @media (max-height: 600px) {
+  .game-select-screen {
+    padding: 0.5rem 1rem 0.3rem;
+  }
+
+  .epic-title-section {
+    margin-bottom: 0.5rem;
+  }
+
+  .mode-card {
+    padding: 0.8rem;
+  }
+
+  .mode-content {
+    gap: 0.4rem;
+  }
+
+  .mode-icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .mode-name {
+    font-size: 1.1rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .mode-desc {
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .mode-features {
+    margin-bottom: 0.6rem;
+  }
+
+  .mode-features .feature {
+    font-size: 0.75rem;
+  }
+
+  .mode-button {
+    padding: 0.7rem 1.2rem;
+    font-size: 0.85rem;
+  }
+
   .space-nav-icons {
-    gap: 1rem;
+    gap: 0.8rem;
   }
 
   .space-nav-btn {
-    padding: 0.6rem 0.8rem;
-    min-width: 70px;
+    padding: 0.5rem 0.7rem;
+    min-width: 65px;
+  }
+
+  .space-icon {
+    font-size: 1.2rem;
+  }
+
+  .bottom-nav-container {
+    padding: 0.3rem 1rem 0.3rem;
+  }
+}
+
+/* For extremely short screens */
+@media (max-height: 500px) {
+  .game-select-screen {
+    padding: 0.3rem 0.8rem 0.2rem;
+  }
+
+  .epic-title-section {
+    margin-bottom: 0.3rem;
+  }
+
+  .choose-word {
+    font-size: 1rem;
+  }
+
+  .destiny-word {
+    font-size: 1.3rem;
+  }
+
+  .mode-card {
+    padding: 0.6rem;
+  }
+
+  .mode-content {
+    gap: 0.3rem;
+  }
+
+  .mode-icon {
+    font-size: 1.3rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .mode-name {
+    font-size: 1rem;
+    margin-bottom: 0.1rem;
+  }
+
+  .mode-desc {
+    font-size: 0.7rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .mode-features {
+    margin-bottom: 0.5rem;
+  }
+
+  .mode-features .feature {
+    font-size: 0.7rem;
+  }
+
+  .mode-button {
+    padding: 0.6rem 1rem;
+    font-size: 0.8rem;
+  }
+
+  .bottom-nav-container {
+    padding: 0.2rem 0.8rem 0.2rem;
+  }
+
+  .space-nav-btn {
+    padding: 0.4rem 0.6rem;
+    min-width: 60px;
+  }
+
+  .space-icon {
+    font-size: 1rem;
   }
 }
 
@@ -826,12 +999,15 @@ body {
 /* Very small devices (under 400px) */
 @media (max-width: 400px) {
   .game-select-screen {
-    padding: 1rem 0.8rem;
+    padding: 0.8rem 0.5rem 0.5rem;
+    min-height: 100dvh;
+    height: auto;
   }
 
   .epic-title-section {
-    margin-bottom: 1.5rem;
-    padding: 0 1rem;
+    margin-bottom: 1rem;
+    padding: 0 0.5rem;
+    flex-shrink: 0;
   }
 
   .choose-word {
@@ -847,35 +1023,64 @@ body {
   }
 
   .game-modes {
-    max-width: 280px;
+    max-width: 300px;
     gap: 0.8rem;
+    flex: 1;
+    min-height: 0;
   }
 
   .mode-card {
-    padding: 1rem;
+    padding: 0.9rem;
     border-radius: 16px;
   }
 
   .mode-content {
-    gap: 0.8rem;
+    gap: 0.5rem;
+  }
+
+  .mode-icon {
+    font-size: 1.6rem;
+    margin-bottom: 0.4rem;
   }
 
   .mode-name {
-    font-size: 1rem;
+    font-size: 1.1rem;
+    margin-bottom: 0.2rem;
   }
 
   .mode-desc {
     font-size: 0.8rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .mode-features {
+    margin-bottom: 0.8rem;
   }
 
   .mode-features .feature {
-    font-size: 0.7rem;
-    padding: 0.3rem 0.6rem;
+    font-size: 0.75rem;
+    padding: 0.2rem 0;
   }
 
   .mode-button {
     padding: 0.8rem 1.2rem;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
+    border-radius: 12px;
+  }
+
+  .bottom-nav-container {
+    padding: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  .space-nav-icons {
+    max-width: 200px;
+    gap: 1rem;
+  }
+
+  .space-nav-btn {
+    padding: 0.6rem 0.8rem;
+    min-width: 70px;
   }
 }
 
@@ -1209,23 +1414,21 @@ body {
 }
 
 .leaderboard-section {
-  flex: 1;
-  overflow-y: auto;
+  flex: 1; /* Take all available space */
+  overflow-y: auto; /* Enable scrolling */
+  overflow-x: hidden; /* Prevent horizontal scroll */
   padding: 0 0.5rem;
+  width: 100%;
+  max-width: 600px; /* Constrain width for better UX */
+  min-height: 0; /* Allow flex shrinking */
   /* Hide scrollbar but keep functionality */
-  scrollbar-width: none;
-  /* Firefox */
-  -ms-overflow-style: none;
-  /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
 }
 
 /* Hide scrollbar for WebKit browsers (Chrome, Safari, Edge) */
-.leaderboard-section::-webkit-scrollbar {
-  display: none;
-}
-
-/* Hide scrollbar for WebKit browsers (Chrome, Safari, Edge) */
-.leaderboard-section::-webkit-scrollbar {
+.leaderboard-section::-webkit-scrollbar,
+.leaderboard-list::-webkit-scrollbar {
   display: none;
 }
 
@@ -1307,6 +1510,9 @@ body {
 
 .tournament-leaderboard {
   width: 100%;
+  height: 100%; /* Fill the entire leaderboard section */
+  display: flex;
+  flex-direction: column;
 }
 
 .grace-period-banner {
@@ -1327,6 +1533,7 @@ body {
   align-items: center;
   margin-bottom: 1rem;
   padding: 0 0.5rem;
+  flex-shrink: 0; /* Don't let header shrink */
 }
 
 .leaderboard-header h3 {
@@ -1345,6 +1552,13 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  flex: 1; /* Take remaining space after header */
+  overflow-y: auto; /* Enable scrolling within the list */
+  overflow-x: hidden; /* Prevent horizontal scroll */
+  padding-bottom: 1rem; /* Add some bottom padding for better UX */
+  /* Hide scrollbar but keep functionality */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
 }
 
 .player-rank-card {
@@ -2701,6 +2915,130 @@ body {
 
   .bottom-nav-container {
     padding: 0 1rem 1rem;
+  }
+}
+
+/* Leaderboard Mobile Responsive Styles */
+@media (max-width: 500px) {
+  .leaderboard-container {
+    padding: 0.3rem 0.8rem;
+  }
+
+  .leaderboard-section {
+    padding: 0 0.3rem;
+    max-width: 100%;
+  }
+
+  .player-rank-card {
+    padding: 0.8rem;
+    gap: 0.8rem;
+  }
+
+  .rank-section {
+    min-width: 40px;
+  }
+
+  .rank-display {
+    font-size: 1.2rem;
+  }
+
+  .player-name {
+    font-size: 0.9rem;
+  }
+
+  .player-score {
+    font-size: 1rem;
+  }
+
+  .prize-section {
+    min-width: 70px;
+  }
+
+  .prize-amount {
+    font-size: 0.85rem;
+  }
+
+  .you-badge {
+    font-size: 0.6rem;
+    padding: 0.2rem 0.4rem;
+  }
+}
+
+@media (max-width: 350px) {
+  .leaderboard-container {
+    padding: 0.2rem 0.5rem;
+  }
+
+  .player-rank-card {
+    padding: 0.6rem;
+    gap: 0.6rem;
+    border-radius: 10px;
+  }
+
+  .rank-section {
+    min-width: 35px;
+  }
+
+  .rank-display {
+    font-size: 1rem;
+  }
+
+  .player-name {
+    font-size: 0.8rem;
+  }
+
+  .player-score {
+    font-size: 0.9rem;
+  }
+
+  .prize-section {
+    min-width: 60px;
+  }
+
+  .prize-amount {
+    font-size: 0.75rem;
+  }
+
+  .you-badge {
+    font-size: 0.55rem;
+    padding: 0.15rem 0.3rem;
+  }
+}
+
+@media (max-height: 600px) {
+  .leaderboard-container {
+    padding: 0.2rem 0.8rem;
+  }
+
+  .tournament-main-title h1 {
+    font-size: 1.2rem;
+    margin: 0.3rem 0;
+  }
+
+  .header-section {
+    margin-bottom: 0.5rem;
+  }
+
+  .player-rank-card {
+    padding: 0.6rem;
+    border-radius: 10px;
+  }
+
+  .rank-display {
+    font-size: 1rem;
+  }
+
+  .player-name {
+    font-size: 0.85rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .player-score {
+    font-size: 0.9rem;
+  }
+
+  .prize-amount {
+    font-size: 0.8rem;
   }
 }
 
