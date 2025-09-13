@@ -44,7 +44,19 @@ body {
 
 /* OVERRIDE PAGE LAYOUT BACKGROUNDS FOR STAR PARTICLES */
 .main-container,
-.game-select-screen,
+.game-select-screen {
+  position: relative;
+  z-index: 10;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+  background: transparent !important;
+  /* Override any default backgrounds */
+}
+
 .leaderboard-container {
   position: relative;
   z-index: 10;
