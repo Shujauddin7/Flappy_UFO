@@ -168,7 +168,7 @@ export async function POST(req: NextRequest) {
         // Get current active tournament (don't create - tournaments are created via admin/create-tournament only)
         const { data: tournament, error: tournamentFetchError } = await supabase
             .from('tournaments')
-            .select('id, tournament_day')
+            .select('id, tournament_day, start_time, end_time')
             .eq('is_active', true)
             .single();
 
@@ -180,6 +180,27 @@ export async function POST(req: NextRequest) {
                 error: 'No active tournament found. Please contact support.',
                 details: tournamentFetchError?.message || 'No tournament available'
             }, { status: 404 });
+        }
+
+        // 🔥 CRITICAL: Grace Period Validation (per Plan.md)
+        // During grace period (15:00-15:30 UTC Sunday), reject NEW entries but allow existing players to continue
+        const currentTime = new Date();
+        const tournamentEndTime = new Date(tournament.end_time);
+        const gracePeriodStart = new Date(tournamentEndTime.getTime() - 30 * 60 * 1000); // 30 minutes before end
+        const isGracePeriod = currentTime >= gracePeriodStart && currentTime < tournamentEndTime;
+
+        if (isGracePeriod) {
+            console.log('⏰ Grace period detected - rejecting new tournament entry:', {
+                current_time: currentTime.toISOString(),
+                grace_period_start: gracePeriodStart.toISOString(),
+                tournament_end: tournamentEndTime.toISOString(),
+                is_grace_period: isGracePeriod
+            });
+
+            return NextResponse.json({
+                error: 'Tournament is in grace period. No new entries allowed.',
+                details: 'Tournament ends soon. Existing players can finish their games, but new entries are not permitted.'
+            }, { status: 403 });
         }
 
         const finalTournament = tournament;

@@ -41,11 +41,12 @@ export async function GET() {
         }
 
         // Fetch all players for this tournament, ordered by score
+        // Include players with zero scores as per user requirements - all scores should be shown
         const { data: players, error } = await supabase
             .from('user_tournament_records')
             .select('*')
             .eq('tournament_day', tournamentDay)
-            .gt('highest_score', 0) // Only players with scores > 0
+            .gte('highest_score', 0) // Include zero scores (changed from gt to gte)
             .order('highest_score', { ascending: false })
             .order('created_at', { ascending: true }); // Tie-breaker: earlier submission wins
 
