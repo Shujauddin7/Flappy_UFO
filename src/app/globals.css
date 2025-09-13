@@ -47,13 +47,15 @@ body {
 .game-select-screen {
   position: relative;
   z-index: 10;
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
+  padding: 2rem 1rem 1rem;
   pointer-events: none;
   background: transparent !important;
+  overflow-y: auto;
   /* Override any default backgrounds */
 }
 
@@ -75,8 +77,8 @@ body {
   /* Different alignment for leaderboard */
   padding: 0.5rem 1rem;
   height: 100vh;
-  overflow: hidden;
-  /* Prevent container from scrolling, let children handle it */
+  overflow-y: auto;
+  /* Allow container scrolling */
 }
 
 .leaderboard-container::-webkit-scrollbar {
@@ -579,7 +581,9 @@ body {
   width: 100%;
   display: flex;
   justify-content: center;
-  padding: 0 2rem 1.5rem;
+  padding: 1.5rem 2rem 2rem;
+  margin-top: auto;
+  /* Push to bottom */
 }
 
 .space-nav-icons {
@@ -2518,4 +2522,68 @@ body {
   color: #9CA3AF;
   font-size: 0.9rem;
   opacity: 0.8;
+}
+
+/* Enhanced Mobile Fixes for Critical Issues */
+@media (max-width: 430px) {
+
+  /* Fix tournament entry modal on small screens */
+  .mode-card {
+    min-width: 280px;
+    max-width: 300px;
+  }
+
+  .mode-button,
+  .standard-button {
+    padding: 1rem 0.8rem;
+    font-size: 0.9rem;
+    min-height: 48px;
+    /* Touch-friendly */
+  }
+
+  /* Ensure navigation buttons are always visible */
+  .bottom-nav-container {
+    position: sticky;
+    bottom: 0;
+    background: rgba(11, 12, 16, 0.95);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 100;
+  }
+
+  .space-nav-btn {
+    min-width: 80px;
+    padding: 0.8rem;
+  }
+}
+
+@media (max-width: 380px) {
+
+  /* Very small screens - likely where standard entry button disappears */
+  .game-modes {
+    max-width: 260px;
+    gap: 0.8rem;
+  }
+
+  .mode-card {
+    padding: 0.8rem;
+    min-width: 260px;
+    max-width: 260px;
+  }
+
+  .mode-button,
+  .standard-button {
+    font-size: 0.8rem;
+    padding: 0.8rem 0.6rem;
+  }
+
+  .space-nav-icons {
+    max-width: 200px;
+    gap: 1rem;
+  }
+
+  .space-nav-btn {
+    min-width: 70px;
+    padding: 0.6rem;
+  }
 }
