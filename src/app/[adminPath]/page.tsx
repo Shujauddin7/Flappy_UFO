@@ -3,7 +3,13 @@
 import { signOut, useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { AdminPayout } from '@/components/AdminPayout';
+import dynamic from 'next/dynamic';
+
+// Import AdminPayout as dynamic component to prevent SSR issues with MiniKit
+const AdminPayout = dynamic(() => import('@/components/AdminPayout').then(mod => ({ default: mod.AdminPayout })), {
+    ssr: false,
+    loading: () => <div className="text-xs text-gray-400">Loading payout...</div>
+});
 
 interface TournamentData {
     tournament_id: string;
@@ -613,15 +619,15 @@ export default function AdminDashboard() {
                                                     </span>
                                                 </td>
                                                 <td className="py-3 px-4">
-                                                    {winner.payment_status === 'pending' && (
+                                                    {winner.payment_status === 'pending' && winner.wallet_address && (
                                                         <AdminPayout
                                                             winnerAddress={winner.wallet_address}
-                                                            amount={winner.final_amount}
+                                                            amount={winner.final_amount || 0}
                                                             rank={winner.rank}
-                                                            username={winner.username}
-                                                            selectedAdminWallet={selectedAdminWallet}
+                                                            username={winner.username || `Player ${winner.rank}`}
+                                                            selectedAdminWallet={selectedAdminWallet || ''}
                                                             tournamentId={currentTournament?.tournament_id || ''}
-                                                            finalScore={winner.score}
+                                                            finalScore={winner.score || 0}
                                                             onPaymentSuccess={handlePaymentSuccess}
                                                             onPaymentError={handlePaymentError}
                                                             disabled={false}
