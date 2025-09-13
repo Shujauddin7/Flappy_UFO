@@ -31,9 +31,11 @@ export const AdminPayout = ({
     const [buttonState, setButtonState] = useState<
         'pending' | 'success' | 'failed' | undefined
     >(undefined);
+    const [debugInfo, setDebugInfo] = useState<string>('');
 
     const handlePayout = async () => {
         setButtonState('pending');
+        setDebugInfo('Starting payment...');
 
         try {
             // Step 1: Try to create pending prize record (optional - don't fail if this fails)
@@ -73,6 +75,12 @@ export const AdminPayout = ({
             console.log('👤 Target wallet:', winnerAddress);
             console.log('⚡ MiniKit available:', !!MiniKit);
 
+            // Check if trying to pay to self vs other wallet
+            const isSelfPayment = winnerAddress.toLowerCase() === selectedAdminWallet.toLowerCase();
+            console.log('🤔 Is self-payment?', isSelfPayment);
+
+            setDebugInfo(isSelfPayment ? 'Paying to your own wallet...' : `Paying to ${username} (${winnerAddress.slice(0, 6)}...${winnerAddress.slice(-4)})`);
+
             // Step 3: Use MiniKit payment flow - this opens World App payment interface
             // NOTE: MiniKit uses the authenticated user's wallet, not selectedAdminWallet
             const result = await MiniKit.commandsAsync.pay({
@@ -96,6 +104,7 @@ export const AdminPayout = ({
             if (result.finalPayload && result.finalPayload.status === 'success') {
                 console.log('✅ Payment successful!', result.finalPayload);
                 setButtonState('success');
+                setDebugInfo('✅ Payment successful! Saving to database...');
 
                 // Step 5a: Save successful payment to prizes table
                 try {
@@ -149,17 +158,34 @@ export const AdminPayout = ({
                 // Auto-reset after 3 seconds
                 setTimeout(() => {
                     setButtonState(undefined);
+                    setDebugInfo('');
                 }, 3000);
-
             } else {
                 // Payment failed, cancelled, or invalid result
                 console.error('❌ Payment failed or cancelled:', result);
+                console.error('❌ Payload details:', JSON.stringify(result.finalPayload, null, 2));
+
                 const failureReason = result.finalPayload?.status || 'cancelled';
-                throw new Error(`Payment ${failureReason}: User cancelled or payment failed`);
+                const isSelfPayment = winnerAddress.toLowerCase() === selectedAdminWallet.toLowerCase();
+
+                let errorDetails = `Payment ${failureReason}`;
+                if (!isSelfPayment) {
+                    errorDetails += ` (to other wallet)`;
+                    setDebugInfo(`❌ Failed: Cannot pay to ${username}. Reason: ${failureReason}`);
+                } else {
+                    setDebugInfo(`❌ Failed: Self-payment failed. Reason: ${failureReason}`);
+                }
+
+                throw new Error(`${errorDetails}: User cancelled or payment failed`);
             }
 
         } catch (error) {
             console.error('❌ Payout error:', error);
+            console.error('❌ Error details:', JSON.stringify(error, null, 2));
+
+            const isSelfPayment = winnerAddress.toLowerCase() === selectedAdminWallet.toLowerCase();
+            console.log('🤔 Was this a self-payment?', isSelfPayment);
+
             setButtonState('failed');
 
             const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -168,6 +194,7 @@ export const AdminPayout = ({
             // Auto-reset after 3 seconds
             setTimeout(() => {
                 setButtonState(undefined);
+                setDebugInfo('');
             }, 3000);
         }
     };
@@ -193,6 +220,11 @@ export const AdminPayout = ({
                     Pay {amount.toFixed(4)} WLD
                 </Button>
             </LiveFeedback>
+            {debugInfo && (
+                <p className="text-xs text-yellow-300 mt-1 font-mono bg-black/20 px-2 py-1 rounded">
+                    {debugInfo}
+                </p>
+            )}
             <p className="text-xs text-gray-400 mt-1">
                 From: {selectedAdminWallet.slice(0, 6)}...{selectedAdminWallet.slice(-4)}
             </p>

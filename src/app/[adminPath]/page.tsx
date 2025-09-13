@@ -580,7 +580,7 @@ export default function AdminDashboard() {
                 {/* Payouts Tab */}
                 {activeTab === 'payouts' && (
                     <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
-                        <div className="flex justify-between items-center mb-6">
+                        <div className="flex justify-between items-center mb-4">
                             <h2 className="text-2xl font-bold text-white">Tournament Payouts</h2>
                             <div className="flex items-center space-x-4">
                                 <button
@@ -598,7 +598,16 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
-                        {winners.length > 0 ? (
+                        {/* World App Payment Limitations Warning */}
+                        <div className="bg-orange-500/20 border border-orange-500/50 rounded-lg p-4 mb-6">
+                            <h4 className="text-sm font-semibold text-orange-300 mb-2">⚠️ World App Payment Limitations</h4>
+                            <ul className="text-xs text-orange-200 space-y-1">
+                                <li>• <strong>Self-payments work:</strong> You can pay to your own wallet successfully</li>
+                                <li>• <strong>Payments to others may fail:</strong> World App sometimes restricts payments to other wallets</li>
+                                <li>• <strong>Possible causes:</strong> Insufficient balance, daily limits, unverified wallets, or World App restrictions</li>
+                                <li>• <strong>Workaround:</strong> Ask winners to share a different wallet address if payments fail</li>
+                            </ul>
+                        </div>                        {winners.length > 0 ? (
                             <div className="overflow-x-auto">
                                 <table className="w-full text-white">
                                     <thead>
