@@ -193,8 +193,8 @@ body {
 
 .epic-title-section {
   text-align: center;
-  margin-bottom: 1.5rem;
-  /* Reduced from 2rem */
+  margin-bottom: 2rem;
+  /* Restored from main branch */
   flex-shrink: 0;
   /* Prevent shrinking */
 }
@@ -254,11 +254,11 @@ body {
   /* Take available space between header and footer */
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  /* Reduced from 1.2rem */
+  gap: 1.2rem;
+  /* Restored from main branch */
   width: 100%;
-  max-width: 320px;
-  /* Reduced from 350px */
+  max-width: 350px;
+  /* Restored from main branch */
   align-items: center;
   justify-content: center;
 }
@@ -267,10 +267,10 @@ body {
   position: relative;
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 18px;
-  /* Slightly reduced */
-  padding: 1.2rem;
-  /* Reduced from 1.5rem */
+  border-radius: 20px;
+  /* Restored from main branch */
+  padding: 1.5rem;
+  /* Restored from main branch */
   width: 100%;
   backdrop-filter: blur(20px);
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -1220,8 +1220,11 @@ body {
   /* Firefox */
   -ms-overflow-style: none;
   /* IE and Edge */
-  -webkit-overflow-scrolling: touch;
-  /* Enable momentum scrolling on mobile */
+}
+
+/* Hide scrollbar for WebKit browsers (Chrome, Safari, Edge) */
+.leaderboard-section::-webkit-scrollbar {
+  display: none;
 }
 
 /* Hide scrollbar for WebKit browsers (Chrome, Safari, Edge) */
