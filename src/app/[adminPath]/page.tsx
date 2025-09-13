@@ -255,6 +255,11 @@ export default function AdminDashboard() {
             )
         );
 
+        // Wait a moment for the database transaction to complete
+        // The AdminPayout component saves to database before calling this callback,
+        // but we need to ensure the transaction is committed before we reload
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
         // Reload paid winners from database to ensure persistence
         if (currentTournament?.tournament_id) {
             try {

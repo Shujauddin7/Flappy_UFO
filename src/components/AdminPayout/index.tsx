@@ -123,12 +123,19 @@ export const AdminPayout = ({
                             console.warn('⚠️ Failed to remove from pending prizes:', deleteError);
                         }
                     }
+
+                    // Wait for database operations to complete before calling success callback
+                    console.log('⏳ Waiting for database operations to complete...');
+                    await new Promise(resolve => setTimeout(resolve, 500));
+
+                    // Call success callback - this updates the UI
+                    onPaymentSuccess(winnerAddress, result.finalPayload.reference || id);
+
                 } catch (saveError) {
                     console.warn('⚠️ Payment successful but recording failed:', saveError);
+                    // Still call success callback even if recording failed, since payment went through
+                    onPaymentSuccess(winnerAddress, result.finalPayload.reference || id);
                 }
-
-                // Call success callback - this updates the UI immediately
-                onPaymentSuccess(winnerAddress, result.finalPayload.reference || id);
 
                 // Auto-reset after 3 seconds
                 setTimeout(() => {
