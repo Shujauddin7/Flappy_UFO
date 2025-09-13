@@ -1150,7 +1150,7 @@ export default function GameHomepage() {
                         <div className="space-nav-icons">
                             <button
                                 className="space-nav-btn home-nav"
-                                onClick={() => alert('Launch Pad - Home Base')}
+                                onClick={() => {/* Already on home page - no action needed */ }}
                                 aria-label="Launch Pad"
                             >
                                 <div className="space-icon">🏠</div>

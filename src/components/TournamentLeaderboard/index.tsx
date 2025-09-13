@@ -221,7 +221,7 @@ export const TournamentLeaderboard = ({
                                 player={player}
                                 prizeAmount={player.rank && player.rank <= 10 ? getPrizeAmount(player.rank, totalPrizePool) : null}
                                 isCurrentUser={Boolean(isCurrentUser)}
-                                isTopThree={player.rank !== undefined && player.rank <= 3}
+                                isTopThree={player.rank !== undefined && player.rank <= 10}
                             />
                         </div>
                     );
