@@ -3,13 +3,20 @@
 import { signOut, useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import dynamic from 'next/dynamic';
 
-// Import AdminPayout as dynamic component to prevent SSR issues with MiniKit
-const AdminPayout = dynamic(() => import('@/components/AdminPayout').then(mod => ({ default: mod.AdminPayout })), {
-    ssr: false,
-    loading: () => <div className="text-xs text-gray-400">Loading payout...</div>
-});
+// Dynamic import to prevent SSR issues
+const loadMiniKit = async () => {
+    if (typeof window !== 'undefined') {
+        try {
+            const { MiniKit, Tokens, tokenToDecimals } = await import('@worldcoin/minikit-js');
+            return { MiniKit, Tokens, tokenToDecimals };
+        } catch (error) {
+            console.warn('MiniKit not available:', error);
+            return null;
+        }
+    }
+    return null;
+};
 
 interface TournamentData {
     tournament_id: string;
@@ -49,49 +56,32 @@ export default function AdminDashboard() {
     const [winners, setWinners] = useState<Winner[]>([]);
     const [prizePool, setPrizePool] = useState<PrizePoolData | null>(null);
     const [loading, setLoading] = useState(false);
+    const [payoutInProgress, setPayoutInProgress] = useState(false);
     const [isValidAdminPath, setIsValidAdminPath] = useState(false);
-    const [selectedAdminWallet, setSelectedAdminWallet] = useState<string>('');
 
-    // Multi-admin wallet system
-    const primaryAdminWallet = process.env.NEXT_PUBLIC_ADMIN_WALLET;
-    const backupAdminWallet = process.env.NEXT_PUBLIC_BACKUP_ADMIN_WALLET;
-
-    // Get all valid admin wallets (filter out undefined)
-    const validAdminWallets = [primaryAdminWallet, backupAdminWallet].filter(Boolean) as string[];
-
-    // Check if user is any valid admin
-    const currentUserWallet = session?.user?.walletAddress;
-    const isAdmin = currentUserWallet && validAdminWallets.includes(currentUserWallet);
-
-    // Set default selected admin wallet to current user's wallet if they're admin
-    useEffect(() => {
-        if (isAdmin && currentUserWallet && !selectedAdminWallet) {
-            setSelectedAdminWallet(currentUserWallet);
-        }
-    }, [isAdmin, currentUserWallet, selectedAdminWallet]);
+    // Check if user is admin
+    const adminWallet = process.env.NEXT_PUBLIC_ADMIN_WALLET;
+    const isAdmin = adminWallet && session?.user?.walletAddress === adminWallet;
 
     // Check if this is a valid admin path immediately
     useEffect(() => {
-        const validAdminPath = process.env.NEXT_PUBLIC_ADMIN_PATH;
-        const providedAdminPath = params.adminPath as string;
-
-        // Check if the provided admin path matches the configured admin path
-        if (validAdminPath && providedAdminPath === validAdminPath) {
+        const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+        if (currentPath === '/sayeedashuj007/' || currentPath === '/sayeedashuj007') {
             setIsValidAdminPath(true);
         } else {
             // Silently redirect without showing any admin content
             router.replace('/');
         }
-    }, [router, params.adminPath]);
+    }, [router]);
 
     useEffect(() => {
         // Early returns to prevent unnecessary execution
         if (!session) return;
         if (!isValidAdminPath) return; // Don't execute admin logic for invalid paths
 
-        // Security: Check admin wallet configuration (path obscurity through dynamic routing)
-        if (validAdminWallets.length === 0) {
-            console.error('No admin wallets configured');
+        // Security: Check admin wallet only (path obscurity through dynamic routing)
+        if (!adminWallet) {
+            console.error('Admin wallet not configured');
             router.push('/');
             return;
         }
@@ -99,11 +89,8 @@ export default function AdminDashboard() {
         if (!isAdmin) {
             router.push('/');
             return;
-        }
-
-        const calculateBasePrize = (rank: number): number => {
-            // Plan.md percentages: 40%, 22%, 14%, 6%, 5%, 4%, 3%, 2%, 2%, 2%
-            const prizeDistribution = [0.40, 0.22, 0.14, 0.06, 0.05, 0.04, 0.03, 0.02, 0.02, 0.02];
+        } const calculateBasePrize = (rank: number): number => {
+            const prizeDistribution = [0.35, 0.25, 0.15, 0.10, 0.05, 0.03, 0.025, 0.02, 0.015, 0.01];
             return prizeDistribution[rank - 1] || 0;
         };
 
@@ -111,8 +98,7 @@ export default function AdminDashboard() {
             setWinners(prevWinners =>
                 prevWinners.map(winner => {
                     const basePrize = winner.base_amount * baseAmount;
-                    // Guarantee bonus: 1 WLD per top 10 winner (equally distributed)
-                    const guaranteeBonus = guaranteeAmount > 0 ? 1.0 : 0.0;
+                    const guaranteeBonus = guaranteeAmount / 10; // Split guarantee equally among top 10
                     const finalAmount = basePrize + guaranteeBonus;
 
                     return {
@@ -131,35 +117,18 @@ export default function AdminDashboard() {
                     const data = await response.json();
                     const leaderboard = data.players || data; // Handle both response formats
 
-                    // Get already paid winners from prizes table
-                    const paidResponse = await fetch(`/api/admin/paid-winners?tournament_id=${tournamentId}`);
-                    const paidWinners = paidResponse.ok ? await paidResponse.json() : { winners: [] };
-
-                    // Create a map for better lookup performance with transaction hashes
-                    const paidWalletsMap = new Map<string, string>(
-                        paidWinners.winners?.map((w: { wallet: string; transaction_hash: string }) =>
-                            [w.wallet, w.transaction_hash || '']
-                        ) || []
-                    );
-
                     // Calculate payouts for top 10
-                    const winnersData = leaderboard.slice(0, 10).map((player: { wallet?: string; wallet_address?: string; username?: string; highest_score?: number; score?: number }, index: number) => {
-                        const walletAddress = player.wallet || player.wallet_address || '';
-                        const transactionHash = paidWalletsMap.get(walletAddress);
-                        const isPaid = Boolean(transactionHash);
-
-                        return {
-                            rank: index + 1,
-                            wallet_address: walletAddress,
-                            username: player.username || `Player ${index + 1}`,
-                            score: player.highest_score || player.score,
-                            base_amount: calculateBasePrize(index + 1),
-                            guarantee_bonus: 0, // Will be calculated based on revenue
-                            final_amount: 0, // Will be calculated
-                            payment_status: isPaid ? ('sent' as const) : ('pending' as const),
-                            transaction_id: transactionHash || undefined
-                        };
-                    });
+                    const winnersData = leaderboard.slice(0, 10).map((player: { wallet?: string; wallet_address?: string; username?: string; highest_score?: number; score?: number }, index: number) => ({
+                        rank: index + 1,
+                        wallet_address: player.wallet || player.wallet_address,
+                        username: player.username || `Player ${index + 1}`,
+                        score: player.highest_score || player.score,
+                        base_amount: calculateBasePrize(index + 1),
+                        guarantee_bonus: 0, // Will be calculated based on revenue
+                        final_amount: 0, // Will be calculated
+                        payment_status: 'pending' as const,
+                        transaction_id: undefined
+                    }));
 
                     setWinners(winnersData);
                 } else {
@@ -235,106 +204,86 @@ export default function AdminDashboard() {
         };
 
         loadCurrentTournament();
-    }, [session, isAdmin, router, params?.adminPath, isValidAdminPath, validAdminWallets.length]);
+    }, [session, isAdmin, router, adminWallet, params?.adminPath, isValidAdminPath]);
 
     // Early return if not a valid admin path - prevents any admin content from rendering
     if (!isValidAdminPath) {
         return null; // No admin content rendered for invalid paths
     }
 
-    // Simple callback handlers for the AdminPayout component
-    const handlePaymentSuccess = async (winnerAddress: string, transactionId: string) => {
-        console.log('✅ Payment successful for:', winnerAddress);
-
-        // Update winner status to sent immediately for UI feedback
-        setWinners(prevWinners =>
-            prevWinners.map(winner =>
-                winner.wallet_address === winnerAddress
-                    ? { ...winner, payment_status: 'sent' as const, transaction_id: transactionId }
-                    : winner
-            )
-        );
-
-        // Reload paid winners from database to ensure persistence
-        if (currentTournament?.tournament_id) {
-            try {
-                const paidResponse = await fetch(`/api/admin/paid-winners?tournament_id=${currentTournament.tournament_id}`);
-                if (paidResponse.ok) {
-                    const paidWinners = await paidResponse.json();
-                    const paidWalletsMap = new Map<string, string>(
-                        paidWinners.winners?.map((w: { wallet: string; transaction_hash: string }) =>
-                            [w.wallet, w.transaction_hash || '']
-                        ) || []
-                    );
-
-                    // Update winners with persistent payment status from database
-                    setWinners(prevWinners =>
-                        prevWinners.map((winner): Winner => {
-                            const transactionHash = paidWalletsMap.get(winner.wallet_address);
-                            if (transactionHash) {
-                                return { ...winner, payment_status: 'sent' as const, transaction_id: transactionHash };
-                            }
-                            return winner;
-                        })
-                    );
-                }
-            } catch (error) {
-                console.warn('Failed to reload payment status from database:', error);
-            }
-        }
-    };
-
-    const handlePaymentError = (winnerAddress: string, error: string) => {
-        console.log('❌ Payment failed for:', winnerAddress, error);
-
-        // Update winner status to failed
-        setWinners(prevWinners =>
-            prevWinners.map(winner =>
-                winner.wallet_address === winnerAddress
-                    ? { ...winner, payment_status: 'failed' as const }
-                    : winner
-            )
-        );
-    };
-
-    // Force refresh payment status from database (for troubleshooting)
-    const forceRefreshPaymentStatus = async () => {
-        if (!currentTournament?.tournament_id) return;
-
-        console.log('🔄 Force refreshing payment status from database...');
-        setLoading(true);
+    const handlePayout = async (winnerAddress: string, amount: number, rank: number) => {
+        setPayoutInProgress(true);
 
         try {
-            const paidResponse = await fetch(`/api/admin/paid-winners?tournament_id=${currentTournament.tournament_id}`);
-            if (paidResponse.ok) {
-                const paidWinners = await paidResponse.json();
-                console.log('📊 Database payment status:', paidWinners);
+            // Load MiniKit dynamically
+            const miniKitModules = await loadMiniKit();
+            if (!miniKitModules) {
+                throw new Error('MiniKit not available');
+            }
 
-                const paidWalletsMap = new Map<string, string>(
-                    paidWinners.winners?.map((w: { wallet: string; transaction_hash: string }) =>
-                        [w.wallet, w.transaction_hash || '']
-                    ) || []
-                );
+            const { MiniKit, Tokens, tokenToDecimals } = miniKitModules;
 
-                // Update winners with persistent payment status from database
+            // Convert WLD to wei (18 decimals)
+            const amountInWei = tokenToDecimals(amount, Tokens.WLD);
+
+            const payload = {
+                reference: `tournament_prize_rank_${rank}_${Date.now()}`,
+                to: winnerAddress,
+                tokens: [{
+                    symbol: Tokens.WLD,
+                    token_amount: amountInWei.toString()
+                }],
+                description: `Tournament Prize - Rank ${rank}`
+            };
+
+            console.log('Sending payment payload:', payload);
+
+            const result = await MiniKit.commandsAsync.pay(payload);
+            console.log('Payment result:', result);
+
+            if (result.finalPayload) {
+                // Update winner status
                 setWinners(prevWinners =>
-                    prevWinners.map((winner): Winner => {
-                        const transactionHash = paidWalletsMap.get(winner.wallet_address);
-                        if (transactionHash) {
-                            console.log(`✅ ${winner.username} (${winner.wallet_address}) - PAID in database`);
-                            return { ...winner, payment_status: 'sent' as const, transaction_id: transactionHash };
-                        } else {
-                            console.log(`⏳ ${winner.username} (${winner.wallet_address}) - PENDING in database`);
-                            return { ...winner, payment_status: 'pending' as const, transaction_id: undefined };
-                        }
-                    })
+                    prevWinners.map(winner =>
+                        winner.wallet_address === winnerAddress
+                            ? { ...winner, payment_status: 'sent' as const, transaction_id: payload.reference }
+                            : winner
+                    )
                 );
+
+                alert(`Payment sent successfully to rank ${rank}!`);
+            } else {
+                throw new Error('Payment failed - no response payload');
             }
         } catch (error) {
-            console.error('Failed to refresh payment status:', error);
+            console.error('Payout error:', error);
+            alert(`Payment failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+            // Update winner status to failed
+            setWinners(prevWinners =>
+                prevWinners.map(winner =>
+                    winner.wallet_address === winnerAddress
+                        ? { ...winner, payment_status: 'failed' as const }
+                        : winner
+                )
+            );
         } finally {
-            setLoading(false);
+            setPayoutInProgress(false);
         }
+    };
+
+    const handlePayoutAll = async () => {
+        setPayoutInProgress(true);
+
+        for (const winner of winners) {
+            if (winner.payment_status === 'pending' && winner.final_amount > 0) {
+                await handlePayout(winner.wallet_address, winner.final_amount, winner.rank);
+                // Add delay between payments to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+        }
+
+        setPayoutInProgress(false);
     };
 
     // Don't render anything until we've verified this is a valid admin path
@@ -350,7 +299,7 @@ export default function AdminDashboard() {
         );
     }
 
-    if (validAdminWallets.length === 0) {
+    if (!adminWallet) {
         return (
             <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center">
                 <div className="text-white text-xl">Admin configuration error. Please contact support.</div>
@@ -379,31 +328,6 @@ export default function AdminDashboard() {
                         Sign Out
                     </button>
                 </div>
-
-                {/* Admin Wallet Selection */}
-                {validAdminWallets.length > 1 && (
-                    <div className="bg-blue-500/20 border border-blue-500/50 rounded-lg p-4 mb-6">
-                        <h3 className="text-lg font-semibold text-white mb-3">🔐 Choose Admin Wallet</h3>
-                        <div className="flex flex-wrap gap-3">
-                            {validAdminWallets.map((wallet, index) => (
-                                <button
-                                    key={wallet}
-                                    onClick={() => setSelectedAdminWallet(wallet)}
-                                    className={`px-4 py-2 rounded-lg transition-colors font-mono text-sm ${selectedAdminWallet === wallet
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-white/20 text-gray-300 hover:bg-white/30'
-                                        }`}
-                                >
-                                    {index === 0 ? '👑 Primary' : '🔄 Backup'}: {wallet.slice(0, 6)}...{wallet.slice(-4)}
-                                    {currentUserWallet === wallet && ' (You)'}
-                                </button>
-                            ))}
-                        </div>
-                        <p className="text-xs text-gray-400 mt-2">
-                            💡 Switch wallets if your World App has pending transactions
-                        </p>
-                    </div>
-                )}
 
                 {/* Navigation Tabs */}
                 <div className="flex space-x-4 mb-8">
@@ -562,20 +486,13 @@ export default function AdminDashboard() {
                     <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-bold text-white">Tournament Payouts</h2>
-                            <div className="flex items-center space-x-4">
-                                <button
-                                    onClick={forceRefreshPaymentStatus}
-                                    disabled={loading}
-                                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 text-sm"
-                                >
-                                    <span>🔄</span>
-                                    <span>{loading ? 'Refreshing...' : 'Refresh Status'}</span>
-                                </button>
-                                <div className="text-center">
-                                    <p className="text-sm text-gray-400 mb-1">Use individual Pay buttons below</p>
-                                    <p className="text-xs text-gray-500">Each payment opens World App payment interface</p>
-                                </div>
-                            </div>
+                            <button
+                                onClick={handlePayoutAll}
+                                disabled={payoutInProgress || winners.every(w => w.payment_status !== 'pending')}
+                                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
+                            >
+                                {payoutInProgress ? 'Processing...' : 'Payout All Pending'}
+                            </button>
                         </div>
 
                         {winners.length > 0 ? (
@@ -619,19 +536,14 @@ export default function AdminDashboard() {
                                                     </span>
                                                 </td>
                                                 <td className="py-3 px-4">
-                                                    {winner.payment_status === 'pending' && winner.wallet_address && (
-                                                        <AdminPayout
-                                                            winnerAddress={winner.wallet_address}
-                                                            amount={winner.final_amount || 0}
-                                                            rank={winner.rank}
-                                                            username={winner.username || `Player ${winner.rank}`}
-                                                            selectedAdminWallet={selectedAdminWallet || ''}
-                                                            tournamentId={currentTournament?.tournament_id || ''}
-                                                            finalScore={winner.score || 0}
-                                                            onPaymentSuccess={handlePaymentSuccess}
-                                                            onPaymentError={handlePaymentError}
-                                                            disabled={false}
-                                                        />
+                                                    {winner.payment_status === 'pending' && (
+                                                        <button
+                                                            onClick={() => handlePayout(winner.wallet_address, winner.final_amount, winner.rank)}
+                                                            disabled={payoutInProgress}
+                                                            className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white px-4 py-1 rounded text-sm transition-colors"
+                                                        >
+                                                            Pay
+                                                        </button>
                                                     )}
                                                     {winner.transaction_id && (
                                                         <p className="text-xs text-gray-400 mt-1 font-mono">
