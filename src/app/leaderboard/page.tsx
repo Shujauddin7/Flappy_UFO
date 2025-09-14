@@ -93,10 +93,12 @@ export default function LeaderboardPage() {
 
                 const [tournamentResponse, prizeResponse] = await Promise.all([
                     fetch('/api/tournament/current', {
-                        cache: 'no-cache'
+                        cache: 'force-cache',
+                        next: { revalidate: 60 } // Cache for 1 minute
                     }),
                     fetch('/api/tournament/dynamic-prizes', {
-                        cache: 'no-cache'
+                        cache: 'force-cache',
+                        next: { revalidate: 60 } // Cache for 1 minute
                     }),
                     loadingPromise // Minimum loading time
                 ]);
@@ -239,11 +241,7 @@ export default function LeaderboardPage() {
                 mouseX = e.touches[0].clientX - width / 2;
                 mouseY = e.touches[0].clientY - height / 2;
             }
-            // Only prevent default for canvas touches, not leaderboard area
-            const target = e.target as HTMLElement;
-            if (target.tagName === 'CANVAS' || target.classList.contains('starfield-canvas')) {
-                e.preventDefault();
-            }
+            e.preventDefault();
         }
 
         window.addEventListener('resize', onResize);

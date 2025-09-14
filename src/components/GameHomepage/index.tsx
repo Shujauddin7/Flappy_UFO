@@ -1190,10 +1190,8 @@ export default function GameHomepage() {
                         <div className="mode-card practice-mode">
                             <div className="cosmic-aura practice-aura"></div>
                             <div className="mode-content">
-                                <h2 className="mode-name">
-                                    <span className="mode-name-icon">⚡</span>
-                                    PRACTICE
-                                </h2>
+                                <div className="mode-icon">⚡</div>
+                                <h2 className="mode-name">PRACTICE</h2>
                                 <p className="mode-desc">Master the void</p>
                                 <div className="mode-features">
                                     <span className="feature">🚀 Unlimited tries</span>
@@ -1212,10 +1210,8 @@ export default function GameHomepage() {
                         <div className="mode-card tournament-mode">
                             <div className="cosmic-aura tournament-aura"></div>
                             <div className="mode-content">
-                                <h2 className="mode-name">
-                                    <span className="mode-name-icon">💎</span>
-                                    TOURNAMENT
-                                </h2>
+                                <div className="mode-icon">💎</div>
+                                <h2 className="mode-name">TOURNAMENT</h2>
                                 <p className="mode-desc">Conquer for glory</p>
                                 <div className="mode-features">
                                     <span className="feature">💰 Win WLD prizes</span>
