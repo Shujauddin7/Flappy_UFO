@@ -1,15 +1,15 @@
 @import 'tailwindcss';
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@400;600;700;800;900&display=swap');
 
-/* GLOBAL SCROLLBAR REMOVAL FOR WORLD APP COMPLIANCE */
-* {
+/* GLOBAL SCROLLBAR REMOVAL FOR WORLD APP COMPLIANCE - EXCEPT LEADERBOARD */
+*:not(.leaderboard-section):not(.leaderboard-list) {
   scrollbar-width: none;
   /* Firefox */
   -ms-overflow-style: none;
   /* IE and Edge */
 }
 
-*::-webkit-scrollbar {
+*:not(.leaderboard-section):not(.leaderboard-list)::-webkit-scrollbar {
   display: none;
   /* Chrome, Safari, Opera */
 }
@@ -78,11 +78,14 @@ body {
   /* Different alignment for leaderboard */
   align-items: center;
   padding: 0.5rem 1rem;
-  overflow: hidden;
-  /* Prevent root container from scrolling, let leaderboard section handle it */
+  /* Allow the leaderboard section to handle scrolling */
   pointer-events: none;
   background: transparent !important;
   /* Override any default backgrounds */
+  scrollbar-width: none;
+  /* Firefox - hide scrollbar */
+  -ms-overflow-style: none;
+  /* IE and Edge - hide scrollbar */
 }
 
 .leaderboard-container::-webkit-scrollbar {
@@ -208,16 +211,22 @@ body {
 }
 
 .choose-word {
-  display: block;
-  font-size: clamp(1.6rem, 5vw, 2.2rem);
+  display: inline;
+  /* Put on same line */
+  font-size: clamp(1.4rem, 4.5vw, 2rem);
+  /* Slightly smaller to fit */
   color: #00F5FF;
   text-shadow: 0 0 15px #00F5FF, 0 0 30px #00F5FF;
   animation: glow-blue 3s ease-in-out infinite alternate;
+  margin-right: 0.3rem;
+  /* Space between words */
 }
 
 .destiny-word {
-  display: block;
-  font-size: clamp(2rem, 6vw, 2.8rem);
+  display: inline;
+  /* Put on same line */
+  font-size: clamp(1.4rem, 4.5vw, 2rem);
+  /* Same size for consistency */
   color: #9333EA;
   text-shadow: 0 0 20px #9333EA, 0 0 40px #9333EA;
   animation: glow-purple 3s ease-in-out infinite alternate-reverse;
@@ -244,6 +253,8 @@ body {
 }
 
 .epic-subtitle {
+  display: none;
+  /* Hide to save space */
   font-size: 1rem;
   color: rgba(255, 255, 255, 0.8);
   font-weight: 500;
@@ -597,6 +608,14 @@ body {
   padding: 0 2rem 1.5rem;
   flex-shrink: 0;
   /* Never shrink navigation */
+  position: sticky;
+  /* Ensure it stays visible */
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.2);
+  /* Subtle background for better visibility */
+  backdrop-filter: blur(10px);
+  z-index: 20;
+  /* Ensure it stays above other content */
 }
 
 .space-nav-icons {
@@ -610,9 +629,10 @@ body {
 
 .space-nav-btn {
   background: linear-gradient(135deg,
-      rgba(0, 245, 255, 0.15) 0%,
-      rgba(147, 51, 234, 0.15) 100%);
-  border: 2px solid rgba(255, 255, 255, 0.1);
+      rgba(0, 245, 255, 0.25) 0%,
+      rgba(147, 51, 234, 0.25) 100%);
+  border: 2px solid rgba(0, 245, 255, 0.3);
+  /* More visible border */
   border-radius: 20px;
   padding: 1rem 1.2rem;
   display: flex;
@@ -625,6 +645,8 @@ body {
   min-width: 100px;
   position: relative;
   overflow: hidden;
+  /* Add subtle glow effect */
+  box-shadow: 0 0 15px rgba(0, 245, 255, 0.2), 0 5px 15px rgba(0, 0, 0, 0.2);
 }
 
 .space-nav-btn::before {
@@ -645,8 +667,14 @@ body {
 
 .space-nav-btn:hover {
   transform: translateY(-8px) scale(1.05);
-  border-color: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 30px rgba(0, 245, 255, 0.2);
+  border-color: rgba(0, 245, 255, 0.6);
+  /* More intense border on hover */
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 30px rgba(0, 245, 255, 0.4);
+  /* More intense glow */
+  background: linear-gradient(135deg,
+      rgba(0, 245, 255, 0.35) 0%,
+      rgba(147, 51, 234, 0.35) 100%);
+  /* More intense background on hover */
 }
 
 .space-nav-btn:active {
@@ -657,8 +685,11 @@ body {
 @media (hover: none) and (pointer: coarse) {
   .space-nav-btn:active {
     transform: translateY(-6px) scale(1.03);
-    border-color: rgba(255, 255, 255, 0.3);
-    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3), 0 0 25px rgba(0, 245, 255, 0.2);
+    border-color: rgba(0, 245, 255, 0.5);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3), 0 0 25px rgba(0, 245, 255, 0.3);
+    background: linear-gradient(135deg,
+        rgba(0, 245, 255, 0.35) 0%,
+        rgba(147, 51, 234, 0.35) 100%);
   }
 }
 
@@ -948,7 +979,8 @@ body {
 /* For extremely short screens */
 @media (max-height: 500px) {
   .game-select-screen {
-    padding: 0.3rem 0.8rem 0.2rem;
+    padding: 0.3rem 0.8rem 0rem;
+    /* Remove bottom padding to make room for navigation */
   }
 
   .epic-title-section {
@@ -1000,7 +1032,17 @@ body {
   }
 
   .bottom-nav-container {
-    padding: 0.2rem 0.8rem 0.2rem;
+    padding: 0.5rem 0.8rem 0.8rem;
+    /* Ensure adequate bottom padding */
+    position: fixed;
+    /* Fix to bottom on very small screens */
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.4);
+    /* Stronger background */
+    backdrop-filter: blur(15px);
+    z-index: 30;
   }
 
   .space-nav-btn {
@@ -1152,35 +1194,46 @@ body {
 
 @media screen and (max-width: 375px) and (max-height: 667px) {
 
-  /* iPhone SE (3rd gen) and iPhone 8 */
+  /* iPhone SE (3rd gen) and iPhone 8 - FIXED LAYOUT */
   .game-select-screen {
-    padding: 0.2rem 0.5rem 0.2rem;
+    padding: 0.3rem 0.5rem 0.2rem;
+    min-height: 100dvh;
+    height: auto;
+    justify-content: space-between;
+    /* Ensure navigation stays at bottom */
   }
 
   .epic-title-section {
     margin-bottom: 0.5rem;
+    flex-shrink: 0;
   }
 
   .choose-word {
-    font-size: 1rem;
+    font-size: 1.1rem;
+    /* Slightly bigger but fit on one line */
   }
 
   .destiny-word {
-    font-size: 1.3rem;
+    font-size: 1.1rem;
+    /* Same size for consistency */
   }
 
   .game-modes {
-    gap: 0.5rem;
-    max-width: 280px;
+    gap: 0.6rem;
+    flex: 1;
+    /* Take available space */
+    max-width: 320px;
+    justify-content: center;
   }
 
   .mode-card {
-    padding: 0.5rem;
+    padding: 0.6rem;
+    border-radius: 12px;
   }
 
   .mode-icon {
-    font-size: 1.2rem;
-    margin-bottom: 0.3rem;
+    font-size: 1.3rem;
+    margin-bottom: 0.2rem;
   }
 
   .mode-name {
@@ -1198,25 +1251,27 @@ body {
   }
 
   .mode-features .feature {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
   }
 
   .mode-button {
     padding: 0.5rem 0.8rem;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
+    border-radius: 10px;
   }
 
   .bottom-nav-container {
-    padding: 0.2rem 0.6rem 0.2rem;
+    padding: 0.3rem 0.5rem 0.3rem;
+    flex-shrink: 0;
   }
 
   .space-nav-btn {
-    padding: 0.3rem 0.5rem;
-    min-width: 55px;
+    padding: 0.4rem 0.6rem;
+    min-width: 60px;
   }
 
   .space-icon {
-    font-size: 0.9rem;
+    font-size: 1rem;
   }
 }
 
@@ -1294,8 +1349,16 @@ body {
   }
 
   .bottom-nav-container {
-    padding: 0.5rem;
+    padding: 0.8rem 1rem 1rem;
+    /* Increased bottom padding to ensure visibility */
     flex-shrink: 0;
+    /* Never allow shrinking */
+    position: sticky;
+    /* Ensure it sticks to bottom */
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    /* Add slight background for better visibility */
+    backdrop-filter: blur(10px);
   }
 
   .space-nav-icons {
@@ -1633,7 +1696,7 @@ body {
   text-decoration: underline;
 }
 
-/* LEADERBOARD STYLES */
+/* LEADERBOARD STYLES - CONSOLIDATED DEFINITION */
 .leaderboard-container>* {
   pointer-events: auto;
 }
@@ -1642,6 +1705,19 @@ body {
   flex: 1;
   overflow-y: auto;
   padding: 0 0.5rem;
+  min-height: 0;
+  /* Important for proper flex scrolling */
+  -webkit-overflow-scrolling: touch;
+  /* Enable smooth touch scrolling */
+  scrollbar-width: none;
+  /* Firefox - hide scrollbar */
+  -ms-overflow-style: none;
+  /* IE and Edge - hide scrollbar */
+}
+
+/* Hide scrollbars for webkit browsers in leaderboard */
+.leaderboard-section::-webkit-scrollbar {
+  display: none;
 }
 
 .tournament-info {
@@ -1764,6 +1840,15 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  scrollbar-width: none;
+  /* Firefox - hide scrollbar */
+  -ms-overflow-style: none;
+  /* IE and Edge - hide scrollbar */
+}
+
+/* Hide scrollbars for webkit browsers in leaderboard list */
+.leaderboard-list::-webkit-scrollbar {
+  display: none;
 }
 
 .player-rank-card {
@@ -2735,14 +2820,7 @@ body {
   }
 }
 
-/* Fix scrolling for leaderboard section */
-.leaderboard-section {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0 0.5rem;
-  min-height: 0;
-  /* Important for proper flex scrolling */
-}
+/* Tournament leaderboard styles */
 
 .tournament-leaderboard {
   width: 100%;
@@ -3064,13 +3142,6 @@ body {
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
   }
-
-  /* Fix for mobile viewport issues */
-  body {
-    position: fixed;
-    width: 100%;
-    height: 100%;
-  }
 }
 
 /* RESTORE MAIN BRANCH MOBILE RESPONSIVENESS */
@@ -3144,28 +3215,35 @@ body {
   }
 
   .rank-display {
-    font-size: 1.2rem;
+    font-size: 1.4rem;
+    /* Keep original size */
   }
 
   .player-name {
-    font-size: 0.9rem;
+    font-size: 1rem;
+    /* Keep original size */
   }
 
   .player-score {
-    font-size: 1rem;
+    font-size: 1.2rem;
+    /* Keep original size */
   }
 
   .prize-section {
-    min-width: 70px;
+    min-width: 80px;
+    /* Slightly wider */
   }
 
   .prize-amount {
-    font-size: 0.85rem;
+    font-size: 0.9rem;
+    /* Slightly bigger */
   }
 
   .you-badge {
-    font-size: 0.6rem;
-    padding: 0.2rem 0.4rem;
+    font-size: 0.7rem;
+    /* Keep original size */
+    padding: 0.3rem 0.6rem;
+    /* Keep original padding */
   }
 }
 
