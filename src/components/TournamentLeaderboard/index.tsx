@@ -199,10 +199,6 @@ export const TournamentLeaderboard = ({
                 </div>
             )}
 
-            <div className="leaderboard-header">
-                <h3>🏆 TOP PLAYERS</h3>
-            </div>
-
             <div className="leaderboard-list">
                 {allPlayers.map((player) => {
                     // Check if this player is the current user using same matching logic as above

@@ -73,12 +73,13 @@ body {
   justify-content: flex-start;
   /* Different alignment for leaderboard */
   align-items: center;
-  padding: 0.5rem 1rem;
-  overflow: hidden;
-  /* Prevent container from scrolling, let children handle it */
-  pointer-events: none;
+  padding: 70px 1rem 1rem; /* Increased top padding for fixed title */
+  overflow-y: auto; /* Enable scrolling */
+  overflow-x: hidden;
+  pointer-events: auto; /* Enable pointer events for scrolling */
   background: transparent !important;
   /* Override any default backgrounds */
+  -webkit-overflow-scrolling: touch; /* Smooth mobile scrolling */
 }
 
 /* Fixed scrollable leaderboard container */
@@ -1387,7 +1388,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  padding: 0.6rem 0.5rem;
+  padding: 0.7rem 0.5rem; /* Match player-rank-card padding */
   margin: 0 auto 0.8rem;
   background: rgba(0, 0, 0, 0.95);
   backdrop-filter: blur(20px);
@@ -1413,6 +1414,7 @@ body {
 .sticky-columns-header .column-header.rank-column {
   min-width: 40px;
   flex: 0 0 40px;
+  text-align: center;
 }
 
 .sticky-columns-header .column-header.human-column {
@@ -1424,6 +1426,7 @@ body {
 .sticky-columns-header .column-header.score-column {
   min-width: 75px;
   flex: 0 0 75px;
+  text-align: center;
   padding-left: 0.5rem;
 }
 
@@ -2386,7 +2389,7 @@ body {
     font-size: 1rem;
   }
 
-  .leaderboard-container-fixed {
+  .leaderboard-container {
     padding-top: 60px;
     /* Smaller top padding for mobile */
     height: 100vh;
@@ -2838,7 +2841,7 @@ body {
     touch-action: pan-y;
   }
 
-  .leaderboard-container-fixed {
+  .leaderboard-container {
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
     overflow-y: scroll;

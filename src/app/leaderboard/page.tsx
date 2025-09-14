@@ -393,7 +393,7 @@ export default function LeaderboardPage() {
                 <h1>🏆 TOURNAMENT</h1>
             </div>
 
-            <Page.Main className="leaderboard-container-fixed">
+            <Page.Main className="leaderboard-container">
                 {/* Tournament Info Box - will scroll up naturally */}
                 <div className="tournament-info-box">
                     {/* Timer Box */}
