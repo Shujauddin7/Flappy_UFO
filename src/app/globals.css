@@ -78,14 +78,11 @@ body {
   /* Different alignment for leaderboard */
   align-items: center;
   padding: 0.5rem 1rem;
-  /* Allow the leaderboard section to handle scrolling */
+  overflow: hidden;
+  /* Prevent container from scrolling - force inner section to handle it */
   pointer-events: none;
   background: transparent !important;
   /* Override any default backgrounds */
-  scrollbar-width: none;
-  /* Firefox - hide scrollbar */
-  -ms-overflow-style: none;
-  /* IE and Edge - hide scrollbar */
 }
 
 .leaderboard-container::-webkit-scrollbar {
@@ -197,8 +194,8 @@ body {
 
 .epic-title-section {
   text-align: center;
-  margin-bottom: 2rem;
-  /* Restored from main branch */
+  margin-bottom: 1rem;
+  /* Reduced from 2rem for closer spacing */
   flex-shrink: 0;
   /* Prevent shrinking */
 }
@@ -381,10 +378,8 @@ body {
 }
 
 .mode-icon {
-  font-size: 2.5rem;
-  margin-bottom: 0.8rem;
-  display: block;
-  filter: drop-shadow(0 0 15px currentColor);
+  display: none;
+  /* Hide since we're using inline icons in mode-name now */
 }
 
 .practice-mode .mode-icon {
@@ -429,6 +424,36 @@ body {
   margin: 0 0 0.3rem;
   color: #ffffff;
   letter-spacing: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  /* Space between icon and text */
+}
+
+.mode-name-icon {
+  font-size: 1.8rem;
+  filter: drop-shadow(0 0 15px currentColor);
+}
+
+.practice-mode .mode-name-icon {
+  color: #00F5FF;
+  animation: icon-bounce 2s ease-in-out infinite;
+}
+
+.tournament-mode .mode-name-icon {
+  color: #9333EA;
+  animation: icon-shine 3s ease-in-out infinite;
+}
+
+.verify-mode .mode-name-icon {
+  color: #22c55e;
+  animation: icon-bounce 2s ease-in-out infinite;
+}
+
+.standard-mode .mode-name-icon {
+  color: #fbbf24;
+  animation: icon-shine 3s ease-in-out infinite;
 }
 
 .mode-desc {

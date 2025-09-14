@@ -46,8 +46,10 @@ export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
                         <div className="mode-card verify-mode">
                             <div className="cosmic-aura verify-aura"></div>
                             <div className="mode-content">
-                                <div className="mode-icon">✅</div>
-                                <h2 className="mode-name">VERIFIED</h2>
+                                <h2 className="mode-name">
+                                    <span className="mode-name-icon">✅</span>
+                                    VERIFIED
+                                </h2>
                                 <p className="mode-desc">Already verified today</p>
                                 <div className="mode-features">
                                     <span className="feature">💰 0.9 WLD entry fee</span>
@@ -70,8 +72,10 @@ export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
                         <div className="mode-card standard-mode">
                             <div className="cosmic-aura standard-aura"></div>
                             <div className="mode-content">
-                                <div className="mode-icon">⚡</div>
-                                <h2 className="mode-name">STANDARD</h2>
+                                <h2 className="mode-name">
+                                    <span className="mode-name-icon">⚡</span>
+                                    STANDARD
+                                </h2>
                                 <p className="mode-desc">Standard tournament entry</p>
                                 <div className="mode-features">
                                     <span className="feature">💎 1.0 WLD entry fee</span>
@@ -97,8 +101,10 @@ export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
                         <div className="mode-card verify-mode">
                             <div className="cosmic-aura verify-aura"></div>
                             <div className="mode-content">
-                                <div className="mode-icon">✅</div>
-                                <h2 className="mode-name">VERIFY</h2>
+                                <h2 className="mode-name">
+                                    <span className="mode-name-icon">✅</span>
+                                    VERIFY
+                                </h2>
                                 <p className="mode-desc">Orb verification discount</p>
                                 <div className="mode-features">
                                     <span className="feature">💰 0.9 WLD entry fee</span>
