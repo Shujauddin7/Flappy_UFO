@@ -1013,6 +1013,213 @@ body {
   }
 }
 
+/* iPhone specific fixes */
+@media screen and (max-width: 428px) and (max-height: 926px) {
+
+  /* iPhone 14 Pro Max and similar */
+  .game-select-screen {
+    padding: 0.5rem 0.8rem 0.3rem;
+    min-height: 100dvh;
+    height: auto;
+  }
+
+  .epic-title-section {
+    margin-bottom: 1rem;
+    flex-shrink: 0;
+  }
+
+  .game-modes {
+    flex: 1;
+    gap: 0.8rem;
+    max-width: 350px;
+    justify-content: center;
+    min-height: 0;
+  }
+
+  .mode-card {
+    padding: 0.8rem;
+    border-radius: 14px;
+  }
+
+  .mode-icon {
+    font-size: 1.6rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .mode-name {
+    font-size: 1.1rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .mode-desc {
+    font-size: 0.85rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .mode-features .feature {
+    font-size: 0.8rem;
+  }
+
+  .mode-button {
+    padding: 0.8rem 1.2rem;
+    font-size: 0.85rem;
+    border-radius: 12px;
+  }
+
+  .bottom-nav-container {
+    padding: 0.3rem 1rem 0.5rem;
+    flex-shrink: 0;
+    margin-top: auto;
+  }
+}
+
+@media screen and (max-width: 390px) and (max-height: 844px) {
+
+  /* iPhone 14 Pro and similar */
+  .game-select-screen {
+    padding: 0.4rem 0.6rem 0.3rem;
+  }
+
+  .game-modes {
+    gap: 0.7rem;
+    max-width: 320px;
+  }
+
+  .mode-card {
+    padding: 0.7rem;
+  }
+
+  .mode-name {
+    font-size: 1rem;
+  }
+
+  .mode-desc {
+    font-size: 0.8rem;
+  }
+
+  .mode-button {
+    padding: 0.7rem 1rem;
+    font-size: 0.8rem;
+  }
+}
+
+@media screen and (max-width: 375px) and (max-height: 812px) {
+
+  /* iPhone X/11/12/13 and similar */
+  .game-select-screen {
+    padding: 0.3rem 0.6rem 0.2rem;
+  }
+
+  .epic-title-section {
+    margin-bottom: 0.8rem;
+  }
+
+  .game-modes {
+    gap: 0.6rem;
+    max-width: 300px;
+  }
+
+  .mode-card {
+    padding: 0.6rem;
+  }
+
+  .mode-icon {
+    font-size: 1.4rem;
+  }
+
+  .mode-name {
+    font-size: 0.95rem;
+  }
+
+  .mode-desc {
+    font-size: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .mode-features .feature {
+    font-size: 0.75rem;
+  }
+
+  .mode-button {
+    padding: 0.6rem 1rem;
+    font-size: 0.8rem;
+  }
+
+  .bottom-nav-container {
+    padding: 0.2rem 0.8rem 0.3rem;
+  }
+}
+
+@media screen and (max-width: 375px) and (max-height: 667px) {
+
+  /* iPhone SE (3rd gen) and iPhone 8 */
+  .game-select-screen {
+    padding: 0.2rem 0.5rem 0.2rem;
+  }
+
+  .epic-title-section {
+    margin-bottom: 0.5rem;
+  }
+
+  .choose-word {
+    font-size: 1rem;
+  }
+
+  .destiny-word {
+    font-size: 1.3rem;
+  }
+
+  .game-modes {
+    gap: 0.5rem;
+    max-width: 280px;
+  }
+
+  .mode-card {
+    padding: 0.5rem;
+  }
+
+  .mode-icon {
+    font-size: 1.2rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .mode-name {
+    font-size: 0.9rem;
+    margin-bottom: 0.1rem;
+  }
+
+  .mode-desc {
+    font-size: 0.7rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .mode-features {
+    margin-bottom: 0.4rem;
+  }
+
+  .mode-features .feature {
+    font-size: 0.7rem;
+  }
+
+  .mode-button {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.75rem;
+  }
+
+  .bottom-nav-container {
+    padding: 0.2rem 0.6rem 0.2rem;
+  }
+
+  .space-nav-btn {
+    padding: 0.3rem 0.5rem;
+    min-width: 55px;
+  }
+
+  .space-icon {
+    font-size: 0.9rem;
+  }
+}
+
 /* Enhanced Mobile Responsiveness */
 /* Very small devices (under 400px) */
 @media (max-width: 400px) {
@@ -1433,28 +1640,8 @@ body {
 
 .leaderboard-section {
   flex: 1;
-  /* Take all available space */
   overflow-y: auto;
-  /* Enable scrolling */
-  overflow-x: hidden;
-  /* Prevent horizontal scroll */
   padding: 0 0.5rem;
-  width: 100%;
-  max-width: 600px;
-  /* Constrain width for better UX */
-  min-height: 0;
-  /* Allow flex shrinking */
-  /* Hide scrollbar but keep functionality */
-  scrollbar-width: none;
-  /* Firefox */
-  -ms-overflow-style: none;
-  /* IE and Edge */
-}
-
-/* Hide scrollbar for WebKit browsers (Chrome, Safari, Edge) */
-.leaderboard-section::-webkit-scrollbar,
-.leaderboard-list::-webkit-scrollbar {
-  display: none;
 }
 
 .tournament-info {
@@ -1535,10 +1722,8 @@ body {
 
 .tournament-leaderboard {
   width: 100%;
-  height: 100%;
-  /* Fill the entire leaderboard section */
-  display: flex;
-  flex-direction: column;
+  max-width: 500px;
+  margin: 0 auto;
 }
 
 .grace-period-banner {
@@ -1579,19 +1764,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  flex: 1;
-  /* Take remaining space after header */
-  overflow-y: auto;
-  /* Enable scrolling within the list */
-  overflow-x: hidden;
-  /* Prevent horizontal scroll */
-  padding-bottom: 1rem;
-  /* Add some bottom padding for better UX */
-  /* Hide scrollbar but keep functionality */
-  scrollbar-width: none;
-  /* Firefox */
-  -ms-overflow-style: none;
-  /* IE and Edge */
 }
 
 .player-rank-card {
