@@ -278,7 +278,8 @@ body {
 .mode-card {
   position: relative;
   background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(0, 245, 255, 0.3);
+  /* Permanent cyan border */
   border-radius: 20px;
   /* Restored from main branch */
   padding: 1.5rem;
@@ -289,6 +290,8 @@ body {
   cursor: pointer;
   overflow: hidden;
   transform-origin: center;
+  /* Permanent cyan glow effect */
+  box-shadow: 0 5px 15px rgba(0, 245, 255, 0.15), 0 0 20px rgba(0, 245, 255, 0.1);
 }
 
 .mode-card:hover {
@@ -311,12 +314,22 @@ body {
   }
 }
 
+/* Permanent glow for practice mode */
+.practice-mode {
+  box-shadow: 0 5px 15px rgba(0, 245, 255, 0.15), 0 0 20px rgba(0, 245, 255, 0.1);
+}
+
 .practice-mode:hover {
-  box-shadow: 0 25px 50px rgba(0, 245, 255, 0.2), 0 0 30px rgba(0, 245, 255, 0.1);
+  box-shadow: 0 25px 50px rgba(0, 245, 255, 0.3), 0 0 30px rgba(0, 245, 255, 0.2);
+}
+
+/* Permanent glow for tournament mode */
+.tournament-mode {
+  box-shadow: 0 5px 15px rgba(147, 51, 234, 0.15), 0 0 20px rgba(147, 51, 234, 0.1);
 }
 
 .tournament-mode:hover {
-  box-shadow: 0 25px 50px rgba(147, 51, 234, 0.2), 0 0 30px rgba(147, 51, 234, 0.1);
+  box-shadow: 0 25px 50px rgba(147, 51, 234, 0.3), 0 0 30px rgba(147, 51, 234, 0.2);
 }
 
 .cosmic-aura {
@@ -325,7 +338,8 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  opacity: 0.1;
+  opacity: 0.15;
+  /* Permanent visibility - increased from 0.1 */
   border-radius: 20px;
   transition: opacity 0.4s;
 }
@@ -339,7 +353,8 @@ body {
 }
 
 .mode-card:hover .cosmic-aura {
-  opacity: 0.2;
+  opacity: 0.3;
+  /* More intense on hover since base is already visible */
   animation: aura-pulse 2s ease-in-out infinite;
 }
 
@@ -1800,6 +1815,20 @@ body {
   width: 100%;
   max-width: 500px;
   margin: 0 auto;
+  height: 100%;
+  overflow-y: auto;
+  padding-bottom: 2rem;
+  scrollbar-width: none;
+  /* Firefox - hide scrollbar */
+  -ms-overflow-style: none;
+  /* IE and Edge - hide scrollbar */
+  -webkit-overflow-scrolling: touch;
+  /* Enable smooth touch scrolling */
+}
+
+/* Hide scrollbars for webkit browsers in tournament leaderboard */
+.tournament-leaderboard::-webkit-scrollbar {
+  display: none;
 }
 
 .grace-period-banner {
@@ -2821,17 +2850,6 @@ body {
 }
 
 /* Tournament leaderboard styles */
-
-.tournament-leaderboard {
-  width: 100%;
-  max-width: 500px;
-  margin: 0 auto;
-  padding-bottom: 2rem;
-  /* Add bottom padding for better scrolling */
-  padding: 0.8rem;
-  text-align: center;
-  transition: all 0.2s ease;
-}
 
 .breakdown-item:hover {
   background: rgba(255, 255, 255, 0.08);
