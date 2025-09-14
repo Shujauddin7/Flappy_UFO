@@ -387,15 +387,15 @@ export default function LeaderboardPage() {
     return (
         <Page>
             <canvas ref={canvasRef} className="starfield-canvas" />
-            <Page.Main className="leaderboard-container">
-                {/* Tournament Title at Very Top */}
-                <div className="tournament-main-title">
-                    <h1>🏆 TOURNAMENT</h1>
-                </div>
+            
+            {/* Fixed Tournament Title at Top */}
+            <div className="fixed-tournament-title">
+                <h1>🏆 TOURNAMENT</h1>
+            </div>
 
-                <div className="header-section">
-                    {/* Tournament Info Box with all details */}
-                    <div className="tournament-info-box">
+            <Page.Main className="leaderboard-container-fixed">
+                {/* Tournament Info Box - will scroll up naturally */}
+                <div className="tournament-info-box">
                         {/* Timer Box */}
                         {timeRemaining && (
                             <div className="countdown-timer">
@@ -453,6 +453,13 @@ export default function LeaderboardPage() {
                             </div>
                         )}
                     </div>
+
+                {/* Sticky Column Header - becomes sticky when it hits the top */}
+                <div className="sticky-columns-header">
+                    <div className="column-header rank-column">Rank</div>
+                    <div className="column-header human-column">Human</div>
+                    <div className="column-header score-column">Score</div>
+                    <div className="column-header prize-column">Prize</div>
                 </div>
 
                 <div className="leaderboard-section">
