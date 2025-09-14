@@ -88,7 +88,8 @@ body {
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  padding: 70px 0.5rem 1rem; /* Top padding for fixed title */
+  padding: 70px 0.5rem 1rem;
+  /* Top padding for fixed title */
   overflow-y: auto;
   overflow-x: hidden;
   background: transparent !important;
@@ -1379,7 +1380,8 @@ body {
 /* Sticky Column Header - sticks to top when scrolled up */
 .sticky-columns-header {
   position: sticky;
-  top: 0; /* Sticks to top of scrollable container when reached */
+  top: 0;
+  /* Sticks to top of scrollable container when reached */
   display: flex;
   align-items: center;
   gap: 0.3rem;
@@ -2383,7 +2385,8 @@ body {
   }
 
   .leaderboard-container-fixed {
-    padding-top: 60px; /* Smaller top padding for mobile */
+    padding-top: 60px;
+    /* Smaller top padding for mobile */
   }
 
   .tournament-info-box {
