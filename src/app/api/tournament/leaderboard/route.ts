@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
 
         // Get current active tournament first to use its tournament_day
         let tournamentDay = searchParams.get('tournament_day');
-        
+
         if (!tournamentDay) {
             const { data: tournaments, error: tournamentError } = await supabase
                 .from('tournaments')
