@@ -93,12 +93,10 @@ export default function LeaderboardPage() {
 
                 const [tournamentResponse, prizeResponse] = await Promise.all([
                     fetch('/api/tournament/current', {
-                        cache: 'force-cache',
-                        next: { revalidate: 60 } // Cache for 1 minute
+                        cache: 'no-cache'
                     }),
                     fetch('/api/tournament/dynamic-prizes', {
-                        cache: 'force-cache',
-                        next: { revalidate: 60 } // Cache for 1 minute
+                        cache: 'no-cache'
                     }),
                     loadingPromise // Minimum loading time
                 ]);
@@ -241,7 +239,11 @@ export default function LeaderboardPage() {
                 mouseX = e.touches[0].clientX - width / 2;
                 mouseY = e.touches[0].clientY - height / 2;
             }
-            e.preventDefault();
+            // Only prevent default for canvas touches, not leaderboard area
+            const target = e.target as HTMLElement;
+            if (target.tagName === 'CANVAS' || target.classList.contains('starfield-canvas')) {
+                e.preventDefault();
+            }
         }
 
         window.addEventListener('resize', onResize);
@@ -387,79 +389,72 @@ export default function LeaderboardPage() {
     return (
         <Page>
             <canvas ref={canvasRef} className="starfield-canvas" />
-
-            {/* Fixed Tournament Title at Top */}
-            <div className="fixed-tournament-title">
-                <h1>🏆 TOURNAMENT</h1>
-            </div>
-
             <Page.Main className="leaderboard-container">
-                {/* Tournament Info Box - will scroll up naturally */}
-                <div className="tournament-info-box">
-                    {/* Timer Box */}
-                    {timeRemaining && (
-                        <div className="countdown-timer">
-                            ⚡ Tournament ends in {timeRemaining.timeLeft}
-                        </div>
-                    )}
-
-                    {/* Prize Pool Info */}
-                    <div className="prize-pool-info">
-                        <div className="prize-pool-text">
-                            Prize pool: {prizePoolData?.prize_pool?.base_amount?.toFixed(2) || currentTournament.total_prize_pool.toFixed(2)} WLD
-                        </div>
-                        <div className="players-text">
-                            {currentTournament.total_players} humans are playing to win the prize pool
-                        </div>
-                    </div>
-
-                    {/* Prize Info */}
-                    <div className="prize-info-box">
-                        <span className="prize-info-text">
-                            When the game ends, the prize will be shared to the top winners
-                        </span>
-                        <button
-                            className="prize-arrow-btn"
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setShowPrizeBreakdown(!showPrizeBreakdown);
-                            }}
-                            type="button"
-                        >
-                            {showPrizeBreakdown ? '▲' : '▼'}
-                        </button>
-                    </div>
-
-                    {/* Prize Breakdown - Always Visible with 2 per row */}
-                    {showPrizeBreakdown && (
-                        <div className="prize-breakdown-grid">
-                            <div className="prize-row">
-                                <div className="prize-box">🥇 1st: 40%</div>
-                                <div className="prize-box">🥈 2nd: 22%</div>
-                            </div>
-                            <div className="prize-row">
-                                <div className="prize-box">🥉 3rd: 14%</div>
-                                <div className="prize-box">🏆 4th: 6%</div>
-                            </div>
-                            <div className="prize-row">
-                                <div className="prize-box">🏆 5th: 5%</div>
-                                <div className="prize-box">🏆 6th: 4%</div>
-                            </div>
-                            <div className="prize-row">
-                                <div className="prize-box">🏆 7th: 3%</div>
-                                <div className="prize-box">🏆 8th-10th: 2% each</div>
-                            </div>
-                        </div>
-                    )}
+                {/* Tournament Title at Very Top */}
+                <div className="tournament-main-title">
+                    <h1>🏆 TOURNAMENT</h1>
                 </div>
 
-                {/* Sticky Column Header - becomes sticky when it hits the top */}
-                <div className="sticky-columns-header">
-                    <div className="column-header rank-column">Rank</div>
-                    <div className="column-header human-column">Human</div>
-                    <div className="column-header score-column">Score</div>
-                    <div className="column-header prize-column">Prize</div>
+                <div className="header-section">
+                    {/* Tournament Info Box with all details */}
+                    <div className="tournament-info-box">
+                        {/* Timer Box */}
+                        {timeRemaining && (
+                            <div className="countdown-timer">
+                                ⚡ Tournament ends in {timeRemaining.timeLeft}
+                            </div>
+                        )}
+
+                        {/* Prize Pool Info */}
+                        <div className="prize-pool-info">
+                            <div className="prize-pool-text">
+                                Prize pool: {prizePoolData?.prize_pool?.base_amount?.toFixed(2) || currentTournament.total_prize_pool.toFixed(2)} WLD
+                            </div>
+                            <div className="players-text">
+                                {currentTournament.total_players} humans are playing to win the prize pool
+                            </div>
+                        </div>
+
+                        {/* Prize Info */}
+                        <div className="prize-info-box">
+                            <span className="prize-info-text">
+                                When the game ends, the prize will be shared to the top winners
+                            </span>
+                            <button
+                                className="prize-arrow-btn"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setShowPrizeBreakdown(!showPrizeBreakdown);
+                                }}
+                                type="button"
+                            >
+                                {showPrizeBreakdown ? '▲' : '▼'}
+                            </button>
+                        </div>
+
+                        {/* Prize Breakdown - Always Visible with 2 per row */}
+                        {showPrizeBreakdown && (
+                            <div className="prize-breakdown-grid">
+                                <div className="prize-row">
+                                    <div className="prize-box">🥇 1st: 40%</div>
+                                    <div className="prize-box">🥈 2nd: 22%</div>
+                                </div>
+                                <div className="prize-row">
+                                    <div className="prize-box">🥉 3rd: 14%</div>
+                                    <div className="prize-box">🏆 4th: 6%</div>
+                                </div>
+                                <div className="prize-row">
+                                    <div className="prize-box">🏆 5th: 5%</div>
+                                    <div className="prize-box">🏆 6th: 4%</div>
+                                </div>
+                                <div className="prize-row">
+                                    <div className="prize-box">🏆 7th: 3%</div>
+                                    <div className="prize-box">🏆 8th-10th: 2% each</div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 <div className="leaderboard-section">
