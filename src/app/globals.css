@@ -95,7 +95,8 @@ body {
   background: transparent !important;
   pointer-events: auto;
   max-width: 100vw;
-  -webkit-overflow-scrolling: touch; /* Enable smooth scrolling on iOS */
+  -webkit-overflow-scrolling: touch;
+  /* Enable smooth scrolling on iOS */
 }
 
 .leaderboard-container-fixed::-webkit-scrollbar {
@@ -2388,7 +2389,8 @@ body {
   .leaderboard-container-fixed {
     padding-top: 60px;
     /* Smaller top padding for mobile */
-    height: 100vh; /* Use viewport height instead of dynamic on mobile */
+    height: 100vh;
+    /* Use viewport height instead of dynamic on mobile */
     min-height: 100vh;
   }
 
@@ -2839,7 +2841,8 @@ body {
   .leaderboard-container-fixed {
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
-    overflow-y: scroll; /* Force scroll on mobile */
+    overflow-y: scroll;
+    /* Force scroll on mobile */
   }
 
   /* Fix for mobile viewport issues */
