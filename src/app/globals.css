@@ -73,13 +73,17 @@ body {
   justify-content: flex-start;
   /* Different alignment for leaderboard */
   align-items: center;
-  padding: 70px 1rem 1rem; /* Increased top padding for fixed title */
-  overflow-y: auto; /* Enable scrolling */
+  padding: 70px 1rem 1rem;
+  /* Increased top padding for fixed title */
+  overflow-y: auto;
+  /* Enable scrolling */
   overflow-x: hidden;
-  pointer-events: auto; /* Enable pointer events for scrolling */
+  pointer-events: auto;
+  /* Enable pointer events for scrolling */
   background: transparent !important;
   /* Override any default backgrounds */
-  -webkit-overflow-scrolling: touch; /* Smooth mobile scrolling */
+  -webkit-overflow-scrolling: touch;
+  /* Smooth mobile scrolling */
 }
 
 /* Fixed scrollable leaderboard container */
@@ -1388,7 +1392,8 @@ body {
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  padding: 0.7rem 0.5rem; /* Match player-rank-card padding */
+  padding: 0.7rem 0.5rem;
+  /* Match player-rank-card padding */
   margin: 0 auto 0.8rem;
   background: rgba(0, 0, 0, 0.95);
   backdrop-filter: blur(20px);
