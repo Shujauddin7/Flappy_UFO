@@ -211,6 +211,7 @@ export const TournamentLeaderboard = ({
                         <div
                             key={player.id}
                             data-user-id={player.wallet}
+                            data-rank={player.rank}
                             className={isCurrentUser ? "current-user-card" : ""}
                         >
                             <PlayerRankCard

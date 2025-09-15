@@ -84,6 +84,22 @@ export default function LeaderboardPage() {
         return prizeAmount.toFixed(2);
     }, []);
 
+    const scrollToUserPosition = useCallback(() => {
+        if (!currentUserRank?.rank) return;
+        
+        // Find the user's card in the leaderboard by rank
+        const userCardElement = document.querySelector(`[data-rank="${currentUserRank.rank}"]`);
+        
+        if (userCardElement) {
+            // Scroll to the user's card with smooth behavior
+            userCardElement.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+                inline: 'nearest'
+            });
+        }
+    }, [currentUserRank]);
+
     useEffect(() => {
         const fetchCurrentTournament = async () => {
             try {
@@ -411,10 +427,10 @@ export default function LeaderboardPage() {
                         {/* Prize Pool Info */}
                         <div className="prize-pool-info">
                             <div className="prize-pool-text">
-                                Prize pool: {prizePoolData?.prize_pool?.base_amount?.toFixed(2) || currentTournament.total_prize_pool.toFixed(2)} WLD
+                                Prize pool: <span className="prize-pool-highlight">{prizePoolData?.prize_pool?.base_amount?.toFixed(2) || currentTournament.total_prize_pool.toFixed(2)} WLD</span>
                             </div>
                             <div className="players-text">
-                                {currentTournament.total_players} humans are playing to win the prize pool
+                                <span className="humans-playing-highlight">{currentTournament.total_players} humans are playing to win the prize pool</span>
                             </div>
                         </div>
 
@@ -424,7 +440,7 @@ export default function LeaderboardPage() {
                                 When the game ends, the prize will be shared to the top winners
                             </span>
                             <button
-                                className="prize-arrow-btn"
+                                className="prize-arrow-btn-right"
                                 onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
@@ -483,19 +499,25 @@ export default function LeaderboardPage() {
 
             {/* Fixed user rank card - completely outside scrolling area */}
             {shouldShowFixedCard && currentUserRank && (
-                <div className="fixed-user-position-container" style={{
-                    position: 'fixed',
-                    bottom: '80px', // Above bottom navigation
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                    padding: '10px',
-                    borderRadius: '10px',
-                    border: '2px solid #00F5FF',
-                    zIndex: 9998, // Below bottom nav but above content
-                    width: 'calc(100% - 2rem)',
-                    maxWidth: '500px'
-                }}>
+                <div 
+                    className="fixed-user-position-container clickable-fixed-card" 
+                    style={{
+                        position: 'fixed',
+                        bottom: '80px', // Above bottom navigation
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                        padding: '10px',
+                        borderRadius: '10px',
+                        border: '2px solid #00F5FF',
+                        zIndex: 9998, // Below bottom nav but above content
+                        width: 'calc(100% - 2rem)',
+                        maxWidth: '500px',
+                        cursor: 'pointer'
+                    }}
+                    onClick={scrollToUserPosition}
+                >
+                    <div className="scroll-indicator-icon">📍</div>
                     <PlayerRankCard
                         player={currentUserRank}
                         prizeAmount={calculatePrizeForRank(currentUserRank.rank || 1001, prizePoolData?.prize_pool?.base_amount || currentTournament.total_prize_pool)}

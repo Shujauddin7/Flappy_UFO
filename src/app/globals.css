@@ -2053,6 +2053,9 @@ body {
   /* Allow flex item to shrink below content size */
   overflow: hidden;
   /* Prevent overflow */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .player-name {
@@ -2066,6 +2069,8 @@ body {
   text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
   margin-bottom: 0.3rem;
   max-width: 100%;
+  flex: 1;
+  min-width: 0;
 }
 
 .player-name-text {
@@ -2093,6 +2098,22 @@ body {
   /* Prevent badge from shrinking */
   white-space: nowrap;
   /* Keep badge text on one line */
+}
+
+/* Right-positioned you badge */
+.you-badge-right {
+  background: linear-gradient(45deg, #00F5FF, #1D4ED8);
+  color: #0B0C10;
+  font-size: 0.6rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 0 10px rgba(0, 245, 255, 0.3);
+  flex-shrink: 0;
+  white-space: nowrap;
+  margin-left: 0.5rem;
 }
 
 .player-score {
@@ -2132,6 +2153,19 @@ body {
   font-weight: 700;
   font-family: 'Orbitron', monospace;
   text-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+}
+
+/* Enhanced highlighting for prize amounts in player cards */
+.highlighted-prize {
+  color: #00FFFF;
+  text-shadow: 0 0 12px rgba(0, 255, 255, 0.6), 0 0 6px rgba(0, 255, 255, 0.4);
+  font-weight: 800;
+  background: rgba(0, 255, 255, 0.12);
+  padding: 0.2rem 0.4rem;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+  display: inline-block;
 }
 
 .no-prize {
@@ -2620,6 +2654,29 @@ body {
   font-weight: 500;
 }
 
+/* Highlight styles for prize pool and human count */
+.prize-pool-highlight {
+  color: #00FFFF;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+  background: rgba(0, 255, 255, 0.1);
+  padding: 0.3rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+  display: inline-block;
+}
+
+.humans-playing-highlight {
+  color: #00FFFF;
+  text-shadow: 0 0 8px rgba(0, 255, 255, 0.4);
+  background: rgba(0, 255, 255, 0.08);
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 255, 255, 0.2);
+  box-shadow: 0 0 12px rgba(0, 255, 255, 0.15);
+  display: inline-block;
+}
+
 .prize-info-box {
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 215, 0, 0.3);
@@ -2631,6 +2688,10 @@ body {
   backdrop-filter: blur(15px);
   position: relative;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
 }
 
 .prize-info-box::before {
@@ -2660,10 +2721,52 @@ body {
   font-size: 0.95rem;
   font-weight: 600;
   text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.8rem;
+  flex: 1;
+  text-align: center;
+}
+
+/* Left-positioned arrow button */
+.prize-arrow-btn-left {
+  background: none;
+  border: none;
+  color: #FFD700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0.4rem;
+  border-radius: 4px;
+  position: relative;
+  z-index: 100;
+  pointer-events: auto;
+  order: -1; /* Position at the start */
+}
+
+.prize-arrow-btn-left:hover {
+  color: #FFFFFF;
+  transform: scale(1.2);
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+}
+
+/* Right-positioned arrow button */
+.prize-arrow-btn-right {
+  background: none;
+  border: none;
+  color: #FFD700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0.4rem;
+  border-radius: 4px;
+  position: relative;
+  z-index: 100;
+  pointer-events: auto;
+  margin-left: auto; /* Push to the right */
+}
+
+.prize-arrow-btn-right:hover {
+  color: #FFFFFF;
+  transform: scale(1.2);
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
 }
 
 .prize-arrow-btn {
@@ -3497,6 +3600,45 @@ body {
 
   .prize-amount {
     font-size: 0.8rem;
+  }
+}
+
+/* Clickable Fixed User Card Styles */
+.clickable-fixed-card {
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.clickable-fixed-card:hover {
+  border-color: #00FFFF !important;
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+  transform: translateX(-50%) translateY(-2px) !important;
+}
+
+.scroll-indicator-icon {
+  position: absolute;
+  top: -5px;
+  right: 8px;
+  font-size: 1.2rem;
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
+}
+
+.clickable-fixed-card:hover .scroll-indicator-icon {
+  opacity: 1;
+  animation: pulse-icon 1.5s infinite;
+}
+
+@keyframes pulse-icon {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
   }
 }
 

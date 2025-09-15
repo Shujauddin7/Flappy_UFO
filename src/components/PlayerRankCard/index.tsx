@@ -71,8 +71,8 @@ export const PlayerRankCard: React.FC<PlayerRankCardProps> = ({
                     <span className="player-name-text">
                         {getDisplayName()}
                     </span>
-                    {isCurrentUser && <span className="you-badge">YOU</span>}
                 </div>
+                {isCurrentUser && <span className="you-badge-right">YOU</span>}
             </div>
 
             <div className="score-section">
