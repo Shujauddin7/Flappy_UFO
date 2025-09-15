@@ -396,7 +396,11 @@ export default function LeaderboardPage() {
                 </div>
 
                 <div className="header-section">
-                    {/* Tournament Info Box with all details */}
+                    {/* Keep only the tournament title here - no info box */}
+                </div>
+
+                <div className="leaderboard-section">
+                    {/* Tournament Info Box moved inside scrollable area */}
                     <div className="tournament-info-box">
                         {/* Timer Box */}
                         {timeRemaining && (
@@ -455,9 +459,15 @@ export default function LeaderboardPage() {
                             </div>
                         )}
                     </div>
-                </div>
 
-                <div className="leaderboard-section">
+                    {/* Sticky Header Row for Leaderboard */}
+                    <div className="leaderboard-header-row">
+                        <div className="header-rank">Rank</div>
+                        <div className="header-player">Player</div>
+                        <div className="header-score">Score</div>
+                        <div className="header-prize">Prize</div>
+                    </div>
+
                     <TournamentLeaderboard
                         tournamentId={currentTournament.id}
                         currentUserId={session?.user?.walletAddress || null}
