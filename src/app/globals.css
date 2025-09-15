@@ -2677,6 +2677,21 @@ body {
   display: inline-block;
 }
 
+/* Highlighted human count number */
+.human-count-number {
+  color: #00FFFF;
+  text-shadow: 0 0 12px rgba(0, 255, 255, 0.6), 0 0 6px rgba(0, 255, 255, 0.4);
+  font-weight: 800;
+  font-size: 1.1em;
+  background: rgba(0, 255, 255, 0.12);
+  padding: 0.2rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+  display: inline-block;
+  margin-right: 0.3rem;
+}
+
 .prize-info-box {
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 215, 0, 0.3);

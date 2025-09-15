@@ -430,7 +430,7 @@ export default function LeaderboardPage() {
                                 Prize pool: <span className="prize-pool-highlight">{prizePoolData?.prize_pool?.base_amount?.toFixed(2) || currentTournament.total_prize_pool.toFixed(2)} WLD</span>
                             </div>
                             <div className="players-text">
-                                <span className="humans-playing-highlight">{currentTournament.total_players} humans are playing to win the prize pool</span>
+                                <span className="human-count-number">{currentTournament.total_players}</span> <span className="humans-playing-highlight">humans are playing to win the prize pool</span>
                             </div>
                         </div>
 
