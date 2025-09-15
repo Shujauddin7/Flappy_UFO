@@ -62,6 +62,7 @@ export default function LeaderboardPage() {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [shouldShowFixedCard, setShouldShowFixedCard] = useState(false);
     const [showPrizeBreakdown, setShowPrizeBreakdown] = useState(false); // Hidden by default
+    const [isInfoCardVisible, setIsInfoCardVisible] = useState(true); // Track info card visibility
 
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
         setCurrentUserRank(userRank);
@@ -71,7 +72,40 @@ export default function LeaderboardPage() {
     const handleUserCardVisibility = useCallback((isVisible: boolean) => {
         // Show fixed card only when user's actual card is NOT visible in viewport
         setShouldShowFixedCard(!isVisible && currentUserRank !== null);
-    }, [currentUserRank]); const calculatePrizeForRank = useCallback((rank: number, totalPrizePool: number): string | null => {
+    }, [currentUserRank]);
+
+    // Scroll-based visibility for info card
+    useEffect(() => {
+        const handleScroll = () => {
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+
+            // Show info card when scrolled to very top (within 100px of top for better UX)
+            setIsInfoCardVisible(scrollTop <= 100);
+        };
+
+        // Set initial state
+        handleScroll();
+
+        // Add scroll listener with throttling for better performance
+        let ticking = false;
+        const throttledHandleScroll = () => {
+            if (!ticking) {
+                requestAnimationFrame(() => {
+                    handleScroll();
+                    ticking = false;
+                });
+                ticking = true;
+            }
+        };
+
+        window.addEventListener('scroll', throttledHandleScroll, { passive: true });
+
+        return () => {
+            window.removeEventListener('scroll', throttledHandleScroll);
+        };
+    }, []); // Empty dependency array - run once
+
+    const calculatePrizeForRank = useCallback((rank: number, totalPrizePool: number): string | null => {
         if (rank > 10) return null;
 
         // Plan.md compliant prize percentages
@@ -400,65 +434,67 @@ export default function LeaderboardPage() {
                 </div>
 
                 <div className="leaderboard-section">
-                    {/* Tournament Info Box moved inside scrollable area */}
-                    <div className="tournament-info-box">
-                        {/* Timer Box */}
-                        {timeRemaining && (
-                            <div className="countdown-timer">
-                                ⚡ Tournament ends in {timeRemaining.timeLeft}
-                            </div>
-                        )}
+                    {/* Tournament Info Box - visible when at top */}
+                    {isInfoCardVisible && (
+                        <div className="tournament-info-box">
+                            {/* Timer Box */}
+                            {timeRemaining && (
+                                <div className="countdown-timer">
+                                    ⚡ Tournament ends in {timeRemaining.timeLeft}
+                                </div>
+                            )}
 
-                        {/* Prize Pool Info */}
-                        <div className="prize-pool-info">
-                            <div className="prize-pool-text">
-                                Prize pool: {prizePoolData?.prize_pool?.base_amount?.toFixed(2) || currentTournament.total_prize_pool.toFixed(2)} WLD
+                            {/* Prize Pool Info */}
+                            <div className="prize-pool-info">
+                                <div className="prize-pool-text">
+                                    Prize pool: {prizePoolData?.prize_pool?.base_amount?.toFixed(2) || currentTournament.total_prize_pool.toFixed(2)} WLD
+                                </div>
+                                <div className="players-text">
+                                    {currentTournament.total_players} humans are playing to win the prize pool
+                                </div>
                             </div>
-                            <div className="players-text">
-                                {currentTournament.total_players} humans are playing to win the prize pool
+
+                            {/* Prize Info */}
+                            <div className="prize-info-box">
+                                <span className="prize-info-text">
+                                    When the game ends, the prize will be shared to the top winners
+                                </span>
+                                <button
+                                    className="prize-arrow-btn"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setShowPrizeBreakdown(!showPrizeBreakdown);
+                                    }}
+                                    type="button"
+                                >
+                                    {showPrizeBreakdown ? '▲' : '▼'}
+                                </button>
                             </div>
+
+                            {/* Prize Breakdown - Always Visible with 2 per row */}
+                            {showPrizeBreakdown && (
+                                <div className="prize-breakdown-grid">
+                                    <div className="prize-row">
+                                        <div className="prize-box">🥇 1st: 40%</div>
+                                        <div className="prize-box">🥈 2nd: 22%</div>
+                                    </div>
+                                    <div className="prize-row">
+                                        <div className="prize-box">🥉 3rd: 14%</div>
+                                        <div className="prize-box">🏆 4th: 6%</div>
+                                    </div>
+                                    <div className="prize-row">
+                                        <div className="prize-box">🏆 5th: 5%</div>
+                                        <div className="prize-box">🏆 6th: 4%</div>
+                                    </div>
+                                    <div className="prize-row">
+                                        <div className="prize-box">🏆 7th: 3%</div>
+                                        <div className="prize-box">🏆 8th-10th: 2% each</div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-
-                        {/* Prize Info */}
-                        <div className="prize-info-box">
-                            <span className="prize-info-text">
-                                When the game ends, the prize will be shared to the top winners
-                            </span>
-                            <button
-                                className="prize-arrow-btn"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    setShowPrizeBreakdown(!showPrizeBreakdown);
-                                }}
-                                type="button"
-                            >
-                                {showPrizeBreakdown ? '▲' : '▼'}
-                            </button>
-                        </div>
-
-                        {/* Prize Breakdown - Always Visible with 2 per row */}
-                        {showPrizeBreakdown && (
-                            <div className="prize-breakdown-grid">
-                                <div className="prize-row">
-                                    <div className="prize-box">🥇 1st: 40%</div>
-                                    <div className="prize-box">🥈 2nd: 22%</div>
-                                </div>
-                                <div className="prize-row">
-                                    <div className="prize-box">🥉 3rd: 14%</div>
-                                    <div className="prize-box">🏆 4th: 6%</div>
-                                </div>
-                                <div className="prize-row">
-                                    <div className="prize-box">🏆 5th: 5%</div>
-                                    <div className="prize-box">🏆 6th: 4%</div>
-                                </div>
-                                <div className="prize-row">
-                                    <div className="prize-box">🏆 7th: 3%</div>
-                                    <div className="prize-box">🏆 8th-10th: 2% each</div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                    )}
 
                     {/* Sticky Header Row for Leaderboard */}
                     <div className="leaderboard-header-row">

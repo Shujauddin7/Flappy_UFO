@@ -1956,6 +1956,8 @@ body {
   font-family: 'Orbitron', monospace;
   color: #00F5FF;
   text-shadow: 0 0 8px rgba(0, 245, 255, 0.5);
+  flex-shrink: 0;
+  /* Prevent shrinking */
 }
 
 .player-rank-card {
@@ -2042,7 +2044,8 @@ body {
 }
 
 .rank-display {
-  font-size: 1.1rem;
+  font-size: 1rem;
+  /* Reduced from 1.1rem */
   font-weight: 800;
   font-family: 'Orbitron', monospace;
   color: #00F5FF;
@@ -2058,33 +2061,55 @@ body {
   flex: 1;
   position: relative;
   z-index: 2;
+  min-width: 0;
+  /* Allow flex item to shrink below content size */
+  overflow: hidden;
+  /* Prevent overflow */
 }
 
 .player-name {
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
+  /* Reduced from 0.9rem */
   color: #FFFFFF;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
   margin-bottom: 0.3rem;
+  max-width: 100%;
+}
+
+.player-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
 }
 
 .you-badge {
   background: linear-gradient(45deg, #00F5FF, #1D4ED8);
   color: #0B0C10;
-  font-size: 0.7rem;
-  padding: 0.3rem 0.6rem;
-  border-radius: 10px;
+  font-size: 0.6rem;
+  /* Reduced from 0.7rem */
+  padding: 0.25rem 0.5rem;
+  /* Reduced padding */
+  border-radius: 8px;
+  /* Slightly smaller border radius */
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   box-shadow: 0 0 10px rgba(0, 245, 255, 0.3);
+  flex-shrink: 0;
+  /* Prevent badge from shrinking */
+  white-space: nowrap;
+  /* Keep badge text on one line */
 }
 
 .player-score {
-  font-size: 1rem;
+  font-size: 0.9rem;
+  /* Reduced from 1rem */
   font-weight: 700;
   color: #00F5FF;
   font-family: 'Orbitron', monospace;
@@ -2108,10 +2133,13 @@ body {
   text-align: right;
   position: relative;
   z-index: 2;
+  flex-shrink: 0;
+  /* Prevent shrinking to match header */
 }
 
 .prize-amount {
-  font-size: 0.9rem;
+  font-size: 0.8rem;
+  /* Reduced from 0.9rem */
   color: #FFD700;
   font-weight: 700;
   font-family: 'Orbitron', monospace;
@@ -2120,7 +2148,8 @@ body {
 
 .no-prize {
   color: rgba(255, 255, 255, 0.5);
-  font-size: 0.85rem;
+  font-size: 0.75rem;
+  /* Reduced from 0.85rem */
   font-style: italic;
 }
 
@@ -3318,17 +3347,20 @@ body {
   }
 
   .rank-display {
-    font-size: 1.4rem;
+    font-size: 1.2rem;
+    /* Reduced from 1.4rem */
     /* Keep original size */
   }
 
   .player-name {
-    font-size: 1rem;
+    font-size: 0.85rem;
+    /* Reduced from 1rem */
     /* Keep original size */
   }
 
   .player-score {
-    font-size: 1.2rem;
+    font-size: 1rem;
+    /* Reduced from 1.2rem */
     /* Keep original size */
   }
 
@@ -3337,15 +3369,23 @@ body {
     /* Slightly wider */
   }
 
+  .header-prize {
+    min-width: 80px;
+    /* Match player card prize section */
+  }
+
   .prize-amount {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
+    /* Reduced from 0.9rem */
     /* Slightly bigger */
   }
 
   .you-badge {
-    font-size: 0.7rem;
+    font-size: 0.6rem;
+    /* Reduced from 0.7rem */
     /* Keep original size */
-    padding: 0.3rem 0.6rem;
+    padding: 0.25rem 0.5rem;
+    /* Reduced from 0.3rem 0.6rem */
     /* Keep original padding */
   }
 }
@@ -3379,6 +3419,11 @@ body {
 
   .prize-section {
     min-width: 60px;
+  }
+
+  .header-prize {
+    min-width: 60px;
+    /* Match player card prize section */
   }
 
   .prize-amount {

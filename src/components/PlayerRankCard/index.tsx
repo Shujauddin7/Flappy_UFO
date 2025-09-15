@@ -43,9 +43,9 @@ export const PlayerRankCard: React.FC<PlayerRankCardProps> = ({
 
     const getDisplayName = () => {
         if (player.username) {
-            // Truncate long usernames to prevent layout issues - increased limit due to smaller font
-            if (player.username.length > 20) {
-                return `${player.username.slice(0, 18)}...`;
+            // Truncate long usernames to prevent layout issues
+            if (player.username.length > 15) {
+                return `${player.username.slice(0, 13)}...`;
             }
             return player.username;
         }
@@ -68,7 +68,9 @@ export const PlayerRankCard: React.FC<PlayerRankCardProps> = ({
 
             <div className="player-info">
                 <div className="player-name">
-                    {getDisplayName()}
+                    <span className="player-name-text">
+                        {getDisplayName()}
+                    </span>
                     {isCurrentUser && <span className="you-badge">YOU</span>}
                 </div>
             </div>
