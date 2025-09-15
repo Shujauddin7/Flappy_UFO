@@ -2113,7 +2113,11 @@ body {
   box-shadow: 0 0 10px rgba(0, 245, 255, 0.3);
   flex-shrink: 0;
   white-space: nowrap;
-  margin-left: 0.5rem;
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  transform: rotate(-12deg);
+  z-index: 10;
 }
 
 .player-score {
@@ -2657,13 +2661,14 @@ body {
 /* Highlight styles for prize pool and human count */
 .prize-pool-highlight {
   color: #00FFFF;
-  text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
-  background: rgba(0, 255, 255, 0.1);
+  text-shadow: 0 0 15px rgba(0, 255, 255, 0.8), 0 0 8px rgba(0, 255, 255, 0.6), 0 0 4px rgba(0, 255, 255, 0.4);
+  background: rgba(0, 255, 255, 0.15);
   padding: 0.3rem 0.6rem;
   border-radius: 8px;
-  border: 1px solid rgba(0, 255, 255, 0.3);
-  box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+  border: 1px solid rgba(0, 255, 255, 0.5);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.3), inset 0 0 10px rgba(0, 255, 255, 0.1);
   display: inline-block;
+  font-weight: 700;
 }
 
 .humans-playing-highlight {
@@ -3634,31 +3639,42 @@ body {
 
 .scroll-indicator-icon {
   position: absolute;
-  top: -5px;
+  top: -8px;
   right: 8px;
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   z-index: 10;
   pointer-events: none;
-  opacity: 0.8;
-  transition: opacity 0.3s ease;
+  opacity: 0.9;
+  transition: all 0.3s ease;
+  background: rgba(0, 255, 255, 0.15);
+  padding: 0.3rem;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 255, 255, 0.4);
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+  filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.6));
 }
 
 .clickable-fixed-card:hover .scroll-indicator-icon {
   opacity: 1;
-  animation: pulse-icon 1.5s infinite;
+  animation: pulse-icon-enhanced 1.5s infinite;
+  background: rgba(0, 255, 255, 0.25);
+  border-color: rgba(0, 255, 255, 0.6);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
 }
 
-@keyframes pulse-icon {
+@keyframes pulse-icon-enhanced {
 
   0%,
   100% {
     transform: scale(1);
-    opacity: 0.8;
+    opacity: 0.9;
+    filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.6));
   }
 
   50% {
-    transform: scale(1.2);
+    transform: scale(1.3);
     opacity: 1;
+    filter: drop-shadow(0 0 12px rgba(0, 255, 255, 0.8));
   }
 }
 
