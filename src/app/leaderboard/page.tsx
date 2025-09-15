@@ -74,36 +74,51 @@ export default function LeaderboardPage() {
         setShouldShowFixedCard(!isVisible && currentUserRank !== null);
     }, [currentUserRank]);
 
-    // Scroll-based visibility for info card
+    // Scroll-based visibility for info card - hide when scrolling away from top
     useEffect(() => {
-        const handleScroll = () => {
-            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const handleScroll = (event: Event) => {
+            const target = event.target as HTMLElement;
+            const scrollTop = target.scrollTop;
 
-            // Show info card when scrolled to very top (within 100px of top for better UX)
-            setIsInfoCardVisible(scrollTop <= 100);
+            // Hide info card immediately when any scroll happens (very low threshold)
+            setIsInfoCardVisible(scrollTop <= 5);
         };
 
-        // Set initial state
-        handleScroll();
-
-        // Add scroll listener with throttling for better performance
-        let ticking = false;
-        const throttledHandleScroll = () => {
-            if (!ticking) {
-                requestAnimationFrame(() => {
-                    handleScroll();
-                    ticking = false;
-                });
-                ticking = true;
+        // The actual scrolling happens in .tournament-leaderboard, not .leaderboard-section
+        const findScrollContainer = () => {
+            const tournamentLeaderboard = document.querySelector('.tournament-leaderboard');
+            if (tournamentLeaderboard) {
+                return tournamentLeaderboard;
             }
+            return null;
         };
 
-        window.addEventListener('scroll', throttledHandleScroll, { passive: true });
+        // Wait for the TournamentLeaderboard component to mount
+        const attachListener = () => {
+            const scrollContainer = findScrollContainer();
+            if (!scrollContainer) {
+                // If not found yet, try again after a short delay
+                setTimeout(attachListener, 50);
+                return;
+            }
 
-        return () => {
-            window.removeEventListener('scroll', throttledHandleScroll);
+            console.log('Found scroll container:', scrollContainer.className);
+
+            // Set initial state
+            setIsInfoCardVisible(true);
+
+            // Add scroll listener
+            scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+
+            // Return cleanup function
+            return () => {
+                scrollContainer.removeEventListener('scroll', handleScroll);
+            };
         };
-    }, []); // Empty dependency array - run once
+
+        const cleanup = attachListener();
+        return cleanup || (() => { });
+    }, [currentTournament]); // Re-run when tournament data changes
 
     const calculatePrizeForRank = useCallback((rank: number, totalPrizePool: number): string | null => {
         if (rank > 10) return null;
