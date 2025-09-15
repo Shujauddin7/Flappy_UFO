@@ -2738,7 +2738,8 @@ body {
   position: relative;
   z-index: 100;
   pointer-events: auto;
-  order: -1; /* Position at the start */
+  order: -1;
+  /* Position at the start */
 }
 
 .prize-arrow-btn-left:hover {
@@ -2760,7 +2761,8 @@ body {
   position: relative;
   z-index: 100;
   pointer-events: auto;
-  margin-left: auto; /* Push to the right */
+  margin-left: auto;
+  /* Push to the right */
 }
 
 .prize-arrow-btn-right:hover {
@@ -3632,10 +3634,13 @@ body {
 }
 
 @keyframes pulse-icon {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
     opacity: 0.8;
   }
+
   50% {
     transform: scale(1.2);
     opacity: 1;

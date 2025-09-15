@@ -86,10 +86,10 @@ export default function LeaderboardPage() {
 
     const scrollToUserPosition = useCallback(() => {
         if (!currentUserRank?.rank) return;
-        
+
         // Find the user's card in the leaderboard by rank
         const userCardElement = document.querySelector(`[data-rank="${currentUserRank.rank}"]`);
-        
+
         if (userCardElement) {
             // Scroll to the user's card with smooth behavior
             userCardElement.scrollIntoView({
@@ -499,8 +499,8 @@ export default function LeaderboardPage() {
 
             {/* Fixed user rank card - completely outside scrolling area */}
             {shouldShowFixedCard && currentUserRank && (
-                <div 
-                    className="fixed-user-position-container clickable-fixed-card" 
+                <div
+                    className="fixed-user-position-container clickable-fixed-card"
                     style={{
                         position: 'fixed',
                         bottom: '80px', // Above bottom navigation
