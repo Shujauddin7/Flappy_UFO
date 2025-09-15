@@ -90,17 +90,13 @@ export default function LeaderboardPage() {
                 setLoading(true);
                 setError(null);
 
-                // Add a minimum loading time but keep it very short
-                const loadingPromise = new Promise(resolve => setTimeout(resolve, 300));
-
                 const [tournamentResponse, prizeResponse] = await Promise.all([
                     fetch('/api/tournament/current', {
                         cache: 'no-cache'
                     }),
                     fetch('/api/tournament/dynamic-prizes', {
                         cache: 'no-cache'
-                    }),
-                    loadingPromise // Minimum loading time
+                    })
                 ]);
 
                 const tournamentData = await tournamentResponse.json();
@@ -392,120 +388,122 @@ export default function LeaderboardPage() {
         <Page>
             <canvas ref={canvasRef} className="starfield-canvas" />
             <Page.Main className="leaderboard-container">
-                {/* Tournament Title at Very Top */}
+                {/* Fixed Tournament Title at Very Top */}
                 <div className="tournament-main-title">
                     <h1>🏆 TOURNAMENT</h1>
                 </div>
 
-                <div className="header-section">
-                    {/* Keep only the tournament title here - no info box */}
-                </div>
-
-                {/* Tournament Info Box - moved outside leaderboard-section for natural scrolling */}
-                <div className="tournament-info-box">
-                    {/* Timer Box */}
-                    {timeRemaining && (
-                        <div className="countdown-timer">
-                            ⚡ Tournament ends in {timeRemaining.timeLeft}
-                        </div>
-                    )}
-
-                    {/* Prize Pool Info */}
-                    <div className="prize-pool-info">
-                        <div className="prize-pool-text">
-                            Prize pool: {prizePoolData?.prize_pool?.base_amount?.toFixed(2) || currentTournament.total_prize_pool.toFixed(2)} WLD
-                        </div>
-                        <div className="players-text">
-                            {currentTournament.total_players} humans are playing to win the prize pool
-                        </div>
+                {/* Scrollable Content Area */}
+                <div className="leaderboard-scroll-content">
+                    <div className="header-section">
+                        {/* Keep only the tournament title here - no info box */}
                     </div>
 
-                    {/* Prize Info */}
-                    <div className="prize-info-box">
-                        <span className="prize-info-text">
-                            When the game ends, the prize will be shared to the top winners
-                        </span>
-                        <button
-                            className="prize-arrow-btn"
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setShowPrizeBreakdown(!showPrizeBreakdown);
-                            }}
-                            type="button"
-                        >
-                            {showPrizeBreakdown ? '▲' : '▼'}
-                        </button>
-                    </div>
+                    {/* Tournament Info Box - scrolls naturally with content */}
+                    <div className="tournament-info-box">
+                        {/* Timer Box */}
+                        {timeRemaining && (
+                            <div className="countdown-timer">
+                                ⚡ Tournament ends in {timeRemaining.timeLeft}
+                            </div>
+                        )}
 
-                    {/* Prize Breakdown - Always Visible with 2 per row */}
-                    {showPrizeBreakdown && (
-                        <div className="prize-breakdown-grid">
-                            <div className="prize-row">
-                                <div className="prize-box">🥇 1st: 40%</div>
-                                <div className="prize-box">🥈 2nd: 22%</div>
+                        {/* Prize Pool Info */}
+                        <div className="prize-pool-info">
+                            <div className="prize-pool-text">
+                                Prize pool: {prizePoolData?.prize_pool?.base_amount?.toFixed(2) || currentTournament.total_prize_pool.toFixed(2)} WLD
                             </div>
-                            <div className="prize-row">
-                                <div className="prize-box">🥉 3rd: 14%</div>
-                                <div className="prize-box">🏆 4th: 6%</div>
-                            </div>
-                            <div className="prize-row">
-                                <div className="prize-box">🏆 5th: 5%</div>
-                                <div className="prize-box">🏆 6th: 4%</div>
-                            </div>
-                            <div className="prize-row">
-                                <div className="prize-box">🏆 7th: 3%</div>
-                                <div className="prize-box">🏆 8th-10th: 2% each</div>
+                            <div className="players-text">
+                                {currentTournament.total_players} humans are playing to win the prize pool
                             </div>
                         </div>
-                    )}
-                </div>
 
-                <div className="leaderboard-section">
+                        {/* Prize Info */}
+                        <div className="prize-info-box">
+                            <span className="prize-info-text">
+                                When the game ends, the prize will be shared to the top winners
+                            </span>
+                            <button
+                                className="prize-arrow-btn"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setShowPrizeBreakdown(!showPrizeBreakdown);
+                                }}
+                                type="button"
+                            >
+                                {showPrizeBreakdown ? '▲' : '▼'}
+                            </button>
+                        </div>
 
-                    {/* Sticky Header Row for Leaderboard */}
-                    <div className="leaderboard-header-row">
-                        <div className="header-rank">Rank</div>
-                        <div className="header-player">Player</div>
-                        <div className="header-score">Score</div>
-                        <div className="header-prize">Prize</div>
+                        {/* Prize Breakdown - Always Visible with 2 per row */}
+                        {showPrizeBreakdown && (
+                            <div className="prize-breakdown-grid">
+                                <div className="prize-row">
+                                    <div className="prize-box">🥇 1st: 40%</div>
+                                    <div className="prize-box">🥈 2nd: 22%</div>
+                                </div>
+                                <div className="prize-row">
+                                    <div className="prize-box">🥉 3rd: 14%</div>
+                                    <div className="prize-box">🏆 4th: 6%</div>
+                                </div>
+                                <div className="prize-row">
+                                    <div className="prize-box">🏆 5th: 5%</div>
+                                    <div className="prize-box">🏆 6th: 4%</div>
+                                </div>
+                                <div className="prize-row">
+                                    <div className="prize-box">🏆 7th: 3%</div>
+                                    <div className="prize-box">🏆 8th-10th: 2% each</div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
-                    <TournamentLeaderboard
-                        tournamentId={currentTournament.id}
-                        currentUserId={session?.user?.walletAddress || null}
-                        currentUsername={session?.user?.username || null}
-                        isGracePeriod={timeRemaining?.status === 'grace'}
-                        totalPrizePool={prizePoolData?.prize_pool?.base_amount || currentTournament.total_prize_pool}
-                        onUserRankUpdate={handleUserRankUpdate}
-                        onUserCardVisibility={handleUserCardVisibility}
-                    />
-                </div>
+                    <div className="leaderboard-section">
+                        {/* Sticky Header Row for Leaderboard */}
+                        <div className="leaderboard-header-row">
+                            <div className="header-rank">Rank</div>
+                            <div className="header-player">Player</div>
+                            <div className="header-score">Score</div>
+                            <div className="header-prize">Prize</div>
+                        </div>
 
-                {/* Fixed user rank card when scrolled past user's position */}
-                {shouldShowFixedCard && currentUserRank && (
-                    <div className="fixed-user-position-container" style={{
-                        position: 'sticky',
-                        bottom: '20px',
-                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                        padding: '10px',
-                        marginTop: '10px',
-                        borderRadius: '10px',
-                        border: '2px solid #00F5FF',
-                        zIndex: 1000,
-                        width: '100%',
-                        maxWidth: '600px',
-                        margin: '10px auto 0 auto'
-                    }}>
-                        <PlayerRankCard
-                            player={currentUserRank}
-                            prizeAmount={calculatePrizeForRank(currentUserRank.rank || 1001, prizePoolData?.prize_pool?.base_amount || currentTournament.total_prize_pool)}
-                            isCurrentUser={true}
-                            isTopThree={currentUserRank.rank !== undefined && currentUserRank.rank <= 10}
+                        <TournamentLeaderboard
+                            tournamentId={currentTournament.id}
+                            currentUserId={session?.user?.walletAddress || null}
+                            currentUsername={session?.user?.username || null}
+                            isGracePeriod={timeRemaining?.status === 'grace'}
+                            totalPrizePool={prizePoolData?.prize_pool?.base_amount || currentTournament.total_prize_pool}
+                            onUserRankUpdate={handleUserRankUpdate}
+                            onUserCardVisibility={handleUserCardVisibility}
                         />
                     </div>
-                )}
+                </div>
             </Page.Main>
+
+            {/* Fixed user rank card - completely outside scrolling area */}
+            {shouldShowFixedCard && currentUserRank && (
+                <div className="fixed-user-position-container" style={{
+                    position: 'fixed',
+                    bottom: '80px', // Above bottom navigation
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                    padding: '10px',
+                    borderRadius: '10px',
+                    border: '2px solid #00F5FF',
+                    zIndex: 9998, // Below bottom nav but above content
+                    width: 'calc(100% - 2rem)',
+                    maxWidth: '500px'
+                }}>
+                    <PlayerRankCard
+                        player={currentUserRank}
+                        prizeAmount={calculatePrizeForRank(currentUserRank.rank || 1001, prizePoolData?.prize_pool?.base_amount || currentTournament.total_prize_pool)}
+                        isCurrentUser={true}
+                        isTopThree={currentUserRank.rank !== undefined && currentUserRank.rank <= 10}
+                    />
+                </div>
+            )}
 
             {/* Fixed Bottom Navigation - completely outside scrolling area */}
             <div className="bottom-nav-container">
