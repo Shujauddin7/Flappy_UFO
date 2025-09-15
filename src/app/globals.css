@@ -77,9 +77,10 @@ body {
   justify-content: flex-start;
   /* Different alignment for leaderboard */
   align-items: center;
-  padding: 0.5rem 1rem;
-  overflow: hidden;
-  /* Prevent container from scrolling - force inner section to handle it */
+  padding: 0.5rem 1rem 120px;
+  /* Add bottom padding for fixed navigation */
+  overflow-y: auto;
+  /* Allow natural scrolling for the entire page content */
   pointer-events: none;
   background: transparent !important;
   /* Override any default backgrounds */
@@ -640,22 +641,24 @@ body {
   box-shadow: 0 4px 15px rgba(251, 191, 36, 0.2) !important;
 }
 
-/* Bottom Navigation - Space Themed */
+/* Bottom Navigation - Space Themed - Truly Fixed Position */
 .bottom-nav-container {
-  width: 100%;
+  width: 100vw !important;
+  /* Full viewport width */
   display: flex;
   justify-content: center;
-  padding: 0 2rem 1.5rem;
-  flex-shrink: 0;
-  /* Never shrink navigation */
-  position: sticky;
-  /* Ensure it stays visible */
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.2);
-  /* Subtle background for better visibility */
+  padding: 1rem 2rem 1.5rem;
+  position: fixed !important;
+  /* Force fixed positioning */
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  background: rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(10px);
-  z-index: 20;
-  /* Ensure it stays above other content */
+  z-index: 9999 !important;
+  /* Highest z-index to ensure it stays on top */
+  pointer-events: auto !important;
+  /* Enable interactions */
 }
 
 .space-nav-icons {
@@ -1740,16 +1743,11 @@ body {
 
 .leaderboard-section {
   flex: 1;
-  overflow-y: auto;
+  overflow: visible;
+  /* Remove scroll from this section - let parent handle it */
   padding: 0 0.5rem;
   min-height: 0;
   /* Important for proper flex scrolling */
-  -webkit-overflow-scrolling: touch;
-  /* Enable smooth touch scrolling */
-  scrollbar-width: none;
-  /* Firefox - hide scrollbar */
-  -ms-overflow-style: none;
-  /* IE and Edge - hide scrollbar */
 }
 
 /* Hide scrollbars for webkit browsers in leaderboard */
@@ -1837,15 +1835,8 @@ body {
   width: 100%;
   max-width: 500px;
   margin: 0 auto;
-  height: 100%;
-  overflow-y: auto;
   padding-bottom: 2rem;
-  scrollbar-width: none;
-  /* Firefox - hide scrollbar */
-  -ms-overflow-style: none;
-  /* IE and Edge - hide scrollbar */
-  -webkit-overflow-scrolling: touch;
-  /* Enable smooth touch scrolling */
+  /* Remove overflow-y auto to allow natural page scrolling */
 }
 
 /* Hide scrollbars for webkit browsers in tournament leaderboard */
@@ -2494,8 +2485,20 @@ body {
   backdrop-filter: blur(20px);
   position: relative;
   overflow: hidden;
-  transition: all 0.3s ease;
   box-shadow: 0 0 20px rgba(0, 245, 255, 0.1), 0 15px 35px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .tournament-info-box:hover {

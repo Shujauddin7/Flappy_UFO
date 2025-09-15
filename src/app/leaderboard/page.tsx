@@ -62,7 +62,6 @@ export default function LeaderboardPage() {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [shouldShowFixedCard, setShouldShowFixedCard] = useState(false);
     const [showPrizeBreakdown, setShowPrizeBreakdown] = useState(false); // Hidden by default
-    const [isInfoCardVisible, setIsInfoCardVisible] = useState(true); // Track info card visibility
 
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
         setCurrentUserRank(userRank);
@@ -73,52 +72,6 @@ export default function LeaderboardPage() {
         // Show fixed card only when user's actual card is NOT visible in viewport
         setShouldShowFixedCard(!isVisible && currentUserRank !== null);
     }, [currentUserRank]);
-
-    // Scroll-based visibility for info card - hide when scrolling away from top
-    useEffect(() => {
-        const handleScroll = (event: Event) => {
-            const target = event.target as HTMLElement;
-            const scrollTop = target.scrollTop;
-
-            // Hide info card immediately when any scroll happens (very low threshold)
-            setIsInfoCardVisible(scrollTop <= 5);
-        };
-
-        // The actual scrolling happens in .tournament-leaderboard, not .leaderboard-section
-        const findScrollContainer = () => {
-            const tournamentLeaderboard = document.querySelector('.tournament-leaderboard');
-            if (tournamentLeaderboard) {
-                return tournamentLeaderboard;
-            }
-            return null;
-        };
-
-        // Wait for the TournamentLeaderboard component to mount
-        const attachListener = () => {
-            const scrollContainer = findScrollContainer();
-            if (!scrollContainer) {
-                // If not found yet, try again after a short delay
-                setTimeout(attachListener, 50);
-                return;
-            }
-
-            console.log('Found scroll container:', scrollContainer.className);
-
-            // Set initial state
-            setIsInfoCardVisible(true);
-
-            // Add scroll listener
-            scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
-
-            // Return cleanup function
-            return () => {
-                scrollContainer.removeEventListener('scroll', handleScroll);
-            };
-        };
-
-        const cleanup = attachListener();
-        return cleanup || (() => { });
-    }, [currentTournament]); // Re-run when tournament data changes
 
     const calculatePrizeForRank = useCallback((rank: number, totalPrizePool: number): string | null => {
         if (rank > 10) return null;
@@ -448,68 +401,67 @@ export default function LeaderboardPage() {
                     {/* Keep only the tournament title here - no info box */}
                 </div>
 
-                <div className="leaderboard-section">
-                    {/* Tournament Info Box - visible when at top */}
-                    {isInfoCardVisible && (
-                        <div className="tournament-info-box">
-                            {/* Timer Box */}
-                            {timeRemaining && (
-                                <div className="countdown-timer">
-                                    ⚡ Tournament ends in {timeRemaining.timeLeft}
-                                </div>
-                            )}
-
-                            {/* Prize Pool Info */}
-                            <div className="prize-pool-info">
-                                <div className="prize-pool-text">
-                                    Prize pool: {prizePoolData?.prize_pool?.base_amount?.toFixed(2) || currentTournament.total_prize_pool.toFixed(2)} WLD
-                                </div>
-                                <div className="players-text">
-                                    {currentTournament.total_players} humans are playing to win the prize pool
-                                </div>
-                            </div>
-
-                            {/* Prize Info */}
-                            <div className="prize-info-box">
-                                <span className="prize-info-text">
-                                    When the game ends, the prize will be shared to the top winners
-                                </span>
-                                <button
-                                    className="prize-arrow-btn"
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setShowPrizeBreakdown(!showPrizeBreakdown);
-                                    }}
-                                    type="button"
-                                >
-                                    {showPrizeBreakdown ? '▲' : '▼'}
-                                </button>
-                            </div>
-
-                            {/* Prize Breakdown - Always Visible with 2 per row */}
-                            {showPrizeBreakdown && (
-                                <div className="prize-breakdown-grid">
-                                    <div className="prize-row">
-                                        <div className="prize-box">🥇 1st: 40%</div>
-                                        <div className="prize-box">🥈 2nd: 22%</div>
-                                    </div>
-                                    <div className="prize-row">
-                                        <div className="prize-box">🥉 3rd: 14%</div>
-                                        <div className="prize-box">🏆 4th: 6%</div>
-                                    </div>
-                                    <div className="prize-row">
-                                        <div className="prize-box">🏆 5th: 5%</div>
-                                        <div className="prize-box">🏆 6th: 4%</div>
-                                    </div>
-                                    <div className="prize-row">
-                                        <div className="prize-box">🏆 7th: 3%</div>
-                                        <div className="prize-box">🏆 8th-10th: 2% each</div>
-                                    </div>
-                                </div>
-                            )}
+                {/* Tournament Info Box - moved outside leaderboard-section for natural scrolling */}
+                <div className="tournament-info-box">
+                    {/* Timer Box */}
+                    {timeRemaining && (
+                        <div className="countdown-timer">
+                            ⚡ Tournament ends in {timeRemaining.timeLeft}
                         </div>
                     )}
+
+                    {/* Prize Pool Info */}
+                    <div className="prize-pool-info">
+                        <div className="prize-pool-text">
+                            Prize pool: {prizePoolData?.prize_pool?.base_amount?.toFixed(2) || currentTournament.total_prize_pool.toFixed(2)} WLD
+                        </div>
+                        <div className="players-text">
+                            {currentTournament.total_players} humans are playing to win the prize pool
+                        </div>
+                    </div>
+
+                    {/* Prize Info */}
+                    <div className="prize-info-box">
+                        <span className="prize-info-text">
+                            When the game ends, the prize will be shared to the top winners
+                        </span>
+                        <button
+                            className="prize-arrow-btn"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setShowPrizeBreakdown(!showPrizeBreakdown);
+                            }}
+                            type="button"
+                        >
+                            {showPrizeBreakdown ? '▲' : '▼'}
+                        </button>
+                    </div>
+
+                    {/* Prize Breakdown - Always Visible with 2 per row */}
+                    {showPrizeBreakdown && (
+                        <div className="prize-breakdown-grid">
+                            <div className="prize-row">
+                                <div className="prize-box">🥇 1st: 40%</div>
+                                <div className="prize-box">🥈 2nd: 22%</div>
+                            </div>
+                            <div className="prize-row">
+                                <div className="prize-box">🥉 3rd: 14%</div>
+                                <div className="prize-box">🏆 4th: 6%</div>
+                            </div>
+                            <div className="prize-row">
+                                <div className="prize-box">🏆 5th: 5%</div>
+                                <div className="prize-box">🏆 6th: 4%</div>
+                            </div>
+                            <div className="prize-row">
+                                <div className="prize-box">🏆 7th: 3%</div>
+                                <div className="prize-box">🏆 8th-10th: 2% each</div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <div className="leaderboard-section">
 
                     {/* Sticky Header Row for Leaderboard */}
                     <div className="leaderboard-header-row">
@@ -553,27 +505,27 @@ export default function LeaderboardPage() {
                         />
                     </div>
                 )}
-
-                {/* Navigation buttons */}
-                <div className="bottom-nav-container">
-                    <div className="space-nav-icons">
-                        <button
-                            className="space-nav-btn home-nav"
-                            onClick={() => window.location.href = '/'}
-                            aria-label="Launch Pad"
-                        >
-                            <div className="space-icon">🏠</div>
-                        </button>
-                        <button
-                            className="space-nav-btn prizes-nav"
-                            onClick={() => {/* Already on leaderboard - no action needed */ }}
-                            aria-label="Leaderboard"
-                        >
-                            <div className="space-icon">🏆</div>
-                        </button>
-                    </div>
-                </div>
             </Page.Main>
+
+            {/* Fixed Bottom Navigation - completely outside scrolling area */}
+            <div className="bottom-nav-container">
+                <div className="space-nav-icons">
+                    <button
+                        className="space-nav-btn home-nav"
+                        onClick={() => window.location.href = '/'}
+                        aria-label="Launch Pad"
+                    >
+                        <div className="space-icon">🏠</div>
+                    </button>
+                    <button
+                        className="space-nav-btn prizes-nav"
+                        onClick={() => {/* Already on leaderboard - no action needed */ }}
+                        aria-label="Leaderboard"
+                    >
+                        <div className="space-icon">🏆</div>
+                    </button>
+                </div>
+            </div>
         </Page>
     );
 }
