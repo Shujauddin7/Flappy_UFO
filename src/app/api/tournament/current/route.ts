@@ -4,13 +4,24 @@ import { getCached, setCached } from '@/lib/redis';
 
 export async function GET() {
     console.log('🔍 Current Tournament API called');
+    console.log('🌍 Environment:', process.env.NEXT_PUBLIC_ENV);
+    
+    const requestStartTime = Date.now();
 
     try {
         // 🚀 STEP 1: Check Redis cache first (5-second cache for tournament info)
         const cacheKey = 'tournament:current';
+        console.log('🔑 Cache key:', cacheKey);
+        
         const cachedData = await getCached(cacheKey);
+        console.log('📦 Redis cache result:', cachedData ? 'HIT' : 'MISS');
 
         if (cachedData) {
+            const responseTime = Date.now() - requestStartTime;
+            console.log('⚡ Tournament Cache Status: 🟢 CACHE HIT');
+            console.log(`⏱️  Response includes cached flag: true`);
+            console.log(`🚀 Response time: ${responseTime}ms (Redis cache)`);
+            
             // Return cached tournament data instantly
             return NextResponse.json({
                 ...cachedData,
@@ -18,6 +29,8 @@ export async function GET() {
                 cached_at: new Date().toISOString()
             });
         }
+        
+        console.log('📊 Tournament Cache Status: 🔴 DATABASE QUERY');
 
         // 🗄️ STEP 2: If no cache, fetch from database
         // Environment-specific database configuration (following Plan.md specification)
@@ -127,7 +140,13 @@ export async function GET() {
         };
 
         // 💾 STEP 3: Cache the tournament data for 5 seconds
+        console.log('💾 Caching tournament data for 5 seconds...');
         await setCached(cacheKey, responseData, 5);
+        console.log('✅ Tournament data cached successfully');
+        
+        const responseTime = Date.now() - requestStartTime;
+        console.log(`🚀 Total response time: ${responseTime}ms (Database + Redis cache)`);
+        console.log(`📊 Response includes cached flag: false`);
 
         return NextResponse.json(responseData);
 

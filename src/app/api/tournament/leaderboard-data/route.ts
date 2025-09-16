@@ -3,12 +3,24 @@ import { createClient } from '@supabase/supabase-js';
 import { getCached, setCached } from '@/lib/redis';
 
 export async function GET() {
+    const startTime = Date.now();
     try {
         // 🚀 STEP 1: Check Redis cache first (3-second cache)
+        console.log('🔍 Leaderboard API: Starting request...');
+        console.log('🌍 Environment:', process.env.NEXT_PUBLIC_ENV);
+        
         const cacheKey = 'tournament:leaderboard:current';
+        console.log('🔑 Cache key:', cacheKey);
+        
         const cachedData = await getCached(cacheKey);
-
+        console.log('📦 Redis cache result:', cachedData ? 'HIT' : 'MISS');
+        
         if (cachedData) {
+            const responseTime = Date.now() - startTime;
+            console.log('⚡ Leaderboard Cache Status: 🟢 CACHE HIT');
+            console.log(`⏱️  Response includes cached flag: true`);
+            console.log(`🚀 Response time: ${responseTime}ms (Redis cache)`);
+            
             // Return cached data instantly (5ms response from Mumbai Redis)
             return NextResponse.json({
                 ...cachedData,
@@ -16,6 +28,8 @@ export async function GET() {
                 cached_at: new Date().toISOString()
             });
         }
+        
+        console.log('📊 Leaderboard Cache Status: 🔴 DATABASE QUERY');
 
         // 🗄️ STEP 2: If no cache, fetch from database (your existing logic)
         // Environment-specific database configuration
@@ -24,10 +38,16 @@ export async function GET() {
         const supabaseServiceKey = isProduction ? process.env.SUPABASE_PROD_SERVICE_KEY : process.env.SUPABASE_DEV_SERVICE_KEY;
 
         if (!supabaseUrl || !supabaseServiceKey) {
+            console.error('❌ Missing database credentials:');
+            console.error('- URL:', supabaseUrl ? 'Present' : 'MISSING');
+            console.error('- Service Key:', supabaseServiceKey ? 'Present' : 'MISSING');
+            
             return NextResponse.json({
-                error: 'Server configuration error'
+                error: 'Server configuration error: Missing development database credentials'
             }, { status: 500 });
         }
+        
+        console.log('✅ Database credentials found, connecting to Supabase...');
 
         // Initialize Supabase client with service role key for full permissions
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -111,7 +131,13 @@ export async function GET() {
         };
 
         // 💾 STEP 3: Cache the fresh data for 3 seconds
+        console.log('💾 Caching leaderboard data for 3 seconds...');
         await setCached(cacheKey, responseData, 3);
+        console.log('✅ Data cached successfully');
+        
+        const responseTime = Date.now() - startTime;
+        console.log(`🚀 Total response time: ${responseTime}ms (Database + Redis cache)`);
+        console.log(`📊 Response includes cached flag: false`);
 
         return NextResponse.json(responseData);
 

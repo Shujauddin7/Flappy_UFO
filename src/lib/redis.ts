@@ -26,9 +26,14 @@ async function getRedisClient() {
     if (!RedisClass) return null;
 
     const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
+    console.log('🔧 Redis client request - Environment:', isProduction ? 'PROD' : 'DEV');
 
     if (isProduction) {
         if (!prodClient) {
+            console.log('🔑 Checking PROD Redis credentials...');
+            console.log('- UPSTASH_REDIS_PROD_URL:', process.env.UPSTASH_REDIS_PROD_URL ? 'Present' : 'MISSING');
+            console.log('- UPSTASH_REDIS_PROD_TOKEN:', process.env.UPSTASH_REDIS_PROD_TOKEN ? 'Present' : 'MISSING');
+            
             if (!process.env.UPSTASH_REDIS_PROD_URL || !process.env.UPSTASH_REDIS_PROD_TOKEN) {
                 console.warn('⚠️ Production Redis credentials missing');
                 return null;
@@ -42,6 +47,10 @@ async function getRedisClient() {
         return prodClient;
     } else {
         if (!devClient) {
+            console.log('🔑 Checking DEV Redis credentials...');
+            console.log('- UPSTASH_REDIS_DEV_URL:', process.env.UPSTASH_REDIS_DEV_URL ? 'Present' : 'MISSING');
+            console.log('- UPSTASH_REDIS_DEV_TOKEN:', process.env.UPSTASH_REDIS_DEV_TOKEN ? 'Present' : 'MISSING');
+            
             if (!process.env.UPSTASH_REDIS_DEV_URL || !process.env.UPSTASH_REDIS_DEV_TOKEN) {
                 console.warn('⚠️ Development Redis credentials missing');
                 return null;
