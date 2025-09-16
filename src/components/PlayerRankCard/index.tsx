@@ -43,6 +43,10 @@ export const PlayerRankCard: React.FC<PlayerRankCardProps> = ({
 
     const getDisplayName = () => {
         if (player.username) {
+            // Truncate long usernames to prevent layout issues
+            if (player.username.length > 15) {
+                return `${player.username.slice(0, 13)}...`;
+            }
             return player.username;
         }
         return formatWallet(player.wallet);
@@ -51,7 +55,7 @@ export const PlayerRankCard: React.FC<PlayerRankCardProps> = ({
     const getRankDisplay = () => {
         if (!player.rank) return '';
         if (player.rank <= 3) return getRankEmoji(player.rank);
-        return `#${player.rank}`;
+        return `${player.rank}`;
     };
 
     return (
@@ -64,18 +68,22 @@ export const PlayerRankCard: React.FC<PlayerRankCardProps> = ({
 
             <div className="player-info">
                 <div className="player-name">
-                    {getDisplayName()}
-                    {isCurrentUser && <span className="you-badge">YOU</span>}
+                    <span className="player-name-text">
+                        {getDisplayName()}
+                    </span>
                 </div>
+            </div>
+
+            <div className="score-section">
                 <div className="player-score">
-                    {player.highest_score.toLocaleString()} points
+                    {player.highest_score.toLocaleString()}
                 </div>
             </div>
 
             <div className="prize-section">
                 {prizeAmount ? (
-                    <div className="prize-amount">
-                        💎 {prizeAmount} WLD
+                    <div className="prize-amount highlighted-prize">
+                        {prizeAmount} WLD
                     </div>
                 ) : (
                     <div className="no-prize">

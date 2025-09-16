@@ -17,38 +17,48 @@ export async function GET() {
         // Initialize Supabase client with service role key for full permissions
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-        // Calculate tournament day using weekly tournament logic: Sunday 15:30 UTC boundary
-        const now = new Date();
-        const utcHour = now.getUTCHours();
-        const utcMinute = now.getUTCMinutes();
+        // Get current active tournament first to use its tournament_day
+        const { data: tournaments, error: tournamentError } = await supabase
+            .from('tournaments')
+            .select('*')
+            .eq('is_active', true)
+            .order('created_at', { ascending: false })
+            .limit(1);
 
-        // Tournament week starts at 15:30 UTC Sunday, so if it's before 15:30, use last week's Sunday
-        const tournamentDate = new Date(now);
-        if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
-            tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
+        if (tournamentError) {
+            console.error('Error fetching active tournament:', tournamentError);
+            return NextResponse.json({
+                error: 'Failed to fetch current tournament'
+            }, { status: 500 });
         }
 
-        // Get the Sunday of this week for tournament_day
-        const dayOfWeek = tournamentDate.getUTCDay(); // 0 = Sunday
-        const daysToSubtract = dayOfWeek; // Days since last Sunday
-        const tournamentSunday = new Date(tournamentDate);
-        tournamentSunday.setUTCDate(tournamentDate.getUTCDate() - daysToSubtract);
+        if (!tournaments || tournaments.length === 0) {
+            return NextResponse.json({
+                error: 'No active tournament found',
+                players: [],
+                tournament_day: null
+            });
+        }
 
-        const tournamentDay = tournamentSunday.toISOString().split('T')[0];
+        const currentTournament = tournaments[0];
+        const tournamentDay = currentTournament.tournament_day;
 
         // Debug: Log what tournament day we're fetching (development only)
         if (process.env.NODE_ENV === 'development') {
         }
 
-        // Fetch all players for this tournament, ordered by score
-        // Include players with zero scores as per user requirements - all scores should be shown
+        // Fetch all players for this tournament who have:
+        // 1. Actually PAID for entry (verified OR standard entry paid)
+        // 2. Have submitted at least one score (highest_score > 0)
+        // This prevents showing users with 0 scores before they submit their first game
         const { data: players, error } = await supabase
             .from('user_tournament_records')
             .select('*')
             .eq('tournament_day', tournamentDay)
-            .gte('highest_score', 0) // Include zero scores (changed from gt to gte)
+            .gt('highest_score', 0) // Only show users who have submitted scores
+            .or('verified_entry_paid.eq.true,standard_entry_paid.eq.true') // Only paid entries
             .order('highest_score', { ascending: false })
-            .order('created_at', { ascending: true }); // Tie-breaker: earlier submission wins
+            .order('first_game_at', { ascending: true }); // Tie-breaker: earlier first game wins
 
         if (error) {
             console.error('Error fetching leaderboard:', error);

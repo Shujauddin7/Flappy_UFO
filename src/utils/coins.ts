@@ -76,3 +76,10 @@ export function canContinue(): boolean {
 export function getCoins(): number {
     return loadCoins();
 }
+
+/**
+ * Reset coins to 0 (for sign out or account reset)
+ */
+export function resetCoins(): void {
+    saveCoins(0);
+}

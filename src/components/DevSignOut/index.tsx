@@ -2,6 +2,7 @@
 
 import { signOut } from 'next-auth/react';
 import { useSession } from 'next-auth/react';
+import { resetCoins } from '@/utils/coins';
 
 function DevSignOut() {
 
@@ -35,6 +36,8 @@ function DevSignOut() {
 
             // Per Plan.md: Only clear verification from database, NOT localStorage
             // localStorage should only contain Practice Mode coins with tamper protection
+            // However, on signout we should reset practice mode coins to 0
+            resetCoins();
 
             // Sign out without redirect to stay in the app
             await signOut({

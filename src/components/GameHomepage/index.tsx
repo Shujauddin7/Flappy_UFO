@@ -6,7 +6,7 @@ import { Page } from '@/components/PageLayout';
 import { useGameAuth } from '@/hooks/useGameAuth';
 import dynamic from 'next/dynamic';
 import { TournamentEntryModal } from '@/components/TournamentEntryModal';
-import { canContinue, spendCoins, getCoins } from '@/utils/coins';
+import { canContinue, spendCoins, getCoins, addCoins } from '@/utils/coins';
 
 // Dynamically import FlappyGame to avoid SSR issues
 const FlappyGame = dynamic(() => import('@/components/FlappyGame'), {
@@ -611,7 +611,7 @@ export default function GameHomepage() {
         }
         // Practice mode - update coins immediately  
         else if (gameMode === 'practice') {
-            spendCoins(-coins);
+            addCoins(coins);
         }
     };
 
@@ -1150,7 +1150,7 @@ export default function GameHomepage() {
                         <div className="space-nav-icons">
                             <button
                                 className="space-nav-btn home-nav"
-                                onClick={() => alert('Launch Pad - Home Base')}
+                                onClick={() => {/* Already on home page - no action needed */ }}
                                 aria-label="Launch Pad"
                             >
                                 <div className="space-icon">🏠</div>

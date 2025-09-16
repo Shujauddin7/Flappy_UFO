@@ -199,10 +199,6 @@ export const TournamentLeaderboard = ({
                 </div>
             )}
 
-            <div className="leaderboard-header">
-                <h3>🏆 TOP PLAYERS</h3>
-            </div>
-
             <div className="leaderboard-list">
                 {allPlayers.map((player) => {
                     // Check if this player is the current user using same matching logic as above
@@ -215,13 +211,14 @@ export const TournamentLeaderboard = ({
                         <div
                             key={player.id}
                             data-user-id={player.wallet}
+                            data-rank={player.rank}
                             className={isCurrentUser ? "current-user-card" : ""}
                         >
                             <PlayerRankCard
                                 player={player}
                                 prizeAmount={player.rank && player.rank <= 10 ? getPrizeAmount(player.rank, totalPrizePool) : null}
                                 isCurrentUser={Boolean(isCurrentUser)}
-                                isTopThree={player.rank !== undefined && player.rank <= 3}
+                                isTopThree={player.rank !== undefined && player.rank <= 10}
                             />
                         </div>
                     );

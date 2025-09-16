@@ -29,12 +29,13 @@ export async function GET() {
         const now = new Date();
         console.log('🗓️ Looking for active tournament at:', now.toISOString());
 
-        // Fetch current active tournament (simplified logic)
-        const { data: tournament, error: tournamentError } = await supabase
+        // Fetch current active tournament (get the most recent one if multiple exist)
+        const { data: tournaments, error: tournamentError } = await supabase
             .from('tournaments')
             .select('*')
             .eq('is_active', true)
-            .single();
+            .order('created_at', { ascending: false })
+            .limit(1);
 
         if (tournamentError) {
             console.log('❌ Tournament fetch error:', tournamentError);
@@ -44,7 +45,7 @@ export async function GET() {
             }, { status: 500 });
         }
 
-        if (!tournament) {
+        if (!tournaments || tournaments.length === 0) {
             return NextResponse.json({
                 error: 'No active tournament found',
                 debug_info: {
@@ -54,6 +55,8 @@ export async function GET() {
                 }
             }, { status: 404 });
         }
+
+        const tournament = tournaments[0]; // Get the most recent tournament
 
         // Calculate tournament status based on start and end times
         const startTime = new Date(tournament.start_time);

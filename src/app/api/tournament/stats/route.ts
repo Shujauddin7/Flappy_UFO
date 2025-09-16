@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
         }
 
 
-        // Get comprehensive tournament statistics
+        // Get comprehensive tournament statistics - only for users who have paid
         const { data: statsData, error: statsError } = await supabase
             .from('user_tournament_records')
             .select(`
@@ -58,9 +58,12 @@ export async function GET(req: NextRequest) {
                 unverified_games_played,
                 highest_score,
                 total_continues_used,
-                total_continue_payments
+                total_continue_payments,
+                verified_entry_paid,
+                standard_entry_paid
             `)
-            .eq('tournament_day', tournamentDay);
+            .eq('tournament_day', tournamentDay)
+            .or('verified_entry_paid.eq.true,standard_entry_paid.eq.true'); // Only paid entries
 
         if (statsError) {
             console.error('❌ Error fetching tournament stats:', statsError);

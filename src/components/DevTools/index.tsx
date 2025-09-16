@@ -2,6 +2,7 @@
 
 import { useSession, signOut } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
+import { resetCoins } from '@/utils/coins';
 import { Suspense } from 'react';
 
 interface ExtendedUser {
@@ -81,7 +82,10 @@ function DevToolsContent() {
                         })()}
                     </div>
                     <button
-                        onClick={() => signOut()}
+                        onClick={() => {
+                            resetCoins(); // Reset practice mode coins on signout
+                            signOut();
+                        }}
                         style={{
                             background: '#ff4444',
                             color: 'white',

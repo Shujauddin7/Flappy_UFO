@@ -1,7 +1,8 @@
 'use client';
 
+import React, { useState } from 'react';
 import { useSession, signOut } from 'next-auth/react';
-import { useState } from 'react';
+import { resetCoins } from '@/utils/coins';
 
 export const DevButtons = () => {
   const { data: session } = useSession();
@@ -15,6 +16,7 @@ export const DevButtons = () => {
 
   const handleSignOut = async () => {
     try {
+      resetCoins(); // Reset practice mode coins on signout
       await signOut({ redirect: false });
       setTestData(null);
       alert('Signed out successfully');
@@ -34,7 +36,7 @@ export const DevButtons = () => {
     try {
       const response = await fetch(`/api/users?wallet=${session.user.walletAddress}`);
       const result = await response.json();
-      
+
       if (response.ok) {
         setTestData(result.user);
         alert('User data loaded - check below!');
@@ -66,7 +68,7 @@ export const DevButtons = () => {
       <div style={{ color: '#00F5FF', fontSize: '12px', fontWeight: 'bold' }}>
         DEV MODE
       </div>
-      
+
       <button
         onClick={handleSignOut}
         disabled={!session}
