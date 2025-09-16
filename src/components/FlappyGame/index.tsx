@@ -165,29 +165,25 @@ export default function FlappyGame({
                 type: 'invisible-wall'
             });
 
-            // Add 1-2 moving planets INSIDE the gap (passable) with proper spacing
-            const movingPlanetCount = 1 + Math.floor(Math.random() * 2); // 1-2 planets
-            for (let i = 0; i < movingPlanetCount; i++) {
-                const movingPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
-                const planetSize = 25 + Math.random() * 10; // 25-35px - smaller planets to ensure passage
+            // Add only 1 moving planet INSIDE the gap (passable) with proper spacing
+            const movingPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
+            const planetSize = 30 + Math.random() * 10; // 30-40px - moderate size for visibility but passable
 
-                // Calculate safe position within gap with proper spacing
-                const safeGapHeight = gapSize - 40; // Leave 40px buffer (20px top + 20px bottom)
-                const planetSpacing = safeGapHeight / movingPlanetCount; // Divide remaining space evenly
-                const planetY = gapY + 20 + (i * planetSpacing) + Math.random() * 10 - 5; // Random variation within safe bounds
+            // Position planet in the center of the gap with safe margins
+            const planetX = pipeX + pipeWidth / 2 - planetSize / 2; // Center horizontally
+            const planetY = gapY + gapSize / 2 - planetSize / 2; // Center vertically
 
-                obstacles.push({
-                    x: pipeX + 20 + Math.random() * (pipeWidth - 40 - planetSize), // Random X position within pipe width
-                    y: Math.max(gapY + 20, Math.min(gapY + gapSize - planetSize - 20, planetY)), // Ensure within safe bounds
-                    width: planetSize,
-                    height: planetSize,
-                    type: 'planet',
-                    planetType: movingPlanet,
-                    moveSpeed: 0.3 + Math.random() * 0.4, // Much slower: 0.3-0.7 instead of 1.2-2.0
-                    moveDirection: Math.random() > 0.5 ? 1 : -1,
-                    baseY: Math.max(gapY + 20, Math.min(gapY + gapSize - planetSize - 20, planetY))
-                });
-            }
+            obstacles.push({
+                x: planetX,
+                y: planetY,
+                width: planetSize,
+                height: planetSize,
+                type: 'planet',
+                planetType: movingPlanet,
+                moveSpeed: 0.5 + Math.random() * 0.3, // 0.5-0.8 speed for visible movement
+                moveDirection: Math.random() > 0.5 ? 1 : -1,
+                baseY: planetY
+            });
         } else {
             // Normal pipes with varied barrier patterns
             const barrierTypes: ('energy' | 'asteroid-belt' | 'nebula' | 'debris' | 'laser')[] =
@@ -209,9 +205,10 @@ export default function FlappyGame({
             const planetRightEdge = planetCenterX + maxPlanetSize / 2;
             const planetBarrierWidth = maxPlanetSize;
 
-            // Calculate barrier height boundaries (vertical) - barriers should end at planet edges
-            const topBarrierEndY = topPlanetY + topPlanetSize; // End at bottom of top planet
-            const bottomBarrierStartY = bottomPlanetY; // Start at top of bottom planet
+            // Calculate barrier height boundaries (vertical) - barriers should have gap from planets
+            const BARRIER_PLANET_GAP = 15; // 15px gap between barriers and planets
+            const topBarrierEndY = topPlanetY - BARRIER_PLANET_GAP; // End 15px before top planet
+            const bottomBarrierStartY = bottomPlanetY + bottomPlanetSize + BARRIER_PLANET_GAP; // Start 15px after bottom planet
 
             // Create barriers based on selected type - constrained within planet boundaries
             if (selectedBarrierType === 'energy') {
