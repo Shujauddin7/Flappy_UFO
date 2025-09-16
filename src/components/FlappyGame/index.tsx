@@ -144,303 +144,216 @@ export default function FlappyGame({
         const pipeWidth = 70 + Math.random() * 20; // 70-90px wide
         const pipeX = x + Math.random() * 20 - 10; // Slight X variation
 
-        // Every 10 points: Create simple invisible pipe with moving planets inside the gap
-        const shouldAddInvisiblePipe = currentScore > 0 && currentScore % 10 === 0;
+        // Normal pipes with varied barrier patterns
+        const barrierTypes: ('energy' | 'asteroid-belt' | 'nebula' | 'debris' | 'laser')[] =
+            ['energy', 'asteroid-belt', 'nebula', 'debris', 'laser'];
+        const selectedBarrierType = barrierTypes[Math.floor((patternSeed + obstacleIndex * 17) % barrierTypes.length)];
 
-        if (shouldAddInvisiblePipe) {
-            // Simple invisible pipe barriers - same gap size as regular pipes
-            obstacles.push({
-                x: pipeX,
-                y: 0,
-                width: pipeWidth,
-                height: gapY - 5,
-                type: 'invisible-wall'
-            });
+        // Calculate planet sizes first to constrain barriers within planet boundaries
+        const topPlanetSize = 60 + Math.random() * 20;
+        const bottomPlanetSize = 60 + Math.random() * 20;
+        const planetCenterX = pipeX + pipeWidth / 2;
 
-            obstacles.push({
-                x: pipeX,
-                y: gapY + gapSize + 5,
-                width: pipeWidth,
-                height: canvasHeight - (gapY + gapSize + 5),
-                type: 'invisible-wall'
-            });
+        // Calculate planet positions
+        const topPlanetY = Math.max(20, gapY - topPlanetSize - 15);
+        const bottomPlanetY = Math.min(canvasHeight - bottomPlanetSize - 20, gapY + gapSize + 15);
 
-            // Add only 1 moving planet INSIDE the gap (passable) with proper spacing
-            const movingPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
-            const planetSize = 30 + Math.random() * 10; // 30-40px - moderate size for visibility but passable
+        // Calculate the maximum planet boundary for barriers (horizontal)
+        const maxPlanetSize = Math.max(topPlanetSize, bottomPlanetSize);
+        const planetLeftEdge = planetCenterX - maxPlanetSize / 2;
+        const planetRightEdge = planetCenterX + maxPlanetSize / 2;
+        const planetBarrierWidth = maxPlanetSize;
 
-            // Position planet in the center of the gap with safe margins
-            const planetX = pipeX + pipeWidth / 2 - planetSize / 2; // Center horizontally
-            const planetY = gapY + gapSize / 2 - planetSize / 2; // Center vertically
+        // Calculate barrier height boundaries (vertical) - barriers should have gap from planets
+        const BARRIER_PLANET_GAP = 15; // 15px gap between barriers and planets
+        const topBarrierEndY = topPlanetY - BARRIER_PLANET_GAP; // End 15px before top planet
+        const bottomBarrierStartY = bottomPlanetY + bottomPlanetSize + BARRIER_PLANET_GAP; // Start 15px after bottom planet
 
-            obstacles.push({
-                x: planetX,
-                y: planetY,
-                width: planetSize,
-                height: planetSize,
-                type: 'planet',
-                planetType: movingPlanet,
-                moveSpeed: 0.5 + Math.random() * 0.3, // 0.5-0.8 speed for visible movement
-                moveDirection: Math.random() > 0.5 ? 1 : -1,
-                baseY: planetY
-            });
-        } else {
-            // Normal pipes with varied barrier patterns
-            const barrierTypes: ('energy' | 'asteroid-belt' | 'nebula' | 'debris' | 'laser')[] =
-                ['energy', 'asteroid-belt', 'nebula', 'debris', 'laser'];
-            const selectedBarrierType = barrierTypes[Math.floor((patternSeed + obstacleIndex * 17) % barrierTypes.length)];
+        // Create barriers based on selected type - constrained within planet boundaries
+        if (selectedBarrierType === 'energy') {
+            // Energy barriers - vertical blue energy beams within planet boundary
+            for (let i = 0; i < 3; i++) {
+                const beamX = planetLeftEdge + (i * (planetBarrierWidth / 4)) + (planetBarrierWidth / 8); // Center beams within planet
 
-            // Calculate planet sizes first to constrain barriers within planet boundaries
-            const topPlanetSize = 60 + Math.random() * 20;
-            const bottomPlanetSize = 60 + Math.random() * 20;
-            const planetCenterX = pipeX + pipeWidth / 2;
+                // Top barrier - from screen top to top planet bottom
+                obstacles.push({
+                    x: beamX,
+                    y: 0,
+                    width: 6,
+                    height: topBarrierEndY,
+                    type: 'energy-barrier',
+                    barrierType: 'energy',
+                    animationPhase: Math.random() * Math.PI * 2
+                });
 
-            // Calculate planet positions
-            const topPlanetY = Math.max(20, gapY - topPlanetSize - 15);
-            const bottomPlanetY = Math.min(canvasHeight - bottomPlanetSize - 20, gapY + gapSize + 15);
+                // Bottom barrier - from bottom planet top to screen bottom
+                obstacles.push({
+                    x: beamX,
+                    y: bottomBarrierStartY,
+                    width: 6,
+                    height: canvasHeight - bottomBarrierStartY,
+                    type: 'energy-barrier',
+                    barrierType: 'energy',
+                    animationPhase: Math.random() * Math.PI * 2
+                });
+            }
+        } else if (selectedBarrierType === 'asteroid-belt') {
+            // Asteroid belt - scattered small asteroids within planet boundary
+            const asteroidCount = Math.floor(planetBarrierWidth / 25);
+            for (let i = 0; i < asteroidCount; i++) {
+                const asteroidX = planetLeftEdge + (i * 25) + Math.random() * 10 - 5;
 
-            // Calculate the maximum planet boundary for barriers (horizontal)
-            const maxPlanetSize = Math.max(topPlanetSize, bottomPlanetSize);
-            const planetLeftEdge = planetCenterX - maxPlanetSize / 2;
-            const planetRightEdge = planetCenterX + maxPlanetSize / 2;
-            const planetBarrierWidth = maxPlanetSize;
-
-            // Calculate barrier height boundaries (vertical) - barriers should have gap from planets
-            const BARRIER_PLANET_GAP = 15; // 15px gap between barriers and planets
-            const topBarrierEndY = topPlanetY - BARRIER_PLANET_GAP; // End 15px before top planet
-            const bottomBarrierStartY = bottomPlanetY + bottomPlanetSize + BARRIER_PLANET_GAP; // Start 15px after bottom planet
-
-            // Create barriers based on selected type - constrained within planet boundaries
-            if (selectedBarrierType === 'energy') {
-                // Energy barriers - vertical blue energy beams within planet boundary
-                for (let i = 0; i < 3; i++) {
-                    const beamX = planetLeftEdge + (i * (planetBarrierWidth / 3));
-
-                    // Top barrier - from screen top to top planet bottom
+                // Top asteroid belt - from screen top to top planet bottom
+                for (let j = 0; j < Math.floor(topBarrierEndY / 35); j++) {
                     obstacles.push({
-                        x: beamX,
-                        y: 0,
-                        width: 6,
-                        height: topBarrierEndY,
-                        type: 'energy-barrier',
-                        barrierType: 'energy',
-                        animationPhase: Math.random() * Math.PI * 2
-                    });
-
-                    // Bottom barrier - from bottom planet top to screen bottom
-                    obstacles.push({
-                        x: beamX,
-                        y: bottomBarrierStartY,
-                        width: 6,
-                        height: canvasHeight - bottomBarrierStartY,
-                        type: 'energy-barrier',
-                        barrierType: 'energy',
+                        x: Math.max(planetLeftEdge, Math.min(planetRightEdge - 12, asteroidX + Math.random() * 8 - 4)),
+                        y: j * 35 + Math.random() * 8 - 4,
+                        width: 12 + Math.random() * 8,
+                        height: 12 + Math.random() * 8,
+                        type: 'asteroid-chunk',
+                        barrierType: 'asteroid-belt',
                         animationPhase: Math.random() * Math.PI * 2
                     });
                 }
-            } else if (selectedBarrierType === 'asteroid-belt') {
-                // Asteroid belt - scattered small asteroids within planet boundary
-                const asteroidCount = Math.floor(planetBarrierWidth / 25);
-                for (let i = 0; i < asteroidCount; i++) {
-                    const asteroidX = planetLeftEdge + (i * 25) + Math.random() * 10 - 5;
 
-                    // Top asteroid belt - from screen top to top planet bottom
-                    for (let j = 0; j < Math.floor(topBarrierEndY / 35); j++) {
-                        obstacles.push({
-                            x: Math.max(planetLeftEdge, Math.min(planetRightEdge - 12, asteroidX + Math.random() * 8 - 4)),
-                            y: j * 35 + Math.random() * 8 - 4,
-                            width: 12 + Math.random() * 8,
-                            height: 12 + Math.random() * 8,
-                            type: 'asteroid-chunk',
-                            barrierType: 'asteroid-belt',
-                            animationPhase: Math.random() * Math.PI * 2
-                        });
-                    }
-
-                    // Bottom asteroid belt - from bottom planet top to screen bottom
-                    for (let j = 0; j < Math.floor((canvasHeight - bottomBarrierStartY) / 35); j++) {
-                        obstacles.push({
-                            x: Math.max(planetLeftEdge, Math.min(planetRightEdge - 12, asteroidX + Math.random() * 8 - 4)),
-                            y: bottomBarrierStartY + (j * 35) + Math.random() * 8 - 4,
-                            width: 12 + Math.random() * 8,
-                            height: 12 + Math.random() * 8,
-                            type: 'asteroid-chunk',
-                            barrierType: 'asteroid-belt',
-                            animationPhase: Math.random() * Math.PI * 2
-                        });
-                    }
-                }
-            } else if (selectedBarrierType === 'nebula') {
-                // Nebula clouds - colorful gas clouds within planet boundary
-                const cloudCount = 3 + Math.floor(Math.random() * 2);
-                for (let i = 0; i < cloudCount; i++) {
-                    const cloudX = planetLeftEdge + (i * (planetBarrierWidth / cloudCount)) + Math.random() * 15 - 7;
-
-                    // Top nebula clouds - from screen top to top planet bottom
-                    for (let j = 0; j < Math.floor(topBarrierEndY / 40); j++) {
-                        obstacles.push({
-                            x: Math.max(planetLeftEdge, Math.min(planetRightEdge - 25, cloudX + Math.random() * 20 - 10)),
-                            y: j * 40 + Math.random() * 15 - 7,
-                            width: 25 + Math.random() * 15,
-                            height: 25 + Math.random() * 15,
-                            type: 'nebula-cloud',
-                            barrierType: 'nebula',
-                            animationPhase: Math.random() * Math.PI * 2,
-                            glowIntensity: 0.5 + Math.random() * 0.3
-                        });
-                    }
-
-                    // Bottom nebula clouds - from bottom planet top to screen bottom
-                    for (let j = 0; j < Math.floor((canvasHeight - bottomBarrierStartY) / 40); j++) {
-                        obstacles.push({
-                            x: Math.max(planetLeftEdge, Math.min(planetRightEdge - 25, cloudX + Math.random() * 20 - 10)),
-                            y: bottomBarrierStartY + (j * 40) + Math.random() * 15 - 7,
-                            width: 25 + Math.random() * 15,
-                            height: 25 + Math.random() * 15,
-                            type: 'nebula-cloud',
-                            barrierType: 'nebula',
-                            animationPhase: Math.random() * Math.PI * 2,
-                            glowIntensity: 0.5 + Math.random() * 0.3
-                        });
-                    }
-                }
-            } else if (selectedBarrierType === 'debris') {
-                // Space debris - satellites and space junk within planet boundary
-                const debrisCount = Math.floor(planetBarrierWidth / 30);
-                for (let i = 0; i < debrisCount; i++) {
-                    const debrisX = planetLeftEdge + (i * 30) + Math.random() * 12 - 6;
-
-                    // Top debris field - from screen top to top planet bottom
-                    for (let j = 0; j < Math.floor(topBarrierEndY / 45); j++) {
-                        obstacles.push({
-                            x: Math.max(planetLeftEdge, Math.min(planetRightEdge - 15, debrisX + Math.random() * 10 - 5)),
-                            y: j * 45 + Math.random() * 10 - 5,
-                            width: 15 + Math.random() * 10,
-                            height: 10 + Math.random() * 8,
-                            type: 'space-debris',
-                            barrierType: 'debris',
-                            animationPhase: Math.random() * Math.PI * 2
-                        });
-                    }
-
-                    // Bottom debris field - from bottom planet top to screen bottom
-                    for (let j = 0; j < Math.floor((canvasHeight - bottomBarrierStartY) / 45); j++) {
-                        obstacles.push({
-                            x: Math.max(planetLeftEdge, Math.min(planetRightEdge - 15, debrisX + Math.random() * 10 - 5)),
-                            y: bottomBarrierStartY + (j * 45) + Math.random() * 10 - 5,
-                            width: 15 + Math.random() * 10,
-                            height: 10 + Math.random() * 8,
-                            type: 'space-debris',
-                            barrierType: 'debris',
-                            animationPhase: Math.random() * Math.PI * 2
-                        });
-                    }
-                }
-            } else if (selectedBarrierType === 'laser') {
-                // Laser grid - thin red laser lines within planet boundary
-                const laserLines = Math.min(6, Math.floor(planetBarrierWidth / 10)) + Math.floor(Math.random() * 3);
-                for (let i = 0; i < laserLines; i++) {
-                    const laserX = planetLeftEdge + (i * (planetBarrierWidth / laserLines));
-
-                    // Top laser grid - from screen top to top planet bottom
+                // Bottom asteroid belt - from bottom planet top to screen bottom
+                for (let j = 0; j < Math.floor((canvasHeight - bottomBarrierStartY) / 35); j++) {
                     obstacles.push({
-                        x: laserX,
-                        y: 0,
-                        width: 2,
-                        height: topBarrierEndY,
-                        type: 'laser-grid',
-                        barrierType: 'laser',
-                        animationPhase: Math.random() * Math.PI * 2
-                    });
-
-                    // Bottom laser grid - from bottom planet top to screen bottom
-                    obstacles.push({
-                        x: laserX,
-                        y: bottomBarrierStartY,
-                        width: 2,
-                        height: canvasHeight - bottomBarrierStartY,
-                        type: 'laser-grid',
-                        barrierType: 'laser',
+                        x: Math.max(planetLeftEdge, Math.min(planetRightEdge - 12, asteroidX + Math.random() * 8 - 4)),
+                        y: bottomBarrierStartY + (j * 35) + Math.random() * 8 - 4,
+                        width: 12 + Math.random() * 8,
+                        height: 12 + Math.random() * 8,
+                        type: 'asteroid-chunk',
+                        barrierType: 'asteroid-belt',
                         animationPhase: Math.random() * Math.PI * 2
                     });
                 }
             }
+        } else if (selectedBarrierType === 'nebula') {
+            // Nebula clouds - colorful gas clouds within planet boundary
+            const cloudCount = 3 + Math.floor(Math.random() * 2);
+            for (let i = 0; i < cloudCount; i++) {
+                const cloudX = planetLeftEdge + (i * (planetBarrierWidth / cloudCount)) + Math.random() * 15 - 7;
 
-            // Add planets with barriers
-            const topPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
-            const bottomPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
+                // Top nebula clouds - from screen top to top planet bottom
+                for (let j = 0; j < Math.floor(topBarrierEndY / 40); j++) {
+                    obstacles.push({
+                        x: Math.max(planetLeftEdge, Math.min(planetRightEdge - 25, cloudX + Math.random() * 20 - 10)),
+                        y: j * 40 + Math.random() * 15 - 7,
+                        width: 25 + Math.random() * 15,
+                        height: 25 + Math.random() * 15,
+                        type: 'nebula-cloud',
+                        barrierType: 'nebula',
+                        animationPhase: Math.random() * Math.PI * 2,
+                        glowIntensity: 0.5 + Math.random() * 0.3
+                    });
+                }
 
-            // Top planet
-            obstacles.push({
-                x: planetCenterX - topPlanetSize / 2,
-                y: topPlanetY,
-                width: topPlanetSize,
-                height: topPlanetSize,
-                type: 'planet',
-                planetType: topPlanet,
-                moveSpeed: Math.random() > 0.8 ? 0.4 + Math.random() * 0.4 : 0,
-                moveDirection: Math.random() > 0.5 ? 1 : -1,
-                baseY: topPlanetY
-            });
+                // Bottom nebula clouds - from bottom planet top to screen bottom
+                for (let j = 0; j < Math.floor((canvasHeight - bottomBarrierStartY) / 40); j++) {
+                    obstacles.push({
+                        x: Math.max(planetLeftEdge, Math.min(planetRightEdge - 25, cloudX + Math.random() * 20 - 10)),
+                        y: bottomBarrierStartY + (j * 40) + Math.random() * 15 - 7,
+                        width: 25 + Math.random() * 15,
+                        height: 25 + Math.random() * 15,
+                        type: 'nebula-cloud',
+                        barrierType: 'nebula',
+                        animationPhase: Math.random() * Math.PI * 2,
+                        glowIntensity: 0.5 + Math.random() * 0.3
+                    });
+                }
+            }
+        } else if (selectedBarrierType === 'debris') {
+            // Space debris - satellites and space junk within planet boundary
+            const debrisCount = Math.floor(planetBarrierWidth / 30);
+            for (let i = 0; i < debrisCount; i++) {
+                const debrisX = planetLeftEdge + (i * 30) + Math.random() * 12 - 6;
 
-            // Bottom planet
-            obstacles.push({
-                x: planetCenterX - bottomPlanetSize / 2,
-                y: bottomPlanetY,
-                width: bottomPlanetSize,
-                height: bottomPlanetSize,
-                type: 'planet',
-                planetType: bottomPlanet,
-                moveSpeed: Math.random() > 0.8 ? 0.4 + Math.random() * 0.4 : 0,
-                moveDirection: Math.random() > 0.5 ? 1 : -1,
-                baseY: bottomPlanetY
-            });
-        }
+                // Top debris field - from screen top to top planet bottom
+                for (let j = 0; j < Math.floor(topBarrierEndY / 45); j++) {
+                    obstacles.push({
+                        x: Math.max(planetLeftEdge, Math.min(planetRightEdge - 15, debrisX + Math.random() * 10 - 5)),
+                        y: j * 45 + Math.random() * 10 - 5,
+                        width: 15 + Math.random() * 10,
+                        height: 10 + Math.random() * 8,
+                        type: 'space-debris',
+                        barrierType: 'debris',
+                        animationPhase: Math.random() * Math.PI * 2
+                    });
+                }
 
-        // Add special random objects only after 40 points, at intervals that don't conflict with invisible pipes
-        // Invisible pipes: 10, 20, 30, 40, 50, 60, 70, 80, 90, 100...
-        // Random objects: 45, 55, 65, 75, 85, 95, 105... (every 10 points starting from 45)
-        const shouldAddRandomObject = currentScore >= 45 && (currentScore - 45) % 10 === 0;
+                // Bottom debris field - from bottom planet top to screen bottom
+                for (let j = 0; j < Math.floor((canvasHeight - bottomBarrierStartY) / 45); j++) {
+                    obstacles.push({
+                        x: Math.max(planetLeftEdge, Math.min(planetRightEdge - 15, debrisX + Math.random() * 10 - 5)),
+                        y: bottomBarrierStartY + (j * 45) + Math.random() * 10 - 5,
+                        width: 15 + Math.random() * 10,
+                        height: 10 + Math.random() * 8,
+                        type: 'space-debris',
+                        barrierType: 'debris',
+                        animationPhase: Math.random() * Math.PI * 2
+                    });
+                }
+            }
+        } else if (selectedBarrierType === 'laser') {
+            // Laser grid - thin red laser lines within planet boundary
+            const laserLines = Math.min(6, Math.floor(planetBarrierWidth / 10)) + Math.floor(Math.random() * 3);
+            for (let i = 0; i < laserLines; i++) {
+                const laserX = planetLeftEdge + (i * (planetBarrierWidth / (laserLines + 1))) + (planetBarrierWidth / (laserLines + 1)); // Evenly space within planet
 
-        if (shouldAddRandomObject) { // No need to check invisible pipe since they're at different intervals
-            // Add 1 special object positioned safely away from main pipe
-            const objectType = Math.random() > 0.7 ? 'asteroid' : 'special-planet';
-
-            if (objectType === 'asteroid') {
-                const asteroidSize = 35 + Math.random() * 20;
-                const asteroidX = pipeX + (Math.random() > 0.5 ? 150 + Math.random() * 50 : -150 - Math.random() * 50);
-                const asteroidY = 100 + Math.random() * (canvasHeight - 200);
-
+                // Top laser grid - from screen top to top planet bottom
                 obstacles.push({
-                    x: asteroidX,
-                    y: asteroidY,
-                    width: asteroidSize,
-                    height: asteroidSize,
-                    type: 'asteroid',
-                    moveSpeed: 1.0 + Math.random() * 1.0,
-                    moveDirection: Math.random() > 0.5 ? 1 : -1,
-                    baseY: asteroidY
+                    x: laserX,
+                    y: 0,
+                    width: 2,
+                    height: topBarrierEndY,
+                    type: 'laser-grid',
+                    barrierType: 'laser',
+                    animationPhase: Math.random() * Math.PI * 2
                 });
-            } else if (objectType === 'special-planet') {
-                // Add a single random planet positioned away from main pipe
-                const specialPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
-                const planetSize = 45 + Math.random() * 25; // 45-70px size
-                const planetX = pipeX + (Math.random() > 0.5 ? 120 + Math.random() * 80 : -120 - Math.random() * 80);
-                const planetY = 80 + Math.random() * (canvasHeight - 160);
 
+                // Bottom laser grid - from bottom planet top to screen bottom
                 obstacles.push({
-                    x: planetX,
-                    y: planetY,
-                    width: planetSize,
-                    height: planetSize,
-                    type: 'planet',
-                    planetType: specialPlanet,
-                    moveSpeed: 0.5 + Math.random() * 0.8, // Moderate movement speed
-                    moveDirection: Math.random() > 0.5 ? 1 : -1,
-                    baseY: planetY
+                    x: laserX,
+                    y: bottomBarrierStartY,
+                    width: 2,
+                    height: canvasHeight - bottomBarrierStartY,
+                    type: 'laser-grid',
+                    barrierType: 'laser',
+                    animationPhase: Math.random() * Math.PI * 2
                 });
             }
         }
+
+        // Add planets with barriers
+        const topPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
+        const bottomPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
+
+        // Top planet
+        obstacles.push({
+            x: planetCenterX - topPlanetSize / 2,
+            y: topPlanetY,
+            width: topPlanetSize,
+            height: topPlanetSize,
+            type: 'planet',
+            planetType: topPlanet,
+            moveSpeed: Math.random() > 0.8 ? 0.4 + Math.random() * 0.4 : 0,
+            moveDirection: Math.random() > 0.5 ? 1 : -1,
+            baseY: topPlanetY
+        });
+
+        // Bottom planet
+        obstacles.push({
+            x: planetCenterX - bottomPlanetSize / 2,
+            y: bottomPlanetY,
+            width: bottomPlanetSize,
+            height: bottomPlanetSize,
+            type: 'planet',
+            planetType: bottomPlanet,
+            moveSpeed: Math.random() > 0.8 ? 0.4 + Math.random() * 0.4 : 0,
+            moveDirection: Math.random() > 0.5 ? 1 : -1,
+            baseY: bottomPlanetY
+        });
 
         // Coin in the gap for bonus (sometimes)
         if (Math.random() > 0.3) {
