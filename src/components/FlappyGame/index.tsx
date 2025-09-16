@@ -9,12 +9,16 @@ interface GameObject {
     y: number;
     width: number;
     height: number;
-    type: 'planet' | 'coin' | 'trigger' | 'invisible-wall' | 'asteroid' | 'dust-particle';
+    type: 'planet' | 'coin' | 'trigger' | 'invisible-wall' | 'asteroid' | 'dust-particle' | 'energy-barrier' | 'asteroid-chunk' | 'nebula-cloud' | 'space-debris' | 'laser-grid';
     planetType?: string;
+    barrierType?: 'energy' | 'asteroid-belt' | 'nebula' | 'debris' | 'laser';
     scored?: boolean;
     moveSpeed?: number;
     moveDirection?: number;
     baseY?: number;
+    // For animated effects
+    animationPhase?: number;
+    glowIntensity?: number;
 }
 
 interface UFO {
@@ -130,32 +134,171 @@ export default function FlappyGame({
         const pipeWidth = 70 + Math.random() * 20; // 70-90px wide
         const pipeX = x + Math.random() * 20 - 10; // Slight X variation
 
-        // Create visible space dust barriers instead of invisible walls
-        // Top dust barrier
-        const dustParticleCount = Math.floor(pipeWidth / 8); // Number of dust particles based on width
-        for (let i = 0; i < dustParticleCount; i++) {
-            for (let j = 0; j < Math.floor((gapY - 5) / 12); j++) {
+        // Randomly select one of 5 barrier types for this obstacle set
+        const barrierTypes: ('energy' | 'asteroid-belt' | 'nebula' | 'debris' | 'laser')[] =
+            ['energy', 'asteroid-belt', 'nebula', 'debris', 'laser'];
+        const selectedBarrierType = barrierTypes[Math.floor(Math.random() * barrierTypes.length)];
+
+        // Create dynamic barriers based on selected type
+        if (selectedBarrierType === 'energy') {
+            // Energy Barriers - glowing vertical energy beams
+            const beamCount = 3 + Math.floor(Math.random() * 3); // 3-5 energy beams
+            for (let i = 0; i < beamCount; i++) {
+                const beamX = pipeX + (i * (pipeWidth / beamCount)) + Math.random() * 10 - 5;
+
+                // Top energy barrier
                 obstacles.push({
-                    x: pipeX + (i * 8) + Math.random() * 4 - 2, // Slight random offset
-                    y: j * 12 + Math.random() * 4 - 2,
-                    width: 4 + Math.random() * 3, // Small dust particles 4-7px
-                    height: 4 + Math.random() * 3,
-                    type: 'dust-particle'
+                    x: beamX,
+                    y: 0,
+                    width: 8,
+                    height: gapY - 5,
+                    type: 'energy-barrier',
+                    barrierType: 'energy',
+                    animationPhase: Math.random() * Math.PI * 2,
+                    glowIntensity: 0.7 + Math.random() * 0.3
+                });
+
+                // Bottom energy barrier
+                obstacles.push({
+                    x: beamX,
+                    y: gapY + gapSize + 5,
+                    width: 8,
+                    height: canvasHeight - (gapY + gapSize + 5),
+                    type: 'energy-barrier',
+                    barrierType: 'energy',
+                    animationPhase: Math.random() * Math.PI * 2,
+                    glowIntensity: 0.7 + Math.random() * 0.3
                 });
             }
-        }
+        } else if (selectedBarrierType === 'asteroid-belt') {
+            // Asteroid Belt - larger spaced asteroid chunks
+            const asteroidCount = Math.floor(pipeWidth / 25); // Spaced out asteroids
+            for (let i = 0; i < asteroidCount; i++) {
+                const asteroidX = pipeX + (i * 25) + Math.random() * 10 - 5;
 
-        // Bottom dust barrier
-        for (let i = 0; i < dustParticleCount; i++) {
-            const startY = gapY + gapSize + 5;
-            const endY = canvasHeight;
-            for (let j = 0; j < Math.floor((endY - startY) / 12); j++) {
+                // Top asteroid belt
+                for (let j = 0; j < Math.floor((gapY - 5) / 35); j++) {
+                    obstacles.push({
+                        x: asteroidX + Math.random() * 8 - 4,
+                        y: j * 35 + Math.random() * 8 - 4,
+                        width: 12 + Math.random() * 8,
+                        height: 12 + Math.random() * 8,
+                        type: 'asteroid-chunk',
+                        barrierType: 'asteroid-belt',
+                        animationPhase: Math.random() * Math.PI * 2
+                    });
+                }
+
+                // Bottom asteroid belt
+                const startY = gapY + gapSize + 5;
+                for (let j = 0; j < Math.floor((canvasHeight - startY) / 35); j++) {
+                    obstacles.push({
+                        x: asteroidX + Math.random() * 8 - 4,
+                        y: startY + (j * 35) + Math.random() * 8 - 4,
+                        width: 12 + Math.random() * 8,
+                        height: 12 + Math.random() * 8,
+                        type: 'asteroid-chunk',
+                        barrierType: 'asteroid-belt',
+                        animationPhase: Math.random() * Math.PI * 2
+                    });
+                }
+            }
+        } else if (selectedBarrierType === 'nebula') {
+            // Nebula Clouds - soft gaseous barriers
+            const cloudCount = 4 + Math.floor(Math.random() * 3); // 4-6 cloud patches
+            for (let i = 0; i < cloudCount; i++) {
+                const cloudX = pipeX + (i * (pipeWidth / cloudCount)) + Math.random() * 15 - 7;
+
+                // Top nebula clouds
+                for (let j = 0; j < Math.floor((gapY - 5) / 40); j++) {
+                    obstacles.push({
+                        x: cloudX + Math.random() * 20 - 10,
+                        y: j * 40 + Math.random() * 15 - 7,
+                        width: 25 + Math.random() * 15,
+                        height: 25 + Math.random() * 15,
+                        type: 'nebula-cloud',
+                        barrierType: 'nebula',
+                        animationPhase: Math.random() * Math.PI * 2,
+                        glowIntensity: 0.5 + Math.random() * 0.3
+                    });
+                }
+
+                // Bottom nebula clouds
+                const startY = gapY + gapSize + 5;
+                for (let j = 0; j < Math.floor((canvasHeight - startY) / 40); j++) {
+                    obstacles.push({
+                        x: cloudX + Math.random() * 20 - 10,
+                        y: startY + (j * 40) + Math.random() * 15 - 7,
+                        width: 25 + Math.random() * 15,
+                        height: 25 + Math.random() * 15,
+                        type: 'nebula-cloud',
+                        barrierType: 'nebula',
+                        animationPhase: Math.random() * Math.PI * 2,
+                        glowIntensity: 0.5 + Math.random() * 0.3
+                    });
+                }
+            }
+        } else if (selectedBarrierType === 'debris') {
+            // Space Debris - satellites and space junk
+            const debrisCount = Math.floor(pipeWidth / 30); // Spaced debris
+            for (let i = 0; i < debrisCount; i++) {
+                const debrisX = pipeX + (i * 30) + Math.random() * 12 - 6;
+
+                // Top debris field
+                for (let j = 0; j < Math.floor((gapY - 5) / 45); j++) {
+                    obstacles.push({
+                        x: debrisX + Math.random() * 10 - 5,
+                        y: j * 45 + Math.random() * 10 - 5,
+                        width: 15 + Math.random() * 10,
+                        height: 10 + Math.random() * 8,
+                        type: 'space-debris',
+                        barrierType: 'debris',
+                        animationPhase: Math.random() * Math.PI * 2
+                    });
+                }
+
+                // Bottom debris field
+                const startY = gapY + gapSize + 5;
+                for (let j = 0; j < Math.floor((canvasHeight - startY) / 45); j++) {
+                    obstacles.push({
+                        x: debrisX + Math.random() * 10 - 5,
+                        y: startY + (j * 45) + Math.random() * 10 - 5,
+                        width: 15 + Math.random() * 10,
+                        height: 10 + Math.random() * 8,
+                        type: 'space-debris',
+                        barrierType: 'debris',
+                        animationPhase: Math.random() * Math.PI * 2
+                    });
+                }
+            }
+        } else if (selectedBarrierType === 'laser') {
+            // Laser Grid - thin intersecting laser lines
+            const laserLines = 6 + Math.floor(Math.random() * 4); // 6-9 laser lines
+            for (let i = 0; i < laserLines; i++) {
+                const laserX = pipeX + (i * (pipeWidth / laserLines));
+
+                // Top laser grid
                 obstacles.push({
-                    x: pipeX + (i * 8) + Math.random() * 4 - 2,
-                    y: startY + (j * 12) + Math.random() * 4 - 2,
-                    width: 4 + Math.random() * 3, // Small dust particles 4-7px
-                    height: 4 + Math.random() * 3,
-                    type: 'dust-particle'
+                    x: laserX,
+                    y: 0,
+                    width: 3,
+                    height: gapY - 5,
+                    type: 'laser-grid',
+                    barrierType: 'laser',
+                    animationPhase: Math.random() * Math.PI * 2,
+                    glowIntensity: 0.8 + Math.random() * 0.2
+                });
+
+                // Bottom laser grid
+                obstacles.push({
+                    x: laserX,
+                    y: gapY + gapSize + 5,
+                    width: 3,
+                    height: canvasHeight - (gapY + gapSize + 5),
+                    type: 'laser-grid',
+                    barrierType: 'laser',
+                    animationPhase: Math.random() * Math.PI * 2,
+                    glowIntensity: 0.8 + Math.random() * 0.2
                 });
             }
         }
@@ -376,6 +519,34 @@ export default function FlappyGame({
                     ufo.y + 35 > obstacle.y) {
 
                     return true; // Collision with dust particle
+                }
+            } else if (obstacle.type === 'energy-barrier' || obstacle.type === 'laser-grid') {
+                // Energy barriers and laser grids - precise collision
+                if (ufo.x + 20 < obstacle.x + obstacle.width &&
+                    ufo.x + 40 > obstacle.x &&
+                    ufo.y + 20 < obstacle.y + obstacle.height &&
+                    ufo.y + 40 > obstacle.y) {
+
+                    return true; // Collision with energy/laser barrier
+                }
+            } else if (obstacle.type === 'asteroid-chunk' || obstacle.type === 'space-debris') {
+                // Asteroid chunks and space debris - circular collision
+                const distance = Math.sqrt(
+                    Math.pow((ufo.x + 30) - (obstacle.x + obstacle.width / 2), 2) +
+                    Math.pow((ufo.y + 25) - (obstacle.y + obstacle.height / 2), 2)
+                );
+
+                if (distance < (obstacle.width / 2 + 18)) { // Forgiving collision for chunks
+                    return true; // Collision with asteroid chunk or debris
+                }
+            } else if (obstacle.type === 'nebula-cloud') {
+                // Nebula clouds - softer collision detection (more forgiving)
+                if (ufo.x + 28 < obstacle.x + obstacle.width &&
+                    ufo.x + 32 > obstacle.x &&
+                    ufo.y + 28 < obstacle.y + obstacle.height &&
+                    ufo.y + 32 > obstacle.y) {
+
+                    return true; // Collision with nebula cloud
                 }
             }
         }
@@ -625,6 +796,150 @@ export default function FlappyGame({
                 ctx.strokeStyle = '#2E1A17';
                 ctx.lineWidth = 1;
                 ctx.stroke();
+
+                ctx.restore();
+
+            } else if (obstacle.type === 'energy-barrier') {
+                // Energy Barrier - glowing vertical energy beam
+                const centerX = obstacle.x + obstacle.width / 2;
+                const animatedGlow = obstacle.glowIntensity! * (0.7 + Math.sin(currentTime * 0.005 + obstacle.animationPhase!) * 0.3);
+
+                ctx.save();
+                ctx.globalAlpha = animatedGlow;
+
+                // Energy beam gradient
+                const energyGradient = ctx.createLinearGradient(obstacle.x, 0, obstacle.x + obstacle.width, 0);
+                energyGradient.addColorStop(0, 'transparent');
+                energyGradient.addColorStop(0.5, '#00BFFF');
+                energyGradient.addColorStop(1, 'transparent');
+
+                ctx.fillStyle = energyGradient;
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+
+                // Add energy particles
+                ctx.shadowColor = '#00BFFF';
+                ctx.shadowBlur = 15;
+                ctx.fillStyle = '#00BFFF';
+                ctx.fillRect(centerX - 1, obstacle.y, 2, obstacle.height);
+
+                ctx.restore();
+
+            } else if (obstacle.type === 'asteroid-chunk') {
+                // Asteroid Chunk - rocky space debris
+                const centerX = obstacle.x + obstacle.width / 2;
+                const centerY = obstacle.y + obstacle.height / 2;
+                const radius = obstacle.width / 2;
+
+                ctx.save();
+
+                // Rotating asteroid
+                ctx.translate(centerX, centerY);
+                ctx.rotate(currentTime * 0.001 + obstacle.animationPhase!);
+
+                // Asteroid shape
+                ctx.beginPath();
+                const sides = 6;
+                for (let i = 0; i < sides; i++) {
+                    const angle = (i / sides) * Math.PI * 2;
+                    const radiusVar = radius * (0.8 + Math.random() * 0.4);
+                    const x = Math.cos(angle) * radiusVar;
+                    const y = Math.sin(angle) * radiusVar;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+
+                // Asteroid gradient
+                const asteroidGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+                asteroidGradient.addColorStop(0, '#8B7355');
+                asteroidGradient.addColorStop(0.7, '#5D4E37');
+                asteroidGradient.addColorStop(1, '#2F1B14');
+                ctx.fillStyle = asteroidGradient;
+                ctx.fill();
+
+                ctx.strokeStyle = '#3E2723';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                ctx.restore();
+
+            } else if (obstacle.type === 'nebula-cloud') {
+                // Nebula Cloud - colorful space gas
+                const centerX = obstacle.x + obstacle.width / 2;
+                const centerY = obstacle.y + obstacle.height / 2;
+                const radius = obstacle.width / 2;
+                const animatedAlpha = obstacle.glowIntensity! * (0.4 + Math.sin(currentTime * 0.003 + obstacle.animationPhase!) * 0.2);
+
+                ctx.save();
+                ctx.globalAlpha = animatedAlpha;
+
+                // Nebula colors (purple, pink, blue)
+                const nebulaColors = ['#9333EA', '#EC4899', '#3B82F6'];
+                const color = nebulaColors[Math.floor(obstacle.animationPhase! * nebulaColors.length) % nebulaColors.length];
+
+                // Multi-layer nebula effect
+                for (let layer = 0; layer < 3; layer++) {
+                    const layerRadius = radius * (1 + layer * 0.3);
+                    const nebulaGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, layerRadius);
+                    nebulaGradient.addColorStop(0, color + '40');
+                    nebulaGradient.addColorStop(0.7, color + '20');
+                    nebulaGradient.addColorStop(1, 'transparent');
+
+                    ctx.fillStyle = nebulaGradient;
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, layerRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.restore();
+
+            } else if (obstacle.type === 'space-debris') {
+                // Space Debris - satellites and space junk
+                const centerX = obstacle.x + obstacle.width / 2;
+                const centerY = obstacle.y + obstacle.height / 2;
+
+                ctx.save();
+
+                // Rotating debris
+                ctx.translate(centerX, centerY);
+                ctx.rotate(currentTime * 0.002 + obstacle.animationPhase!);
+
+                // Metallic debris shape
+                ctx.fillStyle = '#708090';
+                ctx.strokeStyle = '#2F4F4F';
+                ctx.lineWidth = 1;
+
+                // Random debris shape
+                ctx.fillRect(-obstacle.width / 2, -obstacle.height / 2, obstacle.width, obstacle.height);
+                ctx.strokeRect(-obstacle.width / 2, -obstacle.height / 2, obstacle.width, obstacle.height);
+
+                // Blinking light
+                if (Math.sin(currentTime * 0.01 + obstacle.animationPhase!) > 0.5) {
+                    ctx.fillStyle = '#FF0000';
+                    ctx.fillRect(-2, -2, 4, 4);
+                }
+
+                ctx.restore();
+
+            } else if (obstacle.type === 'laser-grid') {
+                // Laser Grid - thin laser lines
+                const animatedAlpha = obstacle.glowIntensity! * (0.8 + Math.sin(currentTime * 0.008 + obstacle.animationPhase!) * 0.2);
+
+                ctx.save();
+                ctx.globalAlpha = animatedAlpha;
+                ctx.shadowColor = '#FF0000';
+                ctx.shadowBlur = 8;
+
+                // Red laser beam
+                ctx.fillStyle = '#FF0000';
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+
+                // Laser pulse effect
+                const pulse = Math.sin(currentTime * 0.01 + obstacle.animationPhase!);
+                if (pulse > 0.7) {
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(obstacle.x + 0.5, obstacle.y, obstacle.width - 1, obstacle.height);
+                }
 
                 ctx.restore();
 
