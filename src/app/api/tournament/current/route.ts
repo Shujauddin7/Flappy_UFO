@@ -28,8 +28,8 @@ export async function GET() {
             : process.env.SUPABASE_DEV_URL;
 
         const supabaseServiceKey = isProduction
-            ? process.env.SUPABASE_PROD_SERVICE_ROLE_KEY
-            : process.env.SUPABASE_DEV_SERVICE_ROLE_KEY;
+            ? process.env.SUPABASE_PROD_SERVICE_KEY
+            : process.env.SUPABASE_DEV_SERVICE_KEY;
 
         if (!supabaseUrl || !supabaseServiceKey) {
             console.error('❌ Missing environment variables for', isProduction ? 'PRODUCTION' : 'DEVELOPMENT');

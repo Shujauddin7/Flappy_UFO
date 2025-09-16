@@ -21,7 +21,7 @@ export async function GET() {
         // Environment-specific database configuration
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
         const supabaseUrl = isProduction ? process.env.SUPABASE_PROD_URL : process.env.SUPABASE_DEV_URL;
-        const supabaseServiceKey = isProduction ? process.env.SUPABASE_PROD_SERVICE_ROLE_KEY : process.env.SUPABASE_DEV_SERVICE_ROLE_KEY;
+        const supabaseServiceKey = isProduction ? process.env.SUPABASE_PROD_SERVICE_KEY : process.env.SUPABASE_DEV_SERVICE_KEY;
 
         if (!supabaseUrl || !supabaseServiceKey) {
             return NextResponse.json({
