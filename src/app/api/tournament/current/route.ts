@@ -9,7 +9,7 @@ export async function GET() {
         // 🚀 STEP 1: Check Redis cache first (5-second cache for tournament info)
         const cacheKey = 'tournament:current';
         const cachedData = await getCached(cacheKey);
-        
+
         if (cachedData) {
             // Return cached tournament data instantly
             return NextResponse.json({

@@ -7,7 +7,7 @@ export async function GET() {
         // 🚀 STEP 1: Check Redis cache first (3-second cache)
         const cacheKey = 'tournament:leaderboard:current';
         const cachedData = await getCached(cacheKey);
-        
+
         if (cachedData) {
             // Return cached data instantly (5ms response from Mumbai Redis)
             return NextResponse.json({
@@ -90,7 +90,7 @@ export async function GET() {
                 cached: false,
                 fetched_at: new Date().toISOString()
             };
-            
+
             // Cache empty result briefly to avoid repeated queries
             await setCached(cacheKey, emptyResponse, 10);
             return NextResponse.json(emptyResponse);
