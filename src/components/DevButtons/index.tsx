@@ -1,7 +1,8 @@
 'use client';
 
+import React, { useState } from 'react';
 import { useSession, signOut } from 'next-auth/react';
-import { useState } from 'react';
+import { resetCoins } from '@/utils/coins';
 
 export const DevButtons = () => {
   const { data: session } = useSession();
@@ -15,6 +16,7 @@ export const DevButtons = () => {
 
   const handleSignOut = async () => {
     try {
+      resetCoins(); // Reset practice mode coins on signout
       await signOut({ redirect: false });
       setTestData(null);
       alert('Signed out successfully');

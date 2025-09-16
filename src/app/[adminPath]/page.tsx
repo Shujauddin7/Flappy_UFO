@@ -4,6 +4,7 @@ import { signOut, useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import { resetCoins } from '@/utils/coins';
 
 // Import AdminPayout as dynamic component to prevent SSR issues with MiniKit
 const AdminPayout = dynamic(() => import('@/components/AdminPayout').then(mod => ({ default: mod.AdminPayout })), {
@@ -384,7 +385,10 @@ export default function AdminDashboard() {
                 <div className="flex justify-between items-center mb-8">
                     <h1 className="text-4xl font-bold text-white">Admin Dashboard</h1>
                     <button
-                        onClick={() => signOut()}
+                        onClick={() => {
+                            resetCoins(); // Reset practice mode coins on signout
+                            signOut();
+                        }}
                         className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-colors"
                     >
                         Sign Out
