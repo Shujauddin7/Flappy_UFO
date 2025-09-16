@@ -141,340 +141,157 @@ export default function FlappyGame({
         const pipeWidth = 70 + Math.random() * 20; // 70-90px wide
         const pipeX = x + Math.random() * 20 - 10; // Slight X variation
 
-        // Use pattern seed + obstacle index to determine barrier type (consistent per game, varied per obstacle)
-        const barrierTypes: ('energy' | 'asteroid-belt' | 'nebula' | 'debris' | 'laser')[] =
-            ['energy', 'asteroid-belt', 'nebula', 'debris', 'laser'];
-        const selectedBarrierType = barrierTypes[Math.floor((patternSeed + obstacleIndex * 17) % barrierTypes.length)];        // Create dynamic barriers based on selected type
-        if (selectedBarrierType === 'energy') {
-            // Energy Barriers - glowing vertical energy beams
-            const beamCount = 3 + Math.floor(Math.random() * 3); // 3-5 energy beams
-            for (let i = 0; i < beamCount; i++) {
-                const beamX = pipeX + (i * (pipeWidth / beamCount)) + Math.random() * 10 - 5;
+        // Every 10 points: Create simple invisible pipe with moving planets inside the gap
+        const shouldAddInvisiblePipe = currentScore > 0 && currentScore % 10 === 0;
 
-                // Top energy barrier
-                obstacles.push({
-                    x: beamX,
-                    y: 0,
-                    width: 8,
-                    height: gapY - 5,
-                    type: 'energy-barrier',
-                    barrierType: 'energy',
-                    animationPhase: Math.random() * Math.PI * 2,
-                    glowIntensity: 0.7 + Math.random() * 0.3
-                });
-
-                // Bottom energy barrier
-                obstacles.push({
-                    x: beamX,
-                    y: gapY + gapSize + 5,
-                    width: 8,
-                    height: canvasHeight - (gapY + gapSize + 5),
-                    type: 'energy-barrier',
-                    barrierType: 'energy',
-                    animationPhase: Math.random() * Math.PI * 2,
-                    glowIntensity: 0.7 + Math.random() * 0.3
-                });
-            }
-        } else if (selectedBarrierType === 'asteroid-belt') {
-            // Asteroid Belt - larger spaced asteroid chunks
-            const asteroidCount = Math.floor(pipeWidth / 25); // Spaced out asteroids
-            for (let i = 0; i < asteroidCount; i++) {
-                const asteroidX = pipeX + (i * 25) + Math.random() * 10 - 5;
-
-                // Top asteroid belt
-                for (let j = 0; j < Math.floor((gapY - 5) / 35); j++) {
-                    obstacles.push({
-                        x: asteroidX + Math.random() * 8 - 4,
-                        y: j * 35 + Math.random() * 8 - 4,
-                        width: 12 + Math.random() * 8,
-                        height: 12 + Math.random() * 8,
-                        type: 'asteroid-chunk',
-                        barrierType: 'asteroid-belt',
-                        animationPhase: Math.random() * Math.PI * 2
-                    });
-                }
-
-                // Bottom asteroid belt
-                const startY = gapY + gapSize + 5;
-                for (let j = 0; j < Math.floor((canvasHeight - startY) / 35); j++) {
-                    obstacles.push({
-                        x: asteroidX + Math.random() * 8 - 4,
-                        y: startY + (j * 35) + Math.random() * 8 - 4,
-                        width: 12 + Math.random() * 8,
-                        height: 12 + Math.random() * 8,
-                        type: 'asteroid-chunk',
-                        barrierType: 'asteroid-belt',
-                        animationPhase: Math.random() * Math.PI * 2
-                    });
-                }
-            }
-        } else if (selectedBarrierType === 'nebula') {
-            // Nebula Clouds - soft gaseous barriers
-            const cloudCount = 4 + Math.floor(Math.random() * 3); // 4-6 cloud patches
-            for (let i = 0; i < cloudCount; i++) {
-                const cloudX = pipeX + (i * (pipeWidth / cloudCount)) + Math.random() * 15 - 7;
-
-                // Top nebula clouds
-                for (let j = 0; j < Math.floor((gapY - 5) / 40); j++) {
-                    obstacles.push({
-                        x: cloudX + Math.random() * 20 - 10,
-                        y: j * 40 + Math.random() * 15 - 7,
-                        width: 25 + Math.random() * 15,
-                        height: 25 + Math.random() * 15,
-                        type: 'nebula-cloud',
-                        barrierType: 'nebula',
-                        animationPhase: Math.random() * Math.PI * 2,
-                        glowIntensity: 0.5 + Math.random() * 0.3
-                    });
-                }
-
-                // Bottom nebula clouds
-                const startY = gapY + gapSize + 5;
-                for (let j = 0; j < Math.floor((canvasHeight - startY) / 40); j++) {
-                    obstacles.push({
-                        x: cloudX + Math.random() * 20 - 10,
-                        y: startY + (j * 40) + Math.random() * 15 - 7,
-                        width: 25 + Math.random() * 15,
-                        height: 25 + Math.random() * 15,
-                        type: 'nebula-cloud',
-                        barrierType: 'nebula',
-                        animationPhase: Math.random() * Math.PI * 2,
-                        glowIntensity: 0.5 + Math.random() * 0.3
-                    });
-                }
-            }
-        } else if (selectedBarrierType === 'debris') {
-            // Space Debris - satellites and space junk
-            const debrisCount = Math.floor(pipeWidth / 30); // Spaced debris
-            for (let i = 0; i < debrisCount; i++) {
-                const debrisX = pipeX + (i * 30) + Math.random() * 12 - 6;
-
-                // Top debris field
-                for (let j = 0; j < Math.floor((gapY - 5) / 45); j++) {
-                    obstacles.push({
-                        x: debrisX + Math.random() * 10 - 5,
-                        y: j * 45 + Math.random() * 10 - 5,
-                        width: 15 + Math.random() * 10,
-                        height: 10 + Math.random() * 8,
-                        type: 'space-debris',
-                        barrierType: 'debris',
-                        animationPhase: Math.random() * Math.PI * 2
-                    });
-                }
-
-                // Bottom debris field
-                const startY = gapY + gapSize + 5;
-                for (let j = 0; j < Math.floor((canvasHeight - startY) / 45); j++) {
-                    obstacles.push({
-                        x: debrisX + Math.random() * 10 - 5,
-                        y: startY + (j * 45) + Math.random() * 10 - 5,
-                        width: 15 + Math.random() * 10,
-                        height: 10 + Math.random() * 8,
-                        type: 'space-debris',
-                        barrierType: 'debris',
-                        animationPhase: Math.random() * Math.PI * 2
-                    });
-                }
-            }
-        } else if (selectedBarrierType === 'laser') {
-            // Laser Grid - thin intersecting laser lines
-            const laserLines = 6 + Math.floor(Math.random() * 4); // 6-9 laser lines
-            for (let i = 0; i < laserLines; i++) {
-                const laserX = pipeX + (i * (pipeWidth / laserLines));
-
-                // Top laser grid
-                obstacles.push({
-                    x: laserX,
-                    y: 0,
-                    width: 3,
-                    height: gapY - 5,
-                    type: 'laser-grid',
-                    barrierType: 'laser',
-                    animationPhase: Math.random() * Math.PI * 2,
-                    glowIntensity: 0.8 + Math.random() * 0.2
-                });
-
-                // Bottom laser grid
-                obstacles.push({
-                    x: laserX,
-                    y: gapY + gapSize + 5,
-                    width: 3,
-                    height: canvasHeight - (gapY + gapSize + 5),
-                    type: 'laser-grid',
-                    barrierType: 'laser',
-                    animationPhase: Math.random() * Math.PI * 2,
-                    glowIntensity: 0.8 + Math.random() * 0.2
-                });
-            }
-        }
-
-        // Place planets at BOTH ENDS of the invisible pipes (always 2 planets)
-        const topPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
-        const bottomPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
-
-        const topPlanetSize = 60 + Math.random() * 20; // 60-80px for consistency
-        const bottomPlanetSize = 60 + Math.random() * 20; // 60-80px for consistency
-
-        // Top planet (at the end of top pipe) - ensure it's always visible
-        const topPlanetY = Math.max(20, gapY - topPlanetSize - 15);
-        const shouldTopMove = Math.random() > 0.8; // 20% chance to move (less chaotic)
-        obstacles.push({
-            x: pipeX + pipeWidth / 2 - topPlanetSize / 2,
-            y: topPlanetY,
-            width: topPlanetSize,
-            height: topPlanetSize,
-            type: 'planet',
-            planetType: topPlanet,
-            moveSpeed: shouldTopMove ? 0.4 + Math.random() * 0.4 : 0, // 0.4-0.8 slower movement
-            moveDirection: shouldTopMove ? (Math.random() > 0.5 ? 1 : -1) : 0,
-            baseY: topPlanetY
-        });
-
-        // Bottom planet (at the end of bottom pipe) - ensure it's always visible  
-        const bottomPlanetY = Math.min(canvasHeight - bottomPlanetSize - 20, gapY + gapSize + 15);
-        const shouldBottomMove = Math.random() > 0.8; // 20% chance to move (less chaotic)
-        obstacles.push({
-            x: pipeX + pipeWidth / 2 - bottomPlanetSize / 2,
-            y: bottomPlanetY,
-            width: bottomPlanetSize,
-            height: bottomPlanetSize,
-            type: 'planet',
-            planetType: bottomPlanet,
-            moveSpeed: shouldBottomMove ? 0.4 + Math.random() * 0.4 : 0, // 0.4-0.8 slower movement
-            moveDirection: shouldBottomMove ? (Math.random() > 0.5 ? 1 : -1) : 0,
-            baseY: bottomPlanetY
-        });
-
-        // Add special random objects only after 40 points, then every 10 points (40, 50, 60, 70, etc.)
-        const shouldAddRandomObject = currentScore >= 40 && (currentScore - 40) % 10 === 0;
-
-        if (shouldAddRandomObject) {
-            // Add 1-2 special moving asteroids/objects
-            const randomObjects = Math.random() > 0.6 ? 2 : 1;
-
-            for (let i = 0; i < randomObjects; i++) {
-                const objectType = Math.random() > 0.7 ? 'asteroid' : 'special-planet';
-
-                if (objectType === 'asteroid') {
-                    // Moving asteroid obstacle - positioned away from main pipe and gap
-                    const asteroidSize = 35 + Math.random() * 25; // 35-60px
-
-                    // Safe zones: far left or far right of the pipe, avoiding gap area
-                    const safeZones = [
-                        { minX: pipeX - 200, maxX: pipeX - 100 }, // Left side
-                        { minX: pipeX + pipeWidth + 100, maxX: pipeX + pipeWidth + 200 } // Right side
-                    ];
-                    const selectedZone = safeZones[Math.floor(Math.random() * safeZones.length)];
-                    const asteroidX = selectedZone.minX + Math.random() * (selectedZone.maxX - selectedZone.minX);
-
-                    // Y position avoiding the gap area
-                    const safeYZones = [
-                        { minY: 50, maxY: gapY - 100 }, // Above gap
-                        { minY: gapY + gapSize + 100, maxY: canvasHeight - asteroidSize - 50 } // Below gap
-                    ];
-                    const selectedYZone = safeYZones[Math.floor(Math.random() * safeYZones.length)];
-                    const asteroidY = Math.max(selectedYZone.minY,
-                        selectedYZone.minY + Math.random() * Math.max(0, selectedYZone.maxY - selectedYZone.minY));
-
-                    obstacles.push({
-                        x: asteroidX,
-                        y: asteroidY,
-                        width: asteroidSize,
-                        height: asteroidSize,
-                        type: 'asteroid',
-                        moveSpeed: 1.0 + Math.random() * 1.5, // Faster moving asteroids 1.0-2.5
-                        moveDirection: Math.random() > 0.5 ? 1 : -1,
-                        baseY: asteroidY
-                    });
-                } else {
-                    // Special bonus planet (rarer) - positioned in safe zones
-                    const specialPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
-                    const specialSize = 45 + Math.random() * 25; // 45-70px
-
-                    // Safe zones: far left or far right of the pipe
-                    const safeZones = [
-                        { minX: pipeX - 180, maxX: pipeX - 90 }, // Left side
-                        { minX: pipeX + pipeWidth + 90, maxX: pipeX + pipeWidth + 180 } // Right side
-                    ];
-                    const selectedZone = safeZones[Math.floor(Math.random() * safeZones.length)];
-                    const specialX = selectedZone.minX + Math.random() * (selectedZone.maxX - selectedZone.minX);
-
-                    // Y position avoiding the gap area and planets
-                    const safeYZones = [
-                        { minY: 70, maxY: gapY - 120 }, // Above gap, away from top planet
-                        { minY: gapY + gapSize + 120, maxY: canvasHeight - specialSize - 70 } // Below gap, away from bottom planet
-                    ];
-                    const selectedYZone = safeYZones[Math.floor(Math.random() * safeYZones.length)];
-                    const specialY = Math.max(selectedYZone.minY,
-                        selectedYZone.minY + Math.random() * Math.max(0, selectedYZone.maxY - selectedYZone.minY));
-
-                    obstacles.push({
-                        x: specialX,
-                        y: specialY,
-                        width: specialSize,
-                        height: specialSize,
-                        type: 'planet',
-                        planetType: specialPlanet,
-                        moveSpeed: 0.8 + Math.random() * 0.7, // Moderate movement 0.8-1.5
-                        moveDirection: Math.random() > 0.5 ? 1 : -1,
-                        baseY: specialY
-                    });
-                }
-            }
-        }        // Every 10 points: Add special invisible pipe with moving planets (passable but challenging)
-        const shouldAddMovingPlanetPipe = currentScore > 0 && currentScore % 10 === 0;
-
-        if (shouldAddMovingPlanetPipe) {
-            // Create a wider gap for the moving planet challenge
-            const movingPlanetGap = gapSize + 80; // Wider gap to accommodate moving planets
-            const movingGapY = 100 + Math.random() * (canvasHeight - movingPlanetGap - 200);
-
-            // Add 3-4 moving planets in the gap area (passable but creates dynamic challenge)
-            const movingPlanetCount = 3 + Math.floor(Math.random() * 2); // 3-4 planets
-
-            for (let i = 0; i < movingPlanetCount; i++) {
-                const movingPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
-                const planetSize = 40 + Math.random() * 20; // 40-60px smaller than normal
-
-                // Position planets across the gap width
-                const planetX = pipeX + (i * (pipeWidth / movingPlanetCount)) + Math.random() * 20 - 10;
-                const planetY = movingGapY + (i * (movingPlanetGap / movingPlanetCount)) + Math.random() * 30 - 15;
-
-                obstacles.push({
-                    x: planetX,
-                    y: planetY,
-                    width: planetSize,
-                    height: planetSize,
-                    type: 'planet',
-                    planetType: movingPlanet,
-                    moveSpeed: 1.5 + Math.random() * 1.0, // Faster movement for challenge 1.5-2.5
-                    moveDirection: Math.random() > 0.5 ? 1 : -1,
-                    baseY: planetY
-                });
-            }
-
-            // Add invisible collision boundaries at edges (but with gaps for passage)
-            // Top invisible boundary
+        if (shouldAddInvisiblePipe) {
+            // Simple invisible pipe barriers
             obstacles.push({
                 x: pipeX,
                 y: 0,
                 width: pipeWidth,
-                height: movingGapY - 20, // Leave 20px buffer
+                height: gapY - 5,
                 type: 'invisible-wall'
             });
 
-            // Bottom invisible boundary
             obstacles.push({
                 x: pipeX,
-                y: movingGapY + movingPlanetGap + 20, // Leave 20px buffer
+                y: gapY + gapSize + 5,
                 width: pipeWidth,
-                height: canvasHeight - (movingGapY + movingPlanetGap + 20),
+                height: canvasHeight - (gapY + gapSize + 5),
                 type: 'invisible-wall'
+            });
+
+            // Add 1-2 moving planets INSIDE the gap (passable)
+            const movingPlanetCount = 1 + Math.floor(Math.random() * 2); // 1-2 planets
+            for (let i = 0; i < movingPlanetCount; i++) {
+                const movingPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
+                const planetSize = 35 + Math.random() * 15; // 35-50px smaller planets
+
+                obstacles.push({
+                    x: pipeX + 20 + (i * 30), // Spread planets across gap
+                    y: gapY + 40 + (i * 20), // Position within gap
+                    width: planetSize,
+                    height: planetSize,
+                    type: 'planet',
+                    planetType: movingPlanet,
+                    moveSpeed: 1.2 + Math.random() * 0.8, // Moving speed
+                    moveDirection: Math.random() > 0.5 ? 1 : -1,
+                    baseY: gapY + 40 + (i * 20)
+                });
+            }
+        } else {
+            // Normal pipes with varied barrier patterns
+            const barrierTypes: ('energy' | 'asteroid-belt' | 'nebula' | 'debris' | 'laser')[] =
+                ['energy', 'asteroid-belt', 'nebula', 'debris', 'laser'];
+            const selectedBarrierType = barrierTypes[Math.floor((patternSeed + obstacleIndex * 17) % barrierTypes.length)];
+
+            // Create barriers based on selected type (simplified)
+            if (selectedBarrierType === 'energy') {
+                // Simple energy barriers
+                for (let i = 0; i < 3; i++) {
+                    const beamX = pipeX + (i * (pipeWidth / 3));
+                    obstacles.push({
+                        x: beamX,
+                        y: 0,
+                        width: 6,
+                        height: gapY - 5,
+                        type: 'energy-barrier',
+                        barrierType: 'energy',
+                        animationPhase: Math.random() * Math.PI * 2,
+                        glowIntensity: 0.8
+                    });
+                    obstacles.push({
+                        x: beamX,
+                        y: gapY + gapSize + 5,
+                        width: 6,
+                        height: canvasHeight - (gapY + gapSize + 5),
+                        type: 'energy-barrier',
+                        barrierType: 'energy',
+                        animationPhase: Math.random() * Math.PI * 2,
+                        glowIntensity: 0.8
+                    });
+                }
+            } else {
+                // Default: Simple invisible walls for other barrier types
+                obstacles.push({
+                    x: pipeX,
+                    y: 0,
+                    width: pipeWidth,
+                    height: gapY - 5,
+                    type: 'invisible-wall'
+                });
+
+                obstacles.push({
+                    x: pipeX,
+                    y: gapY + gapSize + 5,
+                    width: pipeWidth,
+                    height: canvasHeight - (gapY + gapSize + 5),
+                    type: 'invisible-wall'
+                });
+            }
+
+            // Place normal planets at pipe ends (only 2 planets total)
+            const topPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
+            const bottomPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
+
+            const topPlanetSize = 60 + Math.random() * 20;
+            const bottomPlanetSize = 60 + Math.random() * 20;
+
+            // Top planet
+            obstacles.push({
+                x: pipeX + pipeWidth / 2 - topPlanetSize / 2,
+                y: Math.max(20, gapY - topPlanetSize - 15),
+                width: topPlanetSize,
+                height: topPlanetSize,
+                type: 'planet',
+                planetType: topPlanet,
+                moveSpeed: Math.random() > 0.8 ? 0.4 + Math.random() * 0.4 : 0,
+                moveDirection: Math.random() > 0.5 ? 1 : -1,
+                baseY: Math.max(20, gapY - topPlanetSize - 15)
+            });
+
+            // Bottom planet
+            obstacles.push({
+                x: pipeX + pipeWidth / 2 - bottomPlanetSize / 2,
+                y: Math.min(canvasHeight - bottomPlanetSize - 20, gapY + gapSize + 15),
+                width: bottomPlanetSize,
+                height: bottomPlanetSize,
+                type: 'planet',
+                planetType: bottomPlanet,
+                moveSpeed: Math.random() > 0.8 ? 0.4 + Math.random() * 0.4 : 0,
+                moveDirection: Math.random() > 0.5 ? 1 : -1,
+                baseY: Math.min(canvasHeight - bottomPlanetSize - 20, gapY + gapSize + 15)
             });
         }
 
+        // Add special random objects only after 40 points, then every 10 points (40, 50, 60, 70, etc.)
+        const shouldAddRandomObject = currentScore >= 40 && (currentScore - 40) % 10 === 0;
+
+        if (shouldAddRandomObject && !shouldAddInvisiblePipe) { // Don't add if already invisible pipe
+            // Add 1 special object positioned safely away from main pipe
+            const objectType = Math.random() > 0.7 ? 'asteroid' : 'special-planet';
+
+            if (objectType === 'asteroid') {
+                const asteroidSize = 35 + Math.random() * 20;
+                const asteroidX = pipeX + (Math.random() > 0.5 ? 150 + Math.random() * 50 : -150 - Math.random() * 50);
+                const asteroidY = 100 + Math.random() * (canvasHeight - 200);
+
+                obstacles.push({
+                    x: asteroidX,
+                    y: asteroidY,
+                    width: asteroidSize,
+                    height: asteroidSize,
+                    type: 'asteroid',
+                    moveSpeed: 1.0 + Math.random() * 1.0,
+                    moveDirection: Math.random() > 0.5 ? 1 : -1,
+                    baseY: asteroidY
+                });
+            }
+        }
+
         // Coin in the gap for bonus (sometimes)
-        if (Math.random() > 0.3) { // 70% chance, more generous
+        if (Math.random() > 0.3) {
             obstacles.push({
                 x: pipeX + pipeWidth / 2 - 12,
                 y: gapY + gapSize / 2 - 12,
@@ -497,7 +314,7 @@ export default function FlappyGame({
         return obstacles;
     }, []);
 
-    // Create particles for effects - optimized version
+    // Create particles for effects - optimized version with better bounds
     const createParticles = useCallback((x: number, y: number, count: number, type: 'jump' | 'score' | 'explosion' | 'coin' = 'jump') => {
         const particles: Particle[] = [];
 
@@ -505,13 +322,21 @@ export default function FlappyGame({
         const maxCount = Math.min(count, 12);
 
         for (let i = 0; i < maxCount; i++) {
+            // Reduce particle velocities to keep them more contained, especially for explosions
+            let velocityMultiplier = 6;
+            if (type === 'explosion') {
+                velocityMultiplier = 4; // Reduced from 8 to 4 for better containment
+            } else if (type === 'jump') {
+                velocityMultiplier = 3; // Reduced for more subtle jump effects
+            }
+
             const particle: Particle = {
                 x,
                 y,
-                vx: (Math.random() - 0.5) * (type === 'explosion' ? 8 : 6),
-                vy: (Math.random() - 0.5) * (type === 'explosion' ? 8 : 6),
-                life: type === 'explosion' ? 50 : type === 'coin' ? 30 : 40,
-                maxLife: type === 'explosion' ? 50 : type === 'coin' ? 30 : 40,
+                vx: (Math.random() - 0.5) * velocityMultiplier,
+                vy: (Math.random() - 0.5) * velocityMultiplier,
+                life: type === 'explosion' ? 35 : type === 'coin' ? 25 : 30, // Reduced lifespans for better performance
+                maxLife: type === 'explosion' ? 35 : type === 'coin' ? 25 : 30,
                 size: type === 'coin' ? 3 + Math.random() * 2 : 2 + Math.random() * 3
             };
             particles.push(particle);
@@ -551,7 +376,9 @@ export default function FlappyGame({
         }
 
         // Check collisions with different obstacle types
-        for (const obstacle of obstacles) {
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+            const obstacle = obstacles[i];
+
             if (obstacle.type === 'coin' && !obstacle.collected) {
                 // Coin collection (adjusted for larger UFO)
                 if (ufo.x + 15 < obstacle.x + obstacle.width &&
@@ -562,24 +389,20 @@ export default function FlappyGame({
                     // Mark as collected to prevent duplicate collection
                     obstacle.collected = true;
 
-                    // Practice Mode: 2 coins per star, save to localStorage
-                    // Tournament Mode: 1 coin per star, not saved
-                    const coinsToAdd = gameMode === 'practice' ? 2 : 1;
-                    gameStateRef.current.coins += coinsToAdd;
+                    // Give 2 coins per collection as per Plan.md (Practice Mode only)
+                    gameStateRef.current.coins += 2;
 
-                    // For Practice Mode, also save to localStorage
+                    // For Practice Mode, save 2 coins to localStorage
                     if (gameMode === 'practice') {
-                        addCoins(coinsToAdd);
+                        addCoins(2);
                     }
 
                     const coinParticles = createParticles(obstacle.x, obstacle.y, 6, 'coin');
                     gameStateRef.current.particles.push(...coinParticles);
 
                     // Remove collected coin immediately
-                    const index = gameStateRef.current.obstacles.indexOf(obstacle);
-                    if (index > -1) {
-                        gameStateRef.current.obstacles.splice(index, 1);
-                    }
+                    obstacles.splice(i, 1);
+                    continue; // Skip to next obstacle
                 }
             } else if (obstacle.type === 'planet') {
                 // Planet collision - generous UFO hitbox (adjusted for larger UFO)
