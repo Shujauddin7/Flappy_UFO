@@ -9,7 +9,7 @@ interface GameObject {
     y: number;
     width: number;
     height: number;
-    type: 'planet' | 'coin' | 'trigger' | 'invisible-wall';
+    type: 'planet' | 'coin' | 'trigger' | 'invisible-wall' | 'asteroid' | 'dust-particle';
     planetType?: string;
     scored?: boolean;
     moveSpeed?: number;
@@ -130,24 +130,35 @@ export default function FlappyGame({
         const pipeWidth = 70 + Math.random() * 20; // 70-90px wide
         const pipeX = x + Math.random() * 20 - 10; // Slight X variation
 
-        // Create invisible collision walls (the actual pipes)
-        // Top invisible wall
-        obstacles.push({
-            x: pipeX,
-            y: 0,
-            width: pipeWidth,
-            height: gapY - 5, // Small gap from planet
-            type: 'invisible-wall'
-        });
+        // Create visible space dust barriers instead of invisible walls
+        // Top dust barrier
+        const dustParticleCount = Math.floor(pipeWidth / 8); // Number of dust particles based on width
+        for (let i = 0; i < dustParticleCount; i++) {
+            for (let j = 0; j < Math.floor((gapY - 5) / 12); j++) {
+                obstacles.push({
+                    x: pipeX + (i * 8) + Math.random() * 4 - 2, // Slight random offset
+                    y: j * 12 + Math.random() * 4 - 2,
+                    width: 4 + Math.random() * 3, // Small dust particles 4-7px
+                    height: 4 + Math.random() * 3,
+                    type: 'dust-particle'
+                });
+            }
+        }
 
-        // Bottom invisible wall  
-        obstacles.push({
-            x: pipeX,
-            y: gapY + gapSize + 5, // Small gap from planet
-            width: pipeWidth,
-            height: canvasHeight - (gapY + gapSize + 5),
-            type: 'invisible-wall'
-        });
+        // Bottom dust barrier
+        for (let i = 0; i < dustParticleCount; i++) {
+            const startY = gapY + gapSize + 5;
+            const endY = canvasHeight;
+            for (let j = 0; j < Math.floor((endY - startY) / 12); j++) {
+                obstacles.push({
+                    x: pipeX + (i * 8) + Math.random() * 4 - 2,
+                    y: startY + (j * 12) + Math.random() * 4 - 2,
+                    width: 4 + Math.random() * 3, // Small dust particles 4-7px
+                    height: 4 + Math.random() * 3,
+                    type: 'dust-particle'
+                });
+            }
+        }
 
         // Place planets at BOTH ENDS of the invisible pipes (always 2 planets)
         const topPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
@@ -186,28 +197,52 @@ export default function FlappyGame({
             baseY: bottomPlanetY
         });
 
-        // Randomly add 1-2 floating decoration planets (not blocking path)
-        const decorationPlanets = Math.random() > 0.5 ? 1 : (Math.random() > 0.7 ? 2 : 0);
-        for (let i = 0; i < decorationPlanets; i++) {
-            const decorPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
-            const decorSize = 40 + Math.random() * 30; // Smaller decoration planets
+        // Add special random objects only after 40 points, then every 10 points (40, 50, 60, 70, etc.)
+        const shouldAddRandomObject = currentScore >= 40 && (currentScore - 40) % 10 === 0;
 
-            // Place far from the main path
-            const decorX = pipeX + (Math.random() > 0.5 ? 150 + Math.random() * 100 : -150 - Math.random() * 100);
-            const decorY = Math.random() * (canvasHeight - decorSize);
+        if (shouldAddRandomObject) {
+            // Add 1-2 special moving asteroids/objects
+            const randomObjects = Math.random() > 0.6 ? 2 : 1;
 
-            const shouldDecorMove = Math.random() > 0.5; // 50% chance to move
-            obstacles.push({
-                x: decorX,
-                y: decorY,
-                width: decorSize,
-                height: decorSize,
-                type: 'planet',
-                planetType: decorPlanet,
-                moveSpeed: shouldDecorMove ? 0.2 + Math.random() * 0.5 : 0,
-                moveDirection: shouldDecorMove ? (Math.random() > 0.5 ? 1 : -1) : 0,
-                baseY: decorY
-            });
+            for (let i = 0; i < randomObjects; i++) {
+                const objectType = Math.random() > 0.7 ? 'asteroid' : 'special-planet';
+
+                if (objectType === 'asteroid') {
+                    // Moving asteroid obstacle
+                    const asteroidSize = 35 + Math.random() * 25; // 35-60px
+                    const asteroidX = pipeX + (Math.random() > 0.5 ? 120 + Math.random() * 80 : -120 - Math.random() * 80);
+                    const asteroidY = Math.random() * (canvasHeight - asteroidSize - 100) + 50; // Keep away from edges
+
+                    obstacles.push({
+                        x: asteroidX,
+                        y: asteroidY,
+                        width: asteroidSize,
+                        height: asteroidSize,
+                        type: 'asteroid',
+                        moveSpeed: 1.0 + Math.random() * 1.5, // Faster moving asteroids 1.0-2.5
+                        moveDirection: Math.random() > 0.5 ? 1 : -1,
+                        baseY: asteroidY
+                    });
+                } else {
+                    // Special bonus planet (rarer)
+                    const specialPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
+                    const specialSize = 45 + Math.random() * 25; // 45-70px
+                    const specialX = pipeX + (Math.random() > 0.5 ? 130 + Math.random() * 70 : -130 - Math.random() * 70);
+                    const specialY = Math.random() * (canvasHeight - specialSize - 100) + 50;
+
+                    obstacles.push({
+                        x: specialX,
+                        y: specialY,
+                        width: specialSize,
+                        height: specialSize,
+                        type: 'planet',
+                        planetType: specialPlanet,
+                        moveSpeed: 0.8 + Math.random() * 0.7, // Moderate movement 0.8-1.5
+                        moveDirection: Math.random() > 0.5 ? 1 : -1,
+                        baseY: specialY
+                    });
+                }
+            }
         }
 
         // Coin in the gap for bonus (sometimes)
@@ -234,20 +269,26 @@ export default function FlappyGame({
         return obstacles;
     }, []);
 
-    // Create particles for effects
-    const createParticles = useCallback((x: number, y: number, count: number) => {
+    // Create particles for effects - optimized version
+    const createParticles = useCallback((x: number, y: number, count: number, type: 'jump' | 'score' | 'explosion' | 'coin' = 'jump') => {
         const particles: Particle[] = [];
-        for (let i = 0; i < count; i++) {
-            particles.push({
+
+        // Limit particle count for better performance
+        const maxCount = Math.min(count, 12);
+
+        for (let i = 0; i < maxCount; i++) {
+            const particle: Particle = {
                 x,
                 y,
-                vx: (Math.random() - 0.5) * 6,
-                vy: (Math.random() - 0.5) * 6,
-                life: 40,
-                maxLife: 40,
-                size: 2 + Math.random() * 3
-            });
+                vx: (Math.random() - 0.5) * (type === 'explosion' ? 8 : 6),
+                vy: (Math.random() - 0.5) * (type === 'explosion' ? 8 : 6),
+                life: type === 'explosion' ? 50 : type === 'coin' ? 30 : 40,
+                maxLife: type === 'explosion' ? 50 : type === 'coin' ? 30 : 40,
+                size: type === 'coin' ? 3 + Math.random() * 2 : 2 + Math.random() * 3
+            };
+            particles.push(particle);
         }
+
         return particles;
     }, []);
 
@@ -265,7 +306,8 @@ export default function FlappyGame({
             const jumpParticles = createParticles(
                 gameStateRef.current.ufo.x - 5,
                 gameStateRef.current.ufo.y + 15,
-                4
+                4,
+                'jump'
             );
             gameStateRef.current.particles.push(...jumpParticles);
         }
@@ -299,7 +341,7 @@ export default function FlappyGame({
                         addCoins(coinsToAdd);
                     }
 
-                    const coinParticles = createParticles(obstacle.x, obstacle.y, 6);
+                    const coinParticles = createParticles(obstacle.x, obstacle.y, 6, 'coin');
                     gameStateRef.current.particles.push(...coinParticles);
 
                     // Remove collected coin
@@ -316,14 +358,24 @@ export default function FlappyGame({
                 if (distance < (obstacle.width / 2 + 20)) { // Generous collision radius
                     return true; // Collision with planet
                 }
-            } else if (obstacle.type === 'invisible-wall') {
-                // Invisible wall collision - adjusted for larger UFO
-                if (ufo.x + 20 < obstacle.x + obstacle.width &&
-                    ufo.x + 40 > obstacle.x &&
-                    ufo.y + 20 < obstacle.y + obstacle.height &&
-                    ufo.y + 30 > obstacle.y) {
+            } else if (obstacle.type === 'asteroid') {
+                // Asteroid collision - slightly smaller hitbox than planets
+                const distance = Math.sqrt(
+                    Math.pow((ufo.x + 30) - (obstacle.x + obstacle.width / 2), 2) +
+                    Math.pow((ufo.y + 25) - (obstacle.y + obstacle.height / 2), 2)
+                );
 
-                    return true; // Collision with invisible barrier
+                if (distance < (obstacle.width / 2 + 15)) { // Slightly smaller collision radius for asteroids
+                    return true; // Collision with asteroid
+                }
+            } else if (obstacle.type === 'dust-particle') {
+                // Dust particle collision - small particles with forgiving hitbox
+                if (ufo.x + 25 < obstacle.x + obstacle.width &&
+                    ufo.x + 35 > obstacle.x &&
+                    ufo.y + 25 < obstacle.y + obstacle.height &&
+                    ufo.y + 35 > obstacle.y) {
+
+                    return true; // Collision with dust particle
                 }
             }
         }
@@ -356,12 +408,13 @@ export default function FlappyGame({
             state.obstacles = state.obstacles.filter(obstacle => {
                 obstacle.x -= 4.5 * timeMultiplier; // Faster speed for better gameplay feel
 
-                // Move planets up and down if they have movement (frame-rate independent)
-                if (obstacle.type === 'planet' && obstacle.moveSpeed && obstacle.moveSpeed > 0 && obstacle.baseY !== undefined) {
+                // Move planets and asteroids up and down if they have movement (frame-rate independent)
+                if ((obstacle.type === 'planet' || obstacle.type === 'asteroid') && obstacle.moveSpeed && obstacle.moveSpeed > 0 && obstacle.baseY !== undefined) {
                     obstacle.y += obstacle.moveDirection! * obstacle.moveSpeed * timeMultiplier;
 
                     // Bounce at boundaries (keep within reasonable limits)
-                    if (obstacle.y < obstacle.baseY - 30 || obstacle.y > obstacle.baseY + 30) {
+                    const bounceRange = obstacle.type === 'asteroid' ? 50 : 30; // Asteroids move more
+                    if (obstacle.y < obstacle.baseY - bounceRange || obstacle.y > obstacle.baseY + bounceRange) {
                         obstacle.moveDirection! *= -1;
                     }
                 }
@@ -374,7 +427,7 @@ export default function FlappyGame({
                     obstacle.scored = true;
 
                     // Score particles
-                    const scoreParticles = createParticles(state.ufo.x, state.ufo.y, 4);
+                    const scoreParticles = createParticles(state.ufo.x, state.ufo.y, 4, 'score');
                     state.particles.push(...scoreParticles);
                 }
 
@@ -388,15 +441,22 @@ export default function FlappyGame({
                 state.obstacles.push(...newObstacles);
             }
 
-            // Update particles (frame-rate independent)
-            state.particles = state.particles.filter(particle => {
-                particle.x += particle.vx * timeMultiplier;
-                particle.y += particle.vy * timeMultiplier;
-                particle.vx *= Math.pow(0.95, timeMultiplier);
-                particle.vy *= Math.pow(0.95, timeMultiplier);
-                particle.life -= timeMultiplier;
-                return particle.life > 0;
-            });
+            // Update particles (frame-rate independent) with performance optimization
+            if (state.particles.length > 0) {
+                state.particles = state.particles.filter(particle => {
+                    particle.x += particle.vx * timeMultiplier;
+                    particle.y += particle.vy * timeMultiplier;
+                    particle.vx *= Math.pow(0.96, timeMultiplier); // Slightly improved drag
+                    particle.vy *= Math.pow(0.96, timeMultiplier);
+                    particle.life -= timeMultiplier;
+                    return particle.life > 0;
+                });
+
+                // Limit total particles for performance
+                if (state.particles.length > 50) {
+                    state.particles = state.particles.slice(-50);
+                }
+            }
 
             // Check collisions
             if (checkCollisions()) {
@@ -409,7 +469,7 @@ export default function FlappyGame({
                 }
 
                 // Explosion particles for visual effect
-                const explosionParticles = createParticles(state.ufo.x, state.ufo.y, 15);
+                const explosionParticles = createParticles(state.ufo.x, state.ufo.y, 12, 'explosion');
                 state.particles.push(...explosionParticles);
             }
         }
@@ -426,13 +486,14 @@ export default function FlappyGame({
         ctx.fillStyle = backgroundGradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Animated starfield (frame-rate independent)
+        // Optimized animated starfield (frame-rate independent with reduced star count)
         ctx.globalAlpha = 1;
-        for (let i = 0; i < 100; i++) {
-            const x = ((i * 150 + currentTime * 0.02) % (canvas.width + 100)) - 50;
+        const starCount = 60; // Reduced from 100 for better performance
+        for (let i = 0; i < starCount; i++) {
+            const x = ((i * 150 + currentTime * 0.015) % (canvas.width + 100)) - 50; // Slightly slower movement
             const y = (i * 234) % canvas.height;
-            const size = Math.random() * 2;
-            const twinkle = 0.4 + Math.sin(currentTime * 0.003 + i) * 0.6;
+            const size = Math.random() * 1.5 + 0.5; // Slightly smaller stars
+            const twinkle = 0.3 + Math.sin(currentTime * 0.002 + i) * 0.7; // Slower twinkling
 
             ctx.fillStyle = '#ffffff';
             ctx.globalAlpha = twinkle;
@@ -440,7 +501,7 @@ export default function FlappyGame({
         }
         ctx.globalAlpha = 1;
 
-        // Draw planets and coins (not invisible walls)
+        // Draw planets, asteroids, coins, and dust particles
         state.obstacles.forEach(obstacle => {
             if (obstacle.type === 'planet' && obstacle.planetType) {
                 const img = planetImagesRef.current[obstacle.planetType];
@@ -518,6 +579,88 @@ export default function FlappyGame({
                     ctx.stroke();
                 }
 
+            } else if (obstacle.type === 'asteroid') {
+                // Draw asteroid with rocky texture
+                const centerX = obstacle.x + obstacle.width / 2;
+                const centerY = obstacle.y + obstacle.height / 2;
+                const radius = obstacle.width / 2;
+
+                ctx.save();
+
+                // Asteroid glow (orange/red)
+                ctx.globalAlpha = 0.4;
+                ctx.shadowColor = '#FF6B35';
+                ctx.shadowBlur = 15;
+                const asteroidGlow = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius * 1.2);
+                asteroidGlow.addColorStop(0, '#FF6B3560');
+                asteroidGlow.addColorStop(1, 'transparent');
+                ctx.fillStyle = asteroidGlow;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius * 1.2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+
+                // Irregular asteroid shape
+                ctx.beginPath();
+                const sides = 8;
+                for (let i = 0; i < sides; i++) {
+                    const angle = (i / sides) * Math.PI * 2;
+                    const radiusVariation = radius * (0.7 + Math.random() * 0.3); // Irregular shape
+                    const x = centerX + Math.cos(angle) * radiusVariation;
+                    const y = centerY + Math.sin(angle) * radiusVariation;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+
+                // Asteroid gradient
+                const asteroidGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+                asteroidGradient.addColorStop(0, '#8B4513');
+                asteroidGradient.addColorStop(0.5, '#654321');
+                asteroidGradient.addColorStop(1, '#3E2723');
+                ctx.fillStyle = asteroidGradient;
+                ctx.fill();
+
+                // Add some texture lines
+                ctx.strokeStyle = '#2E1A17';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                ctx.restore();
+
+            } else if (obstacle.type === 'dust-particle') {
+                // Optimized space dust particles rendering
+                const centerX = obstacle.x + obstacle.width / 2;
+                const centerY = obstacle.y + obstacle.height / 2;
+                const radius = obstacle.width / 2;
+
+                ctx.save();
+
+                // Dust particle with subtle glow - reduced shadow blur for performance
+                ctx.globalAlpha = 0.85;
+                ctx.fillStyle = '#87CEEB'; // Sky blue dust
+
+                // Only add glow effect occasionally for performance
+                if (Math.random() > 0.7) {
+                    ctx.shadowColor = '#87CEEB';
+                    ctx.shadowBlur = 2;
+                }
+
+                // Small glowing dot
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Add tiny sparkle effect less frequently for performance
+                if (Math.random() > 0.98) {
+                    ctx.globalAlpha = 1;
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(centerX - 0.5, centerY - 0.5, 1, 1);
+                }
+
+                ctx.restore();
+                ctx.shadowBlur = 0;
+
             } else if (obstacle.type === 'coin') {
                 // Animated coin (frame-rate independent)
                 const time = currentTime * 0.005;
@@ -566,14 +709,25 @@ export default function FlappyGame({
 
         ctx.restore();
 
-        // Draw particles
-        state.particles.forEach(particle => {
-            const alpha = particle.life / particle.maxLife;
-            ctx.globalAlpha = alpha;
-            ctx.fillStyle = '#00BFFF';
-            ctx.fillRect(particle.x, particle.y, particle.size, particle.size);
-        });
-        ctx.globalAlpha = 1;
+        // Optimized particle rendering with better visual effects
+        if (state.particles.length > 0) {
+            state.particles.forEach(particle => {
+                const alpha = particle.life / particle.maxLife;
+                ctx.globalAlpha = alpha * 0.9; // Slightly more transparent
+
+                // Different colors based on particle age for better visual effect
+                if (alpha > 0.7) {
+                    ctx.fillStyle = '#00BFFF'; // Bright cyan when fresh
+                } else if (alpha > 0.4) {
+                    ctx.fillStyle = '#87CEEB'; // Sky blue when aging
+                } else {
+                    ctx.fillStyle = '#4682B4'; // Steel blue when fading
+                }
+
+                ctx.fillRect(particle.x, particle.y, particle.size, particle.size);
+            });
+            ctx.globalAlpha = 1;
+        }
 
         // UI (remove environment indicator)
         ctx.font = 'bold 24px Arial, sans-serif';
