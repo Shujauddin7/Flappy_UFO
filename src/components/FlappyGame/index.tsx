@@ -13,6 +13,7 @@ interface GameObject {
     planetType?: string;
     barrierType?: 'energy' | 'asteroid-belt' | 'nebula' | 'debris' | 'laser';
     scored?: boolean;
+    collected?: boolean; // For preventing duplicate coin collection
     moveSpeed?: number;
     moveDirection?: number;
     baseY?: number;
@@ -46,6 +47,8 @@ interface GameState {
     coins: number;
     gameStatus: 'ready' | 'playing' | 'gameOver';
     gameEndCalled?: boolean; // Prevent multiple game end calls
+    gamePatternSeed: number; // Seed for consistent but varied patterns per game
+    obstacleCount: number; // Track number of obstacles created
 }
 
 const PLANETS = [
@@ -72,7 +75,9 @@ export default function FlappyGame({
         score: 0,
         coins: 0,
         gameStatus: 'ready',
-        gameEndCalled: false // Initialize flag
+        gameEndCalled: false, // Initialize flag
+        gamePatternSeed: Math.random() * 1000, // Random seed for each game
+        obstacleCount: 0 // Track obstacles created
     });
 
     const [, setGameState] = useState(gameStateRef.current);
@@ -92,7 +97,9 @@ export default function FlappyGame({
             score: continueFromScore, // Start from previous score if continuing
             coins: initialCoins, // Load saved coins for practice mode
             gameStatus: 'ready',
-            gameEndCalled: false
+            gameEndCalled: false,
+            gamePatternSeed: Math.random() * 1000, // New random seed for each game
+            obstacleCount: 0 // Reset obstacle counter
         };
 
         // Reset deltaTime calculation
@@ -110,8 +117,8 @@ export default function FlappyGame({
         });
     }, []);
 
-    // Create simple space obstacles - back to basics
-    const createObstacles = useCallback((x: number, currentScore: number) => {
+    // Create simple space obstacles - with varied patterns per game
+    const createObstacles = useCallback((x: number, currentScore: number, obstacleIndex: number, patternSeed: number) => {
         const obstacles: GameObject[] = [];
         const canvas = canvasRef.current;
         if (!canvas) return obstacles;
@@ -134,12 +141,10 @@ export default function FlappyGame({
         const pipeWidth = 70 + Math.random() * 20; // 70-90px wide
         const pipeX = x + Math.random() * 20 - 10; // Slight X variation
 
-        // Randomly select one of 5 barrier types for this obstacle set
+        // Use pattern seed + obstacle index to determine barrier type (consistent per game, varied per obstacle)
         const barrierTypes: ('energy' | 'asteroid-belt' | 'nebula' | 'debris' | 'laser')[] =
             ['energy', 'asteroid-belt', 'nebula', 'debris', 'laser'];
-        const selectedBarrierType = barrierTypes[Math.floor(Math.random() * barrierTypes.length)];
-
-        // Create dynamic barriers based on selected type
+        const selectedBarrierType = barrierTypes[Math.floor((patternSeed + obstacleIndex * 17) % barrierTypes.length)];        // Create dynamic barriers based on selected type
         if (selectedBarrierType === 'energy') {
             // Energy Barriers - glowing vertical energy beams
             const beamCount = 3 + Math.floor(Math.random() * 3); // 3-5 energy beams
@@ -351,10 +356,25 @@ export default function FlappyGame({
                 const objectType = Math.random() > 0.7 ? 'asteroid' : 'special-planet';
 
                 if (objectType === 'asteroid') {
-                    // Moving asteroid obstacle
+                    // Moving asteroid obstacle - positioned away from main pipe and gap
                     const asteroidSize = 35 + Math.random() * 25; // 35-60px
-                    const asteroidX = pipeX + (Math.random() > 0.5 ? 120 + Math.random() * 80 : -120 - Math.random() * 80);
-                    const asteroidY = Math.random() * (canvasHeight - asteroidSize - 100) + 50; // Keep away from edges
+
+                    // Safe zones: far left or far right of the pipe, avoiding gap area
+                    const safeZones = [
+                        { minX: pipeX - 200, maxX: pipeX - 100 }, // Left side
+                        { minX: pipeX + pipeWidth + 100, maxX: pipeX + pipeWidth + 200 } // Right side
+                    ];
+                    const selectedZone = safeZones[Math.floor(Math.random() * safeZones.length)];
+                    const asteroidX = selectedZone.minX + Math.random() * (selectedZone.maxX - selectedZone.minX);
+
+                    // Y position avoiding the gap area
+                    const safeYZones = [
+                        { minY: 50, maxY: gapY - 100 }, // Above gap
+                        { minY: gapY + gapSize + 100, maxY: canvasHeight - asteroidSize - 50 } // Below gap
+                    ];
+                    const selectedYZone = safeYZones[Math.floor(Math.random() * safeYZones.length)];
+                    const asteroidY = Math.max(selectedYZone.minY,
+                        selectedYZone.minY + Math.random() * Math.max(0, selectedYZone.maxY - selectedYZone.minY));
 
                     obstacles.push({
                         x: asteroidX,
@@ -367,11 +387,26 @@ export default function FlappyGame({
                         baseY: asteroidY
                     });
                 } else {
-                    // Special bonus planet (rarer)
+                    // Special bonus planet (rarer) - positioned in safe zones
                     const specialPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
                     const specialSize = 45 + Math.random() * 25; // 45-70px
-                    const specialX = pipeX + (Math.random() > 0.5 ? 130 + Math.random() * 70 : -130 - Math.random() * 70);
-                    const specialY = Math.random() * (canvasHeight - specialSize - 100) + 50;
+
+                    // Safe zones: far left or far right of the pipe
+                    const safeZones = [
+                        { minX: pipeX - 180, maxX: pipeX - 90 }, // Left side
+                        { minX: pipeX + pipeWidth + 90, maxX: pipeX + pipeWidth + 180 } // Right side
+                    ];
+                    const selectedZone = safeZones[Math.floor(Math.random() * safeZones.length)];
+                    const specialX = selectedZone.minX + Math.random() * (selectedZone.maxX - selectedZone.minX);
+
+                    // Y position avoiding the gap area and planets
+                    const safeYZones = [
+                        { minY: 70, maxY: gapY - 120 }, // Above gap, away from top planet
+                        { minY: gapY + gapSize + 120, maxY: canvasHeight - specialSize - 70 } // Below gap, away from bottom planet
+                    ];
+                    const selectedYZone = safeYZones[Math.floor(Math.random() * safeYZones.length)];
+                    const specialY = Math.max(selectedYZone.minY,
+                        selectedYZone.minY + Math.random() * Math.max(0, selectedYZone.maxY - selectedYZone.minY));
 
                     obstacles.push({
                         x: specialX,
@@ -386,6 +421,56 @@ export default function FlappyGame({
                     });
                 }
             }
+        }        // Every 10 points: Add special invisible pipe with moving planets (passable but challenging)
+        const shouldAddMovingPlanetPipe = currentScore > 0 && currentScore % 10 === 0;
+
+        if (shouldAddMovingPlanetPipe) {
+            // Create a wider gap for the moving planet challenge
+            const movingPlanetGap = gapSize + 80; // Wider gap to accommodate moving planets
+            const movingGapY = 100 + Math.random() * (canvasHeight - movingPlanetGap - 200);
+
+            // Add 3-4 moving planets in the gap area (passable but creates dynamic challenge)
+            const movingPlanetCount = 3 + Math.floor(Math.random() * 2); // 3-4 planets
+
+            for (let i = 0; i < movingPlanetCount; i++) {
+                const movingPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
+                const planetSize = 40 + Math.random() * 20; // 40-60px smaller than normal
+
+                // Position planets across the gap width
+                const planetX = pipeX + (i * (pipeWidth / movingPlanetCount)) + Math.random() * 20 - 10;
+                const planetY = movingGapY + (i * (movingPlanetGap / movingPlanetCount)) + Math.random() * 30 - 15;
+
+                obstacles.push({
+                    x: planetX,
+                    y: planetY,
+                    width: planetSize,
+                    height: planetSize,
+                    type: 'planet',
+                    planetType: movingPlanet,
+                    moveSpeed: 1.5 + Math.random() * 1.0, // Faster movement for challenge 1.5-2.5
+                    moveDirection: Math.random() > 0.5 ? 1 : -1,
+                    baseY: planetY
+                });
+            }
+
+            // Add invisible collision boundaries at edges (but with gaps for passage)
+            // Top invisible boundary
+            obstacles.push({
+                x: pipeX,
+                y: 0,
+                width: pipeWidth,
+                height: movingGapY - 20, // Leave 20px buffer
+                type: 'invisible-wall'
+            });
+
+            // Bottom invisible boundary
+            obstacles.push({
+                x: pipeX,
+                y: movingGapY + movingPlanetGap + 20, // Leave 20px buffer
+                width: pipeWidth,
+                height: canvasHeight - (movingGapY + movingPlanetGap + 20),
+                type: 'invisible-wall'
+            });
         }
 
         // Coin in the gap for bonus (sometimes)
@@ -467,12 +552,15 @@ export default function FlappyGame({
 
         // Check collisions with different obstacle types
         for (const obstacle of obstacles) {
-            if (obstacle.type === 'coin') {
+            if (obstacle.type === 'coin' && !obstacle.collected) {
                 // Coin collection (adjusted for larger UFO)
                 if (ufo.x + 15 < obstacle.x + obstacle.width &&
                     ufo.x + 45 > obstacle.x &&
                     ufo.y + 15 < obstacle.y + obstacle.height &&
                     ufo.y + 35 > obstacle.y) {
+
+                    // Mark as collected to prevent duplicate collection
+                    obstacle.collected = true;
 
                     // Practice Mode: 2 coins per star, save to localStorage
                     // Tournament Mode: 1 coin per star, not saved
@@ -487,9 +575,11 @@ export default function FlappyGame({
                     const coinParticles = createParticles(obstacle.x, obstacle.y, 6, 'coin');
                     gameStateRef.current.particles.push(...coinParticles);
 
-                    // Remove collected coin
+                    // Remove collected coin immediately
                     const index = gameStateRef.current.obstacles.indexOf(obstacle);
-                    gameStateRef.current.obstacles.splice(index, 1);
+                    if (index > -1) {
+                        gameStateRef.current.obstacles.splice(index, 1);
+                    }
                 }
             } else if (obstacle.type === 'planet') {
                 // Planet collision - generous UFO hitbox (adjusted for larger UFO)
@@ -547,6 +637,15 @@ export default function FlappyGame({
                     ufo.y + 32 > obstacle.y) {
 
                     return true; // Collision with nebula cloud
+                }
+            } else if (obstacle.type === 'invisible-wall') {
+                // Invisible wall collision for moving planet pipes
+                if (ufo.x + 20 < obstacle.x + obstacle.width &&
+                    ufo.x + 40 > obstacle.x &&
+                    ufo.y + 20 < obstacle.y + obstacle.height &&
+                    ufo.y + 40 > obstacle.y) {
+
+                    return true; // Collision with invisible boundary
                 }
             }
         }
@@ -608,8 +707,9 @@ export default function FlappyGame({
             // Generate new obstacles
             if (state.obstacles.length === 0 ||
                 state.obstacles[state.obstacles.length - 1].x < canvas.width - 350) {
-                const newObstacles = createObstacles(canvas.width + 100, state.score);
+                const newObstacles = createObstacles(canvas.width + 100, state.score, state.obstacleCount, state.gamePatternSeed);
                 state.obstacles.push(...newObstacles);
+                state.obstacleCount++; // Increment obstacle counter for pattern variation
             }
 
             // Update particles (frame-rate independent) with performance optimization
