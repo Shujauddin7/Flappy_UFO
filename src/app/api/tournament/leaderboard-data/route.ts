@@ -111,8 +111,8 @@ export async function GET() {
                 fetched_at: new Date().toISOString()
             };
 
-            // Cache empty result briefly to avoid repeated queries
-            await setCached(cacheKey, emptyResponse, 10);
+            // Cache empty result for 30 seconds to avoid repeated queries
+            await setCached(cacheKey, emptyResponse, 30);
             return NextResponse.json(emptyResponse);
         }
 
@@ -130,9 +130,9 @@ export async function GET() {
             fetched_at: new Date().toISOString()
         };
 
-        // 💾 STEP 3: Cache the fresh data for 3 seconds
-        console.log('💾 Caching leaderboard data for 3 seconds...');
-        await setCached(cacheKey, responseData, 3);
+        // 💾 STEP 3: Cache the fresh data for 30 seconds (scores don't change frequently)
+        console.log('💾 Caching leaderboard data for 30 seconds...');
+        await setCached(cacheKey, responseData, 30);
         console.log('✅ Data cached successfully');
 
         const responseTime = Date.now() - startTime;

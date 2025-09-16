@@ -18,5 +18,19 @@
         "titleBar.inactiveBackground": "#00800099",
         "titleBar.inactiveForeground": "#e7e7e799"
     },
-    "peacock.color": "green"
+    "peacock.color": "green",
+    "css.validate": false,
+    "tailwindCSS.includeLanguages": {
+        "plaintext": "html"
+    },
+    "tailwindCSS.experimental.classRegex": [
+        [
+            "clsx\\(([^)]*)\\)",
+            "(?:'|\"|`)([^']*)(?:'|\"|`)"
+        ],
+        [
+            "className\\s*:\\s*['\"`]([^'\"`]*)['\"`]",
+            "([a-zA-Z0-9\\-:]+)"
+        ]
+    ]
 }

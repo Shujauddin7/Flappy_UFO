@@ -1,12 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getCached, setCached } from '@/lib/redis';
 
 export async function GET(req: NextRequest) {
+    const startTime = Date.now();
     console.log('💰 Dynamic Prize Pool Calculation API called');
 
     try {
         const searchParams = req.nextUrl.searchParams;
         let tournamentDay = searchParams.get('tournament_day');
+
+        // 🚀 STEP 1: Check Redis cache first (30-second cache for prize calculations)
+        let cacheKey: string;
+        if (tournamentDay) {
+            cacheKey = `tournament:prizes:${tournamentDay}`;
+        } else {
+            cacheKey = 'tournament:prizes:current';
+        }
+
+        console.log('🔑 Cache key:', cacheKey);
+        const cachedData = await getCached(cacheKey);
+        console.log('📦 Redis cache result:', cachedData ? 'HIT' : 'MISS');
+
+        if (cachedData) {
+            const responseTime = Date.now() - startTime;
+            console.log('⚡ Prize Pool Cache Status: 🟢 CACHE HIT');
+            console.log(`🚀 Response time: ${responseTime}ms (Redis cache)`);
+
+            return NextResponse.json({
+                ...cachedData,
+                cached: true,
+                cached_at: new Date().toISOString()
+            });
+        }
+
+        console.log('📊 Prize Pool Cache Status: 🔴 DATABASE QUERY');
 
         // Same environment configuration as your existing APIs
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
@@ -109,9 +137,11 @@ export async function GET(req: NextRequest) {
             { rank: 8, percentage: 2, amount: (userFacingPrizePool * 0.02) + guaranteeBonusPerWinner },
             { rank: 9, percentage: 2, amount: (userFacingPrizePool * 0.02) + guaranteeBonusPerWinner },
             { rank: 10, percentage: 2, amount: (userFacingPrizePool * 0.02) + guaranteeBonusPerWinner }
-        ]; console.log(`💰 Prize calculation: ${totalRevenue} WLD → ${prizePoolPercentage}% pool + ${guaranteeAmount} WLD guarantee`);
+        ];
 
-        return NextResponse.json({
+        console.log(`💰 Prize calculation: ${totalRevenue} WLD → ${prizePoolPercentage}% pool + ${guaranteeAmount} WLD guarantee`);
+
+        const responseData = {
             success: true,
             tournament_day: tournamentDay,
             total_revenue: totalRevenue,
@@ -131,8 +161,20 @@ export async function GET(req: NextRequest) {
             guarantee_applied: guaranteeAmount > 0,
             prize_distribution: userPrizeDistribution, // User-facing prizes (no guarantee shown)
             admin_payout_distribution: actualPayoutDistribution, // Actual payout amounts
-            total_players: tournamentRecords.length
-        });
+            total_players: tournamentRecords.length,
+            cached: false,
+            fetched_at: new Date().toISOString()
+        };
+
+        // 💾 STEP 3: Cache the prize data for 30 seconds
+        console.log('💾 Caching prize pool data for 30 seconds...');
+        await setCached(cacheKey, responseData, 30);
+        console.log('✅ Prize pool data cached successfully');
+
+        const responseTime = Date.now() - startTime;
+        console.log(`🚀 Total response time: ${responseTime}ms (Database + Redis cache)`);
+
+        return NextResponse.json(responseData);
 
     } catch (error) {
         console.error('💥 Error in dynamic prize pool calculation:', error);

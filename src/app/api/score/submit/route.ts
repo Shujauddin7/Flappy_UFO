@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { createClient } from '@supabase/supabase-js';
+import { deleteCached } from '@/lib/redis';
 
 // Helper function to update user statistics safely (prevents race conditions)
 async function updateUserStatistics(userId: string, newScore: number, shouldUpdateHighScore: boolean = false) {
@@ -298,6 +299,16 @@ export async function POST(req: NextRequest) {
                     }
                 }
 
+                // 🚨 NEW HIGH SCORE: Invalidate leaderboard cache so it shows immediately
+                console.log('🏆 New high score! Invalidating leaderboard cache...');
+                await deleteCached('tournament:leaderboard:current');
+                console.log('✅ Leaderboard cache invalidated');
+
+                // 🚨 Also invalidate prize pool cache (affects total players/revenue)
+                console.log('💰 Invalidating prize pool cache...');
+                await deleteCached('tournament:prizes:current');
+                console.log('✅ Prize pool cache invalidated');
+
                 return NextResponse.json({
                     success: true,
                     data: {
@@ -358,6 +369,16 @@ export async function POST(req: NextRequest) {
                 }
             }
         }
+
+        // 📈 Score submitted (even if not high score): Invalidate leaderboard cache for fresh stats
+        console.log('📊 Score submitted, invalidating leaderboard cache...');
+        await deleteCached('tournament:leaderboard:current');
+        console.log('✅ Leaderboard cache invalidated');
+
+        // 💰 Also invalidate prize pool cache (game count affects calculations)
+        console.log('💰 Invalidating prize pool cache...');
+        await deleteCached('tournament:prizes:current');
+        console.log('✅ Prize pool cache invalidated');
 
         return NextResponse.json({
             success: true,
