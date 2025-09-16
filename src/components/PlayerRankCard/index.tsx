@@ -72,7 +72,6 @@ export const PlayerRankCard: React.FC<PlayerRankCardProps> = ({
                         {getDisplayName()}
                     </span>
                 </div>
-                {isCurrentUser && <span className="you-badge-right">YOU</span>}
             </div>
 
             <div className="score-section">

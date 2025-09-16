@@ -411,10 +411,6 @@ export default function LeaderboardPage() {
 
                 {/* Scrollable Content Area */}
                 <div className="leaderboard-scroll-content">
-                    <div className="header-section">
-                        {/* Keep only the tournament title here - no info box */}
-                    </div>
-
                     {/* Tournament Info Box - scrolls naturally with content */}
                     <div className="tournament-info-box">
                         {/* Timer Box */}
@@ -479,7 +475,7 @@ export default function LeaderboardPage() {
                         {/* Sticky Header Row for Leaderboard */}
                         <div className="leaderboard-header-row">
                             <div className="header-rank">Rank</div>
-                            <div className="header-player">Player</div>
+                            <div className="header-player">Human</div>
                             <div className="header-score">Score</div>
                             <div className="header-prize">Prize</div>
                         </div>
