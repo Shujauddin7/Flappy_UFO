@@ -45,6 +45,7 @@ interface GameState {
     particles: Particle[];
     score: number;
     coins: number;
+    coinsCollectedThisGame: number; // Track only coins collected during this game session
     gameStatus: 'ready' | 'playing' | 'gameOver';
     gameEndCalled?: boolean; // Prevent multiple game end calls
     gamePatternSeed: number; // Seed for consistent but varied patterns per game
@@ -74,6 +75,7 @@ export default function FlappyGame({
         particles: [],
         score: 0,
         coins: 0,
+        coinsCollectedThisGame: 0,
         gameStatus: 'ready',
         gameEndCalled: false, // Initialize flag
         gamePatternSeed: Math.random() * 1000, // Random seed for each game
@@ -96,6 +98,7 @@ export default function FlappyGame({
             particles: [],
             score: continueFromScore, // Start from previous score if continuing
             coins: initialCoins, // Load saved coins for practice mode
+            coinsCollectedThisGame: 0, // Reset coins collected this game
             gameStatus: 'ready',
             gameEndCalled: false,
             gamePatternSeed: Math.random() * 1000, // New random seed for each game
@@ -162,22 +165,27 @@ export default function FlappyGame({
                 type: 'invisible-wall'
             });
 
-            // Add 1-2 moving planets INSIDE the gap (passable)
+            // Add 1-2 moving planets INSIDE the gap (passable) with proper spacing
             const movingPlanetCount = 1 + Math.floor(Math.random() * 2); // 1-2 planets
             for (let i = 0; i < movingPlanetCount; i++) {
                 const movingPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
-                const planetSize = 35 + Math.random() * 15; // 35-50px smaller planets
+                const planetSize = 25 + Math.random() * 10; // 25-35px - smaller planets to ensure passage
+
+                // Calculate safe position within gap with proper spacing
+                const safeGapHeight = gapSize - 40; // Leave 40px buffer (20px top + 20px bottom)
+                const planetSpacing = safeGapHeight / movingPlanetCount; // Divide remaining space evenly
+                const planetY = gapY + 20 + (i * planetSpacing) + Math.random() * 10 - 5; // Random variation within safe bounds
 
                 obstacles.push({
-                    x: pipeX + 20 + (i * 30), // Spread planets across gap
-                    y: gapY + 30 + (i * 30), // Position within normal gap
+                    x: pipeX + 20 + Math.random() * (pipeWidth - 40 - planetSize), // Random X position within pipe width
+                    y: Math.max(gapY + 20, Math.min(gapY + gapSize - planetSize - 20, planetY)), // Ensure within safe bounds
                     width: planetSize,
                     height: planetSize,
                     type: 'planet',
                     planetType: movingPlanet,
                     moveSpeed: 0.3 + Math.random() * 0.4, // Much slower: 0.3-0.7 instead of 1.2-2.0
                     moveDirection: Math.random() > 0.5 ? 1 : -1,
-                    baseY: gapY + 30 + (i * 30)
+                    baseY: Math.max(gapY + 20, Math.min(gapY + gapSize - planetSize - 20, planetY))
                 });
             }
         } else {
@@ -191,32 +199,43 @@ export default function FlappyGame({
             const bottomPlanetSize = 60 + Math.random() * 20;
             const planetCenterX = pipeX + pipeWidth / 2;
 
-            // Calculate the maximum planet boundary for barriers
+            // Calculate planet positions
+            const topPlanetY = Math.max(20, gapY - topPlanetSize - 15);
+            const bottomPlanetY = Math.min(canvasHeight - bottomPlanetSize - 20, gapY + gapSize + 15);
+
+            // Calculate the maximum planet boundary for barriers (horizontal)
             const maxPlanetSize = Math.max(topPlanetSize, bottomPlanetSize);
             const planetLeftEdge = planetCenterX - maxPlanetSize / 2;
             const planetRightEdge = planetCenterX + maxPlanetSize / 2;
             const planetBarrierWidth = maxPlanetSize;
+
+            // Calculate barrier height boundaries (vertical) - barriers should end at planet edges
+            const topBarrierEndY = topPlanetY + topPlanetSize; // End at bottom of top planet
+            const bottomBarrierStartY = bottomPlanetY; // Start at top of bottom planet
 
             // Create barriers based on selected type - constrained within planet boundaries
             if (selectedBarrierType === 'energy') {
                 // Energy barriers - vertical blue energy beams within planet boundary
                 for (let i = 0; i < 3; i++) {
                     const beamX = planetLeftEdge + (i * (planetBarrierWidth / 3));
+
+                    // Top barrier - from screen top to top planet bottom
                     obstacles.push({
                         x: beamX,
                         y: 0,
                         width: 6,
-                        height: gapY - 5,
+                        height: topBarrierEndY,
                         type: 'energy-barrier',
                         barrierType: 'energy',
                         animationPhase: Math.random() * Math.PI * 2
                     });
 
+                    // Bottom barrier - from bottom planet top to screen bottom
                     obstacles.push({
                         x: beamX,
-                        y: gapY + gapSize + 5,
+                        y: bottomBarrierStartY,
                         width: 6,
-                        height: canvasHeight - (gapY + gapSize + 5),
+                        height: canvasHeight - bottomBarrierStartY,
                         type: 'energy-barrier',
                         barrierType: 'energy',
                         animationPhase: Math.random() * Math.PI * 2
@@ -228,8 +247,8 @@ export default function FlappyGame({
                 for (let i = 0; i < asteroidCount; i++) {
                     const asteroidX = planetLeftEdge + (i * 25) + Math.random() * 10 - 5;
 
-                    // Top asteroid belt
-                    for (let j = 0; j < Math.floor((gapY - 5) / 35); j++) {
+                    // Top asteroid belt - from screen top to top planet bottom
+                    for (let j = 0; j < Math.floor(topBarrierEndY / 35); j++) {
                         obstacles.push({
                             x: Math.max(planetLeftEdge, Math.min(planetRightEdge - 12, asteroidX + Math.random() * 8 - 4)),
                             y: j * 35 + Math.random() * 8 - 4,
@@ -241,12 +260,11 @@ export default function FlappyGame({
                         });
                     }
 
-                    // Bottom asteroid belt
-                    const startY = gapY + gapSize + 5;
-                    for (let j = 0; j < Math.floor((canvasHeight - startY) / 35); j++) {
+                    // Bottom asteroid belt - from bottom planet top to screen bottom
+                    for (let j = 0; j < Math.floor((canvasHeight - bottomBarrierStartY) / 35); j++) {
                         obstacles.push({
                             x: Math.max(planetLeftEdge, Math.min(planetRightEdge - 12, asteroidX + Math.random() * 8 - 4)),
-                            y: startY + (j * 35) + Math.random() * 8 - 4,
+                            y: bottomBarrierStartY + (j * 35) + Math.random() * 8 - 4,
                             width: 12 + Math.random() * 8,
                             height: 12 + Math.random() * 8,
                             type: 'asteroid-chunk',
@@ -261,8 +279,8 @@ export default function FlappyGame({
                 for (let i = 0; i < cloudCount; i++) {
                     const cloudX = planetLeftEdge + (i * (planetBarrierWidth / cloudCount)) + Math.random() * 15 - 7;
 
-                    // Top nebula clouds
-                    for (let j = 0; j < Math.floor((gapY - 5) / 40); j++) {
+                    // Top nebula clouds - from screen top to top planet bottom
+                    for (let j = 0; j < Math.floor(topBarrierEndY / 40); j++) {
                         obstacles.push({
                             x: Math.max(planetLeftEdge, Math.min(planetRightEdge - 25, cloudX + Math.random() * 20 - 10)),
                             y: j * 40 + Math.random() * 15 - 7,
@@ -275,12 +293,11 @@ export default function FlappyGame({
                         });
                     }
 
-                    // Bottom nebula clouds
-                    const startY = gapY + gapSize + 5;
-                    for (let j = 0; j < Math.floor((canvasHeight - startY) / 40); j++) {
+                    // Bottom nebula clouds - from bottom planet top to screen bottom
+                    for (let j = 0; j < Math.floor((canvasHeight - bottomBarrierStartY) / 40); j++) {
                         obstacles.push({
                             x: Math.max(planetLeftEdge, Math.min(planetRightEdge - 25, cloudX + Math.random() * 20 - 10)),
-                            y: startY + (j * 40) + Math.random() * 15 - 7,
+                            y: bottomBarrierStartY + (j * 40) + Math.random() * 15 - 7,
                             width: 25 + Math.random() * 15,
                             height: 25 + Math.random() * 15,
                             type: 'nebula-cloud',
@@ -296,8 +313,8 @@ export default function FlappyGame({
                 for (let i = 0; i < debrisCount; i++) {
                     const debrisX = planetLeftEdge + (i * 30) + Math.random() * 12 - 6;
 
-                    // Top debris field
-                    for (let j = 0; j < Math.floor((gapY - 5) / 45); j++) {
+                    // Top debris field - from screen top to top planet bottom
+                    for (let j = 0; j < Math.floor(topBarrierEndY / 45); j++) {
                         obstacles.push({
                             x: Math.max(planetLeftEdge, Math.min(planetRightEdge - 15, debrisX + Math.random() * 10 - 5)),
                             y: j * 45 + Math.random() * 10 - 5,
@@ -309,12 +326,11 @@ export default function FlappyGame({
                         });
                     }
 
-                    // Bottom debris field
-                    const startY = gapY + gapSize + 5;
-                    for (let j = 0; j < Math.floor((canvasHeight - startY) / 45); j++) {
+                    // Bottom debris field - from bottom planet top to screen bottom
+                    for (let j = 0; j < Math.floor((canvasHeight - bottomBarrierStartY) / 45); j++) {
                         obstacles.push({
                             x: Math.max(planetLeftEdge, Math.min(planetRightEdge - 15, debrisX + Math.random() * 10 - 5)),
-                            y: startY + (j * 45) + Math.random() * 10 - 5,
+                            y: bottomBarrierStartY + (j * 45) + Math.random() * 10 - 5,
                             width: 15 + Math.random() * 10,
                             height: 10 + Math.random() * 8,
                             type: 'space-debris',
@@ -329,23 +345,23 @@ export default function FlappyGame({
                 for (let i = 0; i < laserLines; i++) {
                     const laserX = planetLeftEdge + (i * (planetBarrierWidth / laserLines));
 
-                    // Top laser grid
+                    // Top laser grid - from screen top to top planet bottom
                     obstacles.push({
                         x: laserX,
                         y: 0,
                         width: 2,
-                        height: gapY - 5,
+                        height: topBarrierEndY,
                         type: 'laser-grid',
                         barrierType: 'laser',
                         animationPhase: Math.random() * Math.PI * 2
                     });
 
-                    // Bottom laser grid
+                    // Bottom laser grid - from bottom planet top to screen bottom
                     obstacles.push({
                         x: laserX,
-                        y: gapY + gapSize + 5,
+                        y: bottomBarrierStartY,
                         width: 2,
-                        height: canvasHeight - (gapY + gapSize + 5),
+                        height: canvasHeight - bottomBarrierStartY,
                         type: 'laser-grid',
                         barrierType: 'laser',
                         animationPhase: Math.random() * Math.PI * 2
@@ -360,27 +376,27 @@ export default function FlappyGame({
             // Top planet
             obstacles.push({
                 x: planetCenterX - topPlanetSize / 2,
-                y: Math.max(20, gapY - topPlanetSize - 15),
+                y: topPlanetY,
                 width: topPlanetSize,
                 height: topPlanetSize,
                 type: 'planet',
                 planetType: topPlanet,
                 moveSpeed: Math.random() > 0.8 ? 0.4 + Math.random() * 0.4 : 0,
                 moveDirection: Math.random() > 0.5 ? 1 : -1,
-                baseY: Math.max(20, gapY - topPlanetSize - 15)
+                baseY: topPlanetY
             });
 
             // Bottom planet
             obstacles.push({
                 x: planetCenterX - bottomPlanetSize / 2,
-                y: Math.min(canvasHeight - bottomPlanetSize - 20, gapY + gapSize + 15),
+                y: bottomPlanetY,
                 width: bottomPlanetSize,
                 height: bottomPlanetSize,
                 type: 'planet',
                 planetType: bottomPlanet,
                 moveSpeed: Math.random() > 0.8 ? 0.4 + Math.random() * 0.4 : 0,
                 moveDirection: Math.random() > 0.5 ? 1 : -1,
-                baseY: Math.min(canvasHeight - bottomPlanetSize - 20, gapY + gapSize + 15)
+                baseY: bottomPlanetY
             });
         }
 
@@ -530,6 +546,7 @@ export default function FlappyGame({
 
                     // Give 2 coins per collection as per Plan.md (Practice Mode only)
                     gameStateRef.current.coins += 2;
+                    gameStateRef.current.coinsCollectedThisGame += 2; // Track coins collected this game
 
                     // Note: Don't save to localStorage here - will be saved when game ends
 
@@ -695,7 +712,7 @@ export default function FlappyGame({
                 // Call onGameEnd immediately
                 if (!state.gameEndCalled) {
                     state.gameEndCalled = true;
-                    onGameEnd(state.score, state.coins);
+                    onGameEnd(state.score, state.coinsCollectedThisGame); // Pass only newly collected coins
                 }
 
                 // Explosion particles for visual effect
