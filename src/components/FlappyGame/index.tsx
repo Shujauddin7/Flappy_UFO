@@ -145,20 +145,24 @@ export default function FlappyGame({
         const shouldAddInvisiblePipe = currentScore > 0 && currentScore % 10 === 0;
 
         if (shouldAddInvisiblePipe) {
-            // Simple invisible pipe barriers
+            // Invisible pipe needs LARGER gap for moving planets
+            const invisibleGapSize = gapSize + 80; // Add 80px more space for moving planets
+            const invisibleGapY = Math.max(120, Math.min(canvasHeight - invisibleGapSize - 120, gapY));
+
+            // Simple invisible pipe barriers with larger gap
             obstacles.push({
                 x: pipeX,
                 y: 0,
                 width: pipeWidth,
-                height: gapY - 5,
+                height: invisibleGapY - 5,
                 type: 'invisible-wall'
             });
 
             obstacles.push({
                 x: pipeX,
-                y: gapY + gapSize + 5,
+                y: invisibleGapY + invisibleGapSize + 5,
                 width: pipeWidth,
-                height: canvasHeight - (gapY + gapSize + 5),
+                height: canvasHeight - (invisibleGapY + invisibleGapSize + 5),
                 type: 'invisible-wall'
             });
 
@@ -170,14 +174,14 @@ export default function FlappyGame({
 
                 obstacles.push({
                     x: pipeX + 20 + (i * 30), // Spread planets across gap
-                    y: gapY + 40 + (i * 20), // Position within gap
+                    y: invisibleGapY + 50 + (i * 40), // Position within larger gap, more spacing
                     width: planetSize,
                     height: planetSize,
                     type: 'planet',
                     planetType: movingPlanet,
-                    moveSpeed: 1.2 + Math.random() * 0.8, // Moving speed
+                    moveSpeed: 0.3 + Math.random() * 0.4, // Much slower: 0.3-0.7 instead of 1.2-2.0
                     moveDirection: Math.random() > 0.5 ? 1 : -1,
-                    baseY: gapY + 40 + (i * 20)
+                    baseY: invisibleGapY + 50 + (i * 40)
                 });
             }
         } else {
@@ -186,9 +190,9 @@ export default function FlappyGame({
                 ['energy', 'asteroid-belt', 'nebula', 'debris', 'laser'];
             const selectedBarrierType = barrierTypes[Math.floor((patternSeed + obstacleIndex * 17) % barrierTypes.length)];
 
-            // Create barriers based on selected type (simplified)
+            // Create barriers based on selected type - implement ALL 5 types
             if (selectedBarrierType === 'energy') {
-                // Simple energy barriers
+                // Energy barriers - vertical blue energy beams
                 for (let i = 0; i < 3; i++) {
                     const beamX = pipeX + (i * (pipeWidth / 3));
                     obstacles.push({
@@ -212,23 +216,137 @@ export default function FlappyGame({
                         glowIntensity: 0.8
                     });
                 }
-            } else {
-                // Default: Simple invisible walls for other barrier types
-                obstacles.push({
-                    x: pipeX,
-                    y: 0,
-                    width: pipeWidth,
-                    height: gapY - 5,
-                    type: 'invisible-wall'
-                });
+            } else if (selectedBarrierType === 'asteroid-belt') {
+                // Asteroid belt - rocky chunks
+                const asteroidCount = Math.floor(pipeWidth / 25);
+                for (let i = 0; i < asteroidCount; i++) {
+                    const asteroidX = pipeX + (i * 25) + Math.random() * 10 - 5;
 
-                obstacles.push({
-                    x: pipeX,
-                    y: gapY + gapSize + 5,
-                    width: pipeWidth,
-                    height: canvasHeight - (gapY + gapSize + 5),
-                    type: 'invisible-wall'
-                });
+                    // Top asteroid belt
+                    for (let j = 0; j < Math.floor((gapY - 5) / 35); j++) {
+                        obstacles.push({
+                            x: asteroidX + Math.random() * 8 - 4,
+                            y: j * 35 + Math.random() * 8 - 4,
+                            width: 12 + Math.random() * 8,
+                            height: 12 + Math.random() * 8,
+                            type: 'asteroid-chunk',
+                            barrierType: 'asteroid-belt',
+                            animationPhase: Math.random() * Math.PI * 2
+                        });
+                    }
+
+                    // Bottom asteroid belt
+                    const startY = gapY + gapSize + 5;
+                    for (let j = 0; j < Math.floor((canvasHeight - startY) / 35); j++) {
+                        obstacles.push({
+                            x: asteroidX + Math.random() * 8 - 4,
+                            y: startY + (j * 35) + Math.random() * 8 - 4,
+                            width: 12 + Math.random() * 8,
+                            height: 12 + Math.random() * 8,
+                            type: 'asteroid-chunk',
+                            barrierType: 'asteroid-belt',
+                            animationPhase: Math.random() * Math.PI * 2
+                        });
+                    }
+                }
+            } else if (selectedBarrierType === 'nebula') {
+                // Nebula clouds - colorful gas clouds
+                const cloudCount = 4 + Math.floor(Math.random() * 3);
+                for (let i = 0; i < cloudCount; i++) {
+                    const cloudX = pipeX + (i * (pipeWidth / cloudCount)) + Math.random() * 15 - 7;
+
+                    // Top nebula clouds
+                    for (let j = 0; j < Math.floor((gapY - 5) / 40); j++) {
+                        obstacles.push({
+                            x: cloudX + Math.random() * 20 - 10,
+                            y: j * 40 + Math.random() * 15 - 7,
+                            width: 25 + Math.random() * 15,
+                            height: 25 + Math.random() * 15,
+                            type: 'nebula-cloud',
+                            barrierType: 'nebula',
+                            animationPhase: Math.random() * Math.PI * 2,
+                            glowIntensity: 0.5 + Math.random() * 0.3
+                        });
+                    }
+
+                    // Bottom nebula clouds
+                    const startY = gapY + gapSize + 5;
+                    for (let j = 0; j < Math.floor((canvasHeight - startY) / 40); j++) {
+                        obstacles.push({
+                            x: cloudX + Math.random() * 20 - 10,
+                            y: startY + (j * 40) + Math.random() * 15 - 7,
+                            width: 25 + Math.random() * 15,
+                            height: 25 + Math.random() * 15,
+                            type: 'nebula-cloud',
+                            barrierType: 'nebula',
+                            animationPhase: Math.random() * Math.PI * 2,
+                            glowIntensity: 0.5 + Math.random() * 0.3
+                        });
+                    }
+                }
+            } else if (selectedBarrierType === 'debris') {
+                // Space debris - satellites and space junk
+                const debrisCount = Math.floor(pipeWidth / 30);
+                for (let i = 0; i < debrisCount; i++) {
+                    const debrisX = pipeX + (i * 30) + Math.random() * 12 - 6;
+
+                    // Top debris field
+                    for (let j = 0; j < Math.floor((gapY - 5) / 45); j++) {
+                        obstacles.push({
+                            x: debrisX + Math.random() * 10 - 5,
+                            y: j * 45 + Math.random() * 10 - 5,
+                            width: 15 + Math.random() * 10,
+                            height: 10 + Math.random() * 8,
+                            type: 'space-debris',
+                            barrierType: 'debris',
+                            animationPhase: Math.random() * Math.PI * 2
+                        });
+                    }
+
+                    // Bottom debris field
+                    const startY = gapY + gapSize + 5;
+                    for (let j = 0; j < Math.floor((canvasHeight - startY) / 45); j++) {
+                        obstacles.push({
+                            x: debrisX + Math.random() * 10 - 5,
+                            y: startY + (j * 45) + Math.random() * 10 - 5,
+                            width: 15 + Math.random() * 10,
+                            height: 10 + Math.random() * 8,
+                            type: 'space-debris',
+                            barrierType: 'debris',
+                            animationPhase: Math.random() * Math.PI * 2
+                        });
+                    }
+                }
+            } else if (selectedBarrierType === 'laser') {
+                // Laser grid - thin red laser lines
+                const laserLines = 6 + Math.floor(Math.random() * 4);
+                for (let i = 0; i < laserLines; i++) {
+                    const laserX = pipeX + (i * (pipeWidth / laserLines));
+
+                    // Top laser grid
+                    obstacles.push({
+                        x: laserX,
+                        y: 0,
+                        width: 3,
+                        height: gapY - 5,
+                        type: 'laser-grid',
+                        barrierType: 'laser',
+                        animationPhase: Math.random() * Math.PI * 2,
+                        glowIntensity: 0.8 + Math.random() * 0.2
+                    });
+
+                    // Bottom laser grid
+                    obstacles.push({
+                        x: laserX,
+                        y: gapY + gapSize + 5,
+                        width: 3,
+                        height: canvasHeight - (gapY + gapSize + 5),
+                        type: 'laser-grid',
+                        barrierType: 'laser',
+                        animationPhase: Math.random() * Math.PI * 2,
+                        glowIntensity: 0.8 + Math.random() * 0.2
+                    });
+                }
             }
 
             // Place normal planets at pipe ends (only 2 planets total)
