@@ -72,13 +72,13 @@ export async function getCached<T>(key: string): Promise<T | null> {
 
         const envKey = getEnvironmentKey(key);
         const cached = await redis.get(envKey);
-        
+
         if (cached !== null) {
             const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
             console.log(`✅ Cache HIT for ${envKey} (${isProduction ? 'PROD' : 'DEV'})`);
             return typeof cached === 'string' ? JSON.parse(cached) : cached;
         }
-        
+
         return null;
     } catch (error) {
         console.error('❌ Redis getCached error:', error);
@@ -100,7 +100,7 @@ export async function setCached<T>(
 
         const envKey = getEnvironmentKey(key);
         await redis.setex(envKey, expirationSeconds, JSON.stringify(data));
-        
+
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
         console.log(`💾 Cached ${envKey} for ${expirationSeconds}s (${isProduction ? 'PROD' : 'DEV'})`);
     } catch (error) {
@@ -119,7 +119,7 @@ export async function deleteCached(key: string): Promise<void> {
 
         const envKey = getEnvironmentKey(key);
         await redis.del(envKey);
-        
+
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
         console.log(`🗑️ Deleted cache for ${envKey} (${isProduction ? 'PROD' : 'DEV'})`);
     } catch (error) {
