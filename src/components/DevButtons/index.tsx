@@ -36,7 +36,7 @@ export const DevButtons = () => {
     try {
       const response = await fetch(`/api/users?wallet=${session.user.walletAddress}`);
       const result = await response.json();
-      
+
       if (response.ok) {
         setTestData(result.user);
         alert('User data loaded - check below!');
@@ -68,7 +68,7 @@ export const DevButtons = () => {
       <div style={{ color: '#00F5FF', fontSize: '12px', fontWeight: 'bold' }}>
         DEV MODE
       </div>
-      
+
       <button
         onClick={handleSignOut}
         disabled={!session}
