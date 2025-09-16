@@ -118,6 +118,12 @@ export default function LeaderboardPage() {
                 const tournamentData = await tournamentResponse.json();
                 const prizeData = await prizeResponse.json();
 
+                // 🧪 REDIS TESTING: Log cache performance (temporary for testing)
+                if (process.env.NODE_ENV === 'development') {
+                    console.log('🧪 Tournament API Cache Status:', tournamentData.cached ? 'HIT' : 'MISS');
+                    console.log('🧪 API Response Time:', tournamentData.cached ? 'FAST (Redis)' : 'SLOW (Database)');
+                }
+
                 if (!tournamentResponse.ok) {
                     console.error('Error fetching tournament:', tournamentData.error);
                     setError(tournamentData.error || 'Failed to load tournament data');

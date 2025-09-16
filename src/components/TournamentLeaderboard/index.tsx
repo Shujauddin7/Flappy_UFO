@@ -79,6 +79,10 @@ export const TournamentLeaderboard = ({
                 return;
             }
 
+            // 🧪 REDIS TESTING: Log cache performance for World App testing
+            console.log('🧪 Leaderboard Cache Status:', data.cached ? '⚡ REDIS HIT' : '🗄️ DATABASE QUERY');
+            console.log('🧪 Response includes cached flag:', !!data.cached);
+
             const players = data.players || [];
 
             if (players.length === 0) {
