@@ -1,8 +1,23 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getCached, setCached } from '@/lib/redis';
 
 export async function GET() {
     try {
+        // 🚀 STEP 1: Check Redis cache first (3-second cache)
+        const cacheKey = 'tournament:leaderboard:current';
+        const cachedData = await getCached(cacheKey);
+        
+        if (cachedData) {
+            // Return cached data instantly (5ms response from Mumbai Redis)
+            return NextResponse.json({
+                ...cachedData,
+                cached: true, // For debugging - shows when data came from cache
+                cached_at: new Date().toISOString()
+            });
+        }
+
+        // 🗄️ STEP 2: If no cache, fetch from database (your existing logic)
         // Environment-specific database configuration
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
         const supabaseUrl = isProduction ? process.env.SUPABASE_PROD_URL : process.env.SUPABASE_DEV_URL;
@@ -68,10 +83,17 @@ export async function GET() {
         }
 
         if (!players || players.length === 0) {
-            return NextResponse.json({
+            const emptyResponse = {
                 players: [],
-                tournament_day: tournamentDay
-            });
+                tournament_day: tournamentDay,
+                total_players: 0,
+                cached: false,
+                fetched_at: new Date().toISOString()
+            };
+            
+            // Cache empty result briefly to avoid repeated queries
+            await setCached(cacheKey, emptyResponse, 10);
+            return NextResponse.json(emptyResponse);
         }
 
         // Add rank to each player
@@ -80,11 +102,18 @@ export async function GET() {
             rank: index + 1
         }));
 
-        return NextResponse.json({
+        const responseData = {
             players: playersWithRank,
             tournament_day: tournamentDay,
-            total_players: playersWithRank.length
-        });
+            total_players: playersWithRank.length,
+            cached: false, // Fresh from database
+            fetched_at: new Date().toISOString()
+        };
+
+        // 💾 STEP 3: Cache the fresh data for 3 seconds
+        await setCached(cacheKey, responseData, 3);
+
+        return NextResponse.json(responseData);
 
     } catch (error) {
         console.error('❌ Leaderboard data API error:', error);

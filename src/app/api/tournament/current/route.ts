@@ -1,10 +1,25 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getCached, setCached } from '@/lib/redis';
 
 export async function GET() {
     console.log('🔍 Current Tournament API called');
 
     try {
+        // 🚀 STEP 1: Check Redis cache first (5-second cache for tournament info)
+        const cacheKey = 'tournament:current';
+        const cachedData = await getCached(cacheKey);
+        
+        if (cachedData) {
+            // Return cached tournament data instantly
+            return NextResponse.json({
+                ...cachedData,
+                cached: true,
+                cached_at: new Date().toISOString()
+            });
+        }
+
+        // 🗄️ STEP 2: If no cache, fetch from database
         // Environment-specific database configuration (following Plan.md specification)
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
 
@@ -104,10 +119,17 @@ export async function GET() {
             time_until_end_minutes: isActive ? Math.round((endTime.getTime() - currentTime.getTime()) / 60000) : 0
         });
 
-        return NextResponse.json({
+        const responseData = {
             tournament,
-            status: tournamentStatus
-        });
+            status: tournamentStatus,
+            cached: false, // Fresh from database
+            fetched_at: new Date().toISOString()
+        };
+
+        // 💾 STEP 3: Cache the tournament data for 5 seconds
+        await setCached(cacheKey, responseData, 5);
+
+        return NextResponse.json(responseData);
 
     } catch (error) {
         console.error('❌ Current tournament API error:', error);
