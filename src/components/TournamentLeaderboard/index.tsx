@@ -46,12 +46,12 @@ export const TournamentLeaderboard = ({
 }: TournamentLeaderboardProps) => {
     const [topPlayers, setTopPlayers] = useState<LeaderboardPlayer[]>([]);
     const [allPlayers, setAllPlayers] = useState<LeaderboardPlayer[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!preloadedData); // 🚀 OPTIMIZATION: Don't show loading if we have preloaded data
     const [currentUserData, setCurrentUserData] = useState<LeaderboardPlayer | null>(null);
 
-    // Setup intersection observer for user card visibility
+    // Setup intersection observer for user card visibility - OPTIMIZED: Only after data is loaded
     useEffect(() => {
-        if (!currentUserData || !onUserCardVisibility) return;
+        if (!currentUserData || !onUserCardVisibility || loading) return;
 
         const observer = new IntersectionObserver(
             (entries) => {
@@ -76,7 +76,8 @@ export const TournamentLeaderboard = ({
                 observer.unobserve(userCardElement);
             }
         };
-    }, [currentUserData, onUserCardVisibility]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentUserData, onUserCardVisibility]); // Intentionally excluding loading to prevent infinite loop
 
     const fetchLeaderboardData = useCallback(async () => {
         try {
@@ -95,6 +96,40 @@ export const TournamentLeaderboard = ({
                 // Set both top players and all players
                 setTopPlayers(players.slice(0, 10));
                 setAllPlayers(players);
+
+                // 🚀 OPTIMIZATION: Process user rank immediately without loading delay
+                if ((currentUserId || currentUsername) && onUserRankUpdate) {
+                    let userRank = null;
+
+                    // Strategy 1: Direct wallet match (most reliable for this app since wallet is unique)
+                    if (currentUserId) {
+                        userRank = players.find((player: LeaderboardPlayer) =>
+                            player.wallet === currentUserId ||
+                            (player.wallet && currentUserId && player.wallet.toLowerCase() === currentUserId.toLowerCase())
+                        );
+                    }
+
+                    // Strategy 2: Username match (secondary option)
+                    if (!userRank && currentUsername) {
+                        userRank = players.find((player: LeaderboardPlayer) =>
+                            player.username === currentUsername
+                        );
+                    }
+
+                    // Strategy 3: Direct user_id match (legacy support)
+                    if (!userRank && currentUserId) {
+                        userRank = players.find((player: LeaderboardPlayer) =>
+                            player.user_id === currentUserId
+                        );
+                    }
+
+                    // Always notify parent, even if null
+                    onUserRankUpdate(userRank || null);
+
+                    // Set current user data for intersection observer
+                    setCurrentUserData(userRank || null);
+                }
+
                 setLoading(false);
                 return;
             }

@@ -188,7 +188,7 @@ export default function LeaderboardPage() {
         return () => {
             clearInterval(timeInterval);
         };
-    }, []); // Empty dependency array - run only once on mount
+    }, []); // Keep empty dependency - only run once on mount
 
     // Star particles animation
     useEffect(() => {
