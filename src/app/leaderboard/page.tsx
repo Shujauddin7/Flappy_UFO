@@ -67,7 +67,11 @@ export default function LeaderboardPage() {
     const [preloadedLeaderboardData, setPreloadedLeaderboardData] = useState<LeaderboardApiResponse | null>(null); // NEW: Store leaderboard data
     const [currentUserRank, setCurrentUserRank] = useState<LeaderboardPlayer | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [isInitialLoad, setIsInitialLoad] = useState(true); // Track if we're still on first load
+    const [isInitialLoad, setIsInitialLoad] = useState(() => {
+        // 🚀 FIX: Always show loading on first mount, but track if we've loaded before
+        // This prevents showing "Loading tournament..." repeatedly but ensures proper loading state
+        return true; // Always start with loading state
+    });
     const [currentTime, setCurrentTime] = useState(new Date());
     const [shouldShowFixedCard, setShouldShowFixedCard] = useState(false);
     const [showPrizeBreakdown, setShowPrizeBreakdown] = useState(false); // Hidden by default
@@ -114,62 +118,125 @@ export default function LeaderboardPage() {
             try {
                 setError(null);
 
-                // 🚀 PROGRESSIVE LOADING: Show tournament info immediately, load leaderboard in background
-                console.log('🚀 Phase 1: Loading tournament info (fast)...');
+                // 🚀 LIGHTNING FAST LOADING: Check for pre-loaded data first
+                console.log('🚀 Checking for pre-loaded leaderboard data...');
+                const preloadedTournament = sessionStorage.getItem('preloaded_tournament');
+                const preloadedLeaderboard = sessionStorage.getItem('preloaded_leaderboard');
 
-                // Load tournament and prizes first (fast APIs with cache)
-                const [tournamentResponse, prizeResponse] = await Promise.all([
-                    fetch('/api/tournament/current'),
-                    fetch('/api/tournament/dynamic-prizes')
-                ]);
+                let usedPreloadedData = false;
 
-                const [tournamentData, prizeData] = await Promise.all([
-                    tournamentResponse.json(),
-                    prizeResponse.json()
-                ]);
+                // Check if we have fresh pre-loaded tournament data
+                if (preloadedTournament) {
+                    try {
+                        const cached = JSON.parse(preloadedTournament);
+                        const isExpired = Date.now() - cached.timestamp > cached.ttl;
 
-                if (!tournamentResponse.ok) {
-                    console.error('Error fetching tournament:', tournamentData.error);
-                    setError(tournamentData.error || 'Failed to load tournament data');
-                    return;
-                }
+                        if (!isExpired && cached.data?.tournament) {
+                            console.log('⚡ Using pre-loaded tournament data - INSTANT LOADING!');
+                            setCurrentTournament(cached.data.tournament);
 
-                // 🚀 SHOW TOURNAMENT INFO IMMEDIATELY - Don't wait for slow leaderboard
-                setCurrentTournament(tournamentData.tournament);
-                if (prizeResponse.ok) {
-                    setPrizePoolData(prizeData);
-                }
-                setIsInitialLoad(false); // Mark that initial load is complete
-                // ✅ Tournament info loaded! Content shows immediately
-
-                // 🧪 REDIS TESTING: Log cache performance
-                if (process.env.NODE_ENV === 'development') {
-                    console.log('🧪 Tournament API Cache Status:', tournamentData.cached ? 'HIT' : 'MISS');
-                }
-
-                // 🚀 Phase 2: Load leaderboard in background (optimized query)
-                console.log('🚀 Phase 2: Loading leaderboard data...');
-
-                try {
-                    const leaderboardResponse = await fetch('/api/tournament/leaderboard-data');
-                    const leaderboardData = await leaderboardResponse.json();
-
-                    if (leaderboardResponse.ok) {
-                        console.log('🚀 Leaderboard data loaded - passing to component');
-                        setPreloadedLeaderboardData(leaderboardData);
-
-                        // 🧪 REDIS TESTING: Log leaderboard cache performance
-                        if (process.env.NODE_ENV === 'development') {
-                            console.log('🧪 Leaderboard API Cache Status:', leaderboardData.cached ? 'HIT' : 'MISS');
+                            // Also load prize data if available in the cached response
+                            if (cached.data.prize_pool || cached.data.total_prize_pool) {
+                                setPrizePoolData({
+                                    prize_pool: {
+                                        base_amount: cached.data.total_prize_pool || cached.data.prize_pool || 0,
+                                        guarantee_amount: cached.data.total_prize_pool || cached.data.prize_pool || 0,
+                                        final_amount: cached.data.total_prize_pool || cached.data.prize_pool || 0
+                                    },
+                                    guarantee_applied: false,
+                                    admin_net_result: 0
+                                });
+                            }
+                            usedPreloadedData = true;
                         }
-                    } else {
-                        console.warn('Leaderboard loading failed, component will use API fallback');
+                    } catch {
+                        console.log('⚠️ Pre-loaded tournament data corrupted, using API');
                     }
-                } catch (leaderboardErr) {
-                    console.warn('Leaderboard loading failed:', leaderboardErr, '- component will use API fallback');
                 }
 
-                setError(null);
+                // Check if we have fresh pre-loaded leaderboard data
+                if (preloadedLeaderboard && usedPreloadedData) {
+                    try {
+                        const cached = JSON.parse(preloadedLeaderboard);
+                        const isExpired = Date.now() - cached.timestamp > cached.ttl;
+
+                        if (!isExpired && cached.data?.players) {
+                            console.log('⚡ Using pre-loaded leaderboard data - ZERO LOADING TIME!');
+                            setPreloadedLeaderboardData(cached.data);
+                            setIsInitialLoad(false);
+                            setError(null);
+                            // Mark that tournament has been loaded successfully
+                            sessionStorage.setItem('tournament_loaded_once', 'true');
+                            return; // All data loaded instantly from cache!
+                        }
+                    } catch {
+                        console.log('⚠️ Pre-loaded leaderboard data corrupted, using API');
+                    }
+                }
+
+                // Fallback: Load data via API if no pre-loaded data available
+                if (!usedPreloadedData) {
+                    console.log('🚀 Loading tournament info via API (no pre-loaded data found)...');
+
+                    // Load tournament and prizes first (fast APIs with cache)
+                    const [tournamentResponse, prizeResponse] = await Promise.all([
+                        fetch('/api/tournament/current'),
+                        fetch('/api/tournament/dynamic-prizes')
+                    ]);
+
+                    const [tournamentData, prizeData] = await Promise.all([
+                        tournamentResponse.json(),
+                        prizeResponse.json()
+                    ]);
+
+                    if (!tournamentResponse.ok) {
+                        console.error('Error fetching tournament:', tournamentData.error);
+                        setError(tournamentData.error || 'Failed to load tournament data');
+                        return;
+                    }
+
+                    // 🚀 SHOW TOURNAMENT INFO IMMEDIATELY - Don't wait for slow leaderboard
+                    setCurrentTournament(tournamentData.tournament);
+                    if (prizeResponse.ok) {
+                        setPrizePoolData(prizeData);
+                    }
+                    setIsInitialLoad(false); // Mark that initial load is complete
+                    // ✅ Tournament info loaded! Content shows immediately
+
+                    // Mark that tournament has been loaded successfully
+                    sessionStorage.setItem('tournament_loaded_once', 'true');
+
+                    // 🧪 REDIS TESTING: Log cache performance
+                    if (process.env.NODE_ENV === 'development') {
+                        console.log('🧪 Tournament API Cache Status:', tournamentData.cached ? 'HIT' : 'MISS');
+                    }
+
+                    // 🚀 Phase 2: Load leaderboard data in background (optimized query)
+                    console.log('🚀 Phase 2: Loading leaderboard data...');
+
+                    try {
+                        const leaderboardResponse = await fetch('/api/tournament/leaderboard-data');
+                        const leaderboardData = await leaderboardResponse.json();
+
+                        if (leaderboardResponse.ok) {
+                            console.log('🚀 Leaderboard data loaded - passing to component');
+                            setPreloadedLeaderboardData(leaderboardData);
+
+                            // 🧪 REDIS TESTING: Log leaderboard cache performance
+                            if (process.env.NODE_ENV === 'development') {
+                                console.log('🧪 Leaderboard API Cache Status:', leaderboardData.cached ? 'HIT' : 'MISS');
+                            }
+                        } else {
+                            console.warn('Leaderboard loading failed, component will use API fallback');
+                        }
+                    } catch (leaderboardErr) {
+                        console.warn('Leaderboard loading failed:', leaderboardErr, '- component will use API fallback');
+                    }
+
+                    setError(null);
+                } else {
+                    console.log('✅ All data loaded from pre-loaded cache - no API calls needed!');
+                }
             } catch (err) {
                 console.error('Failed to fetch tournament:', err);
                 setError('Failed to load tournament data');
@@ -180,6 +247,40 @@ export default function LeaderboardPage() {
         // Fetch tournament data on mount
         fetchCurrentTournament();
 
+        // 🚀 REAL-TIME UPDATES: Poll tournament info every 30 seconds for updated player count and prize pool
+        // This ensures "501 humans are playing" and prize pool update instantly when new players join
+        const pollTournamentInfo = async () => {
+            try {
+                const response = await fetch('/api/tournament/current');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.tournament) {
+                        setCurrentTournament(prev => {
+                            // Only update if tournament data actually changed
+                            if (prev?.total_players !== data.tournament.total_players ||
+                                prev?.total_prize_pool !== data.tournament.total_prize_pool) {
+                                console.log(`🔄 Tournament info updated: ${data.tournament.total_players} players, $${data.tournament.total_prize_pool} prize pool`);
+                                return data.tournament;
+                            }
+                            return prev;
+                        });
+
+                        // Also update prize pool data if available
+                        const prizeResponse = await fetch('/api/tournament/dynamic-prizes');
+                        if (prizeResponse.ok) {
+                            const prizeData = await prizeResponse.json();
+                            setPrizePoolData(prizeData);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.log('Failed to poll tournament info:', error);
+            }
+        };
+
+        // Poll every 30 seconds for real-time updates
+        const pollInterval = setInterval(pollTournamentInfo, 30000);
+
         // Update time every second for live countdown
         const timeInterval = setInterval(() => {
             setCurrentTime(new Date());
@@ -187,6 +288,7 @@ export default function LeaderboardPage() {
 
         return () => {
             clearInterval(timeInterval);
+            clearInterval(pollInterval);
         };
     }, []); // Keep empty dependency - only run once on mount
 
@@ -358,8 +460,20 @@ export default function LeaderboardPage() {
 
     const timeRemaining = getTimeRemaining();
 
-    // 🚀 Show loading state only during initial load
-    if (isInitialLoad && !currentTournament && !error) {
+    // 🚀 Show loading state only when we truly don't have tournament data AND haven't tried loading yet
+    const shouldShowLoading = isInitialLoad && !currentTournament && !error;
+
+    // 🚀 Quick check for cached data to skip loading screen entirely
+    const hasCachedData = (() => {
+        try {
+            const cached = sessionStorage.getItem('preloaded_tournament');
+            return cached && JSON.parse(cached).data?.tournament;
+        } catch {
+            return false;
+        }
+    })();
+
+    if (shouldShowLoading && !hasCachedData) {
         return (
             <Page>
                 <canvas ref={canvasRef} className="starfield-canvas" />

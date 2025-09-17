@@ -207,8 +207,12 @@ export const TournamentLeaderboard = ({
         // 🚀 OPTIMIZATION: Only set up polling if we DON'T have preloaded data
         // This prevents redundant API calls when parent already loaded the data
         if (!isGracePeriod && !preloadedData) {
-            // Refresh every 5 seconds as specified in Plan.md
-            const intervalId = setInterval(fetchLeaderboardData, 5000);
+            // Refresh every 30 seconds for new players (less aggressive than before)
+            // This will show new humans joining the tournament and updated rankings
+            const intervalId = setInterval(() => {
+                console.log('🔄 Refreshing leaderboard for new players and updated rankings...');
+                fetchLeaderboardData();
+            }, 30000); // Changed from 5s to 30s to reduce server load but still get updates
 
             return () => {
                 clearInterval(intervalId);
