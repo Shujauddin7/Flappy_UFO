@@ -27,6 +27,14 @@ interface LeaderboardPlayer {
     rank?: number;
 }
 
+interface LeaderboardApiResponse {
+    players: LeaderboardPlayer[];
+    tournament_day: string;
+    total_players: number;
+    cached?: boolean;
+    fetched_at?: string;
+}
+
 interface TournamentData {
     id: string;
     tournament_day: string;
@@ -56,6 +64,7 @@ export default function LeaderboardPage() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [currentTournament, setCurrentTournament] = useState<TournamentData | null>(null);
     const [prizePoolData, setPrizePoolData] = useState<PrizePoolData | null>(null);
+    const [preloadedLeaderboardData, setPreloadedLeaderboardData] = useState<LeaderboardApiResponse | null>(null); // NEW: Store leaderboard data
     const [currentUserRank, setCurrentUserRank] = useState<LeaderboardPlayer | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -106,17 +115,22 @@ export default function LeaderboardPage() {
                 setLoading(true);
                 setError(null);
 
-                const [tournamentResponse, prizeResponse] = await Promise.all([
+                // 🚀 FETCH ALL DATA AT ONCE - No more double loading!
+                const [tournamentResponse, prizeResponse, leaderboardResponse] = await Promise.all([
                     fetch('/api/tournament/current', {
                         cache: 'no-cache'
                     }),
                     fetch('/api/tournament/dynamic-prizes', {
+                        cache: 'no-cache'
+                    }),
+                    fetch('/api/tournament/leaderboard-data', {
                         cache: 'no-cache'
                     })
                 ]);
 
                 const tournamentData = await tournamentResponse.json();
                 const prizeData = await prizeResponse.json();
+                const leaderboardData = await leaderboardResponse.json();
 
                 // 🧪 REDIS TESTING: Log cache performance (temporary for testing)
                 if (process.env.NODE_ENV === 'development') {
@@ -134,6 +148,12 @@ export default function LeaderboardPage() {
 
                 if (prizeResponse.ok) {
                     setPrizePoolData(prizeData);
+                }
+
+                // 🚀 NEW: Store leaderboard data to pass to component (eliminates second loading phase)
+                if (leaderboardResponse.ok) {
+                    console.log('🚀 Leaderboard data preloaded - component will skip API call');
+                    setPreloadedLeaderboardData(leaderboardData);
                 }
 
                 setError(null);
@@ -492,6 +512,7 @@ export default function LeaderboardPage() {
                             currentUsername={session?.user?.username || null}
                             isGracePeriod={timeRemaining?.status === 'grace'}
                             totalPrizePool={prizePoolData?.prize_pool?.base_amount || currentTournament.total_prize_pool}
+                            preloadedData={preloadedLeaderboardData} // 🚀 NEW: Pass preloaded data
                             onUserRankUpdate={handleUserRankUpdate}
                             onUserCardVisibility={handleUserCardVisibility}
                         />

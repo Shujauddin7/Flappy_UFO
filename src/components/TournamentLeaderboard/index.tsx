@@ -14,6 +14,14 @@ interface LeaderboardPlayer {
     rank?: number;
 }
 
+interface LeaderboardApiResponse {
+    players: LeaderboardPlayer[];
+    tournament_day: string;
+    total_players: number;
+    cached?: boolean;
+    fetched_at?: string;
+}
+
 interface TournamentLeaderboardProps {
     tournamentId?: string;
     currentUserId?: string | null;  // This is actually the wallet address
@@ -21,6 +29,7 @@ interface TournamentLeaderboardProps {
     isGracePeriod?: boolean;
     refreshTrigger?: number; // Add this to trigger manual refresh
     totalPrizePool?: number; // Add real prize pool
+    preloadedData?: LeaderboardApiResponse | null; // NEW: Accept pre-loaded leaderboard data to skip API call
     onUserRankUpdate?: (userRank: LeaderboardPlayer | null) => void; // Callback for user rank
     onUserCardVisibility?: (isVisible: boolean) => void; // Callback for user card visibility
 }
@@ -31,6 +40,7 @@ export const TournamentLeaderboard = ({
     isGracePeriod = false,
     refreshTrigger = 0,
     totalPrizePool = 0,
+    preloadedData = null, // NEW: Accept pre-loaded data
     onUserRankUpdate,
     onUserCardVisibility
 }: TournamentLeaderboardProps) => {
@@ -70,6 +80,25 @@ export const TournamentLeaderboard = ({
 
     const fetchLeaderboardData = useCallback(async () => {
         try {
+            // 🚀 NEW: Use preloaded data if available (skips API call)
+            if (preloadedData) {
+                console.log('🚀 Using preloaded leaderboard data - skipping API call');
+                const players = preloadedData.players || [];
+
+                if (players.length === 0) {
+                    setTopPlayers([]);
+                    setAllPlayers([]);
+                    setLoading(false);
+                    return;
+                }
+
+                // Set both top players and all players
+                setTopPlayers(players.slice(0, 10));
+                setAllPlayers(players);
+                setLoading(false);
+                return;
+            }
+
             // Fetch leaderboard data via API (uses service key permissions)
             const response = await fetch('/api/tournament/leaderboard-data');
             const data = await response.json();
@@ -135,7 +164,7 @@ export const TournamentLeaderboard = ({
         } finally {
             setLoading(false);
         }
-    }, [currentUserId, currentUsername, onUserRankUpdate]);
+    }, [currentUserId, currentUsername, preloadedData, onUserRankUpdate]);
 
     useEffect(() => {
         fetchLeaderboardData();
