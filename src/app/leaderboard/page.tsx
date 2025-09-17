@@ -119,13 +119,14 @@ export default function LeaderboardPage() {
             return; // Cache found, we're done
         }
 
-        // If no cache yet, wait a bit for pre-loading to complete
+        // 🚀 QUICK WAIT: Give pre-loading just 1 second to complete
+        // Brief wait, then proceed - no annoying progress messages
         const cacheCheckTimer = setTimeout(() => {
             if (!checkForCache()) {
-                console.log('⏳ No cache found after wait, proceeding with regular loading');
+                console.log('⏳ No cache found after brief wait, proceeding with regular loading');
                 // Loading state remains true, fetchCurrentTournament will handle it
             }
-        }, 800); // Give pre-loading time to complete
+        }, 1000); // Quick 1 second wait
 
         return () => clearTimeout(cacheCheckTimer);
     }, []); // Run once after mount
