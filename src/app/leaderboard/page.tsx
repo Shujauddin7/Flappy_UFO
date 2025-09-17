@@ -115,23 +115,21 @@ export default function LeaderboardPage() {
                 setLoading(true);
                 setError(null);
 
-                // 🚀 FETCH ALL DATA AT ONCE - No more double loading!
-                const [tournamentResponse, prizeResponse, leaderboardResponse] = await Promise.all([
+                // 🚀 PROGRESSIVE LOADING: Show tournament info immediately, then leaderboard
+                console.log('🚀 Phase 1: Loading tournament info (fast)...');
+                
+                const [tournamentResponse, prizeResponse] = await Promise.all([
                     fetch('/api/tournament/current', {
                         cache: 'no-cache'
                     }),
                     fetch('/api/tournament/dynamic-prizes', {
-                        cache: 'no-cache'
-                    }),
-                    fetch('/api/tournament/leaderboard-data', {
                         cache: 'no-cache'
                     })
                 ]);
 
                 const tournamentData = await tournamentResponse.json();
                 const prizeData = await prizeResponse.json();
-                const leaderboardData = await leaderboardResponse.json();
-
+                
                 // 🧪 REDIS TESTING: Log cache performance (temporary for testing)
                 if (process.env.NODE_ENV === 'development') {
                     console.log('🧪 Tournament API Cache Status:', tournamentData.cached ? 'HIT' : 'MISS');
@@ -150,18 +148,28 @@ export default function LeaderboardPage() {
                     setPrizePoolData(prizeData);
                 }
 
-                // 🚀 NEW: Store leaderboard data to pass to component (eliminates second loading phase)
-                if (leaderboardResponse.ok) {
-                    console.log('🚀 Leaderboard data preloaded - component will skip API call');
-                    setPreloadedLeaderboardData(leaderboardData);
+                // 🚀 PHASE 2: Load leaderboard separately (show tournament info now!)
+                console.log('🚀 Phase 2: Loading leaderboard data (slow)...');
+                setLoading(false); // ✅ Show tournament info immediately!
+                
+                try {
+                    const leaderboardResponse = await fetch('/api/tournament/leaderboard-data', {
+                        cache: 'no-cache'
+                    });
+                    const leaderboardData = await leaderboardResponse.json();
+
+                    if (leaderboardResponse.ok) {
+                        console.log('🚀 Leaderboard data loaded - passing to component');
+                        setPreloadedLeaderboardData(leaderboardData);
+                    }
+                } catch (leaderboardErr) {
+                    console.warn('Leaderboard loading failed, component will use API fallback:', leaderboardErr);
                 }
 
                 setError(null);
             } catch (err) {
                 console.error('Failed to fetch tournament:', err);
                 setError('Failed to load tournament data');
-            } finally {
-                setLoading(false);
             }
         };
 
