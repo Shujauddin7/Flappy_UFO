@@ -74,7 +74,8 @@ export async function GET(request: NextRequest) {
         const limit = parseInt(searchParams.get('limit') || '20');
         const offset = parseInt(searchParams.get('offset') || '0');
 
-        const tournamentDay = getTournamentDay();
+        // Allow tournament day override for testing, otherwise use current day
+        const tournamentDay = searchParams.get('tournament_day') || getTournamentDay();
         const timeRemaining = getTournamentTimeRemaining();
 
         console.log(`📅 Tournament day: ${tournamentDay}, Limit: ${limit}, Offset: ${offset}`);
@@ -152,12 +153,18 @@ export async function GET(request: NextRequest) {
                     totalPlayers = totalCount;
                     source = 'redis';
 
-                    // Use cached prize pool if available
-                    prizePool = cachedTournamentInfo?.total_prize_pool
-                        ? parseInt(cachedTournamentInfo.total_prize_pool as string)
-                        : totalCount * 0.01; // Fallback calculation
-
-                } else {
+                    // Use cached prize pool if available, otherwise calculate
+                    if (cachedTournamentInfo?.total_prize_pool) {
+                        prizePool = parseInt(cachedTournamentInfo.total_prize_pool as string);
+                    } else {
+                        prizePool = totalCount * 0.01; // Fallback calculation
+                        // Cache the tournament info for next time
+                        await redis.hset(tournamentInfoKey, {
+                            total_prize_pool: prizePool.toString(),
+                            total_players: totalCount.toString(),
+                            last_updated: new Date().toISOString()
+                        });
+                    }                } else {
                     console.log('❌ Redis miss, falling back to database...');
                 }
 
