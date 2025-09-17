@@ -132,9 +132,14 @@ export default function GameHomepage() {
     useEffect(() => {
         const preloadLeaderboard = async () => {
             try {
+                // 🚀 DEPLOYMENT FIX: Add environment-based cache keys to prevent prod/dev conflicts
+                const envPrefix = process.env.NODE_ENV === 'production' ? 'prod_' : 'dev_';
+                const tournamentKey = `${envPrefix}preloaded_tournament`;
+                const leaderboardKey = `${envPrefix}preloaded_leaderboard`;
+
                 // Check if data is already cached and fresh
-                const existingTournament = sessionStorage.getItem('preloaded_tournament');
-                const existingLeaderboard = sessionStorage.getItem('preloaded_leaderboard');
+                const existingTournament = sessionStorage.getItem(tournamentKey);
+                const existingLeaderboard = sessionStorage.getItem(leaderboardKey);
 
                 if (existingTournament && existingLeaderboard) {
                     try {
@@ -169,17 +174,17 @@ export default function GameHomepage() {
                     const tournamentData = await tournamentResponse.json();
                     const leaderboardData = await leaderboardResponse.json();
 
-                    // Store in sessionStorage for instant leaderboard access
-                    sessionStorage.setItem('preloaded_tournament', JSON.stringify({
+                    // Store in sessionStorage with environment-specific keys
+                    sessionStorage.setItem(tournamentKey, JSON.stringify({
                         data: tournamentData,
                         timestamp: Date.now(),
-                        ttl: 60000 // Cache for 1 minute
+                        ttl: 300000 // Cache for 5 minutes (much longer)
                     }));
 
-                    sessionStorage.setItem('preloaded_leaderboard', JSON.stringify({
+                    sessionStorage.setItem(leaderboardKey, JSON.stringify({
                         data: leaderboardData,
                         timestamp: Date.now(),
-                        ttl: 30000 // Cache for 30 seconds
+                        ttl: 180000 // Cache for 3 minutes (much longer)
                     }));
 
                     console.log(`✅ Leaderboard pre-loaded successfully in ${preloadTime}ms - leaderboard will now load instantly!`);
@@ -192,13 +197,16 @@ export default function GameHomepage() {
             }
         };
 
-        // Pre-load after 2 seconds to let the homepage load first
-        const preloadTimer = setTimeout(preloadLeaderboard, 2000);
-
-        return () => clearTimeout(preloadTimer);
-    }, []); // Only run once when component mounts
-
-    // Check if tournament is still active before allowing payments
+        // 🚀 AGGRESSIVE PRE-LOADING: Start immediately when homepage loads 
+        // Zero delay so cache is ready before user can even click leaderboard
+        console.log('🚀 Starting IMMEDIATE leaderboard pre-load (zero delay for fastest experience)...');
+        console.log('⏰ Pre-load started at:', new Date().toISOString());
+        preloadLeaderboard().then(() => {
+            console.log('✅ Pre-loading completed at:', new Date().toISOString());
+        }).catch((error) => {
+            console.error('❌ Pre-loading failed:', error);
+        });
+    }, []); // Only run once when component mounts    // Check if tournament is still active before allowing payments
     const checkTournamentActive = useCallback(async () => {
         try {
             const response = await fetch('/api/tournament/current');
@@ -597,15 +605,14 @@ export default function GameHomepage() {
                         currentHigh: result.data.current_highest_score
                     }));
 
-                    // 🚀 CACHE INVALIDATION: Clear pre-loaded leaderboard data after score submission
-                    console.log('🗑️ Score submitted successfully - invalidating leaderboard cache for fresh data');
-                    sessionStorage.removeItem('preloaded_leaderboard');
-                    sessionStorage.removeItem('preloaded_tournament');
+                    // 🚀 SMART CACHE: Only clear cache on NEW HIGH SCORES (matches server logic)
+                    console.log('� NEW HIGH SCORE! - invalidating leaderboard cache for immediate update');
+                    const envPrefix = process.env.NODE_ENV === 'production' ? 'prod_' : 'dev_';
+                    sessionStorage.removeItem(`${envPrefix}preloaded_leaderboard`);
+                    sessionStorage.removeItem(`${envPrefix}preloaded_tournament`);
                 } else if (result.success) {
-                    // Even if not a new high score, clear cache so leaderboard shows current submission
-                    console.log('🗑️ Score submitted - invalidating leaderboard cache for fresh data');
-                    sessionStorage.removeItem('preloaded_leaderboard');
-                    sessionStorage.removeItem('preloaded_tournament');
+                    // 🚀 PERFORMANCE: Keep cache for regular scores - no leaderboard position change
+                    console.log('� Regular score submitted - keeping cache for faster navigation');
                 }
             } catch (error) {
                 console.error('Final score submission failed:', error);
@@ -700,8 +707,9 @@ export default function GameHomepage() {
                         // 🚀 CACHE INVALIDATION: Clear pre-loaded leaderboard data after new high score
                         // This ensures users see updated rankings immediately when they check the leaderboard
                         console.log('🗑️ New high score achieved - invalidating leaderboard cache for fresh data');
-                        sessionStorage.removeItem('preloaded_leaderboard');
-                        sessionStorage.removeItem('preloaded_tournament');
+                        const envPrefix = process.env.NODE_ENV === 'production' ? 'prod_' : 'dev_';
+                        sessionStorage.removeItem(`${envPrefix}preloaded_leaderboard`);
+                        sessionStorage.removeItem(`${envPrefix}preloaded_tournament`);
                     } else if (result.data?.is_duplicate) {
                         setGameResult(prev => ({
                             ...prev,

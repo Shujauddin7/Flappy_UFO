@@ -375,15 +375,9 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // 📈 Score submitted (even if not high score): Invalidate leaderboard cache for fresh stats
-        console.log('📊 Score submitted, invalidating leaderboard cache...');
-        await deleteCached('tournament:leaderboard:current');
-        console.log('✅ Leaderboard cache invalidated');
-
-        // 💰 Also invalidate prize pool cache (game count affects calculations)
-        console.log('💰 Invalidating prize pool cache...');
-        await deleteCached('tournament:prizes:current');
-        console.log('✅ Prize pool cache invalidated');
+        // 🚀 SMART CACHE: This is NOT a high score, so keep cache for performance
+        // Regular scores don't change leaderboard position, so preserve cache
+        console.log('📊 Regular score submitted, keeping cache for fast subsequent loads');
 
         return NextResponse.json({
             success: true,

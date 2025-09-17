@@ -62,19 +62,110 @@ interface PrizePoolData {
 export default function LeaderboardPage() {
     const { data: session } = useSession();
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [currentTournament, setCurrentTournament] = useState<TournamentData | null>(null);
+    const [currentTournament, setCurrentTournament] = useState<TournamentData | null>(null); // Always start null to prevent SSR hydration issues
     const [prizePoolData, setPrizePoolData] = useState<PrizePoolData | null>(null);
     const [preloadedLeaderboardData, setPreloadedLeaderboardData] = useState<LeaderboardApiResponse | null>(null); // NEW: Store leaderboard data
     const [currentUserRank, setCurrentUserRank] = useState<LeaderboardPlayer | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [isInitialLoad, setIsInitialLoad] = useState(() => {
-        // 🚀 FIX: Always show loading on first mount, but track if we've loaded before
-        // This prevents showing "Loading tournament..." repeatedly but ensures proper loading state
-        return true; // Always start with loading state
-    });
+    const [isInitialLoad, setIsInitialLoad] = useState(true); // Always start with loading to prevent SSR hydration issues
     const [currentTime, setCurrentTime] = useState(new Date());
     const [shouldShowFixedCard, setShouldShowFixedCard] = useState(false);
     const [showPrizeBreakdown, setShowPrizeBreakdown] = useState(false); // Hidden by default
+    // 🚀 HYDRATION-SAFE CACHE LOADING: Load cached data after component mounts
+    useEffect(() => {
+        // Only run in browser after hydration
+        if (typeof window === 'undefined') return;
+
+        const envPrefix = process.env.NODE_ENV === 'production' ? 'prod_' : 'dev_';
+
+        // 🚀 RACE CONDITION FIX: Check for cache immediately and periodically
+        const checkForCache = () => {
+            const preloadedTournament = sessionStorage.getItem(`${envPrefix}preloaded_tournament`);
+            console.log('🔍 Checking for cache:', preloadedTournament ? 'FOUND' : 'NOT FOUND');
+
+            if (preloadedTournament) {
+                try {
+                    const cached = JSON.parse(preloadedTournament);
+                    const isExpired = Date.now() - cached.timestamp > cached.ttl;
+
+                    if (!isExpired && cached.data?.tournament) {
+                        console.log('⚡ Loading cached tournament data after hydration');
+                        setCurrentTournament(cached.data.tournament);
+                        setIsInitialLoad(false); // Skip loading screen since we have data
+
+                        // Also load prize data if available
+                        if (cached.data.prize_pool || cached.data.total_prize_pool) {
+                            setPrizePoolData({
+                                prize_pool: {
+                                    base_amount: cached.data.total_prize_pool || cached.data.prize_pool || 0,
+                                    guarantee_amount: cached.data.total_prize_pool || cached.data.prize_pool || 0,
+                                    final_amount: cached.data.total_prize_pool || cached.data.prize_pool || 0
+                                },
+                                guarantee_applied: false,
+                                admin_net_result: 0
+                            });
+                        }
+                        return true; // Cache found
+                    }
+                } catch (error) {
+                    console.error('Error loading cached tournament:', error);
+                }
+            }
+            return false; // No cache found
+        };
+
+        // Check immediately
+        if (checkForCache()) {
+            return; // Cache found, we're done
+        }
+
+        // If no cache yet, wait a bit for pre-loading to complete
+        const cacheCheckTimer = setTimeout(() => {
+            if (!checkForCache()) {
+                console.log('⏳ No cache found after wait, proceeding with regular loading');
+                // Loading state remains true, fetchCurrentTournament will handle it
+            }
+        }, 800); // Give pre-loading time to complete
+
+        return () => clearTimeout(cacheCheckTimer);
+    }, []); // Run once after mount
+
+    // 🚀 HYDRATION-SAFE CACHE LOADING: Load cached data after component mounts
+    useEffect(() => {
+        // Only run in browser after hydration
+        if (typeof window === 'undefined') return;
+
+        const envPrefix = process.env.NODE_ENV === 'production' ? 'prod_' : 'dev_';
+        const preloadedTournament = sessionStorage.getItem(`${envPrefix}preloaded_tournament`);
+
+        if (preloadedTournament) {
+            try {
+                const cached = JSON.parse(preloadedTournament);
+                const isExpired = Date.now() - cached.timestamp > cached.ttl;
+
+                if (!isExpired && cached.data?.tournament) {
+                    console.log('⚡ Loading cached tournament data after hydration');
+                    setCurrentTournament(cached.data.tournament);
+                    setIsInitialLoad(false); // Skip loading screen since we have data
+
+                    // Also load prize data if available
+                    if (cached.data.prize_pool || cached.data.total_prize_pool) {
+                        setPrizePoolData({
+                            prize_pool: {
+                                base_amount: cached.data.total_prize_pool || cached.data.prize_pool || 0,
+                                guarantee_amount: cached.data.total_prize_pool || cached.data.prize_pool || 0,
+                                final_amount: cached.data.total_prize_pool || cached.data.prize_pool || 0
+                            },
+                            guarantee_applied: false,
+                            admin_net_result: 0
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading cached tournament:', error);
+            }
+        }
+    }, []); // Run once after mount
 
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
         setCurrentUserRank(userRank);
@@ -120,8 +211,11 @@ export default function LeaderboardPage() {
 
                 // 🚀 LIGHTNING FAST LOADING: Check for pre-loaded data first
                 console.log('🚀 Checking for pre-loaded leaderboard data...');
-                const preloadedTournament = sessionStorage.getItem('preloaded_tournament');
-                const preloadedLeaderboard = sessionStorage.getItem('preloaded_leaderboard');
+
+                // 🚀 DEPLOYMENT FIX: Use environment-specific cache keys
+                const envPrefix = process.env.NODE_ENV === 'production' ? 'prod_' : 'dev_';
+                const preloadedTournament = sessionStorage.getItem(`${envPrefix}preloaded_tournament`);
+                const preloadedLeaderboard = sessionStorage.getItem(`${envPrefix}preloaded_leaderboard`);
 
                 let usedPreloadedData = false;
 
@@ -466,8 +560,13 @@ export default function LeaderboardPage() {
     // 🚀 Quick check for cached data to skip loading screen entirely
     const hasCachedData = (() => {
         try {
-            const cached = sessionStorage.getItem('preloaded_tournament');
-            return cached && JSON.parse(cached).data?.tournament;
+            const envPrefix = process.env.NODE_ENV === 'production' ? 'prod_' : 'dev_';
+            const cached = sessionStorage.getItem(`${envPrefix}preloaded_tournament`);
+            if (!cached) return false;
+
+            const parsedCache = JSON.parse(cached);
+            const isExpired = Date.now() - parsedCache.timestamp > parsedCache.ttl;
+            return !isExpired && parsedCache.data?.tournament;
         } catch {
             return false;
         }
@@ -483,7 +582,7 @@ export default function LeaderboardPage() {
                             <h1 className="epic-title">🏆 LEADERBOARD</h1>
                             <div className="loading-container">
                                 <div className="loading-spinner"></div>
-                                <div className="loading-text">Loading tournament...</div>
+                                <div className="loading-text">Loading leaderboard...</div>
                             </div>
                         </div>
                     </div>
@@ -522,7 +621,7 @@ export default function LeaderboardPage() {
                             <h1 className="epic-title">🏆 LEADERBOARD</h1>
                             <div className="loading-container">
                                 <div className="loading-spinner"></div>
-                                <div className="loading-text">Loading tournament...</div>
+                                <div className="loading-text">Loading leaderboard...</div>
                             </div>
                         </div>
                     </div>
