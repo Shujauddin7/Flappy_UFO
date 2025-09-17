@@ -78,22 +78,22 @@ export async function GET() {
         const currentTournament = tournaments[0];
         const tournamentDay = currentTournament.tournament_day;
 
-        // Debug: Log what tournament day we're fetching (development only)
-        if (process.env.NODE_ENV === 'development') {
-        }
+        console.log(`🔍 Querying leaderboard for tournament: ${tournamentDay}`);
+        const queryStartTime = Date.now();
 
-        // Fetch all players for this tournament who have:
-        // 1. Actually PAID for entry (verified OR standard entry paid)
-        // 2. Have submitted at least one score (highest_score > 0)
-        // This prevents showing users with 0 scores before they submit their first game
+        // 🚀 OPTIMIZED: Only select the columns we actually need for the leaderboard
+        // This reduces data transfer and improves query performance significantly
         const { data: players, error } = await supabase
             .from('user_tournament_records')
-            .select('*')
+            .select('user_id, username, wallet, highest_score, tournament_day')
             .eq('tournament_day', tournamentDay)
             .gt('highest_score', 0) // Only show users who have submitted scores
             .or('verified_entry_paid.eq.true,standard_entry_paid.eq.true') // Only paid entries
             .order('highest_score', { ascending: false })
-            .order('first_game_at', { ascending: true }); // Tie-breaker: earlier first game wins
+            .limit(1000); // Reasonable limit to prevent massive queries
+
+        const queryTime = Date.now() - queryStartTime;
+        console.log(`⚡ Database query completed in ${queryTime}ms for ${players?.length || 0} players`);
 
         if (error) {
             console.error('Error fetching leaderboard:', error);
@@ -116,10 +116,16 @@ export async function GET() {
             return NextResponse.json(emptyResponse);
         }
 
-        // Add rank to each player
+        // Add rank to each player (much faster without database-side ranking)
         const playersWithRank = players.map((player, index) => ({
-            ...player,
-            rank: index + 1
+            id: player.user_id, // Use user_id as id for compatibility
+            user_id: player.user_id,
+            username: player.username,
+            wallet: player.wallet,
+            highest_score: player.highest_score,
+            tournament_day: player.tournament_day,
+            rank: index + 1,
+            created_at: new Date().toISOString() // Add for compatibility
         }));
 
         const responseData = {
@@ -136,8 +142,12 @@ export async function GET() {
         console.log('✅ Data cached successfully');
 
         const responseTime = Date.now() - startTime;
-        console.log(`🚀 Total response time: ${responseTime}ms (Database + Redis cache)`);
-        console.log(`📊 Response includes cached flag: false`);
+        console.log(`🚀 LEADERBOARD API PERFORMANCE SUMMARY:`);
+        console.log(`   📊 Database query: ${queryTime}ms`);
+        console.log(`   💾 Redis caching: ${responseTime - queryTime}ms`);
+        console.log(`   🎯 Total response time: ${responseTime}ms`);
+        console.log(`   👥 Players returned: ${playersWithRank.length}`);
+        console.log(`   � Response cached: false (fresh data)`);
 
         return NextResponse.json(responseData);
 

@@ -147,8 +147,8 @@ export default function LeaderboardPage() {
                     console.log('🧪 Tournament API Cache Status:', tournamentData.cached ? 'HIT' : 'MISS');
                 }
 
-                // 🚀 Phase 2: Load leaderboard in background (slow API, don't block UI)
-                console.log('🚀 Phase 2: Loading leaderboard in background (may be slow)...');
+                // 🚀 Phase 2: Load leaderboard in background (optimized query)
+                console.log('🚀 Phase 2: Loading leaderboard data...');
 
                 try {
                     const leaderboardResponse = await fetch('/api/tournament/leaderboard-data');
