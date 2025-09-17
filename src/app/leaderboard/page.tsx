@@ -67,6 +67,7 @@ export default function LeaderboardPage() {
     const [preloadedLeaderboardData, setPreloadedLeaderboardData] = useState<LeaderboardApiResponse | null>(null); // NEW: Store leaderboard data
     const [currentUserRank, setCurrentUserRank] = useState<LeaderboardPlayer | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [isInitialLoad, setIsInitialLoad] = useState(true); // Track if we're still on first load
     const [currentTime, setCurrentTime] = useState(new Date());
     const [shouldShowFixedCard, setShouldShowFixedCard] = useState(false);
     const [showPrizeBreakdown, setShowPrizeBreakdown] = useState(false); // Hidden by default
@@ -138,6 +139,7 @@ export default function LeaderboardPage() {
                 if (prizeResponse.ok) {
                     setPrizePoolData(prizeData);
                 }
+                setIsInitialLoad(false); // Mark that initial load is complete
                 // ✅ Tournament info loaded! Content shows immediately
 
                 // 🧪 REDIS TESTING: Log cache performance
@@ -171,6 +173,7 @@ export default function LeaderboardPage() {
             } catch (err) {
                 console.error('Failed to fetch tournament:', err);
                 setError('Failed to load tournament data');
+                setIsInitialLoad(false); // Mark that attempt is complete even on error
             }
         };
 
@@ -355,8 +358,46 @@ export default function LeaderboardPage() {
 
     const timeRemaining = getTimeRemaining();
 
-    // 🚀 REMOVED BLOCKING LOADING SCREEN - Show content immediately
-    // Only show error if we have error and no tournament data
+    // 🚀 Show loading state only during initial load
+    if (isInitialLoad && !currentTournament && !error) {
+        return (
+            <Page>
+                <canvas ref={canvasRef} className="starfield-canvas" />
+                <Page.Main className="main-container">
+                    <div className="header-section">
+                        <div className="epic-title-section">
+                            <h1 className="epic-title">🏆 LEADERBOARD</h1>
+                            <div className="loading-container">
+                                <div className="loading-spinner"></div>
+                                <div className="loading-text">Loading tournament...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bottom-nav-container">
+                        <div className="space-nav-icons">
+                            <button
+                                className="space-nav-btn home-nav"
+                                onClick={() => window.location.href = '/'}
+                                aria-label="Launch Pad"
+                            >
+                                <div className="space-icon">🏠</div>
+                            </button>
+                            <button
+                                className="space-nav-btn prizes-nav"
+                                onClick={() => {/* Already on leaderboard page - no action needed */ }}
+                                aria-label="Leaderboard"
+                            >
+                                <div className="space-icon">🏆</div>
+                            </button>
+                        </div>
+                    </div>
+                </Page.Main>
+            </Page>
+        );
+    }
+
+    // 🚀 Only show error/no tournament after initial load attempt  
     if (error && !currentTournament) {
         return (
             <Page>
@@ -395,7 +436,8 @@ export default function LeaderboardPage() {
         );
     }
 
-    if (error || !currentTournament) {
+    // 🚀 Only show "No tournament" error after we've tried to load
+    if (!isInitialLoad && (error || !currentTournament)) {
         return (
             <Page>
                 <Page.Main className="main-container">
@@ -460,10 +502,10 @@ export default function LeaderboardPage() {
                         {/* Prize Pool Info */}
                         <div className="prize-pool-info">
                             <div className="prize-pool-text">
-                                Prize pool: <span className="prize-pool-highlight">{prizePoolData?.prize_pool?.base_amount?.toFixed(2) || currentTournament.total_prize_pool.toFixed(2)} WLD</span>
+                                Prize pool: <span className="prize-pool-highlight">{prizePoolData?.prize_pool?.base_amount?.toFixed(2) || currentTournament?.total_prize_pool.toFixed(2)} WLD</span>
                             </div>
                             <div className="players-text">
-                                <span className="human-count-number">{currentTournament.total_players}</span> <span className="humans-playing-highlight">humans are playing to win the prize pool</span>
+                                <span className="human-count-number">{currentTournament?.total_players}</span> <span className="humans-playing-highlight">humans are playing to win the prize pool</span>
                             </div>
                         </div>
 
@@ -518,11 +560,11 @@ export default function LeaderboardPage() {
                         </div>
 
                         <TournamentLeaderboard
-                            tournamentId={currentTournament.id}
+                            tournamentId={currentTournament?.id}
                             currentUserId={session?.user?.walletAddress || null}
                             currentUsername={session?.user?.username || null}
                             isGracePeriod={timeRemaining?.status === 'grace'}
-                            totalPrizePool={prizePoolData?.prize_pool?.base_amount || currentTournament.total_prize_pool}
+                            totalPrizePool={prizePoolData?.prize_pool?.base_amount || currentTournament?.total_prize_pool}
                             preloadedData={preloadedLeaderboardData} // 🚀 NEW: Pass preloaded data
                             onUserRankUpdate={handleUserRankUpdate}
                             onUserCardVisibility={handleUserCardVisibility}
@@ -554,7 +596,7 @@ export default function LeaderboardPage() {
                     <div className="scroll-indicator-icon">📍</div>
                     <PlayerRankCard
                         player={currentUserRank}
-                        prizeAmount={calculatePrizeForRank(currentUserRank.rank || 1001, prizePoolData?.prize_pool?.base_amount || currentTournament.total_prize_pool)}
+                        prizeAmount={calculatePrizeForRank(currentUserRank.rank || 1001, prizePoolData?.prize_pool?.base_amount || currentTournament?.total_prize_pool || 0)}
                         isCurrentUser={true}
                         isTopThree={currentUserRank.rank !== undefined && currentUserRank.rank <= 10}
                     />
