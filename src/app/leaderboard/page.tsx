@@ -117,7 +117,7 @@ export default function LeaderboardPage() {
 
                 // 🚀 PROGRESSIVE LOADING: Show tournament info immediately, then leaderboard
                 console.log('🚀 Phase 1: Loading tournament info (fast)...');
-                
+
                 const [tournamentResponse, prizeResponse] = await Promise.all([
                     fetch('/api/tournament/current', {
                         cache: 'no-cache'
@@ -129,7 +129,7 @@ export default function LeaderboardPage() {
 
                 const tournamentData = await tournamentResponse.json();
                 const prizeData = await prizeResponse.json();
-                
+
                 // 🧪 REDIS TESTING: Log cache performance (temporary for testing)
                 if (process.env.NODE_ENV === 'development') {
                     console.log('🧪 Tournament API Cache Status:', tournamentData.cached ? 'HIT' : 'MISS');
@@ -151,7 +151,7 @@ export default function LeaderboardPage() {
                 // 🚀 PHASE 2: Load leaderboard separately (show tournament info now!)
                 console.log('🚀 Phase 2: Loading leaderboard data (slow)...');
                 setLoading(false); // ✅ Show tournament info immediately!
-                
+
                 try {
                     const leaderboardResponse = await fetch('/api/tournament/leaderboard-data', {
                         cache: 'no-cache'

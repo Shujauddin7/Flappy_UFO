@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { createClient } from '@supabase/supabase-js';
 import { deleteCached } from '@/lib/redis';
+import { updateLeaderboardScore } from '@/lib/leaderboard-redis';
 
 // Helper function to update user statistics safely (prevents race conditions)
 async function updateUserStatistics(userId: string, newScore: number, shouldUpdateHighScore: boolean = false) {
@@ -298,6 +299,10 @@ export async function POST(req: NextRequest) {
                         }
                     }
                 }
+
+                // 🚨 NEW HIGH SCORE: Update Redis leaderboard immediately
+                console.log('⚡ Updating Redis leaderboard with new high score...');
+                await updateLeaderboardScore(tournamentDay, user.id, score);
 
                 // 🚨 NEW HIGH SCORE: Invalidate leaderboard cache so it shows immediately
                 console.log('🏆 New high score! Invalidating leaderboard cache...');
