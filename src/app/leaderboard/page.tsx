@@ -115,29 +115,19 @@ export default function LeaderboardPage() {
                 setLoading(true);
                 setError(null);
 
-                // 🚀 PROGRESSIVE LOADING: Show tournament info immediately, then leaderboard
+                // 🚀 PROGRESSIVE LOADING: Show tournament info immediately, load leaderboard in background
                 console.log('🚀 Phase 1: Loading tournament info (fast)...');
 
-                // 🚀 FAST PARALLEL LOADING: Load all data at once instead of 2 phases
-                console.log('🚀 Loading all tournament data in parallel (much faster)...');
-
-                const [tournamentResponse, prizeResponse, leaderboardResponse] = await Promise.all([
+                // Load tournament and prizes first (fast APIs with cache)
+                const [tournamentResponse, prizeResponse] = await Promise.all([
                     fetch('/api/tournament/current'),
-                    fetch('/api/tournament/dynamic-prizes'),
-                    fetch('/api/tournament/leaderboard-data')
+                    fetch('/api/tournament/dynamic-prizes')
                 ]);
 
-                const [tournamentData, prizeData, leaderboardData] = await Promise.all([
+                const [tournamentData, prizeData] = await Promise.all([
                     tournamentResponse.json(),
-                    prizeResponse.json(),
-                    leaderboardResponse.json()
+                    prizeResponse.json()
                 ]);
-
-                // 🧪 REDIS TESTING: Log cache performance (temporary for testing)
-                if (process.env.NODE_ENV === 'development') {
-                    console.log('🧪 Tournament API Cache Status:', tournamentData.cached ? 'HIT' : 'MISS');
-                    console.log('🧪 API Response Time:', tournamentData.cached ? 'FAST (Redis)' : 'SLOW (Database)');
-                }
 
                 if (!tournamentResponse.ok) {
                     console.error('Error fetching tournament:', tournamentData.error);
@@ -145,30 +135,45 @@ export default function LeaderboardPage() {
                     return;
                 }
 
+                // 🚀 SHOW TOURNAMENT INFO IMMEDIATELY - Don't wait for slow leaderboard
                 setCurrentTournament(tournamentData.tournament);
-
                 if (prizeResponse.ok) {
                     setPrizePoolData(prizeData);
                 }
+                setLoading(false); // ✅ Tournament info loaded! User sees content immediately
 
-                // Process leaderboard data (loaded in parallel)
-                if (leaderboardResponse.ok) {
-                    console.log('🚀 Leaderboard data loaded - passing to component');
-                    setPreloadedLeaderboardData(leaderboardData);
-
-                    // 🧪 REDIS TESTING: Log leaderboard cache performance
-                    if (process.env.NODE_ENV === 'development') {
-                        console.log('🧪 Leaderboard API Cache Status:', leaderboardData.cached ? 'HIT' : 'MISS');
-                    }
-                } else {
-                    console.warn('Leaderboard loading failed, component will use API fallback');
+                // 🧪 REDIS TESTING: Log cache performance
+                if (process.env.NODE_ENV === 'development') {
+                    console.log('🧪 Tournament API Cache Status:', tournamentData.cached ? 'HIT' : 'MISS');
                 }
 
-                setLoading(false); // ✅ All data loaded at once!
+                // 🚀 Phase 2: Load leaderboard in background (slow API, don't block UI)
+                console.log('🚀 Phase 2: Loading leaderboard in background (may be slow)...');
+
+                try {
+                    const leaderboardResponse = await fetch('/api/tournament/leaderboard-data');
+                    const leaderboardData = await leaderboardResponse.json();
+
+                    if (leaderboardResponse.ok) {
+                        console.log('🚀 Leaderboard data loaded - passing to component');
+                        setPreloadedLeaderboardData(leaderboardData);
+
+                        // 🧪 REDIS TESTING: Log leaderboard cache performance
+                        if (process.env.NODE_ENV === 'development') {
+                            console.log('🧪 Leaderboard API Cache Status:', leaderboardData.cached ? 'HIT' : 'MISS');
+                        }
+                    } else {
+                        console.warn('Leaderboard loading failed, component will use API fallback');
+                    }
+                } catch (leaderboardErr) {
+                    console.warn('Leaderboard loading failed:', leaderboardErr, '- component will use API fallback');
+                }
+
                 setError(null);
             } catch (err) {
                 console.error('Failed to fetch tournament:', err);
                 setError('Failed to load tournament data');
+                setLoading(false);
             }
         };
 
