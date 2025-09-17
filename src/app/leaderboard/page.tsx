@@ -122,15 +122,9 @@ export default function LeaderboardPage() {
                 console.log('🚀 Loading all tournament data in parallel (much faster)...');
 
                 const [tournamentResponse, prizeResponse, leaderboardResponse] = await Promise.all([
-                    fetch('/api/tournament/current', {
-                        cache: 'no-cache'
-                    }),
-                    fetch('/api/tournament/dynamic-prizes', {
-                        cache: 'no-cache'
-                    }),
-                    fetch('/api/tournament/leaderboard-data', {
-                        cache: 'no-cache'
-                    })
+                    fetch('/api/tournament/current'),
+                    fetch('/api/tournament/dynamic-prizes'),
+                    fetch('/api/tournament/leaderboard-data')
                 ]);
 
                 const [tournamentData, prizeData, leaderboardData] = await Promise.all([
