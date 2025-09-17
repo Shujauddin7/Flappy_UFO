@@ -20,6 +20,7 @@ interface LeaderboardResponse {
         limit: number;
         hasMore: boolean;
         nextOffset: number;
+        totalPlayers?: number;
     };
     performance: {
         source: 'redis' | 'database';
@@ -30,10 +31,50 @@ interface LeaderboardResponse {
     fetched_at: string;
 }
 
+// Unified API response format
+interface UnifiedLeaderboardResponse {
+    success: boolean;
+    tournament: {
+        tournament_day: string;
+        total_prize_pool: number;
+        total_players: number;
+        hours_left: number;
+        minutes_left: number;
+    };
+    players: Player[];
+    pagination: {
+        offset: number;
+        limit: number;
+        hasMore: boolean;
+        nextOffset: number;
+        totalPlayers: number;
+    };
+    performance: {
+        source: 'redis' | 'database';
+        responseTime: number;
+        cached: boolean;
+    };
+    fetched_at: string;
+}
+
+// Initial data can be from either API format
+interface InitialData {
+    players: Player[];
+    pagination: {
+        offset: number;
+        limit: number;
+        hasMore: boolean;
+        nextOffset: number;
+        totalPlayers?: number;
+    };
+    tournament_day: string;
+}
+
 interface InfiniteScrollLeaderboardProps {
-    initialData?: LeaderboardResponse | null;
+    initialData?: InitialData | null;
     tournamentDay?: string;
     className?: string;
+    apiEndpoint?: string; // Allow custom API endpoint
 }
 
 // Player row component with skeleton loader
@@ -98,16 +139,17 @@ function PlayerRow({ player, isLoading = false }: { player?: Player; isLoading?:
 }
 
 export default function InfiniteScrollLeaderboard({
-    initialData,
+    initialData = null,
     tournamentDay,
-    className = ''
+    className = '',
+    apiEndpoint = '/api/leaderboard'
 }: InfiniteScrollLeaderboardProps) {
     const [players, setPlayers] = useState<Player[]>(initialData?.players || []);
     const [loading, setLoading] = useState(false);
     const [hasMore, setHasMore] = useState<boolean>(initialData?.pagination.hasMore ?? true);
     const [offset, setOffset] = useState(initialData?.pagination.nextOffset || 20);
     const [error, setError] = useState<string | null>(null);
-    const [performance, setPerformance] = useState(initialData?.performance || null);
+    const [performance, setPerformance] = useState<{ source: string; responseTime: number; cached: boolean } | null>(null);
 
     const observerRef = useRef<HTMLDivElement>(null);
     const supabaseRef = useRef<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -140,13 +182,14 @@ export default function InfiniteScrollLeaderboard({
                 params.append('tournament_day', tournamentDay);
             }
 
-            const response = await fetch(`/api/leaderboard?${params}`);
+            const endpoint = apiEndpoint || '/api/leaderboard';
+            const response = await fetch(`${endpoint}?${params}`);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            const data: LeaderboardResponse = await response.json();
+            const data: LeaderboardResponse | UnifiedLeaderboardResponse = await response.json();
 
             if (data.success && data.players.length > 0) {
                 setPlayers(prev => [...prev, ...data.players]);
@@ -164,7 +207,7 @@ export default function InfiniteScrollLeaderboard({
         } finally {
             setLoading(false);
         }
-    }, [offset, hasMore, loading, tournamentDay]);
+    }, [offset, hasMore, loading, tournamentDay, apiEndpoint]);
 
     // Intersection Observer for infinite scroll
     useEffect(() => {
