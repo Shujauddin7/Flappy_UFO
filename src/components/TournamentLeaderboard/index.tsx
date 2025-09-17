@@ -169,8 +169,9 @@ export const TournamentLeaderboard = ({
     useEffect(() => {
         fetchLeaderboardData();
 
-        // Set up polling instead of real-time subscription (API-based approach)
-        if (!isGracePeriod) {
+        // 🚀 OPTIMIZATION: Only set up polling if we DON'T have preloaded data
+        // This prevents redundant API calls when parent already loaded the data
+        if (!isGracePeriod && !preloadedData) {
             // Refresh every 5 seconds as specified in Plan.md
             const intervalId = setInterval(fetchLeaderboardData, 5000);
 
@@ -178,14 +179,15 @@ export const TournamentLeaderboard = ({
                 clearInterval(intervalId);
             };
         }
-    }, [fetchLeaderboardData, isGracePeriod]);
+    }, [fetchLeaderboardData, isGracePeriod, preloadedData]);
 
     // Force refresh when currentUserId or currentUsername changes (user logs in/out)
+    // 🚀 OPTIMIZATION: Skip if we have preloaded data to avoid redundant calls
     useEffect(() => {
-        if (currentUserId || currentUsername) {
+        if ((currentUserId || currentUsername) && !preloadedData) {
             fetchLeaderboardData();
         }
-    }, [currentUserId, currentUsername, fetchLeaderboardData]);
+    }, [currentUserId, currentUsername, fetchLeaderboardData, preloadedData]);
 
     // Add effect for manual refresh trigger
     useEffect(() => {
