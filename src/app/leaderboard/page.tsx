@@ -66,7 +66,6 @@ export default function LeaderboardPage() {
     const [prizePoolData, setPrizePoolData] = useState<PrizePoolData | null>(null);
     const [preloadedLeaderboardData, setPreloadedLeaderboardData] = useState<LeaderboardApiResponse | null>(null); // NEW: Store leaderboard data
     const [currentUserRank, setCurrentUserRank] = useState<LeaderboardPlayer | null>(null);
-    const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [currentTime, setCurrentTime] = useState(new Date());
     const [shouldShowFixedCard, setShouldShowFixedCard] = useState(false);
@@ -112,7 +111,6 @@ export default function LeaderboardPage() {
     useEffect(() => {
         const fetchCurrentTournament = async () => {
             try {
-                setLoading(true);
                 setError(null);
 
                 // 🚀 PROGRESSIVE LOADING: Show tournament info immediately, load leaderboard in background
@@ -140,7 +138,7 @@ export default function LeaderboardPage() {
                 if (prizeResponse.ok) {
                     setPrizePoolData(prizeData);
                 }
-                setLoading(false); // ✅ Tournament info loaded! User sees content immediately
+                // ✅ Tournament info loaded! Content shows immediately
 
                 // 🧪 REDIS TESTING: Log cache performance
                 if (process.env.NODE_ENV === 'development') {
@@ -173,7 +171,6 @@ export default function LeaderboardPage() {
             } catch (err) {
                 console.error('Failed to fetch tournament:', err);
                 setError('Failed to load tournament data');
-                setLoading(false);
             }
         };
 
@@ -358,7 +355,9 @@ export default function LeaderboardPage() {
 
     const timeRemaining = getTimeRemaining();
 
-    if (loading) {
+    // 🚀 REMOVED BLOCKING LOADING SCREEN - Show content immediately
+    // Only show error if we have error and no tournament data
+    if (error && !currentTournament) {
         return (
             <Page>
                 <canvas ref={canvasRef} className="starfield-canvas" />
