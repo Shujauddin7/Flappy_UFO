@@ -53,19 +53,40 @@ export default function LeaderboardPage() {
     const { data: session } = useSession();
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
-    // 🚀 ULTIMATE FIX: Initialize with fallback data immediately - NEVER null
-    const [currentTournament, setCurrentTournament] = useState<TournamentData>({
-        id: 'current',
-        tournament_day: '2025-09-07',
-        is_active: true,
-        total_players: 0,
-        total_prize_pool: 0,
-        total_collected: 0,
-        admin_fee: 0,
-        guarantee_amount: 0,
-        admin_net_result: 0,
-        start_time: new Date().toISOString(),
-        end_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+    // ⚡ INSTAGRAM-STYLE INSTANT LOADING: Real data immediately, persist across navigation
+    const [currentTournament, setCurrentTournament] = useState<TournamentData>(() => {
+        // Try to get cached data first for instant loading
+        if (typeof window !== 'undefined') {
+            const cached = sessionStorage.getItem('tournament_data');
+            if (cached) {
+                try {
+                    const parsed = JSON.parse(cached);
+                    if (Date.now() - parsed.timestamp < 30000) { // 30 second cache
+                        console.log('⚡ INSTANT LOAD: Using cached tournament data');
+                        console.log(`   Cached Players: ${parsed.data.total_players}`);
+                        console.log(`   Cached Prize: $${parsed.data.total_prize_pool}`);
+                        return parsed.data;
+                    }
+                } catch (e) {
+                    console.warn('Cache parse error:', e);
+                }
+            }
+        }
+
+        // Fallback data - will be replaced immediately
+        return {
+            id: 'current',
+            tournament_day: '2025-09-07',
+            is_active: true,
+            total_players: 0,
+            total_prize_pool: 0,
+            total_collected: 0,
+            admin_fee: 0,
+            guarantee_amount: 0,
+            admin_net_result: 0,
+            start_time: new Date().toISOString(),
+            end_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        };
     });
 
     const [preloadedLeaderboardData, setPreloadedLeaderboardData] = useState<LeaderboardApiResponse | null>(null);
@@ -75,24 +96,18 @@ export default function LeaderboardPage() {
     const [shouldShowFixedCard, setShouldShowFixedCard] = useState(false);
     const [showPrizeBreakdown, setShowPrizeBreakdown] = useState(false);
 
-    // ⚡ ULTRA FAST LOADING: Single fetch, no intervals, immediate update
+    // ⚡ INSTAGRAM-STYLE DATA LOADING: Instant + persistent
     useEffect(() => {
-        const loadData = async () => {
+        const loadEssentialData = async () => {
             try {
-                // Single Promise.all for maximum speed
-                const [tournamentRes, leaderboardRes] = await Promise.all([
-                    fetch('/api/tournament/stats'),
-                    fetch('/api/tournament/leaderboard-data')
-                ]);
+                console.log('⚡ Loading essential tournament data...');
 
-                const [tournament, leaderboard] = await Promise.all([
-                    tournamentRes.json(),
-                    leaderboardRes.json()
-                ]);
+                // Load only essential data - tournament stats (fast)
+                const tournamentRes = await fetch('/api/tournament/stats');
+                const tournament = await tournamentRes.json();
 
-                // Immediate updates - no extra logic
                 if (tournament.has_active_tournament) {
-                    setCurrentTournament({
+                    const newTournamentData = {
                         id: tournament.tournament_day || 'current',
                         tournament_day: tournament.tournament_day || '2025-09-07',
                         is_active: true,
@@ -104,20 +119,42 @@ export default function LeaderboardPage() {
                         admin_net_result: 0,
                         start_time: tournament.tournament_start_date || new Date().toISOString(),
                         end_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-                    });
+                    };
+
+                    setCurrentTournament(newTournamentData);
+
+                    // ⚡ PERSISTENCE: Cache for instant loading on navigation
+                    sessionStorage.setItem('tournament_data', JSON.stringify({
+                        data: newTournamentData,
+                        timestamp: Date.now()
+                    }));
+
+                    console.log(`⚡ Tournament data loaded: ${tournament.total_players} players, $${tournament.total_prize_pool} prize`);
                 }
 
-                if (leaderboard.players) {
-                    setPreloadedLeaderboardData(leaderboard);
-                }
+                // Load leaderboard data in background (not blocking UI)
+                setTimeout(async () => {
+                    try {
+                        const leaderboardRes = await fetch('/api/tournament/leaderboard-data');
+                        const leaderboard = await leaderboardRes.json();
+
+                        if (leaderboard.players) {
+                            setPreloadedLeaderboardData(leaderboard);
+                            console.log(`⚡ Leaderboard loaded: ${leaderboard.players.length} entries`);
+                        }
+                    } catch (err) {
+                        console.warn('Background leaderboard load failed:', err);
+                    }
+                }, 100); // 100ms delay - UI already showing
+
             } catch (error) {
-                console.error('Load error:', error);
-                setError('Failed to load data');
+                console.error('Essential data load failed:', error);
+                setError('Failed to load tournament data');
             }
         };
 
-        loadData();
-    }, []);
+        loadEssentialData();
+    }, []); // Run once only
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
         setCurrentUserRank(userRank);
         // We'll handle visibility based on scroll position, not rank number
@@ -216,7 +253,7 @@ export default function LeaderboardPage() {
             }
         }
 
-        const numStars = 100; // Reduced from 250 for better performance
+        const numStars = 50; // Further reduced for mobile performance
         const stars: Star[] = [];
         for (let i = 0; i < numStars; i++) {
             stars.push(new StarImpl(width, height));
