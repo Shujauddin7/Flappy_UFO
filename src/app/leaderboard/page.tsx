@@ -373,8 +373,8 @@ export default function LeaderboardPage() {
             }
         };
 
-        // Poll every 30 seconds for real-time updates
-        const pollInterval = setInterval(pollTournamentInfo, 30000);
+        // Poll every 10 seconds for near-instant updates
+        const pollInterval = setInterval(pollTournamentInfo, 10000);
 
         // Update time every second for live countdown
         const timeInterval = setInterval(() => {

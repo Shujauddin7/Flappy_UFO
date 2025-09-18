@@ -207,12 +207,12 @@ export const TournamentLeaderboard = ({
         // 🚀 OPTIMIZATION: Only set up polling if we DON'T have preloaded data
         // This prevents redundant API calls when parent already loaded the data
         if (!isGracePeriod && !preloadedData) {
-            // Refresh every 30 seconds for new players (less aggressive than before)
-            // This will show new humans joining the tournament and updated rankings
+            // Refresh every 10 seconds for instant leaderboard updates
+            // This will show new humans joining and updated rankings near-instantly
             const intervalId = setInterval(() => {
-                console.log('🔄 Refreshing leaderboard for new players and updated rankings...');
+                console.log('⚡ Refreshing leaderboard for instant updates...');
                 fetchLeaderboardData();
-            }, 30000); // Changed from 5s to 30s to reduce server load but still get updates
+            }, 10000); // Reduced from 30s to 10s for instant responsiveness
 
             return () => {
                 clearInterval(intervalId);

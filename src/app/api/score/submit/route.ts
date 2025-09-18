@@ -375,9 +375,15 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // 🚀 SMART CACHE: This is NOT a high score, so keep cache for performance
-        // Regular scores don't change leaderboard position, so preserve cache
-        console.log('📊 Regular score submitted, keeping cache for fast subsequent loads');
+        // 🚀 INSTANT UPDATES: Clear all caches for immediate prize pool/human count updates
+        // Even regular scores contribute revenue and change total players
+        console.log('⚡ Clearing all caches for instant prize pool and human count updates...');
+        await deleteCached('tournament:prizes:current');
+        await deleteCached('tournament:current');
+        console.log('✅ Prize pool and tournament caches invalidated for instant updates');
+
+        // Keep leaderboard cache since regular scores don't change rankings
+        console.log('📊 Regular score submitted, keeping leaderboard cache for performance');
 
         return NextResponse.json({
             success: true,

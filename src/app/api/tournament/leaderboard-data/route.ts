@@ -136,9 +136,9 @@ export async function GET() {
             fetched_at: new Date().toISOString()
         };
 
-        // 💾 STEP 3: Cache the fresh data for 180 seconds (3 minutes like other tournament data)
-        console.log('💾 Caching leaderboard data for 180 seconds...');
-        await setCached(cacheKey, responseData, 180);
+        // 💾 STEP 3: Cache the fresh data for 15 seconds (ultra-fast leaderboard updates)
+        console.log('💾 Caching leaderboard data for 15 seconds...');
+        await setCached(cacheKey, responseData, 15);
         console.log('✅ Data cached successfully');
 
         const responseTime = Date.now() - startTime;
