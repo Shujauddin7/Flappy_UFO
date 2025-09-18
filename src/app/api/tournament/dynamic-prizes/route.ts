@@ -30,9 +30,7 @@ export async function GET(req: NextRequest) {
             // 🔥 PROFESSIONAL GAMING TRICK: Background cache warming for instant loads
             if (shouldWarmCache(cachedData, 30)) {
                 console.log('🔄 Prize pool cache aging - triggering background refresh...');
-                // Don't wait - warm in background
-                fetch('/api/admin/warm-cache', { method: 'POST' })
-                    .catch(err => console.log('Background warming failed (non-critical):', err));
+                // Background warming handled by client-side and cron jobs - no server-side fetch needed
             }
 
             return NextResponse.json({
