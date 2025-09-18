@@ -39,6 +39,26 @@ export default function GameHomepage() {
     // Use single session management per Plan.md
     const { session } = useSessionPersistence();
 
+    // 🚀 GAMING INDUSTRY PERFORMANCE: Pre-warm cache on app startup for instant loading
+    useEffect(() => {
+        console.log('🎮 GAME STARTUP: Beginning professional cache warming...');
+
+        // Warm cache immediately when app loads for instant tournament access
+        fetch('/api/admin/warm-cache', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('🚀 CACHE PRE-WARMED: Tournament will load instantly!');
+                    console.log(`⏱️ Warming took ${data.performance.total_time_ms}ms`);
+                } else {
+                    console.warn('⚠️ Cache warming had issues (non-critical)');
+                }
+            })
+            .catch(err => {
+                console.warn('⚠️ Cache warming failed (non-critical):', err);
+            });
+    }, []); // Run once on app startup
+
     // Local authentication function to replace useGameAuth hook
     const authenticate = useCallback(async (): Promise<boolean> => {
         if (session?.user?.walletAddress) {

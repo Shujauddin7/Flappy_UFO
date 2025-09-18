@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getCached, setCached } from '@/lib/redis';
+import { getCached, setCached, shouldWarmCache } from '@/lib/redis';
 
 export async function GET() {
     const startTime = Date.now();
@@ -21,6 +21,14 @@ export async function GET() {
             console.log(`⏱️  Response includes cached flag: true`);
             console.log(`🚀 Response time: ${responseTime}ms (Redis cache)`);
 
+            // 🔥 PROFESSIONAL GAMING TRICK: Background cache warming when cache is 70% expired
+            if (shouldWarmCache(cachedData, 15)) {
+                console.log('🔄 Cache aging - triggering background warm-up for next user...');
+                // Don't wait - warm in background for gaming performance
+                fetch('/api/admin/warm-cache', { method: 'POST' })
+                    .catch(err => console.log('Background warming failed (non-critical):', err));
+            }
+
             // Return cached data instantly (5ms response from Mumbai Redis)
             return NextResponse.json({
                 ...cachedData,
@@ -29,7 +37,8 @@ export async function GET() {
             });
         }
 
-        console.log('📊 Leaderboard Cache Status: 🔴 DATABASE QUERY');
+        console.log('📊 Leaderboard Cache Status: 🔴 FIRST LOAD - NO CACHE YET');
+        console.log('🚀 Client-side cache warming is handling instant next access...');
 
         // 🗄️ STEP 2: If no cache, fetch from database (your existing logic)
         // Environment-specific database configuration

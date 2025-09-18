@@ -66,55 +66,55 @@ async function getRedisClient() {
 }
 
 // Cache key with environment prefix
-function getEnvironmentKey(key: string): string {
-    const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
-    return `${isProduction ? 'prod' : 'dev'}:${key}`;
+function getEnvironmentKey(baseKey: string): string {
+    const environment = process.env.NODE_ENV === 'production' ? 'prod' : 'dev';
+    return `${environment}:${baseKey}`;
 }
 
-export async function getCached<T>(key: string): Promise<T | null> {
+export async function getCached(key: string): Promise<any> {
     try {
         const redis = await getRedisClient();
         if (!redis) {
-            console.warn(`⚠️ Redis not available, cache miss for: ${key}`);
             return null;
         }
 
         const envKey = getEnvironmentKey(key);
-        const cached = await redis.get(envKey);
+        const cachedData = await redis.get(envKey);
 
-        if (cached !== null) {
-            const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
-            console.log(`✅ Cache HIT for ${envKey} (${isProduction ? 'PROD' : 'DEV'})`);
-            return typeof cached === 'string' ? JSON.parse(cached) : cached;
+        if (cachedData) {
+            // Handle different data types returned by Upstash Redis
+            if (typeof cachedData === 'string') {
+                return JSON.parse(cachedData);
+            } else if (typeof cachedData === 'object') {
+                return cachedData;
+            } else {
+                return JSON.parse(String(cachedData));
+            }
         }
 
         return null;
     } catch (error) {
-        console.error('❌ Redis getCached error:', error);
-        return null; // Graceful fallback
+        console.error('Redis get error:', error);
+        return null;
     }
 }
 
-export async function setCached<T>(
-    key: string,
-    data: T,
-    expirationSeconds: number = 60
-): Promise<void> {
+export async function setCached(key: string, data: any, ttlSeconds: number = 15): Promise<boolean> {
     try {
         const redis = await getRedisClient();
         if (!redis) {
-            console.warn(`⚠️ Redis not available, skipping cache set for: ${key}`);
-            return;
+            console.log('No Redis client available for caching');
+            return false;
         }
 
         const envKey = getEnvironmentKey(key);
-        await redis.setex(envKey, expirationSeconds, JSON.stringify(data));
+        const serializedData = JSON.stringify(data);
 
-        const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
-        console.log(`💾 Cached ${envKey} for ${expirationSeconds}s (${isProduction ? 'PROD' : 'DEV'})`);
+        await redis.setex(envKey, ttlSeconds, serializedData);
+        return true;
     } catch (error) {
-        console.error('❌ Redis setCached error:', error);
-        // Gracefully fail - app continues to work
+        console.error('Redis set error:', error);
+        return false;
     }
 }
 
@@ -150,4 +150,14 @@ export async function testRedisConnection(): Promise<boolean> {
         console.error('❌ Redis connection test failed:', error);
         return false;
     }
+}
+
+// 🚀 NEW: Check if cache needs warming (Professional Gaming Trick)
+export function shouldWarmCache(cachedData: any, maxAgeSeconds: number): boolean {
+    if (!cachedData || !cachedData.fetched_at) return true;
+
+    const cacheAge = Date.now() - new Date(cachedData.fetched_at).getTime();
+    const warmThreshold = maxAgeSeconds * 1000 * 0.7; // Warm at 70% of TTL
+
+    return cacheAge > warmThreshold;
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getCached, setCached } from '@/lib/redis';
+import { getCached, setCached, shouldWarmCache } from '@/lib/redis';
 
 export async function GET(req: NextRequest) {
     const startTime = Date.now();
@@ -26,6 +26,14 @@ export async function GET(req: NextRequest) {
             const responseTime = Date.now() - startTime;
             console.log('⚡ Prize Pool Cache Status: 🟢 CACHE HIT');
             console.log(`🚀 Response time: ${responseTime}ms (Redis cache)`);
+
+            // 🔥 PROFESSIONAL GAMING TRICK: Background cache warming for instant loads
+            if (shouldWarmCache(cachedData, 30)) {
+                console.log('🔄 Prize pool cache aging - triggering background refresh...');
+                // Don't wait - warm in background
+                fetch('/api/admin/warm-cache', { method: 'POST' })
+                    .catch(err => console.log('Background warming failed (non-critical):', err));
+            }
 
             return NextResponse.json({
                 ...cachedData,
