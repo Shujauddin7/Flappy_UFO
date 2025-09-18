@@ -22,7 +22,7 @@ export async function GET() {
             console.log(`🚀 Response time: ${responseTime}ms (Redis cache)`);
 
             // 🔥 PROFESSIONAL GAMING TRICK: Background cache warming when cache is 70% expired
-            if (shouldWarmCache(cachedData, 15)) {
+            if (shouldWarmCache(cachedData, 300)) { // Check against 5 minutes instead of 15 seconds
                 console.log('🔄 Cache aging - triggering background warm-up for next user...');
                 // Don't wait - warm in background for gaming performance
                 fetch('/api/admin/warm-cache', { method: 'POST' })
@@ -145,10 +145,10 @@ export async function GET() {
             fetched_at: new Date().toISOString()
         };
 
-        // 💾 STEP 3: Cache the fresh data for 15 seconds (ultra-fast leaderboard updates)
-        console.log('💾 Caching leaderboard data for 15 seconds...');
-        await setCached(cacheKey, responseData, 15);
-        console.log('✅ Data cached successfully');
+        // 💾 STEP 3: Cache the fresh data for 5 minutes (persistent like mobile games)
+        console.log('💾 Caching leaderboard data for 5 minutes (persistent mobile game style)...');
+        await setCached(cacheKey, responseData, 300); // 5 minutes instead of 15 seconds
+        console.log('✅ Data cached successfully for persistent availability');
 
         const responseTime = Date.now() - startTime;
         console.log(`🚀 LEADERBOARD API PERFORMANCE SUMMARY:`);

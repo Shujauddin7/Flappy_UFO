@@ -71,6 +71,46 @@ export default function LeaderboardPage() {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [shouldShowFixedCard, setShouldShowFixedCard] = useState(false);
     const [showPrizeBreakdown, setShowPrizeBreakdown] = useState(false); // Hidden by default
+
+    // 🚀 LEADERBOARD INSTANT PRELOADING: Always keep leaderboard data ready
+    useEffect(() => {
+        console.log('🎮 LEADERBOARD PRELOADING: Starting instant cache loading...');
+
+        // Warm leaderboard cache immediately when component loads
+        fetch('/api/admin/warm-cache', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('🚀 LEADERBOARD CACHE PRE-WARMED: Data will be instant!');
+
+                    // Also immediately fetch leaderboard data and cache it locally
+                    return fetch('/api/tournament/leaderboard-data');
+                }
+            })
+            .then(response => response?.json())
+            .then(leaderboardData => {
+                if (leaderboardData) {
+                    console.log('⚡ LEADERBOARD PRE-LOADED: Data ready for instant access!');
+                    setPreloadedLeaderboardData(leaderboardData);
+                }
+            })
+            .catch(err => {
+                console.warn('⚠️ Leaderboard preloading failed (non-critical):', err);
+            });
+
+        // Keep refreshing leaderboard data every 30 seconds for freshness
+        const leaderboardRefreshInterval = setInterval(() => {
+            fetch('/api/tournament/leaderboard-data')
+                .then(response => response.json())
+                .then(data => {
+                    setPreloadedLeaderboardData(data);
+                    console.log('🔄 Leaderboard data refreshed in background');
+                })
+                .catch(err => console.warn('Background refresh failed:', err));
+        }, 30000); // 30 seconds
+
+        return () => clearInterval(leaderboardRefreshInterval);
+    }, []); // Run once on component mount
     // 🚀 HYDRATION-SAFE CACHE LOADING: Load cached data after component mounts
     useEffect(() => {
         // Only run in browser after hydration

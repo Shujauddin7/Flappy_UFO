@@ -314,6 +314,12 @@ export async function POST(req: NextRequest) {
                 await deleteCached('tournament:prizes:current');
                 console.log('✅ Prize pool cache invalidated');
 
+                // 🚀 INSTANT RELOAD: Immediately warm cache again for next user
+                console.log('⚡ Triggering immediate cache warming for instant next access...');
+                fetch('/api/admin/warm-cache', { method: 'POST' })
+                    .then(() => console.log('✅ Cache warmed immediately after score update'))
+                    .catch(err => console.log('Cache warming failed (non-critical):', err));
+
                 return NextResponse.json({
                     success: true,
                     data: {
@@ -381,6 +387,12 @@ export async function POST(req: NextRequest) {
         await deleteCached('tournament:prizes:current');
         await deleteCached('tournament:current');
         console.log('✅ Prize pool and tournament caches invalidated for instant updates');
+
+        // 🚀 KEEP LEADERBOARD READY: Warm cache immediately for instant next access
+        console.log('⚡ Warming cache immediately to keep leaderboard always ready...');
+        fetch('/api/admin/warm-cache', { method: 'POST' })
+            .then(() => console.log('✅ Cache warmed to keep data always ready'))
+            .catch(err => console.log('Cache warming failed (non-critical):', err));
 
         // Keep leaderboard cache since regular scores don't change rankings
         console.log('📊 Regular score submitted, keeping leaderboard cache for performance');

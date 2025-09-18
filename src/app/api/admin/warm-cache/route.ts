@@ -113,8 +113,8 @@ async function warmLeaderboardCache() {
         fetched_at: new Date().toISOString()
     };
 
-    await setCached('tournament:leaderboard:current', leaderboardData, 15);
-    console.log(`🏆 Leaderboard cache warmed: ${playersWithRank.length} players ready`);
+    await setCached('tournament:leaderboard:current', leaderboardData, 300);
+    console.log(`🏆 Leaderboard cache warmed: ${playersWithRank.length} players ready for 5 minutes`);
 }
 
 async function warmPrizePoolCache() {
