@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getTournamentDay } from '@/utils/database';
+import { getLeaderboardData } from '@/utils/leaderboard-queries';
 
-// Redis client for leaderboard optimization
+// Redis client for leaderboard optimization (using existing Redis lib)
 let Redis: typeof import('@upstash/redis').Redis | null = null;
 let redisClient: import('@upstash/redis').Redis | null = null;
 
@@ -52,79 +53,43 @@ async function getLeaderboardFromRedis(tournamentDay: string, offset: number = 0
 
         if (!results || results.length === 0) return null;
 
-        // Parse Redis results into leaderboard format
+        // Convert Redis results to player objects
         const players = [];
         for (let i = 0; i < results.length; i += 2) {
-            const userId = String(results[i]);
-            const score = Number(results[i + 1]);
+            const userId = results[i] as string;
+            const score = parseInt(results[i + 1] as string);
             players.push({
                 user_id: userId,
-                highest_score: score,
+                score: score,
                 rank: offset + (i / 2) + 1
             });
         }
 
-        console.log(`⚡ Redis leaderboard HIT: ${players.length} players in ~5ms`);
         return players;
     } catch (error) {
-        console.error('❌ Redis leaderboard error:', error);
+        console.error('❌ Redis leaderboard query failed:', error);
         return null;
     }
 }
 
 // Get player details from Supabase (minimal query)
 async function getPlayerDetails(userIds: string[], tournamentDay: string) {
-    const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
-    const supabaseUrl = isProduction ? process.env.SUPABASE_PROD_URL : process.env.SUPABASE_DEV_URL;
-    const supabaseServiceKey = isProduction ? process.env.SUPABASE_PROD_SERVICE_KEY : process.env.SUPABASE_DEV_SERVICE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        throw new Error('Missing database credentials');
+    try {
+        // Use shared utilities
+        const players = await getLeaderboardData(tournamentDay, { limit: 0 });
+        
+        // Filter to only the requested user IDs
+        const filteredPlayers = players.filter(player => userIds.includes(player.user_id));
+        
+        return filteredPlayers.map(player => ({
+            user_id: player.user_id,
+            username: player.username,
+            wallet: player.wallet
+        }));
+    } catch (error) {
+        console.error('❌ Failed to get player details:', error);
+        return [];
     }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Optimized query - only fetch what we need
-    const { data: players, error } = await supabase
-        .from('user_tournament_records')
-        .select('user_id, username, wallet')
-        .eq('tournament_day', tournamentDay)
-        .in('user_id', userIds);
-
-    if (error) throw error;
-    return players || [];
-}
-
-// Fallback: Direct Supabase query with pagination (when Redis fails)
-async function getLeaderboardFromDatabase(tournamentDay: string, offset: number = 0, limit: number = 20) {
-    const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
-    const supabaseUrl = isProduction ? process.env.SUPABASE_PROD_URL : process.env.SUPABASE_DEV_URL;
-    const supabaseServiceKey = isProduction ? process.env.SUPABASE_PROD_SERVICE_KEY : process.env.SUPABASE_DEV_SERVICE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        throw new Error('Missing database credentials');
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Optimized query with proper indexing
-    const { data: players, error } = await supabase
-        .from('user_tournament_records')
-        .select('user_id, username, wallet, highest_score, first_game_at')
-        .eq('tournament_day', tournamentDay)
-        .gt('highest_score', 0)
-        .or('verified_entry_paid.eq.true,standard_entry_paid.eq.true')
-        .order('highest_score', { ascending: false })
-        .order('first_game_at', { ascending: true })
-        .range(offset, offset + limit - 1);
-
-    if (error) throw error;
-
-    // Add rank to players
-    return (players || []).map((player, index) => ({
-        ...player,
-        rank: offset + index + 1
-    }));
 }
 
 export async function GET(req: NextRequest) {
@@ -137,34 +102,8 @@ export async function GET(req: NextRequest) {
         const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 50); // Max 50 per request
         const tournamentDay = searchParams.get('tournament_day');
 
-        // Get current tournament day if not provided
-        let currentTournamentDay = tournamentDay;
-        if (!currentTournamentDay) {
-            const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
-            const supabaseUrl = isProduction ? process.env.SUPABASE_PROD_URL : process.env.SUPABASE_DEV_URL;
-            const supabaseServiceKey = isProduction ? process.env.SUPABASE_PROD_SERVICE_KEY : process.env.SUPABASE_DEV_SERVICE_KEY;
-
-            if (!supabaseUrl || !supabaseServiceKey) {
-                return NextResponse.json({ error: 'Database configuration error' }, { status: 500 });
-            }
-
-            const supabase = createClient(supabaseUrl, supabaseServiceKey);
-            const { data: tournament } = await supabase
-                .from('tournaments')
-                .select('tournament_day')
-                .eq('is_active', true)
-                .single();
-
-            if (!tournament) {
-                return NextResponse.json({ error: 'No active tournament' }, { status: 404 });
-            }
-
-            currentTournamentDay = tournament.tournament_day;
-        }
-
-        if (!currentTournamentDay) {
-            return NextResponse.json({ error: 'Tournament day not found' }, { status: 404 });
-        }
+        // Get current tournament day if not provided using shared utility
+        const currentTournamentDay = await getTournamentDay(tournamentDay);
 
         let players = [];
         let source = 'database';
@@ -189,9 +128,19 @@ export async function GET(req: NextRequest) {
 
             source = 'redis';
         } else {
-            // Fallback to database query
+            // Fallback to database query using shared utilities
             console.log('📊 Redis miss - using database fallback');
-            players = await getLeaderboardFromDatabase(currentTournamentDay, offset, limit);
+            players = await getLeaderboardData(currentTournamentDay, {
+                limit,
+                offset,
+                includeZeroScores: false
+            });
+            
+            // Add missing properties for compatibility
+            players = players.map(player => ({
+                ...player,
+                score: player.highest_score // Map highest_score to score for compatibility
+            }));
         }
 
         const responseTime = Date.now() - startTime;

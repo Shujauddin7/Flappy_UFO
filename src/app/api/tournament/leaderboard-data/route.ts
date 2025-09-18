@@ -1,82 +1,35 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { getCached, setCached, shouldWarmCache } from '@/lib/redis';
+import { getCached, setCached } from '@/lib/redis';
+import { getCurrentActiveTournament } from '@/utils/database';
+import { getLeaderboardData } from '@/utils/leaderboard-queries';
 
 export async function GET() {
     const startTime = Date.now();
+    console.log('🚀 LEADERBOARD DATA API START - Professional Gaming Performance');
+
     try {
-        // 🚀 STEP 1: Check Redis cache first (3-second cache)
-        console.log('🔍 Leaderboard API: Starting request...');
-        console.log('🌍 Environment:', process.env.NEXT_PUBLIC_ENV);
-
-        const cacheKey = 'tournament:leaderboard:current';
-        console.log('🔑 Cache key:', cacheKey);
-
+        // 🎯 STEP 1: Try to get cached data first (like mobile games - instant loading)
+        const cacheKey = 'tournament_leaderboard_data';
         const cachedData = await getCached(cacheKey);
-        console.log('📦 Redis cache result:', cachedData ? 'HIT' : 'MISS');
 
-        if (cachedData) {
-            const responseTime = Date.now() - startTime;
-            console.log('⚡ Leaderboard Cache Status: 🟢 CACHE HIT');
-            console.log(`⏱️  Response includes cached flag: true`);
-            console.log(`🚀 Response time: ${responseTime}ms (Redis cache)`);
+        if (cachedData && typeof cachedData === 'object') {
+            console.log('⚡ CACHE HIT - Returning cached leaderboard data instantly (professional mobile game style)');
+            console.log('📊 Cache Performance: 0ms database query, instant response');
 
-            // 🔥 PROFESSIONAL GAMING TRICK: Background cache warming when cache is 70% expired
-            if (shouldWarmCache(cachedData, 300)) { // Check against 5 minutes instead of 15 seconds
-                console.log('🔄 Cache aging - triggering background warm-up for next user...');
-                // Don't wait - warm in background for gaming performance
-                fetch('/api/admin/warm-cache', { method: 'POST' })
-                    .catch(err => console.log('Background warming failed (non-critical):', err));
-            }
-
-            // Return cached data instantly (5ms response from Mumbai Redis)
             return NextResponse.json({
                 ...cachedData,
-                cached: true, // For debugging - shows when data came from cache
-                cached_at: new Date().toISOString()
+                cached: true,
+                fetched_at: new Date().toISOString()
             });
         }
 
-        console.log('📊 Leaderboard Cache Status: 🔴 FIRST LOAD - NO CACHE YET');
-        console.log('🚀 Client-side cache warming is handling instant next access...');
+        console.log('📊 Cache Status: 🔴 CACHE MISS - Fetching fresh data from database');
+        console.log('🗄️ Falling back to database query...');
 
-        // 🗄️ STEP 2: If no cache, fetch from database (your existing logic)
-        // Environment-specific database configuration
-        const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
-        const supabaseUrl = isProduction ? process.env.SUPABASE_PROD_URL : process.env.SUPABASE_DEV_URL;
-        const supabaseServiceKey = isProduction ? process.env.SUPABASE_PROD_SERVICE_KEY : process.env.SUPABASE_DEV_SERVICE_KEY;
+        // 🗄️ STEP 2: Get current tournament using shared utility (eliminates duplicate code)
+        const currentTournament = await getCurrentActiveTournament();
 
-        if (!supabaseUrl || !supabaseServiceKey) {
-            console.error('❌ Missing database credentials:');
-            console.error('- URL:', supabaseUrl ? 'Present' : 'MISSING');
-            console.error('- Service Key:', supabaseServiceKey ? 'Present' : 'MISSING');
-
-            return NextResponse.json({
-                error: 'Server configuration error: Missing development database credentials'
-            }, { status: 500 });
-        }
-
-        console.log('✅ Database credentials found, connecting to Supabase...');
-
-        // Initialize Supabase client with service role key for full permissions
-        const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-        // Get current active tournament first to use its tournament_day
-        const { data: tournaments, error: tournamentError } = await supabase
-            .from('tournaments')
-            .select('*')
-            .eq('is_active', true)
-            .order('created_at', { ascending: false })
-            .limit(1);
-
-        if (tournamentError) {
-            console.error('Error fetching active tournament:', tournamentError);
-            return NextResponse.json({
-                error: 'Failed to fetch current tournament'
-            }, { status: 500 });
-        }
-
-        if (!tournaments || tournaments.length === 0) {
+        if (!currentTournament) {
             return NextResponse.json({
                 error: 'No active tournament found',
                 players: [],
@@ -84,56 +37,38 @@ export async function GET() {
             });
         }
 
-        const currentTournament = tournaments[0];
         const tournamentDay = currentTournament.tournament_day;
-
         console.log(`🔍 Querying leaderboard for tournament: ${tournamentDay}`);
+
+        // 🚀 OPTIMIZED DATABASE QUERY - Using shared query utilities
         const queryStartTime = Date.now();
 
-        // 🚀 OPTIMIZED: Only select the columns we actually need for the leaderboard
-        // This reduces data transfer and improves query performance significantly
-        const { data: players, error } = await supabase
-            .from('user_tournament_records')
-            .select('user_id, username, wallet, highest_score, tournament_day')
-            .eq('tournament_day', tournamentDay)
-            .gt('highest_score', 0) // Only show users who have submitted scores
-            .or('verified_entry_paid.eq.true,standard_entry_paid.eq.true') // Only paid entries
-            .order('highest_score', { ascending: false })
-            .limit(1000); // Reasonable limit to prevent massive queries
+        // Get leaderboard data using standardized query
+        const players = await getLeaderboardData(tournamentDay, {
+            limit: 1000, // Reasonable limit to prevent massive queries
+            includeZeroScores: false // Only show users who have submitted scores
+        });
 
         const queryTime = Date.now() - queryStartTime;
-        console.log(`⚡ Database query completed in ${queryTime}ms for ${players?.length || 0} players`);
+        console.log(`⚡ Database query completed in ${queryTime}ms for ${players.length} players`);
 
-        if (error) {
-            console.error('Error fetching leaderboard:', error);
+        if (players.length === 0) {
+            console.log('ℹ️ No players found with scores > 0 for tournament:', tournamentDay);
             return NextResponse.json({
-                error: 'Failed to fetch leaderboard data'
-            }, { status: 500 });
-        }
-
-        if (!players || players.length === 0) {
-            const emptyResponse = {
                 players: [],
                 tournament_day: tournamentDay,
                 total_players: 0,
                 cached: false,
                 fetched_at: new Date().toISOString()
-            };
-
-            // Cache empty result for 180 seconds to avoid repeated queries
-            await setCached(cacheKey, emptyResponse, 180);
-            return NextResponse.json(emptyResponse);
+            });
         }
 
-        // Add rank to each player (much faster without database-side ranking)
-        const playersWithRank = players.map((player, index) => ({
-            id: player.user_id, // Use user_id as id for compatibility
-            user_id: player.user_id,
-            username: player.username,
-            wallet: player.wallet,
-            highest_score: player.highest_score,
-            tournament_day: player.tournament_day,
-            rank: index + 1,
+        console.log(`🎯 Found ${players.length} players with scores > 0`);
+
+        // Format players for compatibility with existing frontend code
+        const playersWithRank = players.map((player) => ({
+            ...player,
+            user_id: player.user_id, // Ensure user_id is present
             created_at: new Date().toISOString() // Add for compatibility
         }));
 
@@ -156,7 +91,7 @@ export async function GET() {
         console.log(`   💾 Redis caching: ${responseTime - queryTime}ms`);
         console.log(`   🎯 Total response time: ${responseTime}ms`);
         console.log(`   👥 Players returned: ${playersWithRank.length}`);
-        console.log(`   � Response cached: false (fresh data)`);
+        console.log(`   🔄 Response cached: false (fresh data)`);
 
         return NextResponse.json(responseData);
 

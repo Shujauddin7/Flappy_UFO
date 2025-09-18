@@ -44,7 +44,7 @@ export default function GameHomepage() {
         console.log('🎮 GAME STARTUP: Beginning professional cache warming...');
 
         // Warm cache immediately when app loads for instant tournament access
-        fetch('/api/admin/warm-cache', { method: 'POST' })
+        fetch('/api/warm-cache', { method: 'POST' })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
