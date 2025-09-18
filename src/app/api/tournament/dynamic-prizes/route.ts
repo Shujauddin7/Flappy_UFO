@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
         const searchParams = req.nextUrl.searchParams;
         let tournamentDay = searchParams.get('tournament_day');
 
-        // 🚀 STEP 1: Check Redis cache first (30-second cache for prize calculations)
+        // 🚀 STEP 1: Check Redis cache first (180-second cache for prize calculations)
         let cacheKey: string;
         if (tournamentDay) {
             cacheKey = `tournament:prizes:${tournamentDay}`;
@@ -166,9 +166,9 @@ export async function GET(req: NextRequest) {
             fetched_at: new Date().toISOString()
         };
 
-        // 💾 STEP 3: Cache the prize data for 30 seconds
-        console.log('💾 Caching prize pool data for 30 seconds...');
-        await setCached(cacheKey, responseData, 30);
+        // 💾 STEP 3: Cache the prize data for 180 seconds (3 minutes like leaderboard)
+        console.log('💾 Caching prize pool data for 180 seconds...');
+        await setCached(cacheKey, responseData, 180);
         console.log('✅ Prize pool data cached successfully');
 
         const responseTime = Date.now() - startTime;

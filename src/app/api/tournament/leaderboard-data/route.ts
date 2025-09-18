@@ -111,8 +111,8 @@ export async function GET() {
                 fetched_at: new Date().toISOString()
             };
 
-            // Cache empty result for 30 seconds to avoid repeated queries
-            await setCached(cacheKey, emptyResponse, 30);
+            // Cache empty result for 180 seconds to avoid repeated queries
+            await setCached(cacheKey, emptyResponse, 180);
             return NextResponse.json(emptyResponse);
         }
 
@@ -136,9 +136,9 @@ export async function GET() {
             fetched_at: new Date().toISOString()
         };
 
-        // 💾 STEP 3: Cache the fresh data for 30 seconds (scores don't change frequently)
-        console.log('💾 Caching leaderboard data for 30 seconds...');
-        await setCached(cacheKey, responseData, 30);
+        // 💾 STEP 3: Cache the fresh data for 180 seconds (3 minutes like other tournament data)
+        console.log('💾 Caching leaderboard data for 180 seconds...');
+        await setCached(cacheKey, responseData, 180);
         console.log('✅ Data cached successfully');
 
         const responseTime = Date.now() - startTime;
