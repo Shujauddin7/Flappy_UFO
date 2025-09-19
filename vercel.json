@@ -6,7 +6,7 @@
         },
         {
             "path": "/api/admin/warm-cache",
-            "schedule": "* * * * *"
+            "schedule": "0 0 * * *"
         }
     ]
 }
