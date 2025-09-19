@@ -37,8 +37,8 @@ export async function getLeaderboardData(
     const { limit = 20, offset = 0, includeZeroScores = false } = options;
     const supabase = await getSupabaseClient();
 
-    // Optimized query - only select the columns we actually need for the leaderboard
-    // This reduces data transfer and improves query performance significantly
+    // Optimized query - only select the essential columns needed for leaderboard display
+    // Removed unused fields: total_games_played, verified_games_played, unverified_games_played, created_at
     let query = supabase
         .from('user_tournament_records')
         .select(`
@@ -47,11 +47,7 @@ export async function getLeaderboardData(
             wallet,
             highest_score,
             tournament_day,
-            total_games_played,
-            verified_games_played,
-            unverified_games_played,
-            first_game_at,
-            created_at
+            first_game_at
         `)
         .eq('tournament_day', tournamentDay)
         .or('verified_entry_paid.eq.true,standard_entry_paid.eq.true') // Only paid entries
@@ -115,54 +111,80 @@ export async function getTournamentPlayerCount(
 /**
  * Get tournament statistics (prize pool, player count, etc.)
  * Used by multiple APIs for tournament info
+ * OPTIMIZED: Uses SQL aggregation instead of JavaScript calculations
  */
 export async function getTournamentStats(tournamentDay: string) {
     const supabase = await getSupabaseClient();
 
-    // Get comprehensive tournament statistics - only for users who have paid
+    // Optimized: Use SQL aggregation functions for better performance
     const { data: statsData, error: statsError } = await supabase
-        .from('user_tournament_records')
-        .select(`
-            verified_paid_amount,
-            standard_paid_amount,
-            total_games_played,
-            verified_games_played,
-            unverified_games_played,
-            highest_score,
-            total_continue_payments
-        `)
-        .eq('tournament_day', tournamentDay)
-        .or('verified_entry_paid.eq.true,standard_entry_paid.eq.true');
+        .rpc('get_tournament_stats', {
+            p_tournament_day: tournamentDay
+        });
 
     if (statsError) {
-        throw new Error(`Failed to get tournament stats: ${statsError.message}`);
+        console.warn('RPC function not available, using fallback method');
+        return getTournamentStatsFallback(tournamentDay);
     }
 
-    const stats = {
-        total_players: statsData?.length || 0,
+    return statsData[0] || {
+        total_players: 0,
         total_prize_pool: 0,
         total_collected: 0,
         total_games_played: 0
     };
+}
 
-    if (statsData && statsData.length > 0) {
-        // Calculate total collected from all payments
-        stats.total_collected = statsData.reduce((sum, record) =>
-            sum + (parseFloat(record.verified_paid_amount) || 0) +
-            (parseFloat(record.standard_paid_amount) || 0) +
-            (parseFloat(record.total_continue_payments) || 0), 0
-        );
+/**
+ * Fallback method using efficient aggregation approach
+ */
+async function getTournamentStatsFallback(tournamentDay: string) {
+    const supabase = await getSupabaseClient();
 
-        // Prize pool is 70% of total collected
-        stats.total_prize_pool = stats.total_collected * 0.7;
+    // Get total player count efficiently
+    const { count: totalPlayers, error: countError } = await supabase
+        .from('user_tournament_records')
+        .select('*', { count: 'exact', head: true })
+        .eq('tournament_day', tournamentDay)
+        .or('verified_entry_paid.eq.true,standard_entry_paid.eq.true');
 
-        // Total games played across all users
-        stats.total_games_played = statsData.reduce((sum, record) =>
-            sum + (record.total_games_played || 0), 0
-        );
+    if (countError) {
+        throw new Error(`Failed to get player count: ${countError.message}`);
     }
 
-    return stats;
+    // Get payment aggregations - only fetch the numeric fields we need to sum
+    const { data: paymentsData, error: paymentsError } = await supabase
+        .from('user_tournament_records')
+        .select('verified_paid_amount, standard_paid_amount, total_continue_payments, total_games_played')
+        .eq('tournament_day', tournamentDay)
+        .or('verified_entry_paid.eq.true,standard_entry_paid.eq.true');
+
+    if (paymentsError) {
+        throw new Error(`Failed to get payment data: ${paymentsError.message}`);
+    }
+
+    // Calculate aggregations efficiently
+    let totalCollected = 0;
+    let totalGamesPlayed = 0;
+
+    if (paymentsData && paymentsData.length > 0) {
+        for (const record of paymentsData) {
+            totalCollected += (parseFloat(record.verified_paid_amount) || 0) +
+                            (parseFloat(record.standard_paid_amount) || 0) +
+                            (parseFloat(record.total_continue_payments) || 0);
+            
+            totalGamesPlayed += (record.total_games_played || 0);
+        }
+    }
+
+    const prizePool = totalCollected * 0.7; // 70% goes to prize pool
+
+    return {
+        total_players: totalPlayers || 0,
+        total_prize_pool: prizePool,
+        total_collected: totalCollected,
+        total_games_played: totalGamesPlayed
+    };
 }
 
 /**
@@ -175,7 +197,37 @@ export async function getUserTournamentRank(
 ): Promise<LeaderboardPlayer | null> {
     const supabase = await getSupabaseClient();
 
-    // First, get the user's data
+    // Optimized: Use window function to calculate rank in single query
+    const { data: rankedData, error } = await supabase
+        .rpc('get_user_rank', {
+            p_tournament_day: tournamentDay,
+            p_wallet: userWallet
+        });
+
+    if (error) {
+        // Fallback to original method if RPC function doesn't exist
+        console.warn('RPC function not available, using fallback method');
+        return getUserTournamentRankFallback(tournamentDay, userWallet);
+    }
+
+    if (!rankedData || rankedData.length === 0) {
+        return null; // User not found in tournament
+    }
+
+    return rankedData[0];
+}
+
+/**
+ * Fallback method for getUserTournamentRank (simplified)
+ * Only calculates approximate rank to avoid expensive COUNT queries
+ */
+async function getUserTournamentRankFallback(
+    tournamentDay: string,
+    userWallet: string
+): Promise<LeaderboardPlayer | null> {
+    const supabase = await getSupabaseClient();
+
+    // Get user's data first - only essential fields needed
     const { data: userData, error: userError } = await supabase
         .from('user_tournament_records')
         .select(`
@@ -184,11 +236,7 @@ export async function getUserTournamentRank(
             wallet,
             highest_score,
             tournament_day,
-            total_games_played,
-            verified_games_played,
-            unverified_games_played,
-            first_game_at,
-            created_at
+            first_game_at
         `)
         .eq('tournament_day', tournamentDay)
         .eq('wallet', userWallet)
@@ -199,16 +247,18 @@ export async function getUserTournamentRank(
         return null; // User not found in tournament
     }
 
-    // Get user's rank by counting how many players have better scores
+    // Simplified rank calculation - just count players with higher scores (faster)
     const { count: betterPlayersCount, error: rankError } = await supabase
         .from('user_tournament_records')
         .select('*', { count: 'exact', head: true })
         .eq('tournament_day', tournamentDay)
-        .or('verified_entry_paid.eq.true,standard_entry_paid.eq.true')
-        .or(`highest_score.gt.${userData.highest_score},and(highest_score.eq.${userData.highest_score},first_game_at.lt.${userData.first_game_at})`);
+        .gt('highest_score', userData.highest_score)
+        .or('verified_entry_paid.eq.true,standard_entry_paid.eq.true');
 
     if (rankError) {
-        throw new Error(`Failed to calculate user rank: ${rankError.message}`);
+        console.error('Failed to calculate user rank:', rankError.message);
+        // Return user data without rank if calculation fails
+        return { ...userData, rank: undefined };
     }
 
     return {

@@ -2,93 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getTournamentDay } from '@/utils/database';
 import { getLeaderboardData } from '@/utils/leaderboard-queries';
 
-// Redis client for leaderboard optimization (using existing Redis lib)
-let Redis: typeof import('@upstash/redis').Redis | null = null;
-let redisClient: import('@upstash/redis').Redis | null = null;
-
-// Initialize Redis client
-async function getRedisClient() {
-    if (!Redis) {
-        try {
-            const { Redis: RedisClient } = await import('@upstash/redis');
-            Redis = RedisClient;
-        } catch {
-            console.warn('⚠️ Redis not available, falling back to database');
-            return null;
-        }
-    }
-
-    if (!redisClient) {
-        const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
-        const redisUrl = isProduction ? process.env.UPSTASH_REDIS_PROD_URL : process.env.UPSTASH_REDIS_DEV_URL;
-        const redisToken = isProduction ? process.env.UPSTASH_REDIS_PROD_TOKEN : process.env.UPSTASH_REDIS_DEV_TOKEN;
-
-        if (!redisUrl || !redisToken) {
-            console.warn('⚠️ Redis credentials missing');
-            return null;
-        }
-
-        redisClient = new Redis({
-            url: redisUrl,
-            token: redisToken,
-        });
-    }
-
-    return redisClient;
-}
-
-// Get leaderboard from Redis Sorted Set (ultra-fast)
+// Get leaderboard from Redis Sorted Set with complete player data (ultra-fast)
 async function getLeaderboardFromRedis(tournamentDay: string, offset: number = 0, limit: number = 20) {
-    const redis = await getRedisClient();
-    if (!redis) return null;
-
     try {
-        const key = `leaderboard:${tournamentDay}`;
-
-        // Get top players with scores from Redis Sorted Set
-        const results = await redis.zrange(key, offset, offset + limit - 1, {
-            rev: true,
-            withScores: true
-        });
-
-        if (!results || results.length === 0) return null;
-
-        // Convert Redis results to player objects
-        const players = [];
-        for (let i = 0; i < results.length; i += 2) {
-            const userId = results[i] as string;
-            const score = parseInt(results[i + 1] as string);
-            players.push({
-                user_id: userId,
-                score: score,
-                rank: offset + (i / 2) + 1
-            });
-        }
-
-        return players;
+        // Use the enhanced Redis function that includes complete player details
+        const { getTopPlayers } = await import('@/lib/leaderboard-redis');
+        return await getTopPlayers(tournamentDay, offset, limit);
     } catch (error) {
         console.error('❌ Redis leaderboard query failed:', error);
         return null;
-    }
-}
-
-// Get player details from Supabase (minimal query)
-async function getPlayerDetails(userIds: string[], tournamentDay: string) {
-    try {
-        // Use shared utilities
-        const players = await getLeaderboardData(tournamentDay, { limit: 0 });
-        
-        // Filter to only the requested user IDs
-        const filteredPlayers = players.filter(player => userIds.includes(player.user_id));
-        
-        return filteredPlayers.map(player => ({
-            user_id: player.user_id,
-            username: player.username,
-            wallet: player.wallet
-        }));
-    } catch (error) {
-        console.error('❌ Failed to get player details:', error);
-        return [];
     }
 }
 
@@ -107,26 +29,32 @@ export async function GET(req: NextRequest) {
 
         let players = [];
         let source = 'database';
+        let tournamentStats = null;
 
-        // Try Redis first (ultra-fast)
+        // Try Redis first (ultra-fast with complete data)
         const redisPlayers = await getLeaderboardFromRedis(currentTournamentDay, offset, limit);
 
-        if (redisPlayers) {
-            // Get user details for Redis players
-            const userIds = redisPlayers.map(p => p.user_id);
-            const playerDetails = await getPlayerDetails(userIds, currentTournamentDay);
-
-            // Merge Redis scores with user details
-            players = redisPlayers.map(redisPlayer => {
-                const details = playerDetails.find(p => p.user_id === redisPlayer.user_id);
-                return {
-                    ...redisPlayer,
-                    username: details?.username || null,
-                    wallet: details?.wallet || 'Unknown'
-                };
-            });
+        if (redisPlayers && redisPlayers.length > 0) {
+            // Redis now contains complete player data - no need for separate database query!
+            players = redisPlayers.map(redisPlayer => ({
+                ...redisPlayer,
+                highest_score: redisPlayer.score, // Map score to highest_score for compatibility
+                tournament_day: currentTournamentDay
+            }));
 
             source = 'redis';
+
+            // For Redis hits, also try to get cached tournament stats for instant complete data
+            try {
+                const { getCached } = await import('@/lib/redis');
+                const cachedStats = await getCached('tournament_stats_instant');
+                if (cachedStats && typeof cachedStats === 'object') {
+                    tournamentStats = cachedStats;
+                    console.log('🎯 Got tournament stats from cache - complete instant response!');
+                }
+            } catch {
+                console.log('⚠️ Could not get cached tournament stats, continuing without');
+            }
         } else {
             // Fallback to database query using shared utilities
             console.log('📊 Redis miss - using database fallback');
@@ -141,13 +69,27 @@ export async function GET(req: NextRequest) {
                 ...player,
                 score: player.highest_score // Map highest_score to score for compatibility
             }));
+
+            // For database fallback, get essential tournament stats
+            try {
+                const { getTournamentStats } = await import('@/utils/leaderboard-queries');
+                const stats = await getTournamentStats(currentTournamentDay);
+                tournamentStats = {
+                    total_players: stats.total_players,
+                    total_prize_pool: Number(stats.total_prize_pool.toFixed(2)),
+                    total_collected: Number(stats.total_collected.toFixed(2)),
+                    total_games_played: stats.total_games_played
+                };
+            } catch (error) {
+                console.warn('⚠️ Could not get tournament stats:', error);
+            }
         }
 
         const responseTime = Date.now() - startTime;
 
         console.log(`🚀 Leaderboard loaded: ${players.length} players from ${source} in ${responseTime}ms`);
 
-        return NextResponse.json({
+        const responseData: Record<string, unknown> = {
             success: true,
             players,
             pagination: {
@@ -163,7 +105,17 @@ export async function GET(req: NextRequest) {
             },
             tournament_day: currentTournamentDay,
             fetched_at: new Date().toISOString()
-        });
+        };
+
+        // Add tournament stats if available
+        if (tournamentStats) {
+            responseData.tournament_stats = tournamentStats;
+            responseData.complete_data = true; // Indicates this response has everything
+        } else {
+            responseData.complete_data = false; // Frontend should call /tournament/stats separately
+        }
+
+        return NextResponse.json(responseData);
 
     } catch (error) {
         console.error('❌ Optimized leaderboard error:', error);

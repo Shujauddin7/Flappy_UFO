@@ -36,10 +36,10 @@ export async function POST(req: NextRequest) {
             targetTournamentDay = tournament.tournament_day;
         }
 
-        // Fetch all players with scores for the tournament
+        // Fetch all players with scores AND complete details for the tournament
         const { data: players, error } = await supabase
             .from('user_tournament_records')
-            .select('user_id, highest_score')
+            .select('user_id, highest_score, username, wallet, first_game_at')
             .eq('tournament_day', targetTournamentDay)
             .gt('highest_score', 0)
             .or('verified_entry_paid.eq.true,standard_entry_paid.eq.true')
