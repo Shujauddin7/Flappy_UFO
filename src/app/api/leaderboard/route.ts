@@ -49,8 +49,13 @@ export async function GET(req: NextRequest) {
                 const { getCached } = await import('@/lib/redis');
                 const cachedStats = await getCached('tournament_stats_instant');
                 if (cachedStats && typeof cachedStats === 'object') {
-                    tournamentStats = cachedStats;
-                    console.log('🎯 Got tournament stats from cache - complete instant response!');
+                    // Extract only UI-essential data from cached stats
+                    const statsObj = cachedStats as Record<string, unknown>;
+                    tournamentStats = {
+                        total_players: (statsObj.total_players as number) || 0,
+                        total_prize_pool: (statsObj.total_prize_pool as number) || 0
+                    };
+                    console.log('🎯 Got essential tournament stats from cache - optimized instant response!');
                 }
             } catch {
                 console.log('⚠️ Could not get cached tournament stats, continuing without');
@@ -70,16 +75,19 @@ export async function GET(req: NextRequest) {
                 score: player.highest_score // Map highest_score to score for compatibility
             }));
 
-            // For database fallback, get essential tournament stats
+            // For database fallback, get ONLY essential tournament stats for UI display
             try {
                 const { getTournamentStats } = await import('@/utils/leaderboard-queries');
                 const stats = await getTournamentStats(currentTournamentDay);
+
+                // UI ESSENTIAL DATA ONLY - what's actually displayed
                 tournamentStats = {
                     total_players: stats.total_players,
-                    total_prize_pool: Number(stats.total_prize_pool.toFixed(2)),
-                    total_collected: Number(stats.total_collected.toFixed(2)),
-                    total_games_played: stats.total_games_played
+                    total_prize_pool: Number(stats.total_prize_pool.toFixed(2))
                 };
+
+                // Keep debug info but separate for your reference (not sent to frontend)
+                console.log(`📊 Tournament Debug Info: Collected: ${stats.total_collected} WLD, Games: ${stats.total_games_played}`);
             } catch (error) {
                 console.warn('⚠️ Could not get tournament stats:', error);
             }
@@ -89,13 +97,16 @@ export async function GET(req: NextRequest) {
 
         console.log(`🚀 Leaderboard loaded: ${players.length} players from ${source} in ${responseTime}ms`);
 
+        // 🎯 OPTIMIZED RESPONSE - Only UI-essential data for maximum speed
+        // UI displays: Rank, Player Name, Score, Prize
+        // Tournament stats: Total Players, Prize Pool (for header display)
         const responseData: Record<string, unknown> = {
             success: true,
-            players,
+            players, // Contains: user_id, username, wallet, highest_score, rank
             pagination: {
                 offset,
                 limit,
-                hasMore: players.length === limit, // Simple check
+                hasMore: players.length === limit,
                 nextOffset: offset + limit
             },
             performance: {
@@ -107,10 +118,10 @@ export async function GET(req: NextRequest) {
             fetched_at: new Date().toISOString()
         };
 
-        // Add tournament stats if available
+        // Add essential tournament stats if available (UI display only)
         if (tournamentStats) {
-            responseData.tournament_stats = tournamentStats;
-            responseData.complete_data = true; // Indicates this response has everything
+            responseData.tournament_stats = tournamentStats; // Only: total_players, total_prize_pool
+            responseData.complete_data = true; // Single API call has everything for UI
         } else {
             responseData.complete_data = false; // Frontend should call /tournament/stats separately
         }
