@@ -248,9 +248,33 @@ export const TournamentLeaderboard = ({
 
     if (loading) {
         return (
-            <div className="leaderboard-loading">
-                <div className="loading-spinner"></div>
-                <p>Loading leaderboard...</p>
+            <div className="tournament-leaderboard">
+                <div className="leaderboard-header">
+                    <h3>Tournament Leaderboard</h3>
+                    <div className="last-updated loading-blur">Loading...</div>
+                </div>
+                <div className="leaderboard-list">
+                    {/* Render 5 skeleton cards */}
+                    {Array.from({ length: 5 }, (_, index) => (
+                        <PlayerRankCard
+                            key={`skeleton-${index}`}
+                            player={{
+                                id: `skeleton-${index}`,
+                                user_id: `skeleton-${index}`,
+                                username: "loading...",
+                                wallet: `skeleton-${index}`,
+                                highest_score: 0,
+                                tournament_day: "2024-12-17",
+                                created_at: new Date().toISOString(),
+                                rank: index + 1
+                            }}
+                            prizeAmount="0.00"
+                            isCurrentUser={false}
+                            isTopThree={false}
+                            isLoading={true}
+                        />
+                    ))}
+                </div>
             </div>
         );
     }

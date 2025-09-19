@@ -18,13 +18,15 @@ interface PlayerRankCardProps {
     prizeAmount: string | null;
     isCurrentUser: boolean;
     isTopThree: boolean;
+    isLoading?: boolean; // Add loading prop for blur effects
 }
 
 export const PlayerRankCard: React.FC<PlayerRankCardProps> = ({
     player,
     prizeAmount,
     isCurrentUser,
-    isTopThree
+    isTopThree,
+    isLoading = false // Default to false
 }) => {
     const getRankEmoji = (rank?: number) => {
         if (!rank) return '🏆';
@@ -81,7 +83,11 @@ export const PlayerRankCard: React.FC<PlayerRankCardProps> = ({
             </div>
 
             <div className="prize-section">
-                {prizeAmount ? (
+                {isLoading ? (
+                    <div className="prize-amount loading-blur highlighted-prize">
+                        $0.00 WLD
+                    </div>
+                ) : prizeAmount ? (
                     <div className="prize-amount highlighted-prize">
                         {prizeAmount} WLD
                     </div>

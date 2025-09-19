@@ -1,20 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Page } from '@/components/PageLayout';
 import { TournamentLeaderboard } from '@/components/TournamentLeaderboard';
 import { PlayerRankCard } from '@/components/PlayerRankCard';
 import { useSession } from 'next-auth/react';
-
-interface Star {
-    x: number;
-    y: number;
-    z: number;
-    size: number;
-    reset(width: number, height: number): void;
-    update(moveSpeed: number, deltaMouseX: number, deltaMouseY: number, width: number, height: number): void;
-    draw(ctx: CanvasRenderingContext2D, width: number, height: number): void;
-}
 
 interface LeaderboardPlayer {
     id: string;
@@ -51,7 +41,6 @@ interface TournamentData {
 
 export default function LeaderboardPage() {
     const { data: session } = useSession();
-    const canvasRef = useRef<HTMLCanvasElement>(null);
 
     // ⚡ INSTAGRAM-STYLE INSTANT LOADING: Real data immediately, persist across navigation
     const [currentTournament, setCurrentTournament] = useState<TournamentData>(() => {
@@ -89,7 +78,40 @@ export default function LeaderboardPage() {
         };
     });
 
-    const [preloadedLeaderboardData, setPreloadedLeaderboardData] = useState<LeaderboardApiResponse | null>(null);
+    // Track if we have cached data to prevent unnecessary loading states
+    const [hasCachedData] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const cached = sessionStorage.getItem('tournament_data');
+            if (cached) {
+                try {
+                    const parsed = JSON.parse(cached);
+                    return Date.now() - parsed.timestamp < 30000;
+                } catch {
+                    return false;
+                }
+            }
+        }
+        return false;
+    });
+
+    const [preloadedLeaderboardData, setPreloadedLeaderboardData] = useState<LeaderboardApiResponse | null>(() => {
+        // Try to load cached leaderboard data for instant display
+        if (typeof window !== 'undefined') {
+            const cached = sessionStorage.getItem('leaderboard_data');
+            if (cached) {
+                try {
+                    const parsed = JSON.parse(cached);
+                    if (Date.now() - parsed.timestamp < 60000) { // 1 minute cache for leaderboard
+                        console.log('⚡ INSTANT LOAD: Using cached leaderboard data');
+                        return parsed.data;
+                    }
+                } catch {
+                    // Ignore cache parse errors
+                }
+            }
+        }
+        return null;
+    });
     const [currentUserRank, setCurrentUserRank] = useState<LeaderboardPlayer | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [currentTime, setCurrentTime] = useState(new Date());
@@ -98,6 +120,12 @@ export default function LeaderboardPage() {
 
     // ⚡ INSTAGRAM-STYLE DATA LOADING: Instant + persistent
     useEffect(() => {
+        // Only load if we don't have cached data - prevent unnecessary requests
+        if (hasCachedData) {
+            console.log('⚡ SKIP LOADING: Using cached tournament data');
+            return;
+        }
+
         const loadEssentialData = async () => {
             try {
                 console.log('⚡ Loading essential tournament data...');
@@ -140,6 +168,13 @@ export default function LeaderboardPage() {
 
                         if (leaderboard.players) {
                             setPreloadedLeaderboardData(leaderboard);
+
+                            // ⚡ CACHE LEADERBOARD: Cache for instant loading
+                            sessionStorage.setItem('leaderboard_data', JSON.stringify({
+                                data: leaderboard,
+                                timestamp: Date.now()
+                            }));
+
                             console.log(`⚡ Leaderboard loaded: ${leaderboard.players.length} entries`);
                         }
                     } catch (err) {
@@ -154,7 +189,7 @@ export default function LeaderboardPage() {
         };
 
         loadEssentialData();
-    }, []); // Run once only
+    }, [hasCachedData]); // Run when cache status changes
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
         setCurrentUserRank(userRank);
         // We'll handle visibility based on scroll position, not rank number
@@ -197,128 +232,6 @@ export default function LeaderboardPage() {
         // Update time every second for countdown
         const timeInterval = setInterval(() => setCurrentTime(new Date()), 1000);
         return () => clearInterval(timeInterval);
-    }, []);
-
-    // Star particles animation
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        let width = window.innerWidth;
-        let height = window.innerHeight;
-        canvas.width = width;
-        canvas.height = height;
-
-        class StarImpl implements Star {
-            x = 0;
-            y = 0;
-            z = 0;
-            size = 0;
-            constructor(width: number, height: number) {
-                this.reset(width, height);
-            }
-            reset(width: number, height: number) {
-                this.x = (Math.random() - 0.5) * width;
-                this.y = (Math.random() - 0.5) * height;
-                this.z = Math.random() * width;
-                this.size = Math.random() * 1.2 + 0.3;
-            }
-            update(moveSpeed: number, deltaMouseX: number, deltaMouseY: number, width: number, height: number) {
-                this.z -= moveSpeed;
-                if (this.z <= 1) {
-                    this.reset(width, height);
-                    this.z = width;
-                }
-                this.x += deltaMouseX * 0.0006 * this.z;
-                this.y += deltaMouseY * 0.0006 * this.z;
-                if (this.x > width / 2) this.x -= width;
-                else if (this.x < -width / 2) this.x += width;
-                if (this.y > height / 2) this.y -= height;
-                else if (this.y < -height / 2) this.y += height;
-            }
-            draw(ctx: CanvasRenderingContext2D, width: number, height: number) {
-                const sx = (this.x / this.z) * width + width / 2;
-                const sy = (this.y / this.z) * height + height / 2;
-                const radius = (1 - this.z / width) * this.size * 2.3;
-                if (sx < 0 || sx >= width || sy < 0 || sy >= height || radius <= 0) return;
-                ctx.beginPath();
-                ctx.fillStyle = 'white';
-                ctx.shadowColor = 'white';
-                ctx.shadowBlur = 2 * (1 - this.z / width);
-                ctx.arc(sx, sy, radius, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
-
-        const numStars = 50; // Further reduced for mobile performance
-        const stars: Star[] = [];
-        for (let i = 0; i < numStars; i++) {
-            stars.push(new StarImpl(width, height));
-        }
-
-        let mouseX = 0;
-        let mouseY = 0;
-        let previousMouseX = 0;
-        let previousMouseY = 0;
-        const moveSpeed = 4;
-        let running = true;
-
-        function animate() {
-            if (!running || !ctx) return;
-            ctx.clearRect(0, 0, width, height);
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(0, 0, width, height);
-            const dx = mouseX - previousMouseX;
-            const dy = mouseY - previousMouseY;
-            for (const star of stars) {
-                star.update(moveSpeed, dx, dy, width, height);
-                star.draw(ctx, width, height);
-            }
-            previousMouseX = mouseX;
-            previousMouseY = mouseY;
-            requestAnimationFrame(animate);
-        }
-
-        function onResize() {
-            if (!canvas) return;
-            width = window.innerWidth;
-            height = window.innerHeight;
-            canvas.width = width;
-            canvas.height = height;
-            stars.forEach(star => star.reset(width, height));
-        }
-
-        function onMouseMove(e: MouseEvent) {
-            mouseX = e.clientX - width / 2;
-            mouseY = e.clientY - height / 2;
-        }
-        function onTouchMove(e: TouchEvent) {
-            if (e.touches.length > 0) {
-                mouseX = e.touches[0].clientX - width / 2;
-                mouseY = e.touches[0].clientY - height / 2;
-            }
-            // Only prevent default for canvas touches, not leaderboard area
-            const target = e.target as HTMLElement;
-            if (target.tagName === 'CANVAS' || target.classList.contains('starfield-canvas')) {
-                e.preventDefault();
-            }
-        }
-
-        window.addEventListener('resize', onResize);
-        window.addEventListener('mousemove', onMouseMove);
-        window.addEventListener('touchmove', onTouchMove, { passive: false });
-
-        animate();
-
-        return () => {
-            running = false;
-            window.removeEventListener('resize', onResize);
-            window.removeEventListener('mousemove', onMouseMove);
-            window.removeEventListener('touchmove', onTouchMove);
-        };
     }, []);
 
     // Calculate time remaining
@@ -412,7 +325,6 @@ export default function LeaderboardPage() {
 
     return (
         <Page>
-            <canvas ref={canvasRef} className="starfield-canvas" />
             <Page.Main className="leaderboard-container">
                 {/* Fixed Tournament Title at Very Top */}
                 <div className="tournament-main-title">
@@ -433,10 +345,18 @@ export default function LeaderboardPage() {
                         {/* Prize Pool Info */}
                         <div className="prize-pool-info">
                             <div className="prize-pool-text">
-                                Prize pool: <span className="prize-pool-highlight">{currentTournament?.total_prize_pool.toFixed(2)} WLD</span>
+                                Prize pool: <span className={`prize-pool-highlight ${(!hasCachedData && (!currentTournament?.total_prize_pool || currentTournament.total_prize_pool === 0)) ? 'loading-blur' : ''}`}>
+                                    {(!currentTournament?.total_prize_pool || currentTournament.total_prize_pool === 0)
+                                        ? '0.00 WLD'
+                                        : `${currentTournament.total_prize_pool.toFixed(2)} WLD`}
+                                </span>
                             </div>
                             <div className="players-text">
-                                <span className="human-count-number">{currentTournament?.total_players}</span> <span className="humans-playing-highlight">humans are playing to win the prize pool</span>
+                                <span className={`human-count-number ${(!hasCachedData && (!currentTournament?.total_players || currentTournament.total_players === 0)) ? 'loading-blur' : ''}`}>
+                                    {(!currentTournament?.total_players || currentTournament.total_players === 0)
+                                        ? '0'
+                                        : currentTournament.total_players}
+                                </span> <span className="humans-playing-highlight">humans are playing to win the prize pool</span>
                             </div>
                         </div>
 
