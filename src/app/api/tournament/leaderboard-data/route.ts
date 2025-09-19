@@ -1,38 +1,35 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getCached, setCached } from '@/lib/redis';
+import { getCurrentActiveTournament } from '@/utils/database';
+import { getLeaderboardData } from '@/utils/leaderboard-queries';
 
 export async function GET() {
+    const startTime = Date.now();
+    console.log('🚀 LEADERBOARD DATA API START - Professional Gaming Performance');
+
     try {
-        // Environment-specific database configuration
-        const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
-        const supabaseUrl = isProduction ? process.env.SUPABASE_PROD_URL : process.env.SUPABASE_DEV_URL;
-        const supabaseServiceKey = isProduction ? process.env.SUPABASE_PROD_SERVICE_KEY : process.env.SUPABASE_DEV_SERVICE_KEY;
+        // 🎯 STEP 1: Try to get cached data first (like mobile games - instant loading)
+        const cacheKey = 'tournament_leaderboard_data';
+        const cachedData = await getCached(cacheKey);
 
-        if (!supabaseUrl || !supabaseServiceKey) {
+        if (cachedData && typeof cachedData === 'object') {
+            console.log('⚡ CACHE HIT - Returning cached leaderboard data instantly (professional mobile game style)');
+            console.log('📊 Cache Performance: 0ms database query, instant response');
+
             return NextResponse.json({
-                error: 'Server configuration error'
-            }, { status: 500 });
+                ...cachedData,
+                cached: true,
+                fetched_at: new Date().toISOString()
+            });
         }
 
-        // Initialize Supabase client with service role key for full permissions
-        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        console.log('📊 Cache Status: 🔴 CACHE MISS - Fetching fresh data from database');
+        console.log('🗄️ Falling back to database query...');
 
-        // Get current active tournament first to use its tournament_day
-        const { data: tournaments, error: tournamentError } = await supabase
-            .from('tournaments')
-            .select('*')
-            .eq('is_active', true)
-            .order('created_at', { ascending: false })
-            .limit(1);
+        // 🗄️ STEP 2: Get current tournament using shared utility (eliminates duplicate code)
+        const currentTournament = await getCurrentActiveTournament();
 
-        if (tournamentError) {
-            console.error('Error fetching active tournament:', tournamentError);
-            return NextResponse.json({
-                error: 'Failed to fetch current tournament'
-            }, { status: 500 });
-        }
-
-        if (!tournaments || tournaments.length === 0) {
+        if (!currentTournament) {
             return NextResponse.json({
                 error: 'No active tournament found',
                 players: [],
@@ -40,51 +37,63 @@ export async function GET() {
             });
         }
 
-        const currentTournament = tournaments[0];
         const tournamentDay = currentTournament.tournament_day;
+        console.log(`🔍 Querying leaderboard for tournament: ${tournamentDay}`);
 
-        // Debug: Log what tournament day we're fetching (development only)
-        if (process.env.NODE_ENV === 'development') {
-        }
+        // 🚀 OPTIMIZED DATABASE QUERY - Using shared query utilities
+        const queryStartTime = Date.now();
 
-        // Fetch all players for this tournament who have:
-        // 1. Actually PAID for entry (verified OR standard entry paid)
-        // 2. Have submitted at least one score (highest_score > 0)
-        // This prevents showing users with 0 scores before they submit their first game
-        const { data: players, error } = await supabase
-            .from('user_tournament_records')
-            .select('*')
-            .eq('tournament_day', tournamentDay)
-            .gt('highest_score', 0) // Only show users who have submitted scores
-            .or('verified_entry_paid.eq.true,standard_entry_paid.eq.true') // Only paid entries
-            .order('highest_score', { ascending: false })
-            .order('first_game_at', { ascending: true }); // Tie-breaker: earlier first game wins
+        // Get leaderboard data using standardized query
+        const players = await getLeaderboardData(tournamentDay, {
+            limit: 1000, // Reasonable limit to prevent massive queries
+            includeZeroScores: false // Only show users who have submitted scores
+        });
 
-        if (error) {
-            console.error('Error fetching leaderboard:', error);
-            return NextResponse.json({
-                error: 'Failed to fetch leaderboard data'
-            }, { status: 500 });
-        }
+        const queryTime = Date.now() - queryStartTime;
+        console.log(`⚡ Database query completed in ${queryTime}ms for ${players.length} players`);
 
-        if (!players || players.length === 0) {
+        if (players.length === 0) {
+            console.log('ℹ️ No players found with scores > 0 for tournament:', tournamentDay);
             return NextResponse.json({
                 players: [],
-                tournament_day: tournamentDay
+                tournament_day: tournamentDay,
+                total_players: 0,
+                cached: false,
+                fetched_at: new Date().toISOString()
             });
         }
 
-        // Add rank to each player
-        const playersWithRank = players.map((player, index) => ({
+        console.log(`🎯 Found ${players.length} players with scores > 0`);
+
+        // Format players for compatibility with existing frontend code
+        const playersWithRank = players.map((player) => ({
             ...player,
-            rank: index + 1
+            user_id: player.user_id, // Ensure user_id is present
+            created_at: new Date().toISOString() // Add for compatibility
         }));
 
-        return NextResponse.json({
+        const responseData = {
             players: playersWithRank,
             tournament_day: tournamentDay,
-            total_players: playersWithRank.length
-        });
+            total_players: playersWithRank.length,
+            cached: false, // Fresh from database
+            fetched_at: new Date().toISOString()
+        };
+
+        // 💾 STEP 3: Cache the fresh data for 5 minutes (persistent like mobile games)
+        console.log('💾 Caching leaderboard data for 5 minutes (persistent mobile game style)...');
+        await setCached(cacheKey, responseData, 300); // 5 minutes instead of 15 seconds
+        console.log('✅ Data cached successfully for persistent availability');
+
+        const responseTime = Date.now() - startTime;
+        console.log(`🚀 LEADERBOARD API PERFORMANCE SUMMARY:`);
+        console.log(`   📊 Database query: ${queryTime}ms`);
+        console.log(`   💾 Redis caching: ${responseTime - queryTime}ms`);
+        console.log(`   🎯 Total response time: ${responseTime}ms`);
+        console.log(`   👥 Players returned: ${playersWithRank.length}`);
+        console.log(`   🔄 Response cached: false (fresh data)`);
+
+        return NextResponse.json(responseData);
 
     } catch (error) {
         console.error('❌ Leaderboard data API error:', error);

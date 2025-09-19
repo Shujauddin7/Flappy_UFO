@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { createClient } from '@supabase/supabase-js';
+import { deleteCached } from '@/lib/redis';
+import { updateLeaderboardScore } from '@/lib/leaderboard-redis';
 
 // Helper function to update user statistics safely (prevents race conditions)
 async function updateUserStatistics(userId: string, newScore: number, shouldUpdateHighScore: boolean = false) {
@@ -298,6 +300,26 @@ export async function POST(req: NextRequest) {
                     }
                 }
 
+                // 🚨 NEW HIGH SCORE: Update Redis leaderboard immediately
+                console.log('⚡ Updating Redis leaderboard with new high score...');
+                await updateLeaderboardScore(tournamentDay, user.id, score);
+
+                // 🚨 NEW HIGH SCORE: Invalidate leaderboard cache so it shows immediately
+                console.log('🏆 New high score! Invalidating leaderboard cache...');
+                await deleteCached('tournament:leaderboard:current');
+                console.log('✅ Leaderboard cache invalidated');
+
+                // 🚨 Also invalidate prize pool cache (affects total players/revenue)
+                console.log('💰 Invalidating prize pool cache...');
+                await deleteCached('tournament:prizes:current');
+                console.log('✅ Prize pool cache invalidated');
+
+                // 🚀 INSTANT RELOAD: Immediately warm cache again for next user
+                console.log('⚡ Triggering immediate cache warming for instant next access...');
+                fetch('/api/admin/warm-cache', { method: 'POST' })
+                    .then(() => console.log('✅ Cache warmed immediately after score update'))
+                    .catch(err => console.log('Cache warming failed (non-critical):', err));
+
                 return NextResponse.json({
                     success: true,
                     data: {
@@ -358,6 +380,22 @@ export async function POST(req: NextRequest) {
                 }
             }
         }
+
+        // 🚀 INSTANT UPDATES: Clear all caches for immediate prize pool/human count updates
+        // Even regular scores contribute revenue and change total players
+        console.log('⚡ Clearing all caches for instant prize pool and human count updates...');
+        await deleteCached('tournament:prizes:current');
+        await deleteCached('tournament:current');
+        console.log('✅ Prize pool and tournament caches invalidated for instant updates');
+
+        // 🚀 KEEP LEADERBOARD READY: Warm cache immediately for instant next access
+        console.log('⚡ Warming cache immediately to keep leaderboard always ready...');
+        fetch('/api/admin/warm-cache', { method: 'POST' })
+            .then(() => console.log('✅ Cache warmed to keep data always ready'))
+            .catch(err => console.log('Cache warming failed (non-critical):', err));
+
+        // Keep leaderboard cache since regular scores don't change rankings
+        console.log('📊 Regular score submitted, keeping leaderboard cache for performance');
 
         return NextResponse.json({
             success: true,

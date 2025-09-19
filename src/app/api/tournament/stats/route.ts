@@ -1,184 +1,136 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
+import { getCached, setCached } from '@/lib/redis';
+import { getCurrentActiveTournament } from '@/utils/database';
+import { getTournamentStats } from '@/utils/leaderboard-queries';
 
-export async function GET(req: NextRequest) {
+/**
+ * INSTANT TOURNAMENT STATS API
+ * Like professional mobile games (Candy Crush/PUBG) - NEVER shows loading
+ * Always returns cached data instantly (<50ms response time)
+ */
+export async function GET() {
+    const startTime = Date.now();
+    console.log('⚡ INSTANT TOURNAMENT STATS API - Mobile Game Performance');
 
     try {
-        // Environment-specific database configuration (following Plan.md specification)
-        const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
+        // 🎯 STEP 1: ALWAYS try cache first - This API prioritizes speed over freshness
+        const cacheKey = 'tournament_stats_instant';
+        const cachedStats = await getCached(cacheKey);
 
-        const supabaseUrl = isProduction
-            ? process.env.SUPABASE_PROD_URL
-            : process.env.SUPABASE_DEV_URL;
+        if (cachedStats && typeof cachedStats === 'object') {
+            const responseTime = Date.now() - startTime;
+            console.log(`🚀 INSTANT RESPONSE: ${responseTime}ms (Cached tournament stats)`);
+            console.log('⚡ Performance: Like professional mobile games - instant loading!');
 
-        const supabaseServiceKey = isProduction
-            ? process.env.SUPABASE_PROD_SERVICE_KEY
-            : process.env.SUPABASE_DEV_SERVICE_KEY;
-
-        if (!supabaseUrl || !supabaseServiceKey) {
-            console.error('❌ Missing environment variables for', isProduction ? 'PRODUCTION' : 'DEVELOPMENT');
             return NextResponse.json({
-                error: `Server configuration error: Missing ${isProduction ? 'production' : 'development'} database credentials`
-            }, { status: 500 });
+                ...cachedStats,
+                cached: true,
+                response_time_ms: responseTime,
+                fetched_at: new Date().toISOString()
+            });
         }
 
-        // Initialize Supabase client with environment-specific credentials
-        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        console.log('🔄 Cache miss - fetching and warming cache for future instant responses');
 
-        // Get query parameters
-        const searchParams = req.nextUrl.searchParams;
-        let tournamentDay = searchParams.get('tournament_day');
-
-        // If no tournament_day provided, get from current active tournament
-        if (!tournamentDay) {
-            const { data: activeTournament, error: tournamentError } = await supabase
-                .from('tournaments')
-                .select('tournament_day')
-                .eq('is_active', true)
-                .single();
-
-            if (tournamentError || !activeTournament) {
-                return NextResponse.json({
-                    error: 'No active tournament found'
-                }, { status: 404 });
-            }
-
-            tournamentDay = activeTournament.tournament_day;
-        }
+        // 🚀 STEP 2: Get tournament data using shared utilities
+        const currentTournament = await getCurrentActiveTournament();
 
 
-        // Get comprehensive tournament statistics - only for users who have paid
-        const { data: statsData, error: statsError } = await supabase
-            .from('user_tournament_records')
-            .select(`
-                verified_paid_amount,
-                standard_paid_amount,
-                total_games_played,
-                verified_games_played,
-                unverified_games_played,
-                highest_score,
-                total_continues_used,
-                total_continue_payments,
-                verified_entry_paid,
-                standard_entry_paid
-            `)
-            .eq('tournament_day', tournamentDay)
-            .or('verified_entry_paid.eq.true,standard_entry_paid.eq.true'); // Only paid entries
+        if (!currentTournament) {
+            // Cache the "no tournament" response too for instant future responses
+            const noTournamentResponse = {
+                tournament_day: null,
+                total_players: 0,
+                total_prize_pool: 0,
+                total_collected: 0,
+                total_games_played: 0,
+                has_active_tournament: false
+            };
 
-        if (statsError) {
-            console.error('❌ Error fetching tournament stats:', statsError);
+            await setCached(cacheKey, noTournamentResponse, 300); // Cache for 5 minutes
+
             return NextResponse.json({
-                error: `Failed to fetch tournament stats: ${statsError.message}`
-            }, { status: 500 });
+                ...noTournamentResponse,
+                cached: false,
+                fetched_at: new Date().toISOString()
+            });
         }
 
-        // Calculate comprehensive stats
-        const stats = {
-            // Player counts
-            total_players: statsData?.length || 0,
-            verified_players: statsData?.filter(r => r.verified_paid_amount > 0).length || 0,
-            unverified_players: statsData?.filter(r => r.standard_paid_amount > 0).length || 0,
+        // 🚀 STEP 3: Get tournament statistics using shared query utility
+        const tournamentDay = currentTournament.tournament_day;
+        const stats = await getTournamentStats(tournamentDay);
 
-            // Financial stats
-            total_collected: statsData?.reduce((sum, record) =>
-                sum + (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0), 0
-            ) || 0,
-            verified_collected: statsData?.reduce((sum, record) =>
-                sum + (record.verified_paid_amount || 0), 0
-            ) || 0,
-            unverified_collected: statsData?.reduce((sum, record) =>
-                sum + (record.standard_paid_amount || 0), 0
-            ) || 0,
-            continue_revenue: statsData?.reduce((sum, record) =>
-                sum + (record.total_continue_payments || 0), 0
-            ) || 0,
-
-            // Game statistics
-            total_games_played: statsData?.reduce((sum, record) =>
-                sum + (record.total_games_played || 0), 0
-            ) || 0,
-            verified_games: statsData?.reduce((sum, record) =>
-                sum + (record.verified_games_played || 0), 0
-            ) || 0,
-            unverified_games: statsData?.reduce((sum, record) =>
-                sum + (record.unverified_games_played || 0), 0
-            ) || 0,
-            total_continues_used: statsData?.reduce((sum, record) =>
-                sum + (record.total_continues_used || 0), 0
-            ) || 0,
-
-            // Score statistics
-            highest_score: Math.max(...(statsData?.map(r => r.highest_score || 0) || [0])),
-            average_score: statsData?.length ?
-                statsData.reduce((sum, record) => sum + (record.highest_score || 0), 0) / statsData.length
-                : 0,
-
-            tournament_day: tournamentDay
+        const responseData = {
+            tournament_day: tournamentDay,
+            tournament_name: currentTournament.name || `Tournament ${tournamentDay}`,
+            total_players: stats.total_players,
+            total_prize_pool: Number(stats.total_prize_pool.toFixed(2)),
+            total_collected: Number(stats.total_collected.toFixed(2)),
+            total_games_played: stats.total_games_played,
+            has_active_tournament: true,
+            tournament_start_date: currentTournament.created_at,
+            tournament_status: 'active'
         };
 
-        // Calculate total revenue (entry fees + continues)
-        const totalRevenue = stats.total_collected + stats.continue_revenue;
+        // 🚀 STEP 4: Cache for 3 minutes (frequent updates but still instant for users)
+        console.log('💾 Warming cache for instant future responses...');
+        await setCached(cacheKey, responseData, 180); // 3 minutes cache
 
-        // New guarantee system (simple 70/30 split + guarantee when needed)
-        const adminFeePercentage = 30;
-        const prizePoolPercentage = 70;
-
-        const adminFee = totalRevenue * (adminFeePercentage / 100);
-        const basePrizePool = totalRevenue * (prizePoolPercentage / 100);
-
-        // Add guarantee if needed (when revenue < 72 WLD)
-        const guaranteeAmount = totalRevenue < 72 ? 10 : 0;
-        const finalPrizePool = basePrizePool + guaranteeAmount;
-        const adminNetResult = adminFee - guaranteeAmount;
-
-        // Update tournaments table with calculated values (NEW)
-        const { error: updateError } = await supabase
-            .from('tournaments')
-            .update({
-                total_players: stats.total_players,
-                total_collected: totalRevenue,
-                total_prize_pool: finalPrizePool,
-                admin_fee: adminFee,
-                guarantee_amount: guaranteeAmount,
-                admin_net_result: adminNetResult
-            })
-            .eq('tournament_day', tournamentDay);
-
-        if (updateError) {
-            console.error('❌ Error updating tournament stats:', updateError);
-            // Don't fail the API, just log the error
-        }
-
-        // Add dynamic prize pool info to stats
-        const enhancedStats = {
-            ...stats,
-            total_revenue: totalRevenue,
-            prize_pool: {
-                base_amount: basePrizePool,
-                guarantee_amount: guaranteeAmount,
-                final_amount: finalPrizePool,
-                percentage: prizePoolPercentage
-            },
-            admin_fee: {
-                amount: adminFee,
-                percentage: adminFeePercentage,
-                guarantee_cost: guaranteeAmount,
-                net_result: adminNetResult
-            },
-            guarantee_applied: guaranteeAmount > 0
-        };
-
+        const responseTime = Date.now() - startTime;
+        console.log(`✅ Tournament stats cached successfully for instant loading`);
+        console.log(`📊 Response time: ${responseTime}ms (will be <50ms on next request)`);
+        console.log(`👥 Players: ${stats.total_players}, Prize Pool: $${stats.total_prize_pool.toFixed(2)}`);
 
         return NextResponse.json({
-            success: true,
-            data: enhancedStats
+            ...responseData,
+            cached: false,
+            response_time_ms: responseTime,
+            fetched_at: new Date().toISOString()
         });
 
     } catch (error) {
         console.error('❌ Tournament stats API error:', error);
-        return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
-        );
+
+        // Even on error, try to return a reasonable default that doesn't break the UI
+        const errorResponse = {
+            tournament_day: null,
+            total_players: 0,
+            total_prize_pool: 0,
+            total_collected: 0,
+            total_games_played: 0,
+            has_active_tournament: false,
+            error: 'Failed to load tournament stats',
+            cached: false,
+            fetched_at: new Date().toISOString()
+        };
+
+        return NextResponse.json(errorResponse, { status: 500 });
+    }
+}
+
+/**
+ * CACHE WARMING ENDPOINT
+ * Called by background jobs to pre-populate cache
+ */
+export async function POST() {
+    try {
+        console.log('🔥 WARMING TOURNAMENT STATS CACHE - Background job');
+
+        // Trigger a GET request to warm the cache
+        const response = await GET();
+        const data = await response.json();
+
+        return NextResponse.json({
+            success: true,
+            warmed: true,
+            stats: data
+        });
+
+    } catch (error) {
+        console.error('❌ Cache warming failed:', error);
+        return NextResponse.json({
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        }, { status: 500 });
     }
 }

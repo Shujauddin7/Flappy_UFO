@@ -14,6 +14,14 @@ interface LeaderboardPlayer {
     rank?: number;
 }
 
+interface LeaderboardApiResponse {
+    players: LeaderboardPlayer[];
+    tournament_day: string;
+    total_players: number;
+    cached?: boolean;
+    fetched_at?: string;
+}
+
 interface TournamentLeaderboardProps {
     tournamentId?: string;
     currentUserId?: string | null;  // This is actually the wallet address
@@ -21,6 +29,7 @@ interface TournamentLeaderboardProps {
     isGracePeriod?: boolean;
     refreshTrigger?: number; // Add this to trigger manual refresh
     totalPrizePool?: number; // Add real prize pool
+    preloadedData?: LeaderboardApiResponse | null; // NEW: Accept pre-loaded leaderboard data to skip API call
     onUserRankUpdate?: (userRank: LeaderboardPlayer | null) => void; // Callback for user rank
     onUserCardVisibility?: (isVisible: boolean) => void; // Callback for user card visibility
 }
@@ -31,17 +40,18 @@ export const TournamentLeaderboard = ({
     isGracePeriod = false,
     refreshTrigger = 0,
     totalPrizePool = 0,
+    preloadedData = null, // NEW: Accept pre-loaded data
     onUserRankUpdate,
     onUserCardVisibility
 }: TournamentLeaderboardProps) => {
     const [topPlayers, setTopPlayers] = useState<LeaderboardPlayer[]>([]);
     const [allPlayers, setAllPlayers] = useState<LeaderboardPlayer[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!preloadedData); // 🚀 OPTIMIZATION: Don't show loading if we have preloaded data
     const [currentUserData, setCurrentUserData] = useState<LeaderboardPlayer | null>(null);
 
-    // Setup intersection observer for user card visibility
+    // Setup intersection observer for user card visibility - OPTIMIZED: Only after data is loaded
     useEffect(() => {
-        if (!currentUserData || !onUserCardVisibility) return;
+        if (!currentUserData || !onUserCardVisibility || loading) return;
 
         const observer = new IntersectionObserver(
             (entries) => {
@@ -66,10 +76,64 @@ export const TournamentLeaderboard = ({
                 observer.unobserve(userCardElement);
             }
         };
-    }, [currentUserData, onUserCardVisibility]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentUserData, onUserCardVisibility]); // Intentionally excluding loading to prevent infinite loop
 
     const fetchLeaderboardData = useCallback(async () => {
         try {
+            // 🚀 NEW: Use preloaded data if available (skips API call)
+            if (preloadedData) {
+                console.log('🚀 Using preloaded leaderboard data - skipping API call');
+                const players = preloadedData.players || [];
+
+                if (players.length === 0) {
+                    setTopPlayers([]);
+                    setAllPlayers([]);
+                    setLoading(false);
+                    return;
+                }
+
+                // Set both top players and all players
+                setTopPlayers(players.slice(0, 10));
+                setAllPlayers(players);
+
+                // 🚀 OPTIMIZATION: Process user rank immediately without loading delay
+                if ((currentUserId || currentUsername) && onUserRankUpdate) {
+                    let userRank = null;
+
+                    // Strategy 1: Direct wallet match (most reliable for this app since wallet is unique)
+                    if (currentUserId) {
+                        userRank = players.find((player: LeaderboardPlayer) =>
+                            player.wallet === currentUserId ||
+                            (player.wallet && currentUserId && player.wallet.toLowerCase() === currentUserId.toLowerCase())
+                        );
+                    }
+
+                    // Strategy 2: Username match (secondary option)
+                    if (!userRank && currentUsername) {
+                        userRank = players.find((player: LeaderboardPlayer) =>
+                            player.username === currentUsername
+                        );
+                    }
+
+                    // Strategy 3: Direct user_id match (legacy support)
+                    if (!userRank && currentUserId) {
+                        userRank = players.find((player: LeaderboardPlayer) =>
+                            player.user_id === currentUserId
+                        );
+                    }
+
+                    // Always notify parent, even if null
+                    onUserRankUpdate(userRank || null);
+
+                    // Set current user data for intersection observer
+                    setCurrentUserData(userRank || null);
+                }
+
+                setLoading(false);
+                return;
+            }
+
             // Fetch leaderboard data via API (uses service key permissions)
             const response = await fetch('/api/tournament/leaderboard-data');
             const data = await response.json();
@@ -78,6 +142,10 @@ export const TournamentLeaderboard = ({
                 console.error('Error fetching leaderboard:', data.error);
                 return;
             }
+
+            // 🧪 REDIS TESTING: Log cache performance for World App testing
+            console.log('🧪 Leaderboard Cache Status:', data.cached ? '⚡ REDIS HIT' : '🗄️ DATABASE QUERY');
+            console.log('🧪 Response includes cached flag:', !!data.cached);
 
             const players = data.players || [];
 
@@ -131,28 +199,34 @@ export const TournamentLeaderboard = ({
         } finally {
             setLoading(false);
         }
-    }, [currentUserId, currentUsername, onUserRankUpdate]);
+    }, [currentUserId, currentUsername, preloadedData, onUserRankUpdate]);
 
     useEffect(() => {
         fetchLeaderboardData();
 
-        // Set up polling instead of real-time subscription (API-based approach)
-        if (!isGracePeriod) {
-            // Refresh every 5 seconds as specified in Plan.md
-            const intervalId = setInterval(fetchLeaderboardData, 5000);
+        // 🚀 OPTIMIZATION: Only set up polling if we DON'T have preloaded data
+        // This prevents redundant API calls when parent already loaded the data
+        if (!isGracePeriod && !preloadedData) {
+            // Refresh every 10 seconds for instant leaderboard updates
+            // This will show new humans joining and updated rankings near-instantly
+            const intervalId = setInterval(() => {
+                console.log('⚡ Refreshing leaderboard for instant updates...');
+                fetchLeaderboardData();
+            }, 10000); // Reduced from 30s to 10s for instant responsiveness
 
             return () => {
                 clearInterval(intervalId);
             };
         }
-    }, [fetchLeaderboardData, isGracePeriod]);
+    }, [fetchLeaderboardData, isGracePeriod, preloadedData]);
 
     // Force refresh when currentUserId or currentUsername changes (user logs in/out)
+    // 🚀 OPTIMIZATION: Skip if we have preloaded data to avoid redundant calls
     useEffect(() => {
-        if (currentUserId || currentUsername) {
+        if ((currentUserId || currentUsername) && !preloadedData) {
             fetchLeaderboardData();
         }
-    }, [currentUserId, currentUsername, fetchLeaderboardData]);
+    }, [currentUserId, currentUsername, fetchLeaderboardData, preloadedData]);
 
     // Add effect for manual refresh trigger
     useEffect(() => {
@@ -174,9 +248,33 @@ export const TournamentLeaderboard = ({
 
     if (loading) {
         return (
-            <div className="leaderboard-loading">
-                <div className="loading-spinner"></div>
-                <p>Loading leaderboard...</p>
+            <div className="tournament-leaderboard">
+                <div className="leaderboard-header">
+                    <h3>Tournament Leaderboard</h3>
+                    <div className="last-updated loading-blur">Loading...</div>
+                </div>
+                <div className="leaderboard-list">
+                    {/* Render 5 skeleton cards */}
+                    {Array.from({ length: 5 }, (_, index) => (
+                        <PlayerRankCard
+                            key={`skeleton-${index}`}
+                            player={{
+                                id: `skeleton-${index}`,
+                                user_id: `skeleton-${index}`,
+                                username: "loading...",
+                                wallet: `skeleton-${index}`,
+                                highest_score: 0,
+                                tournament_day: "2024-12-17",
+                                created_at: new Date().toISOString(),
+                                rank: index + 1
+                            }}
+                            prizeAmount="0.00"
+                            isCurrentUser={false}
+                            isTopThree={false}
+                            isLoading={true}
+                        />
+                    ))}
+                </div>
             </div>
         );
     }
