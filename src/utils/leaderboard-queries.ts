@@ -170,9 +170,9 @@ async function getTournamentStatsFallback(tournamentDay: string) {
     if (paymentsData && paymentsData.length > 0) {
         for (const record of paymentsData) {
             totalCollected += (parseFloat(record.verified_paid_amount) || 0) +
-                            (parseFloat(record.standard_paid_amount) || 0) +
-                            (parseFloat(record.total_continue_payments) || 0);
-            
+                (parseFloat(record.standard_paid_amount) || 0) +
+                (parseFloat(record.total_continue_payments) || 0);
+
             totalGamesPlayed += (record.total_games_played || 0);
         }
     }

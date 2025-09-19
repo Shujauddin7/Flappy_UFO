@@ -97,7 +97,7 @@ export async function populateLeaderboard(
             for (let i = 0; i < players.length; i += batchSize) {
                 const batch = players.slice(i, i + batchSize);
                 const detailsData: Record<string, string> = {};
-                
+
                 batch.forEach(p => {
                     detailsData[p.user_id] = JSON.stringify({
                         username: p.username,
@@ -161,12 +161,12 @@ export async function getTopPlayers(
             const userId = String(results[i]);
             const score = Number(results[i + 1]);
             const rank = offset + (i / 2) + 1;
-            
+
             // Parse player details if available
             let playerDetails = { username: null, wallet: 'Unknown' };
             const detailsIndex = userIds.indexOf(userId);
             const rawDetails = playerDetailsRaw[detailsIndex];
-            
+
             if (rawDetails && typeof rawDetails === 'string') {
                 try {
                     playerDetails = JSON.parse(rawDetails);

@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
                 offset,
                 includeZeroScores: false
             });
-            
+
             // Add missing properties for compatibility
             players = players.map(player => ({
                 ...player,
