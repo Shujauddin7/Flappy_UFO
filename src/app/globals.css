@@ -36,6 +36,17 @@ body {
   padding: 0;
 }
 
+.starfield-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #000000;
+  z-index: 1;
+  pointer-events: none;
+}
+
 /* OVERRIDE PAGE LAYOUT BACKGROUNDS FOR STAR PARTICLES */
 .main-container,
 .game-select-screen {

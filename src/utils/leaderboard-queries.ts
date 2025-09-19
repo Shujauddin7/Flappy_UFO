@@ -6,18 +6,18 @@ import { getSupabaseClient } from './database';
 /**
  * Interface for leaderboard player data
  * Based on the database.md schema for user_tournament_records
+ * Optimized to only include fields used in UI display or user identification
  */
 export interface LeaderboardPlayer {
-    user_id: string;
+    user_id: string; // Required for current user identification
     username: string | null;
     wallet: string;
     highest_score: number;
     tournament_day: string;
     serial_no?: number;
     rank?: number;
-    total_games_played?: number;
-    verified_games_played?: number;
-    unverified_games_played?: number;
+    // Removed for performance: total_games_played, verified_games_played, unverified_games_played 
+    // (not displayed in UI)
     created_at?: string;
     first_game_at?: string;
 }
@@ -152,10 +152,10 @@ async function getTournamentStatsFallback(tournamentDay: string) {
         throw new Error(`Failed to get player count: ${countError.message}`);
     }
 
-    // Get payment aggregations - only fetch the numeric fields we need to sum
+    // Get payment aggregations - only fetch the numeric fields we need for prize pool calculation
     const { data: paymentsData, error: paymentsError } = await supabase
         .from('user_tournament_records')
-        .select('verified_paid_amount, standard_paid_amount, total_continue_payments, total_games_played')
+        .select('verified_paid_amount, standard_paid_amount, total_continue_payments')
         .eq('tournament_day', tournamentDay)
         .or('verified_entry_paid.eq.true,standard_entry_paid.eq.true');
 
@@ -163,17 +163,14 @@ async function getTournamentStatsFallback(tournamentDay: string) {
         throw new Error(`Failed to get payment data: ${paymentsError.message}`);
     }
 
-    // Calculate aggregations efficiently
+    // Calculate aggregations efficiently - optimized for UI needs only
     let totalCollected = 0;
-    let totalGamesPlayed = 0;
 
     if (paymentsData && paymentsData.length > 0) {
         for (const record of paymentsData) {
             totalCollected += (parseFloat(record.verified_paid_amount) || 0) +
                 (parseFloat(record.standard_paid_amount) || 0) +
                 (parseFloat(record.total_continue_payments) || 0);
-
-            totalGamesPlayed += (record.total_games_played || 0);
         }
     }
 
@@ -183,7 +180,7 @@ async function getTournamentStatsFallback(tournamentDay: string) {
         total_players: totalPlayers || 0,
         total_prize_pool: prizePool,
         total_collected: totalCollected,
-        total_games_played: totalGamesPlayed
+        total_games_played: 0 // Not calculated for performance - only needed for debug logging
     };
 }
 
