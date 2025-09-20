@@ -78,8 +78,8 @@ export async function POST(req: NextRequest) {
         // Update tournament total_players count (sign-ins for THIS tournament)
         await updateTournamentSignInCount(supabase, tournamentId);
 
-        // ALSO create user entry in users table for this tournament (needed for tournament-specific queries)
-        await ensureUserInCurrentTournament(supabase, wallet, username, worldId, tournamentId);
+        // Create user_tournament_record for this tournament (if doesn't exist)
+        await ensureUserTournamentRecord(supabase, wallet, username, worldId, tournamentId);
 
         return NextResponse.json({
             success: true,
@@ -96,9 +96,9 @@ export async function POST(req: NextRequest) {
     }
 }
 
-// Helper function to ensure user exists in users table for current tournament
+// Helper function to ensure user_tournament_record exists (user should already exist in users table)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function ensureUserInCurrentTournament(supabase: any, wallet: string, username: string, worldId: string, tournamentId: string) {
+async function ensureUserTournamentRecord(supabase: any, wallet: string, username: string, worldId: string, tournamentId: string) {
     try {
         // Get tournament info
         const { data: tournament, error: tournamentError } = await supabase
@@ -108,43 +108,56 @@ async function ensureUserInCurrentTournament(supabase: any, wallet: string, user
             .single();
 
         if (tournamentError) {
-            console.error('❌ Error getting tournament for user creation:', tournamentError);
+            console.error('❌ Error getting tournament for record creation:', tournamentError);
             return;
         }
 
-        // Check if user already exists in users table for this tournament
-        const { data: existingUser, error: checkError } = await supabase
+        // Get user ID from users table (user should exist from /api/users call)
+        const { data: user, error: userError } = await supabase
             .from('users')
-            .select('wallet')
+            .select('id')
             .eq('wallet', wallet)
-            .eq('tournament_day', tournament.tournament_day)
             .single();
 
-        if (checkError && checkError.code !== 'PGRST116') {
-            console.error('❌ Error checking existing user in users table:', checkError);
+        if (userError) {
+            console.error('❌ User not found in users table:', userError);
+            console.error('❌ Make sure /api/users was called first');
             return;
         }
 
-        if (!existingUser) {
-            // Create user in users table for this tournament
-            const { error: insertError } = await supabase
-                .from('users')
+        // Check if user_tournament_record already exists
+        const { error: recordCheckError } = await supabase
+            .from('user_tournament_records')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('tournament_id', tournamentId)
+            .single();
+
+        if (recordCheckError && recordCheckError.code === 'PGRST116') {
+            // Record doesn't exist, create it
+            const { error: createRecordError } = await supabase
+                .from('user_tournament_records')
                 .insert({
-                    wallet,
+                    user_id: user.id,
+                    tournament_id: tournamentId,
                     username,
-                    world_id: worldId,
+                    wallet,
                     tournament_day: tournament.tournament_day
                 });
 
-            if (insertError) {
-                console.error('❌ Error creating user in users table:', insertError);
+            if (createRecordError) {
+                console.error('❌ Error creating user tournament record:', createRecordError);
             } else {
-                console.log('✅ User created in users table for tournament:', { wallet, tournamentDay: tournament.tournament_day });
+                console.log('✅ User tournament record created:', { wallet, tournamentId });
             }
+        } else if (recordCheckError) {
+            console.error('❌ Error checking user tournament record:', recordCheckError);
+        } else {
+            console.log('✅ User tournament record already exists:', { wallet, tournamentId });
         }
 
     } catch (error) {
-        console.error('❌ Error in ensureUserInCurrentTournament:', error);
+        console.error('❌ Error in ensureUserTournamentRecord:', error);
     }
 }
 
@@ -152,23 +165,12 @@ async function ensureUserInCurrentTournament(supabase: any, wallet: string, user
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function updateTournamentSignInCount(supabase: any, tournamentId: string) {
     try {
-        // Get the tournament info to find its tournament_day
-        const { data: currentTournament, error: tournamentError } = await supabase
-            .from('tournaments')
-            .select('tournament_day')
-            .eq('id', tournamentId)
-            .single();
-
-        if (tournamentError) {
-            console.error('❌ Error getting tournament info:', tournamentError);
-            return;
-        }
-
-        // Count unique users for THIS tournament by counting users table entries for this tournament_day
+        // Count unique users who have tournament records for this tournament
+        // This is the correct way based on database.md schema
         const { data: userRecords, error: countError } = await supabase
-            .from('users')
-            .select('wallet')
-            .eq('tournament_day', currentTournament.tournament_day);
+            .from('user_tournament_records')
+            .select('user_id')
+            .eq('tournament_id', tournamentId);
 
         if (countError) {
             console.error('❌ Error counting tournament sign-ins:', countError);
@@ -188,7 +190,7 @@ async function updateTournamentSignInCount(supabase: any, tournamentId: string) 
         if (updateError) {
             console.error('❌ Error updating tournament sign-in count:', updateError);
         } else {
-            console.log('✅ Tournament sign-in count updated:', { tournamentId, tournamentDay: currentTournament.tournament_day, signInCount });
+            console.log('✅ Tournament sign-in count updated:', { tournamentId, signInCount });
         }
 
     } catch (error) {
