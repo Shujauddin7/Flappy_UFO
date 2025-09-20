@@ -47,7 +47,7 @@ export async function GET() {
                 has_active_tournament: false
             };
 
-            await setCached(cacheKey, noTournamentResponse, 300); // Cache for 5 minutes
+            await setCached(cacheKey, noTournamentResponse, 60); // Cache for 1 minute for real-time updates
 
             return NextResponse.json({
                 ...noTournamentResponse,
@@ -75,7 +75,7 @@ export async function GET() {
 
         // 🚀 STEP 4: Cache for 3 minutes (frequent updates but still instant for users)
         console.log('💾 Warming cache for instant future responses...');
-        await setCached(cacheKey, responseData, 180); // 3 minutes cache
+        await setCached(cacheKey, responseData, 30); // 30 seconds cache for real-time feel
 
         const responseTime = Date.now() - startTime;
         console.log(`✅ Tournament stats cached successfully for instant loading`);

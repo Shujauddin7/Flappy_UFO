@@ -50,7 +50,7 @@ export default function LeaderboardPage() {
             if (cached) {
                 try {
                     const parsed = JSON.parse(cached);
-                    if (Date.now() - parsed.timestamp < 30000) { // 30 second cache
+                    if (Date.now() - parsed.timestamp < 30000) { // 30 second cache for instant updates
                         console.log('⚡ INSTANT LOAD: Using cached tournament data');
                         console.log(`   Cached Players: ${parsed.data.total_players}`);
                         console.log(`   Cached Prize: $${parsed.data.total_prize_pool}`);
@@ -101,7 +101,7 @@ export default function LeaderboardPage() {
             if (cached) {
                 try {
                     const parsed = JSON.parse(cached);
-                    if (Date.now() - parsed.timestamp < 60000) { // 1 minute cache for leaderboard
+                    if (Date.now() - parsed.timestamp < 15000) { // 15 second cache for instant leaderboard updates
                         console.log('⚡ INSTANT LOAD: Using cached leaderboard data');
                         return parsed.data;
                     }
@@ -158,29 +158,32 @@ export default function LeaderboardPage() {
                     }));
 
                     console.log(`⚡ Tournament data loaded: ${tournament.total_players} players, $${tournament.total_prize_pool} prize`);
-                }
 
-                // Load leaderboard data in background (not blocking UI)
-                setTimeout(async () => {
-                    try {
-                        const leaderboardRes = await fetch('/api/tournament/leaderboard-data');
-                        const leaderboard = await leaderboardRes.json();
+                    // Load leaderboard data in parallel (not blocking UI)
+                    const loadLeaderboard = async () => {
+                        try {
+                            const leaderboardRes = await fetch('/api/tournament/leaderboard-data');
+                            const leaderboard = await leaderboardRes.json();
 
-                        if (leaderboard.players) {
-                            setPreloadedLeaderboardData(leaderboard);
+                            if (leaderboard.players) {
+                                setPreloadedLeaderboardData(leaderboard);
 
-                            // ⚡ CACHE LEADERBOARD: Cache for instant loading
-                            sessionStorage.setItem('leaderboard_data', JSON.stringify({
-                                data: leaderboard,
-                                timestamp: Date.now()
-                            }));
+                                // ⚡ CACHE LEADERBOARD: Cache for instant loading
+                                sessionStorage.setItem('leaderboard_data', JSON.stringify({
+                                    data: leaderboard,
+                                    timestamp: Date.now()
+                                }));
 
-                            console.log(`⚡ Leaderboard loaded: ${leaderboard.players.length} entries`);
+                                console.log(`⚡ Leaderboard loaded: ${leaderboard.players.length} entries`);
+                            }
+                        } catch (err) {
+                            console.warn('Background leaderboard load failed:', err);
                         }
-                    } catch (err) {
-                        console.warn('Background leaderboard load failed:', err);
-                    }
-                }, 100); // 100ms delay - UI already showing
+                    };
+
+                    // Start leaderboard loading immediately (parallel, not delayed)
+                    loadLeaderboard();
+                }
 
             } catch (error) {
                 console.error('Essential data load failed:', error);

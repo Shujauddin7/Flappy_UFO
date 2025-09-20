@@ -207,12 +207,12 @@ export const TournamentLeaderboard = ({
         // 🚀 OPTIMIZATION: Only set up polling if we DON'T have preloaded data
         // This prevents redundant API calls when parent already loaded the data
         if (!isGracePeriod && !preloadedData) {
-            // Refresh every 10 seconds for instant leaderboard updates
-            // This will show new humans joining and updated rankings near-instantly
+            // Refresh every 5 seconds for instant updates like modern apps
+            // Instagram/TikTok style - everyone sees changes immediately
             const intervalId = setInterval(() => {
-                console.log('⚡ Refreshing leaderboard for instant updates...');
+                console.log('⚡ Instant leaderboard refresh (like Instagram)...');
                 fetchLeaderboardData();
-            }, 10000); // Reduced from 30s to 10s for instant responsiveness
+            }, 5000); // 5 seconds for instant feel, Redis cache handles the load
 
             return () => {
                 clearInterval(intervalId);
