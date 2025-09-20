@@ -251,7 +251,7 @@ export default function LeaderboardPage() {
             end_time: currentTournament?.end_time,
             currentTime: currentTime
         });
-        
+
         if (!currentTournament || !currentTournament.end_time) return null;
 
         const now = currentTime.getTime();
