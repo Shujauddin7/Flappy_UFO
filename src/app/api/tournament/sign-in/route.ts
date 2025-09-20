@@ -7,9 +7,9 @@ export async function POST(req: NextRequest) {
     try {
         const { wallet, username, worldId, tournamentId } = await req.json();
 
-        if (!wallet || !username || !worldId || !tournamentId) {
+        if (!wallet || !username || !tournamentId) {
             return NextResponse.json(
-                { success: false, error: 'Missing required fields: wallet, username, worldId, tournamentId' },
+                { success: false, error: 'Missing required fields: wallet, username, tournamentId' },
                 { status: 400 }
             );
         }
