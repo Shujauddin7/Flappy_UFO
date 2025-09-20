@@ -161,11 +161,11 @@ export async function GET(req: NextRequest) {
 
         // Create new weekly tournament - Use tournamentDay string to create exact dates
         console.log('🔍 Creating tournament for day:', tournamentDay);
-        
+
         // Create start time: tournamentDay at 15:30 UTC
         const tournamentStartTime = new Date(tournamentDay + 'T15:30:00.000Z');
         console.log('🔍 Tournament start time:', tournamentStartTime.toISOString());
-        
+
         // Create end time: 7 days after start time
         const tournamentEndTime = new Date(tournamentStartTime);
         tournamentEndTime.setUTCDate(tournamentEndTime.getUTCDate() + 7);

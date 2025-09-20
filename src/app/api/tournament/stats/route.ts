@@ -22,12 +22,19 @@ export async function GET() {
             console.log(`🚀 INSTANT RESPONSE: ${responseTime}ms (Cached tournament stats)`);
             console.log('⚡ Performance: Like professional mobile games - instant loading!');
 
-            return NextResponse.json({
-                ...cachedStats,
-                cached: true,
-                response_time_ms: responseTime,
-                fetched_at: new Date().toISOString()
-            });
+            // 🔧 ENSURE end_time IS ALWAYS PRESENT - Critical for countdown timer
+            if (!cachedStats.end_time && cachedStats.has_active_tournament) {
+                console.log('⚠️ Cached data missing end_time - fetching fresh data for countdown timer');
+                // Don't return cached data if it's missing critical end_time field
+                // Fall through to fresh database query
+            } else {
+                return NextResponse.json({
+                    ...cachedStats,
+                    cached: true,
+                    response_time_ms: responseTime,
+                    fetched_at: new Date().toISOString()
+                });
+            }
         }
 
         console.log('🔄 Cache miss - fetching and warming cache for future instant responses');
