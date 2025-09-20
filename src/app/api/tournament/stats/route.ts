@@ -69,6 +69,7 @@ export async function GET() {
             total_games_played: stats.total_games_played,
             has_active_tournament: true,
             tournament_start_date: currentTournament.created_at,
+            end_time: currentTournament.end_time, // Add the real database end_time
             tournament_status: 'active'
         };
 

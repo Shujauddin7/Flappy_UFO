@@ -36,7 +36,7 @@ interface TournamentData {
     guarantee_amount?: number;
     admin_net_result?: number;
     start_time: string;
-    end_time: string;
+    end_time: string | null;  // Allow null when no tournament
 }
 
 export default function LeaderboardPage() {
@@ -74,7 +74,7 @@ export default function LeaderboardPage() {
             guarantee_amount: 0,
             admin_net_result: 0,
             start_time: new Date().toISOString(),
-            end_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+            end_time: null // No hardcoded time - will use real DB data
         };
     });
 
@@ -146,7 +146,7 @@ export default function LeaderboardPage() {
                         guarantee_amount: 0,
                         admin_net_result: 0,
                         start_time: tournament.tournament_start_date || new Date().toISOString(),
-                        end_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+                        end_time: tournament.end_time || null // Use real database end_time, not hardcoded
                     };
 
                     setCurrentTournament(newTournamentData);
@@ -236,7 +236,7 @@ export default function LeaderboardPage() {
 
     // Calculate time remaining
     const getTimeRemaining = () => {
-        if (!currentTournament) return null;
+        if (!currentTournament || !currentTournament.end_time) return null;
 
         const now = currentTime.getTime();
         const endTime = new Date(currentTournament.end_time).getTime();
