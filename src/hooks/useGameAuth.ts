@@ -139,53 +139,9 @@ export const useGameAuth = () => {
                 }
             };
 
-            // Only save user to database once per session, but always track tournament sign-in
-            const userId = session.user.id;
-            const userSaveKey = 'user_saved_' + userId;
-            const tournamentSignInKey = 'tournament_signin_' + userId + '_' + new Date().toDateString(); // Daily key
-
-            if (!sessionStorage.getItem(userSaveKey)) {
-                saveUserAndTrackSignIn();
-                sessionStorage.setItem(userSaveKey, 'true');
-            } else if (!sessionStorage.getItem(tournamentSignInKey)) {
-                // User already saved, but track sign-in for today's tournament
-                const trackSignInOnly = async () => {
-                    try {
-                        const user = session.user as { id: string; username?: string; world_id?: string };
-                        const tournamentResponse = await fetch('/api/tournament/current');
-                        if (tournamentResponse.ok) {
-                            const tournamentData = await tournamentResponse.json();
-
-                            if (tournamentData.tournament?.id) {
-                                const signInResponse = await fetch('/api/tournament/sign-in', {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                    },
-                                    body: JSON.stringify({
-                                        wallet: user.id,
-                                        username: user.username || 'Unknown',
-                                        worldId: user.world_id || null,
-                                        tournamentId: tournamentData.tournament.id
-                                    }),
-                                });
-
-                                if (signInResponse.ok) {
-                                    const signInData = await signInResponse.json();
-                                    console.log('✅ Tournament sign-in tracked (returning user):', signInData.message);
-                                } else {
-                                    console.warn('❌ Tournament sign-in tracking failed (returning user):', await signInResponse.text());
-                                }
-                            }
-                        }
-                    } catch (error) {
-                        console.warn('❌ Tournament sign-in tracking failed (returning user):', error);
-                    }
-                };
-
-                trackSignInOnly();
-                sessionStorage.setItem(tournamentSignInKey, 'true');
-            }
+            // ALWAYS track tournament sign-in for debugging - remove sessionStorage blocking
+            console.log('🔄 FORCE RUN: Always tracking sign-in for debugging...');
+            saveUserAndTrackSignIn();
         }
     }, [session, status]);
 
