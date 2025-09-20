@@ -97,12 +97,23 @@ export async function POST(req: NextRequest) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function updateTournamentSignInCount(supabase: any, tournamentId: string) {
     try {
-        // Count unique sign-ins for THIS tournament only
-        // This counts users who visited this specific tournament
+        // Count unique users who have signed in for THIS specific tournament
+        // We count from the users table filtered by current tournament_id
+        const { data: currentTournament, error: tournamentError } = await supabase
+            .from('tournaments')
+            .select('tournament_day')
+            .eq('id', tournamentId)
+            .single();
+
+        if (tournamentError) {
+            console.error('❌ Error getting tournament info:', tournamentError);
+            return;
+        }
+
         const { data: userRecords, error: countError } = await supabase
             .from('users')
             .select('wallet')
-            .eq('tournament_id', tournamentId);
+            .eq('tournament_day', currentTournament.tournament_day);
 
         if (countError) {
             console.error('❌ Error counting tournament sign-ins:', countError);
