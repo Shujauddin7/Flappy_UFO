@@ -50,11 +50,14 @@ export default function LeaderboardPage() {
             if (cached) {
                 try {
                     const parsed = JSON.parse(cached);
-                    if (Date.now() - parsed.timestamp < 30000) { // 30 second cache for instant updates
+                    if (Date.now() - parsed.timestamp < 30000 && parsed.data.end_time) { // 30 second cache for instant updates + must have end_time
                         console.log('⚡ INSTANT LOAD: Using cached tournament data');
                         console.log(`   Cached Players: ${parsed.data.total_players}`);
                         console.log(`   Cached Prize: $${parsed.data.total_prize_pool}`);
+                        console.log(`   Cached End Time: ${parsed.data.end_time}`);
                         return parsed.data;
+                    } else {
+                        console.log('🔄 Cache invalid or missing end_time, will reload');
                     }
                 } catch (e) {
                     console.warn('Cache parse error:', e);
@@ -85,7 +88,7 @@ export default function LeaderboardPage() {
             if (cached) {
                 try {
                     const parsed = JSON.parse(cached);
-                    return Date.now() - parsed.timestamp < 30000;
+                    return Date.now() - parsed.timestamp < 30000 && parsed.data.end_time; // Cache valid + has end_time
                 } catch {
                     return false;
                 }
@@ -134,6 +137,8 @@ export default function LeaderboardPage() {
                 const tournamentRes = await fetch('/api/tournament/stats');
                 const tournament = await tournamentRes.json();
 
+                console.log('🎯 API Response:', tournament);
+
                 if (tournament.has_active_tournament) {
                     const newTournamentData = {
                         id: tournament.tournament_day || 'current',
@@ -148,6 +153,8 @@ export default function LeaderboardPage() {
                         start_time: tournament.tournament_start_date || new Date().toISOString(),
                         end_time: tournament.end_time || null // Use real database end_time, not hardcoded
                     };
+
+                    console.log('🎯 New Tournament Data:', newTournamentData);
 
                     setCurrentTournament(newTournamentData);
 
@@ -239,6 +246,12 @@ export default function LeaderboardPage() {
 
     // Calculate time remaining
     const getTimeRemaining = () => {
+        console.log('🔍 Timer Debug:', {
+            currentTournament: currentTournament,
+            end_time: currentTournament?.end_time,
+            currentTime: currentTime
+        });
+        
         if (!currentTournament || !currentTournament.end_time) return null;
 
         const now = currentTime.getTime();

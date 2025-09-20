@@ -60,6 +60,19 @@ export async function GET() {
         const tournamentDay = currentTournament.tournament_day;
         const stats = await getTournamentStats(tournamentDay);
 
+        // Calculate end_time if missing from database (emergency fallback)
+        let endTime = currentTournament.end_time;
+        if (!endTime && currentTournament.start_time) {
+            // Fallback: Calculate end_time as start_time + 24 hours
+            const startTime = new Date(currentTournament.start_time);
+            endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000).toISOString();
+            console.log('⚠️ Using calculated end_time (database missing end_time):', endTime);
+        } else if (!endTime) {
+            // Last resort: Use current time + 24 hours
+            endTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+            console.log('⚠️ Using emergency fallback end_time:', endTime);
+        }
+
         const responseData = {
             tournament_day: tournamentDay,
             tournament_name: currentTournament.name || `Tournament ${tournamentDay}`,
@@ -69,7 +82,7 @@ export async function GET() {
             total_games_played: stats.total_games_played,
             has_active_tournament: true,
             tournament_start_date: currentTournament.created_at,
-            end_time: currentTournament.end_time, // Add the real database end_time
+            end_time: endTime, // Always provide end_time for countdown timer
             tournament_status: 'active'
         };
 
