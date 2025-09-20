@@ -78,6 +78,9 @@ export async function POST(req: NextRequest) {
         // Update tournament total_players count (sign-ins for THIS tournament)
         await updateTournamentSignInCount(supabase, tournamentId);
 
+        // ALSO create user entry in users table for this tournament (needed for tournament-specific queries)
+        await ensureUserInCurrentTournament(supabase, wallet, username, worldId, tournamentId);
+
         return NextResponse.json({
             success: true,
             isNewUser,
@@ -93,12 +96,63 @@ export async function POST(req: NextRequest) {
     }
 }
 
+// Helper function to ensure user exists in users table for current tournament
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function ensureUserInCurrentTournament(supabase: any, wallet: string, username: string, worldId: string, tournamentId: string) {
+    try {
+        // Get tournament info
+        const { data: tournament, error: tournamentError } = await supabase
+            .from('tournaments')
+            .select('tournament_day')
+            .eq('id', tournamentId)
+            .single();
+
+        if (tournamentError) {
+            console.error('❌ Error getting tournament for user creation:', tournamentError);
+            return;
+        }
+
+        // Check if user already exists in users table for this tournament
+        const { data: existingUser, error: checkError } = await supabase
+            .from('users')
+            .select('wallet')
+            .eq('wallet', wallet)
+            .eq('tournament_day', tournament.tournament_day)
+            .single();
+
+        if (checkError && checkError.code !== 'PGRST116') {
+            console.error('❌ Error checking existing user in users table:', checkError);
+            return;
+        }
+
+        if (!existingUser) {
+            // Create user in users table for this tournament
+            const { error: insertError } = await supabase
+                .from('users')
+                .insert({
+                    wallet,
+                    username,
+                    world_id: worldId,
+                    tournament_day: tournament.tournament_day
+                });
+
+            if (insertError) {
+                console.error('❌ Error creating user in users table:', insertError);
+            } else {
+                console.log('✅ User created in users table for tournament:', { wallet, tournamentDay: tournament.tournament_day });
+            }
+        }
+
+    } catch (error) {
+        console.error('❌ Error in ensureUserInCurrentTournament:', error);
+    }
+}
+
 // Helper function to update tournament sign-in count
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function updateTournamentSignInCount(supabase: any, tournamentId: string) {
     try {
-        // Count unique users who have signed in for THIS specific tournament
-        // We count from the users table filtered by current tournament_id
+        // Get the tournament info to find its tournament_day
         const { data: currentTournament, error: tournamentError } = await supabase
             .from('tournaments')
             .select('tournament_day')
@@ -110,6 +164,7 @@ async function updateTournamentSignInCount(supabase: any, tournamentId: string) 
             return;
         }
 
+        // Count unique users for THIS tournament by counting users table entries for this tournament_day
         const { data: userRecords, error: countError } = await supabase
             .from('users')
             .select('wallet')
@@ -133,7 +188,7 @@ async function updateTournamentSignInCount(supabase: any, tournamentId: string) 
         if (updateError) {
             console.error('❌ Error updating tournament sign-in count:', updateError);
         } else {
-            console.log('✅ Tournament sign-in count updated:', { tournamentId, signInCount });
+            console.log('✅ Tournament sign-in count updated:', { tournamentId, tournamentDay: currentTournament.tournament_day, signInCount });
         }
 
     } catch (error) {
