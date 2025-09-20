@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCached, setCached } from '@/lib/redis';
 import { getCurrentActiveTournament } from '@/utils/database';
-import { getTournamentStats } from '@/utils/leaderboard-queries';
 
 /**
  * INSTANT TOURNAMENT STATS API
@@ -63,9 +62,16 @@ export async function GET() {
             });
         }
 
-        // 🚀 STEP 3: Get tournament statistics using shared query utility
+        // 🚀 STEP 3: Use stored tournament values instead of recalculating
         const tournamentDay = currentTournament.tournament_day;
-        const stats = await getTournamentStats(tournamentDay);
+        
+        // Use stored values from tournaments table (more accurate and faster)
+        const stats = {
+            total_players: currentTournament.total_players || 0,
+            total_prize_pool: currentTournament.total_prize_pool || 0,
+            total_collected: currentTournament.total_collected || 0,
+            total_games_played: 0 // Not needed for UI display
+        };
 
         // Calculate end_time if missing from database (emergency fallback)
         let endTime = currentTournament.end_time;
