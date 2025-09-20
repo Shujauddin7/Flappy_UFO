@@ -335,8 +335,8 @@ export default function LeaderboardPage() {
                 <div className="leaderboard-scroll-content">
                     {/* Tournament Info Box - scrolls naturally with content */}
                     <div className="tournament-info-box">
-                        {/* Timer Box */}
-                        {timeRemaining && (
+                        {/* Timer Box - Always show when tournament exists */}
+                        {timeRemaining && timeRemaining.timeLeft && (
                             <div className="countdown-timer">
                                 ⚡ Tournament ends in {timeRemaining.timeLeft}
                             </div>
