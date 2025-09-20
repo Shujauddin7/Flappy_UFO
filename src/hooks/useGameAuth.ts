@@ -53,13 +53,15 @@ export const useGameAuth = () => {
         }
     }, [status, isAuthenticating, update]);
 
-    // Save user to database when session becomes available
+    // Save user to database AND track tournament sign-in when session becomes available
     useEffect(() => {
         if (session?.user?.id && status === 'authenticated') {
-            const saveUser = async () => {
+            const saveUserAndTrackSignIn = async () => {
                 try {
                     const user = session.user as { id: string; username?: string; world_id?: string };
-                    const response = await fetch('/api/users', {
+
+                    // First, save user to database (existing functionality)
+                    const userResponse = await fetch('/api/users', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -71,20 +73,54 @@ export const useGameAuth = () => {
                         }),
                     });
 
-                    if (response.ok) {
+                    if (userResponse.ok) {
                         console.log('✅ User saved to database via API');
                     } else {
-                        console.warn('❌ Database save failed:', await response.text());
+                        console.warn('❌ Database save failed:', await userResponse.text());
                     }
+
+                    // Second, track tournament sign-in (NEW: permanent sign-in tracking)
+                    try {
+                        // Get current tournament ID from current tournament
+                        const tournamentResponse = await fetch('/api/tournament/current');
+                        if (tournamentResponse.ok) {
+                            const tournamentData = await tournamentResponse.json();
+
+                            if (tournamentData.success && tournamentData.tournament?.id) {
+                                const signInResponse = await fetch('/api/tournament/sign-in', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                        wallet: user.id,
+                                        username: user.username || 'Unknown',
+                                        worldId: user.world_id || null,
+                                        tournamentId: tournamentData.tournament.id
+                                    }),
+                                });
+
+                                if (signInResponse.ok) {
+                                    const signInData = await signInResponse.json();
+                                    console.log('✅ Tournament sign-in tracked:', signInData.message);
+                                } else {
+                                    console.warn('❌ Tournament sign-in tracking failed:', await signInResponse.text());
+                                }
+                            }
+                        }
+                    } catch (signInError) {
+                        console.warn('❌ Tournament sign-in tracking failed (non-blocking):', signInError);
+                    }
+
                 } catch (dbError) {
-                    console.warn('❌ Database save failed (non-blocking):', dbError);
+                    console.warn('❌ User save failed (non-blocking):', dbError);
                 }
             };
 
             // Only save once per session
             const userId = session.user.id;
             if (!sessionStorage.getItem('user_saved_' + userId)) {
-                saveUser();
+                saveUserAndTrackSignIn();
                 sessionStorage.setItem('user_saved_' + userId, 'true');
             }
         }
