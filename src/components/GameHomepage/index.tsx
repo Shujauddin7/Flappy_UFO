@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSessionPersistence } from '@/hooks/useSessionPersistence';
+import { useGameAuth } from '@/hooks/useGameAuth'; // ADD MISSING IMPORT
 import { Page } from '@/components/PageLayout';
 import { walletAuth } from '@/auth/wallet';
 import dynamic from 'next/dynamic';
@@ -59,19 +60,27 @@ export default function GameHomepage() {
             });
     }, []); // Run once on app startup
 
+    // Use useGameAuth for proper database operations
+    const { authenticate: authenticateWithDB } = useGameAuth();
+
     // Local authentication function to replace useGameAuth hook
     const authenticate = useCallback(async (): Promise<boolean> => {
+        console.log('🔄 IMPORTANT: Running authentication WITH database operations');
+
         if (session?.user?.walletAddress) {
-            return true; // Already authenticated
+            console.log('✅ Already authenticated, triggering database operations...');
+            // Still run database operations even if already authenticated
+            return await authenticateWithDB();
         }
 
         setIsAuthenticating(true);
         try {
             const result = await walletAuth();
             if (result && !result.error) {
-                // Authentication successful - session will update automatically
+                // Authentication successful - now trigger database operations
+                console.log('✅ MiniKit auth successful, now triggering database operations...');
                 setIsAuthenticating(false);
-                return true;
+                return await authenticateWithDB();
             } else {
                 console.error('Sign in failed:', result?.error);
                 setIsAuthenticating(false);
@@ -83,7 +92,7 @@ export default function GameHomepage() {
             return false;
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // 🚀 FIX: Empty deps to prevent loops - session check is done inside function
+    }, [authenticateWithDB]); // 🚀 FIX: Include authenticateWithDB in deps
 
     // Verification status state
     // Verification state - managed properly with World App session per Plan.md
