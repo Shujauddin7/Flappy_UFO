@@ -46,20 +46,28 @@ export async function GET(req: NextRequest) {
         const utcMinute = now.getUTCMinutes();
 
         // Weekly tournament starts every Sunday at 15:30 UTC
-        // If it's Sunday and past 15:30, use current Sunday
-        // Otherwise use the previous Sunday
+        // For current situation: Create tournament for past Sunday so it ends tomorrow
         const tournamentDate = new Date(now);
 
         if (utcDay === 0 && (utcHour > 15 || (utcHour === 15 && utcMinute >= 30))) {
             // It's Sunday after 15:30 UTC, use current Sunday
             // Keep current date
         } else {
-            // Go back to the most recent Sunday
+            // Go back to the most recent Sunday (past Sunday)
             const daysBack = utcDay === 0 ? 7 : utcDay; // If Sunday before 15:30, go back 7 days
             tournamentDate.setUTCDate(tournamentDate.getUTCDate() - daysBack);
         }
 
         const tournamentDay = tournamentDate.toISOString().split('T')[0];
+
+        console.log('📅 Tournament date calculation:', {
+            now: now.toISOString(),
+            utcDay: `${utcDay} (${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][utcDay]})`,
+            utcHour,
+            utcMinute,
+            calculatedTournamentDate: tournamentDate.toISOString(),
+            tournamentDay
+        });
         // Remove the custom tournamentId - let the database generate the UUID
 
         console.log('📅 Processing tournament for day:', tournamentDay);
@@ -151,13 +159,23 @@ export async function GET(req: NextRequest) {
             console.log('⚠️ Continuing despite verification reset error...');
         }
 
-        // Create new weekly tournament
-        const tournamentStartTime = new Date();
-        tournamentStartTime.setUTCHours(15, 30, 0, 0); // 15:30 UTC on Sunday
+        // Create new weekly tournament - Use tournamentDay string to create exact dates
+        console.log('🔍 Creating tournament for day:', tournamentDay);
 
+        // Create start time: tournamentDay at 15:30 UTC
+        const tournamentStartTime = new Date(tournamentDay + 'T15:30:00.000Z');
+        console.log('🔍 Tournament start time:', tournamentStartTime.toISOString());
+
+        // Create end time: 7 days after start time
         const tournamentEndTime = new Date(tournamentStartTime);
-        tournamentEndTime.setUTCDate(tournamentEndTime.getUTCDate() + 7); // Next Sunday 15:30 UTC
-        tournamentEndTime.setUTCHours(15, 30, 0, 0);
+        tournamentEndTime.setUTCDate(tournamentEndTime.getUTCDate() + 7);
+        console.log('🔍 Tournament end time:', tournamentEndTime.toISOString());
+
+        console.log('🕐 Tournament timing debug:', {
+            tournamentDay,
+            tournamentStartTime: tournamentStartTime.toISOString(),
+            tournamentEndTime: tournamentEndTime.toISOString()
+        });
 
         console.log('🎯 Creating new weekly tournament...');
         const { data: newTournament, error: createError } = await supabase

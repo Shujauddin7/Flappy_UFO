@@ -36,7 +36,7 @@ interface TournamentData {
     guarantee_amount?: number;
     admin_net_result?: number;
     start_time: string;
-    end_time: string;
+    end_time: string | null;  // Allow null when no tournament
 }
 
 export default function LeaderboardPage() {
@@ -50,11 +50,14 @@ export default function LeaderboardPage() {
             if (cached) {
                 try {
                     const parsed = JSON.parse(cached);
-                    if (Date.now() - parsed.timestamp < 30000) { // 30 second cache
+                    if (Date.now() - parsed.timestamp < 30000 && parsed.data.end_time) { // 30 second cache for instant updates + must have end_time
                         console.log('⚡ INSTANT LOAD: Using cached tournament data');
                         console.log(`   Cached Players: ${parsed.data.total_players}`);
                         console.log(`   Cached Prize: $${parsed.data.total_prize_pool}`);
+                        console.log(`   Cached End Time: ${parsed.data.end_time}`);
                         return parsed.data;
+                    } else {
+                        console.log('🔄 Cache invalid or missing end_time, will reload');
                     }
                 } catch (e) {
                     console.warn('Cache parse error:', e);
@@ -74,7 +77,7 @@ export default function LeaderboardPage() {
             guarantee_amount: 0,
             admin_net_result: 0,
             start_time: new Date().toISOString(),
-            end_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+            end_time: null // No hardcoded time - will use real DB data
         };
     });
 
@@ -85,7 +88,7 @@ export default function LeaderboardPage() {
             if (cached) {
                 try {
                     const parsed = JSON.parse(cached);
-                    return Date.now() - parsed.timestamp < 30000;
+                    return Date.now() - parsed.timestamp < 30000 && parsed.data.end_time; // Cache valid + has end_time
                 } catch {
                     return false;
                 }
@@ -101,7 +104,7 @@ export default function LeaderboardPage() {
             if (cached) {
                 try {
                     const parsed = JSON.parse(cached);
-                    if (Date.now() - parsed.timestamp < 60000) { // 1 minute cache for leaderboard
+                    if (Date.now() - parsed.timestamp < 15000) { // 15 second cache for instant leaderboard updates
                         console.log('⚡ INSTANT LOAD: Using cached leaderboard data');
                         return parsed.data;
                     }
@@ -134,6 +137,8 @@ export default function LeaderboardPage() {
                 const tournamentRes = await fetch('/api/tournament/stats');
                 const tournament = await tournamentRes.json();
 
+                console.log('🎯 API Response:', tournament);
+
                 if (tournament.has_active_tournament) {
                     const newTournamentData = {
                         id: tournament.tournament_day || 'current',
@@ -146,8 +151,10 @@ export default function LeaderboardPage() {
                         guarantee_amount: 0,
                         admin_net_result: 0,
                         start_time: tournament.tournament_start_date || new Date().toISOString(),
-                        end_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+                        end_time: tournament.end_time || null // Use real database end_time, not hardcoded
                     };
+
+                    console.log('🎯 New Tournament Data:', newTournamentData);
 
                     setCurrentTournament(newTournamentData);
 
@@ -158,29 +165,32 @@ export default function LeaderboardPage() {
                     }));
 
                     console.log(`⚡ Tournament data loaded: ${tournament.total_players} players, $${tournament.total_prize_pool} prize`);
-                }
 
-                // Load leaderboard data in background (not blocking UI)
-                setTimeout(async () => {
-                    try {
-                        const leaderboardRes = await fetch('/api/tournament/leaderboard-data');
-                        const leaderboard = await leaderboardRes.json();
+                    // Load leaderboard data in parallel (not blocking UI)
+                    const loadLeaderboard = async () => {
+                        try {
+                            const leaderboardRes = await fetch('/api/tournament/leaderboard-data');
+                            const leaderboard = await leaderboardRes.json();
 
-                        if (leaderboard.players) {
-                            setPreloadedLeaderboardData(leaderboard);
+                            if (leaderboard.players) {
+                                setPreloadedLeaderboardData(leaderboard);
 
-                            // ⚡ CACHE LEADERBOARD: Cache for instant loading
-                            sessionStorage.setItem('leaderboard_data', JSON.stringify({
-                                data: leaderboard,
-                                timestamp: Date.now()
-                            }));
+                                // ⚡ CACHE LEADERBOARD: Cache for instant loading
+                                sessionStorage.setItem('leaderboard_data', JSON.stringify({
+                                    data: leaderboard,
+                                    timestamp: Date.now()
+                                }));
 
-                            console.log(`⚡ Leaderboard loaded: ${leaderboard.players.length} entries`);
+                                console.log(`⚡ Leaderboard loaded: ${leaderboard.players.length} entries`);
+                            }
+                        } catch (err) {
+                            console.warn('Background leaderboard load failed:', err);
                         }
-                    } catch (err) {
-                        console.warn('Background leaderboard load failed:', err);
-                    }
-                }, 100); // 100ms delay - UI already showing
+                    };
+
+                    // Start leaderboard loading immediately (parallel, not delayed)
+                    loadLeaderboard();
+                }
 
             } catch (error) {
                 console.error('Essential data load failed:', error);
@@ -236,7 +246,13 @@ export default function LeaderboardPage() {
 
     // Calculate time remaining
     const getTimeRemaining = () => {
-        if (!currentTournament) return null;
+        console.log('🔍 Timer Debug:', {
+            currentTournament: currentTournament,
+            end_time: currentTournament?.end_time,
+            currentTime: currentTime
+        });
+
+        if (!currentTournament || !currentTournament.end_time) return null;
 
         const now = currentTime.getTime();
         const endTime = new Date(currentTournament.end_time).getTime();
@@ -335,8 +351,8 @@ export default function LeaderboardPage() {
                 <div className="leaderboard-scroll-content">
                     {/* Tournament Info Box - scrolls naturally with content */}
                     <div className="tournament-info-box">
-                        {/* Timer Box */}
-                        {timeRemaining && (
+                        {/* Timer Box - Always show when tournament exists */}
+                        {timeRemaining && timeRemaining.timeLeft && (
                             <div className="countdown-timer">
                                 ⚡ Tournament ends in {timeRemaining.timeLeft}
                             </div>

@@ -22,12 +22,19 @@ export async function GET() {
             console.log(`🚀 INSTANT RESPONSE: ${responseTime}ms (Cached tournament stats)`);
             console.log('⚡ Performance: Like professional mobile games - instant loading!');
 
-            return NextResponse.json({
-                ...cachedStats,
-                cached: true,
-                response_time_ms: responseTime,
-                fetched_at: new Date().toISOString()
-            });
+            // 🔧 ENSURE end_time IS ALWAYS PRESENT - Critical for countdown timer
+            if (!cachedStats.end_time && cachedStats.has_active_tournament) {
+                console.log('⚠️ Cached data missing end_time - fetching fresh data for countdown timer');
+                // Don't return cached data if it's missing critical end_time field
+                // Fall through to fresh database query
+            } else {
+                return NextResponse.json({
+                    ...cachedStats,
+                    cached: true,
+                    response_time_ms: responseTime,
+                    fetched_at: new Date().toISOString()
+                });
+            }
         }
 
         console.log('🔄 Cache miss - fetching and warming cache for future instant responses');
@@ -47,7 +54,7 @@ export async function GET() {
                 has_active_tournament: false
             };
 
-            await setCached(cacheKey, noTournamentResponse, 300); // Cache for 5 minutes
+            await setCached(cacheKey, noTournamentResponse, 60); // Cache for 1 minute for real-time updates
 
             return NextResponse.json({
                 ...noTournamentResponse,
@@ -60,6 +67,19 @@ export async function GET() {
         const tournamentDay = currentTournament.tournament_day;
         const stats = await getTournamentStats(tournamentDay);
 
+        // Calculate end_time if missing from database (emergency fallback)
+        let endTime = currentTournament.end_time;
+        if (!endTime && currentTournament.start_time) {
+            // Fallback: Calculate end_time as start_time + 24 hours
+            const startTime = new Date(currentTournament.start_time);
+            endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000).toISOString();
+            console.log('⚠️ Using calculated end_time (database missing end_time):', endTime);
+        } else if (!endTime) {
+            // Last resort: Use current time + 24 hours
+            endTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+            console.log('⚠️ Using emergency fallback end_time:', endTime);
+        }
+
         const responseData = {
             tournament_day: tournamentDay,
             tournament_name: currentTournament.name || `Tournament ${tournamentDay}`,
@@ -69,12 +89,13 @@ export async function GET() {
             total_games_played: stats.total_games_played,
             has_active_tournament: true,
             tournament_start_date: currentTournament.created_at,
+            end_time: endTime, // Always provide end_time for countdown timer
             tournament_status: 'active'
         };
 
         // 🚀 STEP 4: Cache for 3 minutes (frequent updates but still instant for users)
         console.log('💾 Warming cache for instant future responses...');
-        await setCached(cacheKey, responseData, 180); // 3 minutes cache
+        await setCached(cacheKey, responseData, 30); // 30 seconds cache for real-time feel
 
         const responseTime = Date.now() - startTime;
         console.log(`✅ Tournament stats cached successfully for instant loading`);
