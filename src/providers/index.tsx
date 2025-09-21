@@ -37,8 +37,8 @@ export default function ClientProviders({
       <MiniKitProvider>
         <SessionProvider
           session={session}
-          refetchInterval={5 * 60} // Refetch every 5 minutes to keep session alive
-          refetchOnWindowFocus={true} // Refetch when user returns to page
+          refetchInterval={0} // Disable automatic refetching to prevent infinite loops
+          refetchOnWindowFocus={false} // Don't refetch when user returns to page
           refetchWhenOffline={false} // Don't refetch when coming back online
           // Enhanced session options for proper session restoration
           basePath="/api/auth"
