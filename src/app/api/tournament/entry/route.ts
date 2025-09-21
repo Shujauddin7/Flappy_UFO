@@ -87,7 +87,7 @@ async function updateTournamentPlayerCount(supabase: any, tournamentId: string) 
         const { error: updateError } = await supabase
             .from('tournaments')
             .update({
-                total_players: uniquePlayerCount,
+                total_tournament_players: uniquePlayerCount, // FIXED: This is payment count, not sign-in count
                 total_prize_pool: totalPrizePool,
                 total_collected: totalRevenue,
                 admin_fee: adminFeeAmount,

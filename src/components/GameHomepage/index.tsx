@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { useSessionPersistence } from '@/hooks/useSessionPersistence';
+import { useGameAuth } from '@/hooks/useGameAuth'; // ADD MISSING IMPORT
 import { Page } from '@/components/PageLayout';
 import { walletAuth } from '@/auth/wallet';
 import dynamic from 'next/dynamic';
@@ -59,19 +61,27 @@ export default function GameHomepage() {
             });
     }, []); // Run once on app startup
 
+    // Use useGameAuth for proper database operations
+    const { authenticate: authenticateWithDB } = useGameAuth();
+
     // Local authentication function to replace useGameAuth hook
     const authenticate = useCallback(async (): Promise<boolean> => {
+        console.log('🔄 IMPORTANT: Running authentication WITH database operations');
+
         if (session?.user?.walletAddress) {
-            return true; // Already authenticated
+            console.log('✅ Already authenticated, triggering database operations...');
+            // Still run database operations even if already authenticated
+            return await authenticateWithDB();
         }
 
         setIsAuthenticating(true);
         try {
             const result = await walletAuth();
             if (result && !result.error) {
-                // Authentication successful - session will update automatically
+                // Authentication successful - now trigger database operations
+                console.log('✅ MiniKit auth successful, now triggering database operations...');
                 setIsAuthenticating(false);
-                return true;
+                return await authenticateWithDB();
             } else {
                 console.error('Sign in failed:', result?.error);
                 setIsAuthenticating(false);
@@ -83,7 +93,7 @@ export default function GameHomepage() {
             return false;
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // 🚀 FIX: Empty deps to prevent loops - session check is done inside function
+    }, [authenticateWithDB]); // 🚀 FIX: Include authenticateWithDB in deps
 
     // Verification status state
     // Verification state - managed properly with World App session per Plan.md
@@ -1271,13 +1281,13 @@ export default function GameHomepage() {
                             <span className="ufo-text">UFO</span>
                             <span className="ufo-icon">🛸</span>
                         </h1>
-                        <button
+                        <Link
+                            href="/info"
                             className="info-btn"
-                            onClick={() => alert('Game Rules:\n• Tap to navigate your UFO\n• Avoid obstacles\n• Win WLD tournaments!')}
                             aria-label="Game Info"
                         >
-                            ℹ️
-                        </button>
+                            ?
+                        </Link>
                     </div>
                     <div className="play-section">
                         <button
@@ -1574,6 +1584,187 @@ export default function GameHomepage() {
 
                 .modal-button:active {
                     transform: translateY(0);
+                }
+
+                /* Info Modal Styles */
+                .info-modal-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100vw;
+                    height: 100vh;
+                    background: rgba(11, 12, 16, 0.9);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 10001;
+                    backdrop-filter: blur(8px);
+                    animation: fadeIn 0.2s ease-out;
+                }
+
+                .info-modal {
+                    background: linear-gradient(135deg, #1D4ED8 0%, #9333EA 100%);
+                    border-radius: 16px;
+                    padding: 0;
+                    width: 90%;
+                    max-width: 480px;
+                    border: 2px solid #00F5FF;
+                    box-shadow: 0 20px 40px rgba(0, 245, 255, 0.3);
+                    animation: slideIn 0.3s ease-out;
+                    overflow: hidden;
+                }
+
+                .info-modal-header {
+                    background: rgba(11, 12, 16, 0.8);
+                    padding: 20px 24px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    border-bottom: 1px solid #00F5FF;
+                }
+
+                .info-modal-title {
+                    color: #00F5FF;
+                    font-size: 24px;
+                    font-weight: bold;
+                    margin: 0;
+                }
+
+                .info-close-btn {
+                    background: none;
+                    border: none;
+                    color: #E5E7EB;
+                    font-size: 24px;
+                    cursor: pointer;
+                    padding: 8px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.2s ease;
+                    width: 40px;
+                    height: 40px;
+                }
+
+                .info-close-btn:hover {
+                    background: rgba(255, 255, 255, 0.1);
+                    color: #00F5FF;
+                    transform: rotate(90deg);
+                }
+
+                .info-modal-content {
+                    padding: 24px;
+                    background: rgba(11, 12, 16, 0.6);
+                }
+
+                .info-description {
+                    color: #E5E7EB;
+                    text-align: center;
+                    margin: 0 0 24px 0;
+                    font-size: 16px;
+                    line-height: 1.5;
+                }
+
+                .info-links {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                }
+
+                .info-link-btn {
+                    display: flex;
+                    align-items: center;
+                    gap: 16px;
+                    padding: 16px;
+                    background: rgba(29, 78, 216, 0.2);
+                    border: 1px solid rgba(0, 245, 255, 0.3);
+                    border-radius: 12px;
+                    text-decoration: none;
+                    color: white;
+                    transition: all 0.3s ease;
+                    backdrop-filter: blur(4px);
+                }
+
+                .info-link-btn:hover {
+                    background: rgba(0, 245, 255, 0.1);
+                    border-color: #00F5FF;
+                    transform: translateY(-2px);
+                    box-shadow: 0 8px 16px rgba(0, 245, 255, 0.2);
+                }
+
+                .info-icon {
+                    font-size: 24px;
+                    flex-shrink: 0;
+                }
+
+                .info-link-text {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 4px;
+                }
+
+                .info-link-title {
+                    font-weight: bold;
+                    font-size: 16px;
+                    color: #00F5FF;
+                }
+
+                .info-link-desc {
+                    font-size: 14px;
+                    color: #E5E7EB;
+                }
+
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+
+                @keyframes slideIn {
+                    from { 
+                        opacity: 0;
+                        transform: scale(0.9) translateY(-20px);
+                    }
+                    to { 
+                        opacity: 1;
+                        transform: scale(1) translateY(0);
+                    }
+                }
+
+                /* Mobile responsiveness for info modal */
+                @media (max-width: 640px) {
+                    .info-modal {
+                        width: 95%;
+                        margin: 20px;
+                    }
+
+                    .info-modal-header {
+                        padding: 16px 20px;
+                    }
+
+                    .info-modal-title {
+                        font-size: 20px;
+                    }
+
+                    .info-modal-content {
+                        padding: 20px;
+                    }
+
+                    .info-link-btn {
+                        padding: 14px;
+                        gap: 12px;
+                    }
+
+                    .info-icon {
+                        font-size: 20px;
+                    }
+
+                    .info-link-title {
+                        font-size: 15px;
+                    }
+
+                    .info-link-desc {
+                        font-size: 13px;
+                    }
                 }
 
                 @keyframes pulse {

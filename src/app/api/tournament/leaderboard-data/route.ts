@@ -46,7 +46,7 @@ export async function GET() {
         // Get leaderboard data using standardized query
         const players = await getLeaderboardData(tournamentDay, {
             limit: 1000, // Reasonable limit to prevent massive queries
-            includeZeroScores: false // Only show users who have submitted scores
+            includeZeroScores: true // Show ALL players including those with score 0
         });
 
         const queryTime = Date.now() - queryStartTime;

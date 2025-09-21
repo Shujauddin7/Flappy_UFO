@@ -8,7 +8,9 @@ import { useEffect, useState } from 'react';
  * Enhanced for dev environment with better logging and recovery
  */
 export const useSessionPersistence = () => {
-    const { data: session, status } = useSession();
+    const { data: session, status } = useSession({
+        required: false,
+    });
     const [isSessionReady, setIsSessionReady] = useState(false);
 
     useEffect(() => {

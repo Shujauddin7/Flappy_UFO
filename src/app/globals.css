@@ -105,6 +105,8 @@ body {
   align-items: flex-start;
   position: relative;
   margin-top: 0.5rem;
+  padding-right: 60px;
+  /* Add space for the info button */
 }
 
 .game-title {
@@ -136,10 +138,219 @@ body {
   filter: drop-shadow(0 0 8px #00F5FF);
 }
 
+.info-btn {
+  position: absolute;
+  top: 0;
+  right: 5px;
+  background: rgba(11, 12, 16, 0.8);
+  border: 2px solid rgba(0, 245, 255, 0.5);
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #00F5FF;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 100;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 4px 12px rgba(0, 245, 255, 0.2);
+  text-decoration: none;
+}
+
 .info-btn:hover {
   background: rgba(0, 245, 255, 0.3);
   border-color: #00F5FF;
   transform: scale(1.05);
+}
+
+/* Info Modal Styles */
+.info-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.info-modal {
+  background: linear-gradient(135deg,
+      rgba(11, 12, 16, 0.95) 0%,
+      rgba(29, 78, 216, 0.1) 50%,
+      rgba(11, 12, 16, 0.95) 100%);
+  border: 2px solid rgba(0, 245, 255, 0.3);
+  border-radius: 20px;
+  max-width: 500px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow:
+    0 0 30px rgba(0, 245, 255, 0.3),
+    inset 0 0 30px rgba(0, 245, 255, 0.05);
+}
+
+.info-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 25px 30px 20px;
+  border-bottom: 1px solid rgba(0, 245, 255, 0.2);
+}
+
+.info-modal-title-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.info-modal-ufo {
+  font-size: 1.5rem;
+  filter: drop-shadow(0 0 8px #00F5FF);
+}
+
+.info-modal-title {
+  font-family: 'Orbitron', monospace;
+  font-weight: 900;
+  font-size: 1.8rem;
+  color: #00F5FF;
+  text-shadow: 0 0 10px #00F5FF;
+  margin: 0;
+}
+
+.info-close-btn {
+  background: none;
+  border: none;
+  color: #00F5FF;
+  font-size: 1.8rem;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.info-close-btn:hover {
+  background: rgba(0, 245, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.info-modal-content {
+  padding: 25px 30px 30px;
+}
+
+.info-links-horizontal {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+}
+
+.info-link-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 25px 20px;
+  background: rgba(11, 12, 16, 0.6);
+  border: 1px solid rgba(0, 245, 255, 0.3);
+  border-radius: 15px;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  flex: 1;
+  max-width: 120px;
+}
+
+.info-link-card:hover {
+  background: rgba(0, 245, 255, 0.1);
+  border-color: rgba(0, 245, 255, 0.5);
+  transform: translateY(-5px);
+}
+
+.info-card-icon {
+  font-size: 2rem;
+  margin-bottom: 5px;
+}
+
+.info-card-title {
+  font-family: 'Orbitron', monospace;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #00F5FF;
+  text-align: center;
+}
+
+/* Mobile Responsive */
+@media (max-width: 480px) {
+  .info-modal {
+    max-width: 95%;
+    margin: 10px;
+  }
+
+  .info-modal-header {
+    padding: 20px 20px 15px;
+  }
+
+  .info-modal-title {
+    font-size: 1.4rem;
+  }
+
+  .info-modal-ufo {
+    font-size: 1.2rem;
+  }
+
+  .info-modal-content {
+    padding: 20px;
+  }
+
+  .info-links-horizontal {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .info-link-card {
+    max-width: none;
+    padding: 20px;
+  }
+
+  .info-card-icon {
+    font-size: 1.8rem;
+  }
+
+  .info-card-title {
+    font-size: 1rem;
+  }
+}
+
+/* FAQ Animation */
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+
+  to {
+    opacity: 1;
+    max-height: 200px;
+  }
+}
+
+.animate-slide-down {
+  animation: slide-down 0.3s ease-out;
 }
 
 .play-section {
@@ -1684,6 +1895,16 @@ body {
   .standard-button {
     font-size: 0.8rem;
     padding: 0.7rem 1.2rem;
+  }
+
+  .info-btn {
+    width: 38px;
+    height: 38px;
+    font-size: 1.2rem;
+  }
+
+  .header-section {
+    padding-right: 45px;
   }
 }
 
@@ -3593,6 +3814,15 @@ body {
 
   .header-section {
     margin-bottom: 0;
+    padding-right: 50px;
+  }
+
+  .info-btn {
+    width: 42px;
+    height: 42px;
+    font-size: 1.3rem;
+    right: 5px;
+    top: 0;
   }
 
   .player-rank-card {

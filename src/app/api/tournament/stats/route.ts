@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCached, setCached } from '@/lib/redis';
 import { getCurrentActiveTournament } from '@/utils/database';
-import { getTournamentStats } from '@/utils/leaderboard-queries';
 
 /**
  * INSTANT TOURNAMENT STATS API
@@ -49,8 +48,6 @@ export async function GET() {
                 tournament_day: null,
                 total_players: 0,
                 total_prize_pool: 0,
-                total_collected: 0,
-                total_games_played: 0,
                 has_active_tournament: false
             };
 
@@ -63,9 +60,14 @@ export async function GET() {
             });
         }
 
-        // 🚀 STEP 3: Get tournament statistics using shared query utility
+        // 🚀 STEP 3: Use stored tournament values instead of recalculating
         const tournamentDay = currentTournament.tournament_day;
-        const stats = await getTournamentStats(tournamentDay);
+
+        // Use stored values from tournaments table (more accurate and faster)
+        const stats = {
+            total_players: currentTournament.total_tournament_players || 0, // Use tournament players, not sign-ins
+            total_prize_pool: currentTournament.total_prize_pool || 0
+        };
 
         // Calculate end_time if missing from database (emergency fallback)
         let endTime = currentTournament.end_time;
@@ -85,8 +87,6 @@ export async function GET() {
             tournament_name: currentTournament.name || `Tournament ${tournamentDay}`,
             total_players: stats.total_players,
             total_prize_pool: Number(stats.total_prize_pool.toFixed(2)),
-            total_collected: Number(stats.total_collected.toFixed(2)),
-            total_games_played: stats.total_games_played,
             has_active_tournament: true,
             tournament_start_date: currentTournament.created_at,
             end_time: endTime, // Always provide end_time for countdown timer
@@ -117,8 +117,6 @@ export async function GET() {
             tournament_day: null,
             total_players: 0,
             total_prize_pool: 0,
-            total_collected: 0,
-            total_games_played: 0,
             has_active_tournament: false,
             error: 'Failed to load tournament stats',
             cached: false,
