@@ -105,8 +105,7 @@ body {
   align-items: flex-start;
   position: relative;
   margin-top: 0.5rem;
-  padding-right: 60px;
-  /* Add space for the info button */
+  /* Removed padding-right since info button is now positioned absolutely */
 }
 
 .game-title {
@@ -139,9 +138,6 @@ body {
 }
 
 .info-btn {
-  position: absolute;
-  top: 0;
-  right: 5px;
   background: rgba(11, 12, 16, 0.8);
   border: 2px solid rgba(0, 245, 255, 0.5);
   border-radius: 50%;
@@ -155,7 +151,6 @@ body {
   color: #00F5FF;
   cursor: pointer;
   transition: all 0.3s ease;
-  z-index: 100;
   backdrop-filter: blur(4px);
   box-shadow: 0 4px 12px rgba(0, 245, 255, 0.2);
   text-decoration: none;

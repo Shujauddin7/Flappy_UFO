@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import Link from 'next/link';
 import { useSessionPersistence } from '@/hooks/useSessionPersistence';
 import { useGameAuth } from '@/hooks/useGameAuth'; // ADD MISSING IMPORT
 import { Page } from '@/components/PageLayout';
 import { walletAuth } from '@/auth/wallet';
 import dynamic from 'next/dynamic';
 import { TournamentEntryModal } from '@/components/TournamentEntryModal';
+import InfoModal from '@/components/INFO';
 import { canContinue, spendCoins, getCoins, addCoins } from '@/utils/coins';
 
 // Dynamically import FlappyGame to avoid SSR issues
@@ -35,6 +35,23 @@ type GameMode = 'practice' | 'tournament';
 export default function GameHomepage() {
     const [currentScreen, setCurrentScreen] = useState<'home' | 'gameSelect' | 'tournamentEntry' | 'playing'>('home');
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
+    const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+
+    // Debug state changes
+    useEffect(() => {
+        console.log('Screen changed to:', currentScreen);
+    }, [currentScreen]);
+
+    useEffect(() => {
+        console.log('Info modal state changed to:', isInfoModalOpen);
+    }, [isInfoModalOpen]);
+
+    // Close info modal when navigating away from home screen
+    useEffect(() => {
+        if (currentScreen !== 'home' && isInfoModalOpen) {
+            setIsInfoModalOpen(false);
+        }
+    }, [currentScreen, isInfoModalOpen]);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isAuthenticating, setIsAuthenticating] = useState(false); // Local auth state
 
@@ -269,6 +286,21 @@ export default function GameHomepage() {
             alert('❌ Failed to check tournament status. Please try again.');
             return false;
         }
+    }, []);
+
+    // Stable event handlers to prevent recreation and caching issues
+    const handleInfoClick = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Info button clicked - opening modal');
+        setIsInfoModalOpen(true);
+    }, []);
+
+    const handlePlayClick = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Play button clicked - going to game select');
+        setCurrentScreen('gameSelect');
     }, []);
 
     // Handle game start with authentication
@@ -1271,56 +1303,76 @@ export default function GameHomepage() {
 
     if (currentScreen === 'home') {
         return (
-            <Page>
-                <canvas ref={canvasRef} className="starfield-canvas" />
-                <Page.Main className="main-container">
-                    <div className="header-section">
-                        <h1 className="game-title">
-                            <span className="ufo-icon">🛸</span>
-                            <span className="flappy-text">Flappy</span>{''}
-                            <span className="ufo-text">UFO</span>
-                            <span className="ufo-icon">🛸</span>
-                        </h1>
-                        <Link
-                            href="/info"
+            <>
+                <Page>
+                    <canvas ref={canvasRef} className="starfield-canvas" />
+                    <Page.Main className="main-container">
+                        {/* Info button positioned absolutely outside header section */}
+                        <button
+                            onClick={handleInfoClick}
                             className="info-btn"
                             aria-label="Game Info"
+                            style={{
+                                position: 'absolute',
+                                top: '10px',
+                                right: '10px',
+                                zIndex: 1000,
+                                pointerEvents: 'auto'
+                            }}
                         >
                             ?
-                        </Link>
-                    </div>
-                    <div className="play-section">
-                        <button
-                            className="custom-play-btn"
-                            onClick={() => setCurrentScreen('gameSelect')}
-                            aria-label="Tap to Play"
-                        >
-                            Tap To Play
                         </button>
-                        <DevSignOut />
-                    </div>
-                    <div className="bottom-nav-container">
-                        <div className="space-nav-icons">
-                            <button
-                                className="space-nav-btn home-nav"
-                                onClick={() => {/* Already on home page - no action needed */ }}
-                                aria-label="Launch Pad"
-                            >
-                                <div className="space-icon">🏠</div>
 
-                            </button>
-                            <button
-                                className="space-nav-btn prizes-nav"
-                                onClick={() => window.location.href = '/leaderboard'}
-                                aria-label="Leaderboard"
-                            >
-                                <div className="space-icon">🏆</div>
-
-                            </button>
+                        <div className="header-section">
+                            <h1 className="game-title">
+                                <span className="ufo-icon">🛸</span>
+                                <span className="flappy-text">Flappy</span>{''}
+                                <span className="ufo-text">UFO</span>
+                                <span className="ufo-icon">🛸</span>
+                            </h1>
                         </div>
-                    </div>
-                </Page.Main>
-            </Page>
+                        <div className="play-section">
+                            <button
+                                key={`play-btn-${currentScreen}`}
+                                className="custom-play-btn"
+                                onClick={handlePlayClick}
+                                aria-label="Tap to Play"
+                            >
+                                Tap To Play
+                            </button>
+                            <DevSignOut />
+                        </div>
+                        <div className="bottom-nav-container">
+                            <div className="space-nav-icons">
+                                <button
+                                    className="space-nav-btn home-nav"
+                                    onClick={() => {/* Already on home page - no action needed */ }}
+                                    aria-label="Launch Pad"
+                                >
+                                    <div className="space-icon">🏠</div>
+
+                                </button>
+                                <button
+                                    className="space-nav-btn prizes-nav"
+                                    onClick={() => window.location.href = '/leaderboard'}
+                                    aria-label="Leaderboard"
+                                >
+                                    <div className="space-icon">🏆</div>
+
+                                </button>
+                            </div>
+                        </div>
+                    </Page.Main>
+                </Page>
+
+                {/* Info Modal for home screen */}
+                {isInfoModalOpen && (
+                    <InfoModal
+                        isOpen={isInfoModalOpen}
+                        onClose={() => setIsInfoModalOpen(false)}
+                    />
+                )}
+            </>
         );
     }
 

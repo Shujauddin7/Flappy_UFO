@@ -46,12 +46,7 @@ export const useGameAuth = () => {
         }
     }, [isInstalled, isAuthenticated, update]);
 
-    // Auto-update session status after authentication
-    useEffect(() => {
-        if (status === 'unauthenticated' && !isAuthenticating) {
-            update();
-        }
-    }, [status, isAuthenticating, update]);
+    // Removed auto-update to prevent infinite loop
 
     // Save user to database AND track tournament sign-in when session becomes available
     useEffect(() => {
