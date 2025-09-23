@@ -10,6 +10,8 @@ interface TournamentEntryModalProps {
     isVerifiedToday: boolean;
     verificationLoading: boolean;
     isProcessingEntry: boolean;
+    canUseOrbVerification: boolean;
+    orbCapabilityLoading: boolean;
 }
 
 export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
@@ -18,7 +20,9 @@ export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
     isAuthenticating,
     isVerifiedToday,
     verificationLoading,
-    isProcessingEntry
+    isProcessingEntry,
+    canUseOrbVerification,
+    orbCapabilityLoading
 }) => {
     const [selectedEntry, setSelectedEntry] = useState<'verify' | 'standard' | 'verified' | null>(null);
 
@@ -99,21 +103,36 @@ export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
                             <div className="mode-content">
                                 <div className="mode-icon">✅</div>
                                 <h2 className="mode-name">VERIFY</h2>
-                                <p className="mode-desc">Orb verification discount</p>
+                                <p className="mode-desc">
+                                    {canUseOrbVerification ? 'Orb verification discount' : 'Requires Orb verification'}
+                                </p>
                                 <div className="mode-features">
                                     <span className="feature">💰 0.9 WLD entry fee</span>
                                     <span className="feature">🔒 World ID verification</span>
+                                    {!canUseOrbVerification && (
+                                        <span className="feature warning">⚠️ Orb verification needed</span>
+                                    )}
                                 </div>
                                 <button
-                                    className="mode-button verify-button"
+                                    className={`mode-button verify-button ${!canUseOrbVerification ? 'dimmed' : ''}`}
                                     onClick={() => handleEntrySelect('verify')}
-                                    disabled={isAuthenticating || verificationLoading || isProcessingEntry}
+                                    disabled={
+                                        isAuthenticating ||
+                                        verificationLoading ||
+                                        isProcessingEntry ||
+                                        orbCapabilityLoading ||
+                                        !canUseOrbVerification
+                                    }
                                 >
-                                    {verificationLoading
-                                        ? 'CHECKING...'
-                                        : (isAuthenticating || isProcessingEntry) && selectedEntry === 'verify'
-                                            ? 'VERIFYING...'
-                                            : 'GET VERIFIED & PLAY'
+                                    {orbCapabilityLoading
+                                        ? 'CHECKING ORB STATUS...'
+                                        : !canUseOrbVerification
+                                            ? 'ORB VERIFICATION REQUIRED'
+                                            : verificationLoading
+                                                ? 'CHECKING...'
+                                                : (isAuthenticating || isProcessingEntry) && selectedEntry === 'verify'
+                                                    ? 'VERIFYING...'
+                                                    : 'GET VERIFIED & PLAY'
                                     }
                                 </button>
                             </div>

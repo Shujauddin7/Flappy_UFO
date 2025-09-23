@@ -116,6 +116,8 @@ export default function GameHomepage() {
     // Verification state - managed properly with World App session per Plan.md
     const [isVerifiedToday, setIsVerifiedToday] = useState<boolean>(false);
     const [verificationLoading, setVerificationLoading] = useState<boolean>(false);
+    const [orbCapabilityLoading, setOrbCapabilityLoading] = useState<boolean>(false);
+    const [canUseOrbVerification, setCanUseOrbVerification] = useState<boolean>(true); // Default to true for new users
 
     // Tournament entry loading states to prevent duplicate operations
     const [isProcessingEntry, setIsProcessingEntry] = useState<boolean>(false);
@@ -171,7 +173,50 @@ export default function GameHomepage() {
             setIsVerifiedToday(false);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [session?.user?.walletAddress]); // 🚀 FIX: Removed checkVerificationStatus from deps to prevent infinite loop
+    }, [session?.user?.walletAddress]);
+
+    // 🔮 CHECK ORB VERIFICATION CAPABILITY
+    const checkOrbVerificationCapability = useCallback(async () => {
+        if (!session?.user?.walletAddress) return false;
+
+        try {
+            setOrbCapabilityLoading(true);
+
+            const response = await fetch('/api/users/orb-verification-capability', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    wallet: session.user.walletAddress,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                console.log('🔮 Orb capability check:', data.data);
+                setCanUseOrbVerification(data.data.canUseOrbDiscount);
+                return data.data.canUseOrbDiscount;
+            } else {
+                console.error('❌ Failed to check Orb capability:', data.error);
+                setCanUseOrbVerification(true); // Default to allowing verification attempts
+                return true;
+            }
+        } catch (error) {
+            console.error('❌ Error checking Orb capability:', error);
+            setCanUseOrbVerification(true); // Default to allowing verification attempts
+            return true;
+        } finally {
+            setOrbCapabilityLoading(false);
+        }
+    }, [session?.user?.walletAddress]);
+
+    // Check both verification status and Orb capability when wallet changes
+    useEffect(() => {
+        if (session?.user?.walletAddress) {
+            checkVerificationStatus();
+            checkOrbVerificationCapability();
+        }
+    }, [session?.user?.walletAddress, checkVerificationStatus, checkOrbVerificationCapability]); // 🚀 FIX: Removed checkVerificationStatus from deps to prevent infinite loop
 
     // 🚀 LIGHTNING FAST LEADERBOARD: Pre-load leaderboard data in background
     // This makes leaderboard tab load instantly when clicked (0ms perceived load time)
@@ -426,7 +471,10 @@ export default function GameHomepage() {
             if (verificationData.success) {
                 console.log('✅ World ID verification successful');
                 // Update user's verification status in database
-                await updateUserVerificationStatus(verificationData.nullifier_hash);
+                await updateUserVerificationStatus(
+                    verificationData.nullifier_hash,
+                    verificationData.verification_level
+                );
                 // Proceed with 0.9 WLD payment
                 await handlePayment(0.9, true);
             } else {
@@ -435,12 +483,24 @@ export default function GameHomepage() {
 
         } catch (error) {
             console.error('World ID verification error:', error);
-            alert('World ID verification failed. Please try again or use Standard Entry.');
+
+            // Provide more specific error messages
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+            if (errorMessage.includes('CredentialUnavailable') || errorMessage.includes('verification level')) {
+                alert('Orb verification is required for the discounted entry. Please use an Orb to verify your World ID, or choose Standard Entry (1.0 WLD).');
+            } else if (errorMessage.includes('MaxVerificationsReached')) {
+                alert('You have already verified the maximum number of times for this tournament. Please try again in the next tournament.');
+            } else if (errorMessage.includes('network') || errorMessage.includes('timeout')) {
+                alert('Network error during verification. Please check your connection and try again, or use Standard Entry.');
+            } else {
+                alert('World ID verification failed. Please try again or use Standard Entry (1.0 WLD).');
+            }
         }
     };
 
     // Update user verification status in database
-    const updateUserVerificationStatus = async (nullifierHash: string) => {
+    const updateUserVerificationStatus = async (nullifierHash: string, verificationLevel?: string) => {
         try {
             if (!session?.user?.walletAddress) {
                 throw new Error('No wallet address found in session');
@@ -455,6 +515,7 @@ export default function GameHomepage() {
                     nullifier_hash: nullifierHash,
                     verification_date: new Date().toISOString(),
                     wallet: session.user.walletAddress, // Pass wallet address
+                    verification_level: verificationLevel, // Pass verification level
                 }),
             });
 
@@ -1296,6 +1357,8 @@ export default function GameHomepage() {
                     isVerifiedToday={isVerifiedToday}
                     verificationLoading={verificationLoading}
                     isProcessingEntry={isProcessingEntry}
+                    canUseOrbVerification={canUseOrbVerification}
+                    orbCapabilityLoading={orbCapabilityLoading}
                 />
             </Page>
         );

@@ -822,6 +822,22 @@ body {
   box-shadow: 0 4px 15px rgba(34, 197, 94, 0.2) !important;
 }
 
+.verify-button.dimmed {
+  background: linear-gradient(45deg, #6b7280, #4b5563) !important;
+  box-shadow: 0 4px 15px rgba(107, 114, 128, 0.3) !important;
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.verify-button.dimmed:hover {
+  box-shadow: 0 4px 15px rgba(107, 114, 128, 0.3) !important;
+}
+
+.feature.warning {
+  color: #f59e0b !important;
+  font-weight: 600;
+}
+
 .standard-button:disabled,
 .standard-button.authenticating {
   box-shadow: 0 4px 15px rgba(251, 191, 36, 0.2) !important;

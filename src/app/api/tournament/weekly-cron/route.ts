@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { deleteCached } from '@/lib/redis';
 
 export async function GET(req: NextRequest) {
     console.log('🕐 Weekly Tournament Cron Job Triggered at:', new Date().toISOString());
@@ -208,7 +209,40 @@ export async function GET(req: NextRequest) {
 
         console.log('✅ Tournament created successfully:', newTournament);
 
-        // Step 4: Verify the new tournament is active
+        // Step 4: Clear all tournament and leaderboard caches for instant update
+        console.log('🧹 Clearing all tournament caches for fresh start...');
+        try {
+            // Clear Redis caches
+            await deleteCached('tournament:current');
+            await deleteCached('tournament:leaderboard:current');
+            await deleteCached('tournament:prizes:current');
+            await deleteCached('tournament_stats_instant');
+
+            // Clear any existing leaderboard cache for the old tournament
+            // This will force a fresh load when clients access the new tournament
+            console.log('✅ All tournament caches cleared successfully');
+        } catch (cacheError) {
+            console.warn('⚠️ Cache clearing failed (non-critical):', cacheError);
+            // Don't fail the tournament creation for cache issues
+        }
+
+        // Step 5: Warm caches immediately for new tournament
+        console.log('🔥 Warming caches for new tournament...');
+        try {
+            // Trigger cache warming in background (don't wait for it)
+            fetch(`${req.nextUrl.origin}/api/admin/warm-cache`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${process.env.CRON_SECRET || 'no-secret'}`
+                }
+            }).catch(warmError => {
+                console.warn('Cache warming failed (non-critical):', warmError);
+            });
+        } catch (warmError) {
+            console.warn('⚠️ Cache warming trigger failed (non-critical):', warmError);
+        }
+
+        // Step 6: Verify the new tournament is active
         const { data: activeTournament, error: verifyError } = await supabase
             .from('tournaments')
             .select('*')
