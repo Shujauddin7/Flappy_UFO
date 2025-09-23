@@ -7,10 +7,20 @@ interface TermsProps {
 export default function Terms({ onSupportClick }: TermsProps) {
     const termsData = [
         {
+            heading: "Game Rules",
+            content: [
+                "• Navigate your UFO through obstacles by tapping to fly up and releasing to fall",
+                "• Collect stars in Practice Mode to earn coins (2 coins per star)",
+                "• Score points by successfully passing obstacles (+1 point per obstacle)",
+                "• Use coins to continue in Practice Mode (10 coins per continue)",
+                "• Tournament entries require payment and allow one paid continue per game"
+            ]
+        },
+        {
             heading: "Game Terms & Conditions",
             content: [
-                "By playing Flappy UFO, you agree to these terms. This is a skill-based game integrated with World App and Worldcoin ecosystem.",
-                "Eligibility: Must have World App installed and World ID for tournament participation.",
+                "•  By playing Flappy UFO, you agree to these terms. This is a skill-based game integrated with World App and Worldcoin ecosystem.",
+                "• Eligibility: Must have World App installed and World ID for tournament participation.",
                 "Skill-Based Gaming: This is NOT gambling. Outcomes are determined entirely by player skill, timing, and game knowledge. No random mechanics, luck elements, or chance-based rewards exist. Success depends on practiced flying abilities and consistent performance.",
                 "Fair Play: All rewards earned through gameplay ability only. Better skilled players achieve higher scores consistently through superior timing and control."
             ]
