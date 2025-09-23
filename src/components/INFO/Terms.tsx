@@ -1,125 +1,99 @@
 'use client';
 
-export default function Terms() {
+interface TermsProps {
+    onSupportClick: () => void;
+}
+
+export default function Terms({ onSupportClick }: TermsProps) {
+    const termsData = [
+        {
+            heading: "Game Terms & Conditions",
+            content: [
+                "By playing Flappy UFO, you agree to these terms. This is a skill-based game integrated with World App and Worldcoin ecosystem.",
+                "Eligibility: Must have World App installed and World ID for tournament participation.",
+                "Skill-Based Gaming: This is NOT gambling. Outcomes are determined entirely by player skill, timing, and game knowledge. No random mechanics, luck elements, or chance-based rewards exist. Success depends on practiced flying abilities and consistent performance.",
+                "Fair Play: All rewards earned through gameplay ability only. Better skilled players achieve higher scores consistently through superior timing and control."
+            ]
+        },
+        {
+            heading: "Tournament Rules",
+            content: [
+                "Weekly Schedule: Tournaments run Sunday 15:30 UTC to Sunday 15:30 UTC (7 days).",
+                "Entry Fees: 1.0 WLD standard entry or 0.9 WLD for World ID Orb verified users (verification resets weekly).",
+                "Continue Policy: One continue per game by paying entry fee again. After second crash, new entry required.",
+                "Score Recording: Only your highest score across all entries counts. Multiple entries allowed.",
+                "Grace Period: 30 minutes before tournament end (15:00-15:30 UTC) - no new entries accepted, but ongoing games can be completed."
+            ]
+        },
+        {
+            heading: "Payment & Prize Terms",
+            content: [
+                "Prize Distribution: Top 10 players share 70% of collected WLD with additional platform bonuses to enhance prize pools.",
+                "Platform Support: Remaining funds support app development, server maintenance, and player experience improvements.",
+                "Competitive Rewards: Prize amounts vary based on tournament participation and performance rankings.",
+                "Payment Processing: All payments verified before entry creation for secure tournament participation.",
+                "Verification Discount: World ID Orb verification grants 0.1 WLD discount per entry. Resets weekly."
+            ]
+        },
+        {
+            heading: "World App Integration",
+            content: [
+                "Authentication: World ID enables tournament entry with both standard (1.0 WLD) and verified (0.9 WLD) options. Anonymous practice mode available.",
+                "Wallet: All transactions through World App wallet. Ensure sufficient WLD balance before entry.",
+                "Privacy: Game respects World App privacy standards. No personal data collected beyond World ID.",
+                "Updates: Game updates delivered through World App. Check regularly for latest features."
+            ]
+        },
+        {
+            heading: "Anti-Cheat & Fair Play",
+            content: [
+                "Detection Systems: Advanced anti-cheat monitors gameplay patterns and impossible scores.",
+                "Penalties: Cheating results in immediate disqualification and potential account restrictions.",
+                "Appeals: Wrongful disqualification appeals reviewed within 24 hours with full transparency.",
+                "Community Standards: Report suspicious activity. We maintain fair competition for all players."
+            ]
+        },
+        {
+            heading: "Liability & Disclaimers",
+            content: [
+                "Game Availability: Service provided as-is. Temporary outages possible for maintenance.",
+                "Technical Issues: Not liable for losses due to device problems, network issues, or World App connectivity.",
+                "Prize Liability: Prizes distributed based on final leaderboard. Technical disputes resolved fairly.",
+                "Changes: Terms may update with advance notice. Continued play constitutes acceptance."
+            ]
+        }
+    ];
+
     return (
         <div className="h-full overflow-y-auto px-4 py-6">
-            <div className="bg-[#1D4ED8] bg-opacity-20 border border-[#00F5FF] border-opacity-30 rounded-lg p-6 space-y-6">
-
-                <section className="space-y-4">
-                    <h3 className="text-[#00F5FF] text-lg font-bold">Game Terms & Conditions</h3>
-                    <div className="text-[#E5E7EB] text-sm sm:text-base leading-relaxed space-y-3">
-                        <p>
-                            By playing Flappy UFO, you agree to these terms. This is a skill-based game integrated with World App and Worldcoin ecosystem.
-                        </p>
-                        <p>
-                            <strong className="text-[#00F5FF]">Eligibility:</strong> Must have World App installed and World ID for tournament participation. No geographic restrictions apply.
-                        </p>
-                        <p>
-                            <strong className="text-[#00F5FF]">Fair Play:</strong> This is a skill-based game - no gambling mechanics. All rewards earned through gameplay ability only.
-                        </p>
+            <div className="space-y-4">
+                {termsData.map((section, index) => (
+                    <div
+                        key={index}
+                        className="bg-gradient-to-r from-[rgba(0,245,255,0.1)] to-[rgba(147,51,234,0.1)] border border-[#00F5FF] border-opacity-30 rounded-lg p-6 backdrop-blur-[10px]"
+                    >
+                        <h3 className="text-[#00F5FF] text-lg font-bold mb-4 font-['Orbitron'] text-shadow-[0_0_10px_rgba(0,245,255,0.5)]">
+                            {section.heading}
+                        </h3>
+                        <div className="space-y-3">
+                            {section.content.map((item, itemIndex) => (
+                                <p key={itemIndex} className="text-white text-sm leading-relaxed">
+                                    {item}
+                                </p>
+                            ))}
+                        </div>
                     </div>
-                </section>
+                ))}
 
-                <section className="space-y-4">
-                    <h3 className="text-[#00F5FF] text-lg font-bold">Tournament Rules</h3>
-                    <div className="text-[#E5E7EB] text-sm sm:text-base leading-relaxed space-y-3">
-                        <p>
-                            <strong className="text-[#9333EA]">Weekly Schedule:</strong> Tournaments run Sunday 15:30 UTC to Sunday 15:30 UTC (7 days).
-                        </p>
-                        <p>
-                            <strong className="text-[#9333EA]">Entry Fees:</strong> 1.0 WLD standard entry or 0.9 WLD for World ID Orb verified users (verification resets weekly).
-                        </p>
-                        <p>
-                            <strong className="text-[#9333EA]">Continue Policy:</strong> One continue per game by paying entry fee again. After second crash, new entry required.
-                        </p>
-                        <p>
-                            <strong className="text-[#9333EA]">Score Recording:</strong> Only your highest score across all entries counts. Multiple entries allowed.
-                        </p>
-                        <p>
-                            <strong className="text-[#9333EA]">Grace Period:</strong> 30 minutes before tournament end (15:00-15:30 UTC) - no new entries accepted.
-                        </p>
-                    </div>
-                </section>
-
-                <section className="space-y-4">
-                    <h3 className="text-[#00F5FF] text-lg font-bold">Payment & Prize Terms</h3>
-                    <div className="text-[#E5E7EB] text-sm sm:text-base leading-relaxed space-y-3">
-                        <p>
-                            <strong className="text-[#FFD700]">Prize Distribution:</strong> Top 10 players share 70% of collected WLD. Admin fee is 30%.
-                        </p>
-                        <p>
-                            <strong className="text-[#FFD700]">Minimum Players:</strong> If fewer than 5 players join, full refunds issued to all participants.
-                        </p>
-                        <p>
-                            <strong className="text-[#FFD700]">Payment Processing:</strong> All transactions processed through World App Pay API with verification.
-                        </p>
-                        <p>
-                            <strong className="text-[#FFD700]">Refund Policy:</strong> Refunds only issued for technical failures or tournaments with under 5 players.
-                        </p>
-                        <p>
-                            <strong className="text-[#FFD700]">Payout Timing:</strong> Winners notified and paid within 24 hours of tournament end.
-                        </p>
-                    </div>
-                </section>
-
-                <section className="space-y-4">
-                    <h3 className="text-[#00F5FF] text-lg font-bold">World App Compliance</h3>
-                    <div className="text-[#E5E7EB] text-sm sm:text-base leading-relaxed space-y-3">
-                        <p>
-                            <strong className="text-[#EC4899]">Privacy:</strong> No wallet addresses displayed publicly. Usernames shown when available.
-                        </p>
-                        <p>
-                            <strong className="text-[#EC4899]">Anti-Cheat:</strong> Backend validation for all scores and payments. Cheating results in disqualification.
-                        </p>
-                        <p>
-                            <strong className="text-[#EC4899]">Data Security:</strong> All data encrypted and stored securely via Supabase with Row Level Security.
-                        </p>
-                        <p>
-                            <strong className="text-[#EC4899]">No Gambling:</strong> Strictly skill-based gameplay. No random elements in prize distribution.
-                        </p>
-                    </div>
-                </section>
-
-                <section className="space-y-4">
-                    <h3 className="text-[#00F5FF] text-lg font-bold">Account & Verification</h3>
-                    <div className="text-[#E5E7EB] text-sm sm:text-base leading-relaxed space-y-3">
-                        <p>
-                            <strong className="text-[#9333EA]">World ID Required:</strong> Sign-in persists across sessions. Verification resets weekly for pricing.
-                        </p>
-                        <p>
-                            <strong className="text-[#9333EA]">Account Security:</strong> You&apos;re responsible for keeping your World App secure. No account sharing allowed.
-                        </p>
-                        <p>
-                            <strong className="text-[#9333EA]">Data Retention:</strong> Tournament data archived for 7 days post-tournament, then deleted.
-                        </p>
-                    </div>
-                </section>
-
-                <section className="space-y-4">
-                    <h3 className="text-[#00F5FF] text-lg font-bold">Liability & Disputes</h3>
-                    <div className="text-[#E5E7EB] text-sm sm:text-base leading-relaxed space-y-3">
-                        <p>
-                            Game provided &ldquo;as-is&rdquo; without warranties. Players participate at their own risk. Admin decisions on disputes are final.
-                        </p>
-                        <p>
-                            Technical issues during gameplay may result in score restoration or entry refund at admin discretion.
-                        </p>
-                    </div>
-                </section>
-
-                <section className="space-y-4">
-                    <h3 className="text-[#00F5FF] text-lg font-bold">Changes to Terms</h3>
-                    <div className="text-[#E5E7EB] text-sm sm:text-base leading-relaxed">
-                        <p>
-                            Terms may be updated for World App compliance or game improvements. Major changes will be announced in-game.
-                        </p>
-                    </div>
-                </section>
-
-                <div className="text-center pt-6 border-t border-[#00F5FF] border-opacity-20">
-                    <p className="text-[#00F5FF] text-sm opacity-80">
-                        Last updated: September 2024 | Questions? Check our Support section! 🛸
-                    </p>
+                {/* Support Navigation */}
+                <div className="text-center pt-6 pb-8">
+                    <p className="text-white text-sm mb-4">Need more help?</p>
+                    <button
+                        onClick={onSupportClick}
+                        className="bg-transparent border-2 border-[#00F5FF] text-[#00F5FF] px-6 py-2 rounded-full text-sm font-medium hover:bg-[#00F5FF] hover:text-black transition-all duration-300 font-['Orbitron'] cursor-pointer"
+                    >
+                        Support
+                    </button>
                 </div>
             </div>
         </div>
