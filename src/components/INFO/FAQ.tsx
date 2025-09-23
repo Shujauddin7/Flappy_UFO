@@ -19,11 +19,12 @@ const faqData: FAQItem[] = [
     {
         question: "Is this gambling?",
         answer: `No! Flappy UFO is 100% skill-based competitive gaming:
-• Your flying skill alone determines your score.
-• Better players consistently achieve higher results.
-• No random mechanics, luck, or chance involved.
-• Similar to chess or esports tournaments, where talent and practice decide winners.
-• Pure skill, focus, and practice lead to success.`,
+
+⭐ Your flying skill alone determines your score
+⭐ Better players consistently achieve higher results  
+⭐ No random mechanics, luck, or chance involved
+⭐ Similar to chess or esports tournaments, where talent and practice decide winners
+⭐ Pure skill, focus, and practice lead to success`,
     },
 
     {
@@ -40,7 +41,7 @@ const faqData: FAQItem[] = [
     },
     {
         question: "What are the Pool Prize breakdown?",
-        answer:  `Rank 1 → 40% of prize pool  
+        answer: `Rank 1 → 40% of prize pool  
 Rank 2 → 22%, 
 Rank 3 → 14%, 
 Rank 4 → 6%,
@@ -52,8 +53,8 @@ Rank 9 → 2%,
 Rank 10 → 2%.`
     },
     {
-      question: "What are the different game modes?",
-      answer: "Practice Mode: Play for free, collect coins from stars, use coins to continue. Tournament Mode: Pay entry fee to compete for WLD prizes with other players."
+        question: "What are the different game modes?",
+        answer: "Practice Mode: Play for free, collect coins from stars, use coins to continue. Tournament Mode: Pay entry fee to compete for WLD prizes with other players."
     },
     {
         question: "Can I play multiple times in a tournament?",
@@ -64,20 +65,20 @@ Rank 10 → 2%.`
         answer: "First crash: Pay the same amount to continue (score carries forward). Second crash: Game over completely. You must create a new entry with new payment to play again."
     },
     {
-      question: "How do continues work?",
-      answer: "Practice Mode: Use 10 coins per continue (unlimited). Tournament Mode: Pay the same entry fee once per game to continue, then game over on second crash."
+        question: "How do continues work?",
+        answer: "Practice Mode: Use 10 coins per continue (unlimited). Tournament Mode: Pay the same entry fee once per game to continue, then game over on second crash."
     },
     {
-      question: "How is the leaderboard ranked?",
-      answer: "Players are ranked by their highest score. In case of ties, the player who achieved the score first wins. Only your best score across all entries counts."
+        question: "How is the leaderboard ranked?",
+        answer: "Players are ranked by their highest score. In case of ties, the player who achieved the score first wins. Only your best score across all entries counts."
     },
     {
-      question: "How do I collect stars in Practice Mode?",
-      answer: "Fly through stars during gameplay to collect them. Each star gives you 2 coins. Stars don't affect your score - they're just for earning continue coins!"
+        question: "How do I collect stars in Practice Mode?",
+        answer: "Fly through stars during gameplay to collect them. Each star gives you 2 coins. Stars don't affect your score - they're just for earning continue coins!"
     },
     {
-      question: "Is my progress saved?",
-      answer: "Tournament scores are saved on our servers. Practice Mode coins are saved locally on your device. Your session persists when you return to the game."
+        question: "Is my progress saved?",
+        answer: "Tournament scores are saved on our servers. Practice Mode coins are saved locally on your device. Your session persists when you return to the game."
     }
 ];
 
