@@ -105,8 +105,14 @@ export default function InfoModal({ isOpen, onClose }: InfoModalProps) {
                     </div>
                 </div>
 
-                {/* Content Area - FIXED FOR SCROLLING */}
-                <div className="flex-1 overflow-y-auto">
+                {/* Content Area - MOBILE SCROLLING ENABLED */}
+                <div
+                    className="flex-1 overflow-y-auto"
+                    style={{
+                        WebkitOverflowScrolling: 'touch',
+                        touchAction: 'pan-y'
+                    }}
+                >
                     <div className="h-full">
                         {renderContent()}
                     </div>

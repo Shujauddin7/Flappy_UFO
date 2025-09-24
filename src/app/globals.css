@@ -30,8 +30,8 @@ body {
   background: #000000;
   color: #ffffff;
   font-family: 'Exo 2', Arial, sans-serif;
-  touch-action: manipulation;
-  /* Improve touch responsiveness */
+  touch-action: pan-y pinch-zoom;
+  /* Allow vertical scrolling and pinch zoom, prevent horizontal scroll */
   margin: 0;
   padding: 0;
 }
@@ -4060,4 +4060,15 @@ div[style*="touchAction: 'pan-y'"] {
   .space-nav-btn {
     padding: 0.8rem 1rem;
   }
+}
+
+/* Apply touch-action: manipulation only to interactive elements that need it */
+button,
+.mode-card,
+.space-nav-btn,
+.info-btn,
+.tap-play-btn,
+canvas,
+[role="button"] {
+  touch-action: manipulation;
 }
