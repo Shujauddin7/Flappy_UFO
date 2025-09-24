@@ -1230,20 +1230,41 @@ export default function FlappyGame({
                                 Loading Space Assets...
                             </p>
 
-                            {/* Progress Bar */}
-                            <div className="w-full bg-slate-700 rounded-full h-3 mt-4 overflow-hidden">
-                                <div
-                                    className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full transition-all duration-500 relative"
-                                    style={{ width: `${imagePreloader.loadingProgress}%` }}
-                                >
-                                    <div
-                                        className="absolute inset-0 bg-white opacity-30 animate-pulse"
-                                        style={{ animationDuration: '1s' }}
+                            {/* Circular Progress with Percentage */}
+                            <div className="relative w-24 h-24 mx-auto mt-4">
+                                <svg className="w-24 h-24 transform -rotate-90" viewBox="0 0 36 36">
+                                    {/* Background circle */}
+                                    <path
+                                        className="text-slate-700"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        fill="transparent"
+                                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                                     />
+                                    {/* Progress circle */}
+                                    <path
+                                        className="text-cyan-400"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        fill="transparent"
+                                        strokeDasharray={`${imagePreloader.loadingProgress}, 100`}
+                                        style={{
+                                            filter: 'drop-shadow(0 0 8px #00f5ff)',
+                                            transition: 'stroke-dasharray 0.5s ease-in-out'
+                                        }}
+                                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                    />
+                                </svg>
+                                {/* Percentage text in center */}
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className="text-xl font-bold text-white">
+                                        {imagePreloader.loadingProgress}%
+                                    </span>
                                 </div>
                             </div>
-                            <p className="text-sm text-gray-400 mt-2">
-                                {imagePreloader.loadingProgress}% Complete
+                            <p className="text-sm text-cyan-300 mt-2 animate-pulse">
+                                Complete
                             </p>
                         </div>
 
