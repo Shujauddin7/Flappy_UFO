@@ -1206,21 +1206,6 @@ export default function FlappyGame({
                     style={{ background: 'linear-gradient(135deg, #0B1426 0%, #1a237e 50%, #0B1426 100%)' }}
                 >
                     <div className="text-center space-y-6 max-w-sm px-6">
-                        {/* UFO Loading Animation */}
-                        <div className="relative w-20 h-20 mx-auto mb-8">
-                            <div
-                                className="w-20 h-20 rounded-full border-4 border-cyan-400 border-t-transparent animate-spin"
-                                style={{
-                                    boxShadow: '0 0 20px #00f5ff, inset 0 0 20px #00f5ff40',
-                                    animationDuration: '2s'
-                                }}
-                            />
-                            <div
-                                className="absolute inset-2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 opacity-20 animate-pulse"
-                                style={{ animationDuration: '1.5s' }}
-                            />
-                        </div>
-
                         {/* Loading Text */}
                         <div className="space-y-2">
                             <h2 className="text-2xl font-bold text-white animate-pulse">
