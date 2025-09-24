@@ -1205,37 +1205,42 @@ export default function FlappyGame({
                     className="fixed inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-slate-900 via-blue-900 to-slate-900 z-50"
                     style={{ background: 'linear-gradient(135deg, #0B1426 0%, #1a237e 50%, #0B1426 100%)' }}
                 >
-                    <div className="text-center space-y-6 max-w-sm px-6">
-                        {/* Loading Text */}
-                        <div className="space-y-2">
-                            <h2 className="text-2xl font-bold text-white animate-pulse">
+                    <div className="text-center space-y-8 max-w-sm px-6">
+                        {/* Game Title */}
+                        <div className="space-y-3">
+                            <h1 className="text-3xl font-bold text-white">
                                 🛸 Flappy UFO
-                            </h2>
-                            <p className="text-cyan-300 text-lg">
+                            </h1>
+                            <p className="text-cyan-300 text-lg font-medium">
                                 Loading Space Assets...
                             </p>
+                        </div>
 
-                            {/* Circular Progress with Percentage */}
-                            <div className="relative w-24 h-24 mx-auto mt-4">
-                                <svg className="w-24 h-24 transform -rotate-90" viewBox="0 0 36 36">
+                        {/* Circular Progress Indicator */}
+                        <div className="flex flex-col items-center space-y-4">
+                            <div className="relative w-32 h-32">
+                                <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 36 36">
                                     {/* Background circle */}
                                     <path
-                                        className="text-slate-700"
+                                        className="text-slate-800"
                                         stroke="currentColor"
-                                        strokeWidth="2"
+                                        strokeWidth="3"
                                         fill="transparent"
                                         d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                        style={{
+                                            opacity: 0.3
+                                        }}
                                     />
                                     {/* Progress circle */}
                                     <path
                                         className="text-cyan-400"
                                         stroke="currentColor"
-                                        strokeWidth="2"
+                                        strokeWidth="3"
                                         strokeLinecap="round"
                                         fill="transparent"
                                         strokeDasharray={`${imagePreloader.loadingProgress}, 100`}
                                         style={{
-                                            filter: 'drop-shadow(0 0 8px #00f5ff)',
+                                            filter: 'drop-shadow(0 0 12px #00f5ff)',
                                             transition: 'stroke-dasharray 0.5s ease-in-out'
                                         }}
                                         d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
@@ -1243,14 +1248,16 @@ export default function FlappyGame({
                                 </svg>
                                 {/* Percentage text in center */}
                                 <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="text-xl font-bold text-white">
-                                        {imagePreloader.loadingProgress}%
-                                    </span>
+                                    <div className="text-center">
+                                        <span className="text-2xl font-bold text-white block">
+                                            {imagePreloader.loadingProgress}%
+                                        </span>
+                                        <span className="text-xs text-cyan-300 uppercase tracking-wider">
+                                            Complete
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
-                            <p className="text-sm text-cyan-300 mt-2 animate-pulse">
-                                Complete
-                            </p>
                         </div>
 
                         {/* Error Messages */}
