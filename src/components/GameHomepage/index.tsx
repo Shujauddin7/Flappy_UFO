@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import Link from 'next/link';
 import { useSessionPersistence } from '@/hooks/useSessionPersistence';
 import { useGameAuth } from '@/hooks/useGameAuth'; // ADD MISSING IMPORT
 import { Page } from '@/components/PageLayout';
 import { walletAuth } from '@/auth/wallet';
 import dynamic from 'next/dynamic';
 import { TournamentEntryModal } from '@/components/TournamentEntryModal';
+import InfoModal from '@/components/INFO';
 import { canContinue, spendCoins, getCoins, addCoins } from '@/utils/coins';
 
 // Dynamically import FlappyGame to avoid SSR issues
@@ -35,6 +35,23 @@ type GameMode = 'practice' | 'tournament';
 export default function GameHomepage() {
     const [currentScreen, setCurrentScreen] = useState<'home' | 'gameSelect' | 'tournamentEntry' | 'playing'>('home');
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
+    const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+
+    // Debug state changes
+    useEffect(() => {
+        console.log('Screen changed to:', currentScreen);
+    }, [currentScreen]);
+
+    useEffect(() => {
+        console.log('Info modal state changed to:', isInfoModalOpen);
+    }, [isInfoModalOpen]);
+
+    // Close info modal when navigating away from home screen
+    useEffect(() => {
+        if (currentScreen !== 'home' && isInfoModalOpen) {
+            setIsInfoModalOpen(false);
+        }
+    }, [currentScreen, isInfoModalOpen]);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isAuthenticating, setIsAuthenticating] = useState(false); // Local auth state
 
@@ -99,6 +116,8 @@ export default function GameHomepage() {
     // Verification state - managed properly with World App session per Plan.md
     const [isVerifiedToday, setIsVerifiedToday] = useState<boolean>(false);
     const [verificationLoading, setVerificationLoading] = useState<boolean>(false);
+    const [orbCapabilityLoading, setOrbCapabilityLoading] = useState<boolean>(false);
+    const [canUseOrbVerification, setCanUseOrbVerification] = useState<boolean>(true); // Default to true for new users
 
     // Tournament entry loading states to prevent duplicate operations
     const [isProcessingEntry, setIsProcessingEntry] = useState<boolean>(false);
@@ -154,7 +173,50 @@ export default function GameHomepage() {
             setIsVerifiedToday(false);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [session?.user?.walletAddress]); // 🚀 FIX: Removed checkVerificationStatus from deps to prevent infinite loop
+    }, [session?.user?.walletAddress]);
+
+    // 🔮 CHECK ORB VERIFICATION CAPABILITY
+    const checkOrbVerificationCapability = useCallback(async () => {
+        if (!session?.user?.walletAddress) return false;
+
+        try {
+            setOrbCapabilityLoading(true);
+
+            const response = await fetch('/api/users/orb-verification-capability', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    wallet: session.user.walletAddress,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                console.log('🔮 Orb capability check:', data.data);
+                setCanUseOrbVerification(data.data.canUseOrbDiscount);
+                return data.data.canUseOrbDiscount;
+            } else {
+                console.error('❌ Failed to check Orb capability:', data.error);
+                setCanUseOrbVerification(true); // Default to allowing verification attempts
+                return true;
+            }
+        } catch (error) {
+            console.error('❌ Error checking Orb capability:', error);
+            setCanUseOrbVerification(true); // Default to allowing verification attempts
+            return true;
+        } finally {
+            setOrbCapabilityLoading(false);
+        }
+    }, [session?.user?.walletAddress]);
+
+    // Check both verification status and Orb capability when wallet changes
+    useEffect(() => {
+        if (session?.user?.walletAddress) {
+            checkVerificationStatus();
+            checkOrbVerificationCapability();
+        }
+    }, [session?.user?.walletAddress, checkVerificationStatus, checkOrbVerificationCapability]); // 🚀 FIX: Removed checkVerificationStatus from deps to prevent infinite loop
 
     // 🚀 LIGHTNING FAST LEADERBOARD: Pre-load leaderboard data in background
     // This makes leaderboard tab load instantly when clicked (0ms perceived load time)
@@ -269,6 +331,21 @@ export default function GameHomepage() {
             alert('❌ Failed to check tournament status. Please try again.');
             return false;
         }
+    }, []);
+
+    // Stable event handlers to prevent recreation and caching issues
+    const handleInfoClick = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Info button clicked - opening modal');
+        setIsInfoModalOpen(true);
+    }, []);
+
+    const handlePlayClick = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Play button clicked - going to game select');
+        setCurrentScreen('gameSelect');
     }, []);
 
     // Handle game start with authentication
@@ -394,7 +471,10 @@ export default function GameHomepage() {
             if (verificationData.success) {
                 console.log('✅ World ID verification successful');
                 // Update user's verification status in database
-                await updateUserVerificationStatus(verificationData.nullifier_hash);
+                await updateUserVerificationStatus(
+                    verificationData.nullifier_hash,
+                    verificationData.verification_level
+                );
                 // Proceed with 0.9 WLD payment
                 await handlePayment(0.9, true);
             } else {
@@ -403,12 +483,24 @@ export default function GameHomepage() {
 
         } catch (error) {
             console.error('World ID verification error:', error);
-            alert('World ID verification failed. Please try again or use Standard Entry.');
+
+            // Provide more specific error messages
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+            if (errorMessage.includes('CredentialUnavailable') || errorMessage.includes('verification level')) {
+                alert('Orb verification is required for the discounted entry. Please use an Orb to verify your World ID, or choose Standard Entry (1.0 WLD).');
+            } else if (errorMessage.includes('MaxVerificationsReached')) {
+                alert('You have already verified the maximum number of times for this tournament. Please try again in the next tournament.');
+            } else if (errorMessage.includes('network') || errorMessage.includes('timeout')) {
+                alert('Network error during verification. Please check your connection and try again, or use Standard Entry.');
+            } else {
+                alert('World ID verification failed. Please try again or use Standard Entry (1.0 WLD).');
+            }
         }
     };
 
     // Update user verification status in database
-    const updateUserVerificationStatus = async (nullifierHash: string) => {
+    const updateUserVerificationStatus = async (nullifierHash: string, verificationLevel?: string) => {
         try {
             if (!session?.user?.walletAddress) {
                 throw new Error('No wallet address found in session');
@@ -423,6 +515,7 @@ export default function GameHomepage() {
                     nullifier_hash: nullifierHash,
                     verification_date: new Date().toISOString(),
                     wallet: session.user.walletAddress, // Pass wallet address
+                    verification_level: verificationLevel, // Pass verification level
                 }),
             });
 
@@ -1264,6 +1357,8 @@ export default function GameHomepage() {
                     isVerifiedToday={isVerifiedToday}
                     verificationLoading={verificationLoading}
                     isProcessingEntry={isProcessingEntry}
+                    canUseOrbVerification={canUseOrbVerification}
+                    orbCapabilityLoading={orbCapabilityLoading}
                 />
             </Page>
         );
@@ -1271,56 +1366,76 @@ export default function GameHomepage() {
 
     if (currentScreen === 'home') {
         return (
-            <Page>
-                <canvas ref={canvasRef} className="starfield-canvas" />
-                <Page.Main className="main-container">
-                    <div className="header-section">
-                        <h1 className="game-title">
-                            <span className="ufo-icon">🛸</span>
-                            <span className="flappy-text">Flappy</span>{''}
-                            <span className="ufo-text">UFO</span>
-                            <span className="ufo-icon">🛸</span>
-                        </h1>
-                        <Link
-                            href="/info"
+            <>
+                <Page>
+                    <canvas ref={canvasRef} className="starfield-canvas" />
+                    <Page.Main className="main-container">
+                        {/* Info button positioned absolutely outside header section */}
+                        <button
+                            onClick={handleInfoClick}
                             className="info-btn"
                             aria-label="Game Info"
+                            style={{
+                                position: 'absolute',
+                                top: '10px',
+                                right: '10px',
+                                zIndex: 1000,
+                                pointerEvents: 'auto'
+                            }}
                         >
                             ?
-                        </Link>
-                    </div>
-                    <div className="play-section">
-                        <button
-                            className="custom-play-btn"
-                            onClick={() => setCurrentScreen('gameSelect')}
-                            aria-label="Tap to Play"
-                        >
-                            Tap To Play
                         </button>
-                        <DevSignOut />
-                    </div>
-                    <div className="bottom-nav-container">
-                        <div className="space-nav-icons">
-                            <button
-                                className="space-nav-btn home-nav"
-                                onClick={() => {/* Already on home page - no action needed */ }}
-                                aria-label="Launch Pad"
-                            >
-                                <div className="space-icon">🏠</div>
 
-                            </button>
-                            <button
-                                className="space-nav-btn prizes-nav"
-                                onClick={() => window.location.href = '/leaderboard'}
-                                aria-label="Leaderboard"
-                            >
-                                <div className="space-icon">🏆</div>
-
-                            </button>
+                        <div className="header-section">
+                            <h1 className="game-title">
+                                <span className="ufo-icon">🛸</span>
+                                <span className="flappy-text">Flappy</span>{''}
+                                <span className="ufo-text">UFO</span>
+                                <span className="ufo-icon">🛸</span>
+                            </h1>
                         </div>
-                    </div>
-                </Page.Main>
-            </Page>
+                        <div className="play-section">
+                            <button
+                                key={`play-btn-${currentScreen}`}
+                                className="custom-play-btn"
+                                onClick={handlePlayClick}
+                                aria-label="Tap to Play"
+                            >
+                                Tap To Play
+                            </button>
+                            <DevSignOut />
+                        </div>
+                        <div className="bottom-nav-container">
+                            <div className="space-nav-icons">
+                                <button
+                                    className="space-nav-btn home-nav"
+                                    onClick={() => {/* Already on home page - no action needed */ }}
+                                    aria-label="Launch Pad"
+                                >
+                                    <div className="space-icon">🏠</div>
+
+                                </button>
+                                <button
+                                    className="space-nav-btn prizes-nav"
+                                    onClick={() => window.location.href = '/leaderboard'}
+                                    aria-label="Leaderboard"
+                                >
+                                    <div className="space-icon">🏆</div>
+
+                                </button>
+                            </div>
+                        </div>
+                    </Page.Main>
+                </Page>
+
+                {/* Info Modal for home screen */}
+                {isInfoModalOpen && (
+                    <InfoModal
+                        isOpen={isInfoModalOpen}
+                        onClose={() => setIsInfoModalOpen(false)}
+                    />
+                )}
+            </>
         );
     }
 

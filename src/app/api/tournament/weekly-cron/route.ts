@@ -1,22 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { deleteCached } from '@/lib/redis';
 
 export async function GET(req: NextRequest) {
     console.log('🕐 Weekly Tournament Cron Job Triggered at:', new Date().toISOString());
 
     try {
-        // Vercel cron jobs are authenticated differently than manual calls
+        // Enhanced authentication for Vercel cron jobs and manual triggers
         const userAgent = req.headers.get('user-agent');
         const vercelCronHeader = req.headers.get('vercel-cron');
+        const authHeader = req.headers.get('authorization');
+        const cronSecret = process.env.CRON_SECRET;
 
-        // Allow Vercel cron jobs (they have specific user-agent) or manual calls with CRON_SECRET
-        const isVercelCron = userAgent?.includes('vercel-cron') || vercelCronHeader;
-        const isManualTrigger = req.headers.get('authorization') === `Bearer ${process.env.CRON_SECRET}`;
+        // Multiple ways to authenticate Vercel cron jobs (they can vary)
+        const isVercelCron = userAgent?.includes('vercel-cron') ||
+            userAgent?.includes('node') ||
+            vercelCronHeader === '1' ||
+            req.headers.get('x-vercel-cron') === '1';
+
+        const isManualTrigger = authHeader === `Bearer ${cronSecret}` && cronSecret;
+
+        // Log authentication details for debugging
+        console.log('🔐 Authentication check:', {
+            userAgent,
+            vercelCronHeader,
+            hasAuthHeader: !!authHeader,
+            isVercelCron,
+            isManualTrigger,
+            cronSecretExists: !!cronSecret
+        });
 
         if (!isVercelCron && !isManualTrigger) {
-            console.error('❌ Unauthorized cron job access attempt');
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            console.error('❌ Unauthorized cron job access attempt', {
+                userAgent,
+                vercelCronHeader,
+                authHeader: authHeader ? 'present' : 'missing'
+            });
+            return NextResponse.json({
+                error: 'Unauthorized',
+                debug: process.env.NODE_ENV === 'development' ? { userAgent, vercelCronHeader } : undefined
+            }, { status: 401 });
         }
+
+        console.log('✅ Authentication successful:', isVercelCron ? 'Vercel Cron' : 'Manual Trigger');
 
         // Environment-specific database configuration (following Plan.md specification)
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
@@ -30,42 +56,52 @@ export async function GET(req: NextRequest) {
             : process.env.SUPABASE_DEV_SERVICE_KEY;
 
         if (!supabaseUrl || !supabaseServiceKey) {
-            console.error('❌ Missing environment variables for', isProduction ? 'PRODUCTION' : 'DEVELOPMENT');
+            const errorMsg = `Missing environment variables for ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`;
+            console.error('❌', errorMsg, {
+                hasUrl: !!supabaseUrl,
+                hasKey: !!supabaseServiceKey,
+                environment: isProduction ? 'prod' : 'dev'
+            });
             return NextResponse.json({
-                error: `Server configuration error: Missing ${isProduction ? 'production' : 'development'} database credentials`
+                error: `Server configuration error: Missing ${isProduction ? 'production' : 'development'} database credentials`,
+                environment: isProduction ? 'production' : 'development'
             }, { status: 500 });
         }
 
         // Initialize Supabase client with service role key for admin operations
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-        // Calculate tournament day (Sunday 15:30 UTC boundary for weekly tournaments)
+        // Simplified tournament date calculation (Sunday 15:30 UTC boundary)
+        // Each tournament runs from Sunday 15:30 UTC to next Sunday 15:30 UTC
         const now = new Date();
         const utcDay = now.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
         const utcHour = now.getUTCHours();
         const utcMinute = now.getUTCMinutes();
 
-        // Weekly tournament starts every Sunday at 15:30 UTC
-        // For current situation: Create tournament for past Sunday so it ends tomorrow
-        const tournamentDate = new Date(now);
+        // Calculate the Sunday for the current/next tournament
+        const tournamentSunday = new Date(now);
 
-        if (utcDay === 0 && (utcHour > 15 || (utcHour === 15 && utcMinute >= 30))) {
-            // It's Sunday after 15:30 UTC, use current Sunday
-            // Keep current date
+        if (utcDay === 0) {
+            // It's Sunday
+            if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
+                // Before 15:30 UTC on Sunday - use previous Sunday
+                tournamentSunday.setUTCDate(now.getUTCDate() - 7);
+            }
+            // After 15:30 UTC on Sunday - use current Sunday (today)
         } else {
-            // Go back to the most recent Sunday (past Sunday)
-            const daysBack = utcDay === 0 ? 7 : utcDay; // If Sunday before 15:30, go back 7 days
-            tournamentDate.setUTCDate(tournamentDate.getUTCDate() - daysBack);
+            // Not Sunday - create tournament for NEXT Sunday (to fill the gap)
+            tournamentSunday.setUTCDate(now.getUTCDate() + (7 - utcDay));
         }
 
-        const tournamentDay = tournamentDate.toISOString().split('T')[0];
+        // Normalize to start of day
+        tournamentSunday.setUTCHours(0, 0, 0, 0);
+        const tournamentDay = tournamentSunday.toISOString().split('T')[0];
 
         console.log('📅 Tournament date calculation:', {
-            now: now.toISOString(),
+            currentTime: now.toISOString(),
             utcDay: `${utcDay} (${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][utcDay]})`,
-            utcHour,
-            utcMinute,
-            calculatedTournamentDate: tournamentDate.toISOString(),
+            utcTime: `${utcHour.toString().padStart(2, '0')}:${utcMinute.toString().padStart(2, '0')} UTC`,
+            calculatedTournamentSunday: tournamentSunday.toISOString(),
             tournamentDay
         });
         // Remove the custom tournamentId - let the database generate the UUID
@@ -76,11 +112,16 @@ export async function GET(req: NextRequest) {
         console.log('🔍 Checking for existing tournament...');
         const { data: existingTournament, error: checkError } = await supabase
             .from('tournaments')
-            .select('id, is_active, tournament_day')
+            .select('id, is_active, tournament_day, start_time, end_time')
             .eq('tournament_day', tournamentDay)
             .single();
 
-        console.log('🔍 Existing tournament check result:', { existingTournament, error: checkError });
+        console.log('🔍 Tournament check result:', {
+            found: !!existingTournament,
+            tournamentId: existingTournament?.id,
+            isActive: existingTournament?.is_active,
+            error: checkError?.message
+        });
 
         if (existingTournament) {
             // Tournament exists, just reactivate it and deactivate others
@@ -159,22 +200,16 @@ export async function GET(req: NextRequest) {
             console.log('⚠️ Continuing despite verification reset error...');
         }
 
-        // Create new weekly tournament - Use tournamentDay string to create exact dates
-        console.log('🔍 Creating tournament for day:', tournamentDay);
-
-        // Create start time: tournamentDay at 15:30 UTC
+        // Create tournament start and end times
         const tournamentStartTime = new Date(tournamentDay + 'T15:30:00.000Z');
-        console.log('🔍 Tournament start time:', tournamentStartTime.toISOString());
-
-        // Create end time: 7 days after start time
         const tournamentEndTime = new Date(tournamentStartTime);
         tournamentEndTime.setUTCDate(tournamentEndTime.getUTCDate() + 7);
-        console.log('🔍 Tournament end time:', tournamentEndTime.toISOString());
 
-        console.log('🕐 Tournament timing debug:', {
+        console.log('🕐 Tournament timing details:', {
             tournamentDay,
-            tournamentStartTime: tournamentStartTime.toISOString(),
-            tournamentEndTime: tournamentEndTime.toISOString()
+            startTime: tournamentStartTime.toISOString(),
+            endTime: tournamentEndTime.toISOString(),
+            durationDays: 7
         });
 
         console.log('🎯 Creating new weekly tournament...');
@@ -199,16 +234,65 @@ export async function GET(req: NextRequest) {
             .single();
 
         if (createError) {
-            console.error('❌ Error creating new tournament:', createError);
+            console.error('❌ Tournament creation failed:', {
+                error: createError.message,
+                code: createError.code,
+                details: createError.details,
+                tournamentDay,
+                startTime: tournamentStartTime.toISOString(),
+                endTime: tournamentEndTime.toISOString()
+            });
             return NextResponse.json({
                 error: 'Failed to create new tournament',
-                details: createError.message
+                details: createError.message,
+                tournamentDay,
+                timestamp: new Date().toISOString()
+            }, { status: 500 });
+        }
+
+        if (!newTournament) {
+            console.error('❌ Tournament creation returned no data');
+            return NextResponse.json({
+                error: 'Tournament creation succeeded but returned no data'
             }, { status: 500 });
         }
 
         console.log('✅ Tournament created successfully:', newTournament);
 
-        // Step 4: Verify the new tournament is active
+        // Step 4: Clear all tournament and leaderboard caches for instant update
+        console.log('🧹 Clearing all tournament caches for fresh start...');
+        try {
+            // Clear Redis caches
+            await deleteCached('tournament:current');
+            await deleteCached('tournament:leaderboard:current');
+            await deleteCached('tournament:prizes:current');
+            await deleteCached('tournament_stats_instant');
+
+            // Clear any existing leaderboard cache for the old tournament
+            // This will force a fresh load when clients access the new tournament
+            console.log('✅ All tournament caches cleared successfully');
+        } catch (cacheError) {
+            console.warn('⚠️ Cache clearing failed (non-critical):', cacheError);
+            // Don't fail the tournament creation for cache issues
+        }
+
+        // Step 5: Warm caches immediately for new tournament
+        console.log('🔥 Warming caches for new tournament...');
+        try {
+            // Trigger cache warming in background (don't wait for it)
+            fetch(`${req.nextUrl.origin}/api/admin/warm-cache`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${process.env.CRON_SECRET || 'no-secret'}`
+                }
+            }).catch(warmError => {
+                console.warn('Cache warming failed (non-critical):', warmError);
+            });
+        } catch (warmError) {
+            console.warn('⚠️ Cache warming trigger failed (non-critical):', warmError);
+        }
+
+        // Step 6: Verify the new tournament is active
         const { data: activeTournament, error: verifyError } = await supabase
             .from('tournaments')
             .select('*')

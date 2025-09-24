@@ -121,6 +121,70 @@ export default function LeaderboardPage() {
     const [shouldShowFixedCard, setShouldShowFixedCard] = useState(false);
     const [showPrizeBreakdown, setShowPrizeBreakdown] = useState(false);
 
+    // 🧹 TOURNAMENT RESET DETECTION: Clear cache when tournament day changes
+    useEffect(() => {
+        const checkAndClearStaleCache = () => {
+            if (typeof window === 'undefined') return;
+
+            try {
+                // Get cached tournament data
+                const cachedTournament = sessionStorage.getItem('tournament_data');
+
+                if (!cachedTournament) return;
+
+                const parsed = JSON.parse(cachedTournament);
+                const cachedTournamentDay = parsed?.data?.tournament_day;
+
+                // If we have cached data, fetch current tournament to compare
+                fetch('/api/tournament/stats')
+                    .then(res => res.json())
+                    .then(tournament => {
+                        const currentTournamentDay = tournament.tournament_day;
+
+                        // If tournament day changed, clear all caches
+                        if (cachedTournamentDay && currentTournamentDay &&
+                            cachedTournamentDay !== currentTournamentDay) {
+
+                            console.log('🧹 TOURNAMENT RESET DETECTED!');
+                            console.log(`   Old tournament: ${cachedTournamentDay}`);
+                            console.log(`   New tournament: ${currentTournamentDay}`);
+                            console.log('   Clearing all cached data...');
+
+                            // Clear all tournament-related cache
+                            sessionStorage.removeItem('tournament_data');
+                            sessionStorage.removeItem('leaderboard_data');
+                            sessionStorage.removeItem('preloaded_tournament');
+                            sessionStorage.removeItem('preloaded_leaderboard');
+
+                            // Clear environment-specific cache keys too
+                            const envPrefix = process.env.NODE_ENV === 'production' ? 'prod_' : 'dev_';
+                            sessionStorage.removeItem(`${envPrefix}preloaded_tournament`);
+                            sessionStorage.removeItem(`${envPrefix}preloaded_leaderboard`);
+
+                            console.log('✅ All stale tournament cache cleared');
+
+                            // Force refresh the page data
+                            window.location.reload();
+                        }
+                    })
+                    .catch(err => {
+                        console.warn('Tournament day check failed:', err);
+                    });
+
+            } catch (error) {
+                console.warn('Cache check failed:', error);
+            }
+        };
+
+        // Check for stale cache on component mount
+        checkAndClearStaleCache();
+
+        // Also check periodically (every 30 seconds) to catch tournament changes
+        const interval = setInterval(checkAndClearStaleCache, 30000);
+
+        return () => clearInterval(interval);
+    }, []);
+
     // ⚡ INSTAGRAM-STYLE DATA LOADING: Instant + persistent
     useEffect(() => {
         // Only load if we don't have cached data - prevent unnecessary requests

@@ -7,15 +7,6 @@ supabase-*.sql
 src/components/DevTools/
 src/components/MobileDebugConsole/
 
-# Development documentation (exclude from production)  
-toself.md
-to-implement.md
-to_implement.md
-STEP-BY-STEP-SIGNIN.md
-URGENT_WORLD_PORTAL_UPDATE.md
-complete-database-schema.sql
-
-
 # dependencies
 /node_modules
 /.pnp
@@ -69,20 +60,8 @@ database.md
 next-env.d.ts
 !.env.sample
 
-# My_own_files
+# dev_Markdown_files
 Plan.md
-Createdfiles.md
 toself.md
 database.md
 to_implement.md
-analytics_table_design.md
-newprize.md
-analytics_table_design.md
-finalprize.md
-Redis_setup_Guide.md
-test-redis
-Redis_Next_steps.md
-VERCEL_CRON_UPGRADE_GUIDE.md
-IMPLEMENTATION_PLAN.md
-newleaderboard.md
-delete.md

@@ -105,8 +105,7 @@ body {
   align-items: flex-start;
   position: relative;
   margin-top: 0.5rem;
-  padding-right: 60px;
-  /* Add space for the info button */
+  /* Removed padding-right since info button is now positioned absolutely */
 }
 
 .game-title {
@@ -139,9 +138,6 @@ body {
 }
 
 .info-btn {
-  position: absolute;
-  top: 0;
-  right: 5px;
   background: rgba(11, 12, 16, 0.8);
   border: 2px solid rgba(0, 245, 255, 0.5);
   border-radius: 50%;
@@ -155,7 +151,6 @@ body {
   color: #00F5FF;
   cursor: pointer;
   transition: all 0.3s ease;
-  z-index: 100;
   backdrop-filter: blur(4px);
   box-shadow: 0 4px 12px rgba(0, 245, 255, 0.2);
   text-decoration: none;
@@ -825,6 +820,22 @@ body {
 .verify-button:disabled,
 .verify-button.authenticating {
   box-shadow: 0 4px 15px rgba(34, 197, 94, 0.2) !important;
+}
+
+.verify-button.dimmed {
+  background: linear-gradient(45deg, #6b7280, #4b5563) !important;
+  box-shadow: 0 4px 15px rgba(107, 114, 128, 0.3) !important;
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.verify-button.dimmed:hover {
+  box-shadow: 0 4px 15px rgba(107, 114, 128, 0.3) !important;
+}
+
+.feature.warning {
+  color: #f59e0b !important;
+  font-weight: 600;
 }
 
 .standard-button:disabled,
@@ -3528,6 +3539,42 @@ body {
   color: #9CA3AF;
   font-size: 0.9rem;
   opacity: 0.8;
+}
+
+/* INFO MODAL MOBILE SCROLLING FIX - OVERRIDE GLOBAL TOUCH-ACTION */
+/* These rules specifically allow mobile scrolling in INFO modal while keeping all other functionality intact */
+.info-modal-content,
+.info-modal-content *,
+.info-section,
+.info-section * {
+  touch-action: pan-y !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* INFO Modal main containers need scrolling capability */
+.info-section {
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-y !important;
+  height: 100% !important;
+  max-height: 100% !important;
+}
+
+/* FAQ specific scrolling fixes */
+.faq-container {
+  touch-action: pan-y !important;
+  -webkit-overflow-scrolling: touch !important;
+  overflow-y: auto !important;
+  height: 100% !important;
+}
+
+/* Terms and Support scrolling fixes */
+.terms-container,
+.support-container {
+  touch-action: pan-y !important;
+  -webkit-overflow-scrolling: touch !important;
+  overflow-y: auto !important;
+  height: 100% !important;
 }
 
 /* Enhanced Mobile Fixes for Critical Issues */

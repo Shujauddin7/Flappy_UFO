@@ -4,7 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 interface UpdateVerificationRequest {
     nullifier_hash: string;
     verification_date: string;
-    wallet?: string; // Optional - can be passed if no session
+    wallet?: string; // Optional for when we have session management
+    verification_level?: string; // Store verification level (Orb vs Device)
 }
 
 /**
@@ -13,7 +14,7 @@ interface UpdateVerificationRequest {
  */
 export async function POST(req: NextRequest) {
     try {
-        const { nullifier_hash, verification_date, wallet } = await req.json() as UpdateVerificationRequest;
+        const { nullifier_hash, verification_date, wallet, verification_level } = await req.json() as UpdateVerificationRequest;
 
         if (!nullifier_hash || !verification_date) {
             return NextResponse.json(
@@ -129,7 +130,10 @@ export async function POST(req: NextRequest) {
                 username: user.username,
                 wallet: wallet,
                 tournament_day: today, // Use the correct tournament boundary date
-                world_id_proof: { nullifier_hash }, // Store World ID proof
+                world_id_proof: {
+                    nullifier_hash,
+                    verification_level: verification_level || 'Device' // Store verification level
+                },
                 verified_at: new Date(verification_date).toISOString(), // Store full timestamp
                 updated_at: new Date().toISOString()
             }, {

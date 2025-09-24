@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Page } from '@/components/PageLayout';
 import { getCoins } from '@/utils/coins';
+import { useGameImagePreloader } from '@/hooks/useImagePreloader';
 
 interface GameObject {
     x: number;
@@ -72,6 +73,9 @@ export default function FlappyGame({
     const [isGracePeriod, setIsGracePeriod] = useState(false);
     const [gracePeriodMessage, setGracePeriodMessage] = useState('');
 
+    // Use the game image preloader
+    const imagePreloader = useGameImagePreloader();
+
     const gameStateRef = useRef<GameState>({
         ufo: { x: 100, y: 300, velocity: 0, rotation: 0 },
         obstacles: [],
@@ -87,7 +91,6 @@ export default function FlappyGame({
 
     const [, setGameState] = useState(gameStateRef.current);
     const gameLoopRef = useRef<number | undefined>(undefined);
-    const planetImagesRef = useRef<{ [key: string]: HTMLImageElement }>({});
     const lastTimeRef = useRef<number>(0); // For deltaTime calculation
 
     // Reset game state when component mounts
@@ -114,14 +117,11 @@ export default function FlappyGame({
         setGameState({ ...gameStateRef.current });
     }, [gameMode, continueFromScore]);
 
-    // Load planet images
+    // Load planet images using the image preloader
     useEffect(() => {
-        PLANETS.forEach(planet => {
-            const img = new Image();
-            img.src = `/${planet}`;
-            planetImagesRef.current[planet] = img;
-        });
-    }, []);
+        // Images are preloaded by the useGameImagePreloader hook
+        // We can access them via imagePreloader.getImage(planetName)
+    }, [imagePreloader]);
 
     // Check for grace period (Sunday 15:00-15:30 UTC) - only for tournament mode
     useEffect(() => {
@@ -700,7 +700,7 @@ export default function FlappyGame({
         // Draw planets, asteroids, coins, and dust particles
         state.obstacles.forEach(obstacle => {
             if (obstacle.type === 'planet' && obstacle.planetType) {
-                const img = planetImagesRef.current[obstacle.planetType];
+                const img = imagePreloader.getPlanetImage(obstacle.planetType);
                 const centerX = obstacle.x + obstacle.width / 2;
                 const centerY = obstacle.y + obstacle.height / 2;
                 const radius = obstacle.width / 2;
@@ -721,6 +721,21 @@ export default function FlappyGame({
                 };
 
                 const glowColor = getPlanetGlow(obstacle.planetType);
+
+                // Helper function to get planet fallback colors
+                const getPlanetFallback = (planetName: string): string => {
+                    const planetFallbacks: { [key: string]: string } = {
+                        'Earth.jpg': '#2E7D32',
+                        'Mars.jpg': '#E53935',
+                        'Jupiter.jpg': '#FF8F00',
+                        'Saturn.jpg': '#FFB300',
+                        'Venus.jpg': '#FFB300',
+                        'Neptune.jpg': '#1976D2',
+                        'Uranus.jpg': '#42A5F5',
+                        'Mercury.jpg': '#95A5A6',
+                    };
+                    return planetFallbacks[planetName] || '#6C7B7F';
+                };
 
                 // Planet glow with planet-specific color
                 ctx.save();
@@ -743,15 +758,16 @@ export default function FlappyGame({
                 ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
                 ctx.clip();
 
-                if (img && img.complete) {
+                if (img) {
                     // Draw the image within the circular clip
                     ctx.drawImage(img, obstacle.x, obstacle.y, obstacle.width, obstacle.height);
                 } else {
                     // Fallback gradient circle with planet color
+                    const fallbackColor = getPlanetFallback(obstacle.planetType);
                     const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
-                    gradient.addColorStop(0, glowColor);
-                    gradient.addColorStop(0.7, `${glowColor}80`);
-                    gradient.addColorStop(1, `${glowColor}20`);
+                    gradient.addColorStop(0, fallbackColor);
+                    gradient.addColorStop(0.7, `${fallbackColor}80`);
+                    gradient.addColorStop(1, `${fallbackColor}20`);
                     ctx.fillStyle = gradient;
                     ctx.fill();
                 }
@@ -1105,7 +1121,7 @@ export default function FlappyGame({
             // Game is over, but we still need to render one more time to show the final state
             // The parent component will show the modal
         }
-    }, [checkCollisions, createObstacles, createParticles, onGameEnd]);
+    }, [checkCollisions, createObstacles, createParticles, onGameEnd, imagePreloader]);
 
     // Input handlers
     useEffect(() => {
@@ -1183,6 +1199,67 @@ export default function FlappyGame({
 
     return (
         <Page>
+            {/* Loading Screen - Show while images are preloading */}
+            {imagePreloader.isLoading || !imagePreloader.allLoaded ? (
+                <div
+                    className="fixed inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-slate-900 via-blue-900 to-slate-900 z-50"
+                    style={{ background: 'linear-gradient(135deg, #0B1426 0%, #1a237e 50%, #0B1426 100%)' }}
+                >
+                    <div className="text-center space-y-6 max-w-sm px-6">
+                        {/* UFO Loading Animation */}
+                        <div className="relative w-20 h-20 mx-auto mb-8">
+                            <div
+                                className="w-20 h-20 rounded-full border-4 border-cyan-400 border-t-transparent animate-spin"
+                                style={{
+                                    boxShadow: '0 0 20px #00f5ff, inset 0 0 20px #00f5ff40',
+                                    animationDuration: '2s'
+                                }}
+                            />
+                            <div
+                                className="absolute inset-2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 opacity-20 animate-pulse"
+                                style={{ animationDuration: '1.5s' }}
+                            />
+                        </div>
+
+                        {/* Loading Text */}
+                        <div className="space-y-2">
+                            <h2 className="text-2xl font-bold text-white animate-pulse">
+                                🛸 Flappy UFO
+                            </h2>
+                            <p className="text-cyan-300 text-lg">
+                                Loading Space Assets...
+                            </p>
+
+                            {/* Progress Bar */}
+                            <div className="w-full bg-slate-700 rounded-full h-3 mt-4 overflow-hidden">
+                                <div
+                                    className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full transition-all duration-500 relative"
+                                    style={{ width: `${imagePreloader.loadingProgress}%` }}
+                                >
+                                    <div
+                                        className="absolute inset-0 bg-white opacity-30 animate-pulse"
+                                        style={{ animationDuration: '1s' }}
+                                    />
+                                </div>
+                            </div>
+                            <p className="text-sm text-gray-400 mt-2">
+                                {imagePreloader.loadingProgress}% Complete
+                            </p>
+                        </div>
+
+                        {/* Error Messages */}
+                        {imagePreloader.errors.length > 0 && (
+                            <div className="mt-4 p-3 bg-red-900 bg-opacity-50 rounded-lg">
+                                <p className="text-red-300 text-sm">
+                                    Some images couldn&apos;t load, but the game will work with fallbacks.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            ) : null}
+
+            {/* Game Canvas */}
             <canvas
                 ref={canvasRef}
                 className="game-canvas"
@@ -1194,7 +1271,10 @@ export default function FlappyGame({
                     height: '100vh',
                     background: '#0B1426',
                     touchAction: 'none',
-                    zIndex: 10
+                    zIndex: 10,
+                    // Hide canvas while loading
+                    opacity: imagePreloader.isLoading || !imagePreloader.allLoaded ? 0 : 1,
+                    transition: 'opacity 0.5s ease-in-out'
                 }}
             />
 
