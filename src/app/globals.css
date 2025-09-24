@@ -4062,6 +4062,33 @@ div[style*="touchAction: 'pan-y'"] {
   }
 }
 
+/* MOBILE SCROLLING EMERGENCY FIX - AGGRESSIVE APPROACH FOR iOS/Android */
+@media screen and (max-width: 768px) {
+  /* Force enable scrolling on ALL mobile devices */
+  .fixed.inset-0 > div:last-child > div:last-child {
+    overflow: auto !important;
+    overflow-y: scroll !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+    height: 100% !important;
+    max-height: 100% !important;
+  }
+  
+  /* Ensure content inside can be scrolled */
+  .fixed.inset-0 > div:last-child > div:last-child > div {
+    min-height: 100% !important;
+    overflow: visible !important;
+  }
+  
+  /* Additional fallback for specific mobile browsers */
+  [style*="touchAction: 'pan-y'"] {
+    overflow: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+    transform: translateZ(0) !important; /* Force hardware acceleration */
+  }
+}
+
 /* Apply touch-action: manipulation only to interactive elements that need it */
 button,
 .mode-card,

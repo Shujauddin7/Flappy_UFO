@@ -54,7 +54,12 @@ export default function InfoModal({ isOpen, onClose }: InfoModalProps) {
             />
 
             {/* Modal Content */}
-            <div className="relative w-full h-full max-w-4xl mx-auto bg-[#0B0C10] border border-[#00F5FF] border-opacity-30 flex flex-col">
+            <div 
+                className="relative w-full h-full max-w-4xl mx-auto bg-[#0B0C10] border border-[#00F5FF] border-opacity-30 flex flex-col"
+                style={{
+                    maxHeight: '100dvh'
+                }}
+            >
 
                 {/* Fixed Navigation Header - Countdown Timer Style */}
                 <div className="flex-shrink-0">
@@ -105,15 +110,20 @@ export default function InfoModal({ isOpen, onClose }: InfoModalProps) {
                     </div>
                 </div>
 
-                {/* Content Area - MOBILE SCROLLING ENABLED */}
+                {/* Content Area - AGGRESSIVE MOBILE SCROLLING FIX */}
                 <div
-                    className="flex-1 overflow-y-auto"
+                    className="flex-1"
                     style={{
+                        overflow: 'auto',
+                        overflowY: 'scroll',
                         WebkitOverflowScrolling: 'touch',
-                        touchAction: 'pan-y'
+                        touchAction: 'pan-y',
+                        height: '100%',
+                        maxHeight: '100%',
+                        position: 'relative'
                     }}
                 >
-                    <div className="h-full">
+                    <div style={{ minHeight: '100%', padding: '0' }}>
                         {renderContent()}
                     </div>
                 </div>
