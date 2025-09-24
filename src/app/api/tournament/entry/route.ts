@@ -71,14 +71,15 @@ async function updateTournamentPlayerCount(supabase: any, tournamentId: string) 
             guaranteeAmount = top10Winners * 1.0; // Admin adds 1 WLD per top 10 winner
         }
 
-        const totalPrizePool = basePrizePool + guaranteeAmount; // 70% + guarantee (if needed)
+        const totalPrizePool = basePrizePool; // Store only base 70% in database (guarantee applied only at payout time per Plan.md)
         const adminNetResult = adminFeeAmount - guaranteeAmount; // Can be negative
 
         console.log('💰 NEW Guarantee system calculation:', {
             totalRevenue,
             basePrizePool: basePrizePool,
             guaranteeAmount,
-            totalPrizePool,
+            totalPrizePoolStored: totalPrizePool, // What gets stored in DB (base 70% only)
+            finalPrizePoolWithGuarantee: basePrizePool + guaranteeAmount, // What admin pays (base + guarantee)
             adminFeeAmount,
             adminNetResult
         });
