@@ -54,7 +54,7 @@ export default function InfoModal({ isOpen, onClose }: InfoModalProps) {
             />
 
             {/* Modal Content */}
-            <div 
+            <div
                 className="relative w-full h-full max-w-4xl mx-auto bg-[#0B0C10] border border-[#00F5FF] border-opacity-30 flex flex-col"
                 style={{
                     maxHeight: '100dvh'
