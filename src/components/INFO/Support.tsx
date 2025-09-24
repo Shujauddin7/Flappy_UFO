@@ -53,7 +53,11 @@ export default function Support() {
     ];
 
     return (
-        <div className="h-full overflow-y-auto px-4 py-6">
+        <div className="h-full overflow-y-auto px-4 py-6"
+            style={{
+                WebkitOverflowScrolling: 'touch',
+                touchAction: 'pan-y'
+            }}>
             <div className="space-y-4">
                 {supportData.map((section, index) => (
                     <div

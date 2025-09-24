@@ -103,9 +103,11 @@ export default function InfoModal({ isOpen, onClose }: InfoModalProps) {
                             Support
                         </button>
                     </div>
-                </div>                {/* Content Area */}
-                <div className="flex-1 overflow-hidden">
-                    <div className="h-full transition-all duration-300 ease-in-out">
+                </div>
+
+                {/* Content Area - FIXED FOR SCROLLING */}
+                <div className="flex-1 overflow-y-auto">
+                    <div className="h-full">
                         {renderContent()}
                     </div>
                 </div>

@@ -95,7 +95,11 @@ export default function Terms({ onSupportClick }: TermsProps) {
     ];
 
     return (
-        <div className="h-full overflow-y-auto px-4 py-6">
+        <div className="h-full overflow-y-auto px-4 py-6"
+            style={{
+                WebkitOverflowScrolling: 'touch',
+                touchAction: 'pan-y'
+            }}>
             <div className="space-y-4">
                 {termsData.map((section, index) => (
                     <div

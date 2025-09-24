@@ -3541,14 +3541,37 @@ body {
   opacity: 0.8;
 }
 
-/* INFO MODAL MOBILE SCROLLING FIX - OVERRIDE GLOBAL TOUCH-ACTION */
+/* INFO MODAL MOBILE SCROLLING FIX - COMPREHENSIVE SOLUTION */
 /* These rules specifically allow mobile scrolling in INFO modal while keeping all other functionality intact */
+
+/* Override global touch-action for INFO modal containers */
+div[class*="fixed inset-0"][style*="zIndex: 9999"] *,
+div[class*="fixed inset-0"][style*="z-index: 9999"] * {
+  touch-action: pan-y !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* Specific INFO modal scrolling containers */
 .info-modal-content,
 .info-modal-content *,
 .info-section,
 .info-section * {
   touch-action: pan-y !important;
   -webkit-overflow-scrolling: touch !important;
+}
+
+/* Ensure scrollable areas work properly on mobile */
+div[class*="overflow-y-auto"] {
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-y !important;
+}
+
+/* Force scrolling for INFO components */
+div[style*="WebkitOverflowScrolling: 'touch'"],
+div[style*="touchAction: 'pan-y'"] {
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-y !important;
+  overflow-y: auto !important;
 }
 
 /* INFO Modal main containers need scrolling capability */
@@ -3575,6 +3598,13 @@ body {
   -webkit-overflow-scrolling: touch !important;
   overflow-y: auto !important;
   height: 100% !important;
+}
+
+/* Ensure content inside flex-1 can scroll */
+.flex-1[class*="overflow-y-auto"] {
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-y !important;
+  overflow-y: auto !important;
 }
 
 /* Enhanced Mobile Fixes for Critical Issues */

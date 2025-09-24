@@ -90,7 +90,11 @@ export default function FAQ({ onSupportClick }: FAQProps) {
     };
 
     return (
-        <div className="h-full overflow-y-auto px-4 py-6 space-y-4">
+        <div className="h-full overflow-y-auto px-4 py-6 space-y-4"
+            style={{
+                WebkitOverflowScrolling: 'touch',
+                touchAction: 'pan-y'
+            }}>
             {faqData.map((item, index) => (
                 <div
                     key={index}
