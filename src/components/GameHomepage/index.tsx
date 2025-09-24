@@ -960,6 +960,10 @@ export default function GameHomepage() {
             mouseY = e.clientY - height / 2;
         }
         function onTouchMove(e: TouchEvent) {
+            // Allow native scrolling when INFO modal is open
+            if (isInfoModalOpen) {
+                return;
+            }
             if (e.touches.length > 0) {
                 mouseX = e.touches[0].clientX - width / 2;
                 mouseY = e.touches[0].clientY - height / 2;
@@ -979,7 +983,7 @@ export default function GameHomepage() {
             window.removeEventListener('mousemove', onMouseMove);
             window.removeEventListener('touchmove', onTouchMove);
         };
-    }, [currentScreen]); // Add currentScreen as dependency to restart animation when returning to home
+    }, [currentScreen, isInfoModalOpen]); // Update handler when modal state changes so scrolling works inside modal
 
     // Render the FlappyGame when playing
     if (currentScreen === 'playing') {
