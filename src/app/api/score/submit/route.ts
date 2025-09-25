@@ -161,8 +161,9 @@ export async function POST(req: NextRequest) {
         // If user paid for both entries, use the most recent one based on timestamps
         let isVerifiedGame = false;
         // Prefer explicit current_entry_type if available; fallback to timestamps
-        if (record as unknown as { current_entry_type?: string }).current_entry_type) {
-            isVerifiedGame = ((record as unknown as { current_entry_type?: string }).current_entry_type === 'verified');
+        const currentEntryType: string | undefined = (record as unknown as { current_entry_type?: string }).current_entry_type;
+        if (currentEntryType) {
+            isVerifiedGame = currentEntryType === 'verified';
         } else if (record.verified_entry_paid && record.standard_entry_paid) {
             const verifiedTime = new Date(record.verified_paid_at || 0);
             const standardTime = new Date(record.standard_paid_at || 0);
