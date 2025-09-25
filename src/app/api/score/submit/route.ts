@@ -114,30 +114,27 @@ export async function POST(req: NextRequest) {
             });
         }
 
-        // Find the user tournament record - either by record_id or by user_id + tournament day
-        // Calculate tournament day using same logic as weekly tournament system (Sunday 15:30 UTC boundary)
-        const now = new Date();
-        const utcHour = now.getUTCHours();
-        const utcMinute = now.getUTCMinutes();
+        // Get ACTIVE tournament (source of truth for tournament_id and tournament_day)
+        const { data: activeTournament, error: activeTournamentError } = await supabase
+            .from('tournaments')
+            .select('id, tournament_day')
+            .eq('is_active', true)
+            .single();
 
-        // Tournament week starts at 15:30 UTC Sunday, so if it's before 15:30, use last week's Sunday
-        const tournamentDate = new Date(now);
-        if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
-            tournamentDate.setUTCDate(tournamentDate.getUTCDate() - 1);
+        if (activeTournamentError || !activeTournament) {
+            return NextResponse.json({
+                error: 'No active tournament found'
+            }, { status: 404 });
         }
 
-        // Get the Sunday of this week for tournament_day
-        const dayOfWeek = tournamentDate.getUTCDay(); // 0 = Sunday
-        const daysToSubtract = dayOfWeek; // Days since last Sunday
-        const tournamentSunday = new Date(tournamentDate);
-        tournamentSunday.setUTCDate(tournamentDate.getUTCDate() - daysToSubtract);
+        const tournamentDay = activeTournament.tournament_day;
 
-        const tournamentDay = tournamentSunday.toISOString().split('T')[0];
+        // Find the user tournament record - prefer explicit record_id, else by user_id + active tournament_id
         let recordQuery = supabase
             .from('user_tournament_records')
-            .select('id, user_id, highest_score, tournament_day, tournament_id, verified_at, verified_games_played, unverified_games_played, total_games_played, verified_entry_paid, standard_entry_paid, verified_paid_at, standard_paid_at, verified_entry_games, standard_entry_games, total_continues_used, total_continue_payments')
+            .select('id, user_id, highest_score, tournament_day, tournament_id, verified_at, verified_games_played, unverified_games_played, total_games_played, verified_entry_paid, standard_entry_paid, verified_paid_at, standard_paid_at, verified_entry_games, standard_entry_games, total_continues_used, total_continue_payments, current_entry_type')
             .eq('user_id', user.id)
-            .eq('tournament_day', tournamentDay);
+            .eq('tournament_id', activeTournament.id);
 
         if (user_tournament_record_id) {
             recordQuery = recordQuery.eq('id', user_tournament_record_id);
@@ -163,20 +160,18 @@ export async function POST(req: NextRequest) {
         // Determine if this is a verified game based on MOST RECENT entry payment
         // If user paid for both entries, use the most recent one based on timestamps
         let isVerifiedGame = false;
-
-        if (record.verified_entry_paid && record.standard_entry_paid) {
-            // Both paid - check which was more recent
+        // Prefer explicit current_entry_type if available; fallback to timestamps
+        if (record as unknown as { current_entry_type?: string }).current_entry_type) {
+            isVerifiedGame = ((record as unknown as { current_entry_type?: string }).current_entry_type === 'verified');
+        } else if (record.verified_entry_paid && record.standard_entry_paid) {
             const verifiedTime = new Date(record.verified_paid_at || 0);
             const standardTime = new Date(record.standard_paid_at || 0);
             isVerifiedGame = verifiedTime > standardTime;
         } else if (record.verified_entry_paid) {
-            // Only verified paid
             isVerifiedGame = true;
         } else if (record.standard_entry_paid) {
-            // Only standard paid  
             isVerifiedGame = false;
         } else {
-            // No payment found - shouldn't happen but default to false
             isVerifiedGame = false;
         }
 
@@ -236,7 +231,7 @@ export async function POST(req: NextRequest) {
                 score: score,
                 game_duration_ms: game_duration,
                 was_verified_game: isVerifiedGame, // Properly determined based on entry payment
-                entry_type: isVerifiedGame ? 'verified' : 'standard', // NEW: Set the clear entry type
+                entry_type: isVerifiedGame ? 'verified' : 'standard', // Set from current entry type when available
                 continues_used_in_game: finalContinuesUsed, // 0 or 1 (max 1 per game)
                 continue_payments_for_game: finalContinuePayments, // Continue cost if used
                 submitted_at: new Date().toISOString()
