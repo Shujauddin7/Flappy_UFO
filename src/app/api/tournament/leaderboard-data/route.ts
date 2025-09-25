@@ -27,26 +27,33 @@ export async function GET() {
         const redisStart = Date.now();
         const redisPlayers = await getTopPlayers(tournamentDay, 0, 1000);
         if (redisPlayers && redisPlayers.length > 0) {
-            const playersWithRank = redisPlayers.map(p => ({
-                id: p.user_id,
-                user_id: p.user_id,
-                username: p.username ?? null,
-                wallet: p.wallet ?? 'Unknown',
-                highest_score: p.score,
-                tournament_day: tournamentDay,
-                created_at: new Date().toISOString(),
-                rank: p.rank
-            }));
+            // Validate Redis data - skip if it contains invalid entries (null usernames/wallets)
+            const hasValidData = redisPlayers.every(p => p.username && p.wallet);
 
-            console.log(`⚡ Redis hit: ${playersWithRank.length} players in ${Date.now() - redisStart}ms`);
+            if (hasValidData) {
+                const playersWithRank = redisPlayers.map(p => ({
+                    id: p.user_id,
+                    user_id: p.user_id,
+                    username: p.username ?? null,
+                    wallet: p.wallet ?? 'Unknown',
+                    highest_score: p.score,
+                    tournament_day: tournamentDay,
+                    created_at: new Date().toISOString(),
+                    rank: p.rank
+                }));
 
-            return NextResponse.json({
-                players: playersWithRank,
-                tournament_day: tournamentDay,
-                total_players: playersWithRank.length,
-                cached: true,
-                fetched_at: new Date().toISOString()
-            });
+                console.log(`⚡ Redis hit: ${playersWithRank.length} players in ${Date.now() - redisStart}ms`);
+
+                return NextResponse.json({
+                    players: playersWithRank,
+                    tournament_day: tournamentDay,
+                    total_players: playersWithRank.length,
+                    cached: true,
+                    fetched_at: new Date().toISOString()
+                });
+            } else {
+                console.log('🔴 Redis data contains invalid entries (null usernames/wallets) → falling back to DB');
+            }
         }
 
         console.log('🔴 Redis leaderboard empty or unavailable → falling back to DB, then populating Redis');

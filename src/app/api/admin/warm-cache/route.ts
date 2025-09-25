@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { setCached } from '@/lib/redis';
 import { createClient } from '@supabase/supabase-js';
 import { CACHE_TTL } from '@/utils/leaderboard-cache';
+import { populateLeaderboard } from '@/lib/leaderboard-redis';
 
 export async function POST() {
     try {
@@ -115,6 +116,10 @@ async function warmLeaderboardCache() {
     };
 
     await setCached('tournament:leaderboard:current', leaderboardData, CACHE_TTL.REDIS_CACHE); // Use standardized Redis cache TTL
+
+    // CRITICAL FIX: Also populate the Redis sorted sets that getTopPlayers() actually reads from
+    await populateLeaderboard(tournament.tournament_day, players || []);
+
     console.log(`🏆 Leaderboard cache warmed: ${playersWithRank.length} players ready for ${CACHE_TTL.REDIS_CACHE / 60} minutes`);
 }
 
