@@ -127,8 +127,9 @@ async function getLeaderboardDataOptimized(
                 username,
                 wallet,
                 highest_score,
-                tournament_day
-            `) // Removed first_game_at to improve performance (using row order for ties)
+                tournament_day,
+                first_game_at
+            `) // Include first_game_at for compatibility and tie-breaking
             .eq('tournament_day', tournamentDay);
 
         // Use more efficient filtering approach
@@ -157,8 +158,8 @@ async function getLeaderboardDataOptimized(
         // Add rank efficiently without additional queries
         const playersWithRank = (players || []).map((player, index) => ({
             ...player,
-            rank: offset + index + 1,
-            first_game_at: new Date().toISOString() // Placeholder for compatibility
+            rank: offset + index + 1
+            // Use actual first_game_at from database, not placeholder
         }));
 
         return playersWithRank;
