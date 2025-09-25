@@ -3,31 +3,14 @@ import { getCached, setCached } from '@/lib/redis';
 import { getCurrentActiveTournament } from '@/utils/database';
 import { getLeaderboardData } from '@/utils/leaderboard-queries';
 import { CACHE_TTL } from '@/utils/leaderboard-cache';
+import { getTopPlayers, populateLeaderboard } from '@/lib/leaderboard-redis';
 
 export async function GET() {
     const startTime = Date.now();
     console.log('🚀 LEADERBOARD DATA API START - Professional Gaming Performance');
 
     try {
-        // 🎯 STEP 1: Try to get cached data first (like mobile games - instant loading)
-        const cacheKey = 'tournament_leaderboard_data';
-        const cachedData = await getCached(cacheKey);
-
-        if (cachedData && typeof cachedData === 'object') {
-            console.log('⚡ CACHE HIT - Returning cached leaderboard data instantly (professional mobile game style)');
-            console.log('📊 Cache Performance: 0ms database query, instant response');
-
-            return NextResponse.json({
-                ...cachedData,
-                cached: true,
-                fetched_at: new Date().toISOString()
-            });
-        }
-
-        console.log('📊 Cache Status: 🔴 CACHE MISS - Fetching fresh data from database');
-        console.log('🗄️ Falling back to database query...');
-
-        // 🗄️ STEP 2: Get current tournament using shared utility (eliminates duplicate code)
+        // 🎯 STEP 1: Get current tournament (source of truth)
         const currentTournament = await getCurrentActiveTournament();
 
         if (!currentTournament) {
@@ -39,22 +22,46 @@ export async function GET() {
         }
 
         const tournamentDay = currentTournament.tournament_day;
-        console.log(`🔍 Querying leaderboard for tournament: ${tournamentDay}`);
+        console.log(`🔍 Leaderboard request for tournament: ${tournamentDay}`);
 
-        // 🚀 OPTIMIZED DATABASE QUERY - Using shared query utilities
+        // ⚡ STEP 2: Try ultra-fast Redis Sorted Set first (instant, no DB)
+        const redisStart = Date.now();
+        const redisPlayers = await getTopPlayers(tournamentDay, 0, 1000);
+        if (redisPlayers && redisPlayers.length > 0) {
+            const playersWithRank = redisPlayers.map(p => ({
+                id: p.user_id,
+                user_id: p.user_id,
+                username: p.username ?? null,
+                wallet: p.wallet ?? 'Unknown',
+                highest_score: p.score,
+                tournament_day: tournamentDay,
+                created_at: new Date().toISOString(),
+                rank: p.rank
+            }));
+
+            console.log(`⚡ Redis hit: ${playersWithRank.length} players in ${Date.now() - redisStart}ms`);
+
+            return NextResponse.json({
+                players: playersWithRank,
+                tournament_day: tournamentDay,
+                total_players: playersWithRank.length,
+                cached: true,
+                fetched_at: new Date().toISOString()
+            });
+        }
+
+        console.log('🔴 Redis leaderboard empty or unavailable → falling back to DB, then populating Redis');
+
+        // 🗄️ STEP 3: Fallback to DB (exclude zero scores for performance)
         const queryStartTime = Date.now();
-
-        // Get leaderboard data using standardized query
-        const players = await getLeaderboardData(tournamentDay, {
-            limit: 1000, // Reasonable limit to prevent massive queries
-            includeZeroScores: true // Show ALL players including those with score 0
+        const dbPlayers = await getLeaderboardData(tournamentDay, {
+            limit: 1000,
+            includeZeroScores: false
         });
-
         const queryTime = Date.now() - queryStartTime;
-        console.log(`⚡ Database query completed in ${queryTime}ms for ${players.length} players`);
+        console.log(`⚡ Database fallback completed in ${queryTime}ms for ${dbPlayers.length} players`);
 
-        if (players.length === 0) {
-            console.log('ℹ️ No players found with scores > 0 for tournament:', tournamentDay);
+        if (dbPlayers.length === 0) {
             return NextResponse.json({
                 players: [],
                 tournament_day: tournamentDay,
@@ -64,35 +71,39 @@ export async function GET() {
             });
         }
 
-        console.log(`🎯 Found ${players.length} players with scores > 0`);
+        // Populate Redis leaderboard for next requests (non-blocking best-effort)
+        try {
+            await populateLeaderboard(
+                tournamentDay,
+                dbPlayers.map(p => ({
+                    user_id: p.user_id,
+                    highest_score: p.highest_score,
+                    username: (p as any).username,
+                    wallet: (p as any).wallet
+                }))
+            );
+            console.log('✅ Redis leaderboard populated from DB fallback');
+        } catch (e) {
+            console.warn('⚠️ Failed to populate Redis leaderboard (non-critical):', e);
+        }
 
-        // Format players for compatibility with existing frontend code
-        const playersWithRank = players.map((player) => ({
+        const playersWithRank = dbPlayers.map((player) => ({
             ...player,
-            user_id: player.user_id, // Ensure user_id is present
-            created_at: new Date().toISOString() // Add for compatibility
+            id: player.user_id,
+            created_at: new Date().toISOString()
         }));
 
         const responseData = {
             players: playersWithRank,
             tournament_day: tournamentDay,
             total_players: playersWithRank.length,
-            cached: false, // Fresh from database
+            cached: false,
             fetched_at: new Date().toISOString()
         };
 
-        // 💾 STEP 3: Cache the fresh data using standardized TTL (persistent like mobile games)
-        console.log('💾 Caching leaderboard data using standardized TTL (persistent mobile game style)...');
-        await setCached(cacheKey, responseData, CACHE_TTL.REDIS_CACHE); // Use standardized Redis cache TTL
-        console.log('✅ Data cached successfully for persistent availability');
-
-        const responseTime = Date.now() - startTime;
-        console.log(`🚀 LEADERBOARD API PERFORMANCE SUMMARY:`);
-        console.log(`   📊 Database query: ${queryTime}ms`);
-        console.log(`   💾 Redis caching: ${responseTime - queryTime}ms`);
-        console.log(`   🎯 Total response time: ${responseTime}ms`);
-        console.log(`   👥 Players returned: ${playersWithRank.length}`);
-        console.log(`   🔄 Response cached: false (fresh data)`);
+        // 💾 STEP 4: Also store a compact JSON cache for resilience
+        const cacheKey = 'tournament_leaderboard_data';
+        await setCached(cacheKey, responseData, CACHE_TTL.REDIS_CACHE);
 
         return NextResponse.json(responseData);
 
