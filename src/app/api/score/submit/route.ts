@@ -211,6 +211,19 @@ export async function POST(req: NextRequest) {
         const finalContinuePayments = continue_amount !== undefined ? continue_amount : (gamesContinuePayment > 0 ? gamesContinuePayment : 0);
 
         // First, always insert the individual score into game_scores table
+        console.log('📊 Inserting game score:', {
+            user_tournament_record_id: record.id,
+            user_id: user.id,
+            tournament_id: record.tournament_id,
+            username: user.username,
+            wallet: walletToCheck,
+            tournament_day: tournamentDay,
+            score: score,
+            game_duration_ms: game_duration,
+            was_verified_game: isVerifiedGame,
+            entry_type: isVerifiedGame ? 'verified' : 'standard'
+        });
+
         const { error: gameScoreError } = await supabase
             .from('game_scores')
             .insert({
@@ -230,8 +243,21 @@ export async function POST(req: NextRequest) {
             });
 
         if (gameScoreError) {
-            // Don't fail the entire request if we can't log the individual score
+            console.error('❌ CRITICAL: Failed to insert game score:', gameScoreError);
+            console.error('❌ Game score data that failed:', {
+                user_tournament_record_id: record.id,
+                user_id: user.id,
+                tournament_id: record.tournament_id,
+                score: score,
+                game_duration_ms: game_duration
+            });
+            return NextResponse.json({
+                error: `Failed to record game score: ${gameScoreError.message}`,
+                debug: 'Game score insertion failed'
+            }, { status: 500 });
         }
+
+        console.log('✅ Game score inserted successfully into game_scores table');
 
         // Check if this is a new high score
         if (score > (record.highest_score || 0)) {
@@ -281,7 +307,12 @@ export async function POST(req: NextRequest) {
                     .eq('id', record.id);
 
                 if (gameCountError) {
-                    // Game count update failed, but don't fail the whole request
+                    console.error('❌ CRITICAL: Failed to update game count for new high score:', gameCountError);
+                    console.error('❌ Game count data that failed:', gameCountUpdates);
+                    return NextResponse.json({
+                        error: `Failed to update game statistics for new high score: ${gameCountError.message}`,
+                        debug: 'New high score game count update failed'
+                    }, { status: 500 });
                 }
 
                 // Update user statistics with new high score (with retry for race conditions)
@@ -362,7 +393,12 @@ export async function POST(req: NextRequest) {
             .eq('id', record.id);
 
         if (gameCountError) {
-            // Game count update failed, but don't fail the whole request
+            console.error('❌ CRITICAL: Failed to update game count in user_tournament_records:', gameCountError);
+            console.error('❌ Game count update data that failed:', gameCountUpdates);
+            return NextResponse.json({
+                error: `Failed to update game statistics: ${gameCountError.message}`,
+                debug: 'Game count update failed'
+            }, { status: 500 });
         }
 
         // Also update user statistics (total games played only, no high score) with retry
