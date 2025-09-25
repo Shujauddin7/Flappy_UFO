@@ -51,6 +51,8 @@ export async function getLeaderboardData(
         `)
         .eq('tournament_day', tournamentDay)
         .or('verified_entry_paid.eq.true,standard_entry_paid.eq.true') // Only paid entries
+        .not('username', 'is', null) // Exclude NULL usernames (bad data)
+        .not('wallet', 'is', null) // Exclude NULL wallets (bad data)
         .order('highest_score', { ascending: false })
         .order('first_game_at', { ascending: true }); // Tie-breaker: earlier submission wins
 
