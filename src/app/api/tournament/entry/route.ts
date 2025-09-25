@@ -435,6 +435,42 @@ export async function POST(req: NextRequest) {
             }
         });
 
+        // 🔄 SYNC: Update tournament_sign_ins aggregates (no fake data; real user-only)
+        try {
+            // Check if sign-in row exists
+            const { data: signInRow } = await supabase
+                .from('tournament_sign_ins')
+                .select('wallet, total_tournaments_visited, total_amount_paid, first_tournament_id')
+                .eq('wallet', wallet)
+                .single();
+
+            if (!signInRow) {
+                // Create initial row
+                await supabase
+                    .from('tournament_sign_ins')
+                    .insert({
+                        wallet,
+                        username: user.username,
+                        world_id: user.world_id || 'unknown',
+                        first_tournament_id: finalTournament.id,
+                        total_tournaments_visited: 1,
+                        total_amount_paid: paid_amount
+                    });
+            } else {
+                await supabase
+                    .from('tournament_sign_ins')
+                    .update({
+                        total_tournaments_visited: (signInRow.total_tournaments_visited || 0) + 1,
+                        total_amount_paid: (Number(signInRow.total_amount_paid) || 0) + Number(paid_amount),
+                        first_tournament_id: signInRow.first_tournament_id || finalTournament.id,
+                        username: user.username
+                    })
+                    .eq('wallet', wallet);
+            }
+        } catch (e) {
+            console.log('Sign-in aggregates update skipped (non-critical):', e);
+        }
+
         return NextResponse.json({
             success: true,
             data: {

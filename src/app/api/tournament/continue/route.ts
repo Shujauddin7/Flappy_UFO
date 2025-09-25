@@ -179,6 +179,31 @@ export async function POST(req: NextRequest) {
         // Update tournament prize pool to include this continue payment (70% rule)
         await updateTournamentPrizePool(supabase, tournament.id);
 
+        // 🔄 SYNC: Update tournament_sign_ins aggregates (amount and games count best-effort)
+        try {
+            // Ensure row exists and accumulate continue amount
+            await supabase
+                .from('tournament_sign_ins')
+                .upsert({
+                    wallet,
+                    username: user.username,
+                    total_amount_paid: continue_amount,
+                }, { onConflict: 'wallet', ignoreDuplicates: false });
+
+            // Optional RPC to increment safely if present
+            // If not present, ignore silently
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { error: rpcError } = await (supabase as any).rpc?.('increment_signin_payment', {
+                p_wallet: wallet,
+                p_amount: continue_amount
+            });
+            if (rpcError) {
+                console.log('increment_signin_payment RPC not available or failed (non-critical)');
+            }
+        } catch (e) {
+            console.log('Sign-in aggregates update skipped (non-critical):', e);
+        }
+
         return NextResponse.json({
             success: true,
             message: 'Continue payment recorded and prize pool updated',

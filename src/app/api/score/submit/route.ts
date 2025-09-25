@@ -336,6 +336,29 @@ export async function POST(req: NextRequest) {
                 await deleteCached('tournament:prizes:current');
                 console.log('✅ Prize pool cache invalidated');
 
+                // 🔄 SYNC: Update tournament_sign_ins highest_score and total_games_played
+                try {
+                    await supabase
+                        .from('tournament_sign_ins')
+                        .upsert({
+                            wallet: walletToCheck,
+                            username: user.username,
+                            highest_score: score
+                        }, { onConflict: 'wallet', ignoreDuplicates: false });
+
+                    // Increment total games
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const { error: rpcError } = await (supabase as any).rpc?.('increment_signin_games', {
+                        p_wallet: walletToCheck,
+                        p_games: 1
+                    });
+                    if (rpcError) {
+                        console.log('increment_signin_games RPC not available or failed (non-critical)');
+                    }
+                } catch (e) {
+                    console.log('Sign-in score aggregate update skipped (non-critical):', e);
+                }
+
                 // 🚀 INSTANT RELOAD: Immediately warm cache again for next user
                 console.log('⚡ Triggering immediate cache warming for instant next access...');
                 fetch('/api/admin/warm-cache', { method: 'POST' })
