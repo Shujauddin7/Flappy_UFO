@@ -32,27 +32,12 @@ export async function getLeaderboardData(
         limit?: number;
         offset?: number;
         includeZeroScores?: boolean;
-        useOptimizedQuery?: boolean; // New option for performance-critical scenarios
     } = {}
-): Promise<Array<{
-    user_id: string;
-    username: string | null;
-    wallet: string;
-    highest_score: number;
-    tournament_day: string;
-    first_game_at: string;
-    rank: number;
-}>> {
-    const { limit = 20, offset = 0, includeZeroScores = false, useOptimizedQuery = false } = options;
-
-    // Use optimized query for performance-critical scenarios
-    if (useOptimizedQuery) {
-        return getLeaderboardDataOptimized(tournamentDay, { limit, offset, includeZeroScores });
-    }
-
+) {
+    const { limit = 20, offset = 0, includeZeroScores = false } = options;
     const supabase = await getSupabaseClient();
 
-    // Standard query - only select the essential columns needed for leaderboard display
+    // Optimized query - only select the essential columns needed for leaderboard display
     // Removed unused fields: total_games_played, verified_games_played, unverified_games_played, created_at
     let query = supabase
         .from('user_tournament_records')
@@ -92,83 +77,6 @@ export async function getLeaderboardData(
     }));
 
     return playersWithRank;
-}
-
-/**
- * High-performance leaderboard query using optimized database techniques
- * Uses indexed columns and minimal data transfer for maximum speed
- */
-async function getLeaderboardDataOptimized(
-    tournamentDay: string,
-    options: {
-        limit?: number;
-        offset?: number;
-        includeZeroScores?: boolean;
-    }
-): Promise<Array<{
-    user_id: string;
-    username: string | null;
-    wallet: string;
-    highest_score: number;
-    tournament_day: string;
-    first_game_at: string;
-    rank: number;
-}>> {
-    const { limit = 20, offset = 0, includeZeroScores = false } = options;
-    const supabase = await getSupabaseClient();
-
-    try {
-        // Ultra-optimized query focusing on indexed columns for speed
-        // Minimal column selection to reduce data transfer
-        let query = supabase
-            .from('user_tournament_records')
-            .select(`
-                user_id,
-                username,
-                wallet,
-                highest_score,
-                tournament_day,
-                first_game_at
-            `) // Include first_game_at for compatibility and tie-breaking
-            .eq('tournament_day', tournamentDay);
-
-        // Use more efficient filtering approach
-        if (includeZeroScores) {
-            query = query.or('verified_entry_paid.eq.true,standard_entry_paid.eq.true');
-        } else {
-            query = query
-                .gt('highest_score', 0)
-                .or('verified_entry_paid.eq.true,standard_entry_paid.eq.true');
-        }
-
-        // Single-pass ordering for optimal performance
-        query = query.order('highest_score', { ascending: false });
-
-        // Apply pagination efficiently
-        if (limit > 0) {
-            query = query.range(offset, offset + limit - 1);
-        }
-
-        const { data: players, error } = await query;
-
-        if (error) {
-            throw new Error(`Failed to fetch optimized leaderboard data: ${error.message}`);
-        }
-
-        // Add rank efficiently without additional queries
-        const playersWithRank = (players || []).map((player, index) => ({
-            ...player,
-            rank: offset + index + 1
-            // Use actual first_game_at from database, not placeholder
-        }));
-
-        return playersWithRank;
-
-    } catch (error) {
-        console.warn('Optimized leaderboard query failed, falling back to standard query:', error);
-        // Fallback to standard query if optimized approach fails
-        return getLeaderboardData(tournamentDay, { limit, offset, includeZeroScores, useOptimizedQuery: false });
-    }
 }
 
 /**
@@ -228,63 +136,52 @@ export async function getTournamentStats(tournamentDay: string) {
 }
 
 /**
- * Fallback method using efficient single-query aggregation approach
- * Uses PostgreSQL window functions and aggregates for optimal performance
+ * Fallback method using efficient aggregation approach
  */
 async function getTournamentStatsFallback(tournamentDay: string) {
     const supabase = await getSupabaseClient();
 
-    try {
-        // Single optimized query using PostgreSQL aggregation functions
-        // This replaces 2 separate queries with 1 comprehensive query
-        const { data: aggregationData, error: aggregationError } = await supabase
-            .from('user_tournament_records')
-            .select(`
-                verified_paid_amount,
-                standard_paid_amount,
-                total_continue_payments,
-                total_games_played
-            `)
-            .eq('tournament_day', tournamentDay)
-            .or('verified_entry_paid.eq.true,standard_entry_paid.eq.true');
+    // Get total player count efficiently
+    const { count: totalPlayers, error: countError } = await supabase
+        .from('user_tournament_records')
+        .select('*', { count: 'exact', head: true })
+        .eq('tournament_day', tournamentDay)
+        .or('verified_entry_paid.eq.true,standard_entry_paid.eq.true');
 
-        if (aggregationError) {
-            throw new Error(`Failed to get tournament aggregation data: ${aggregationError.message}`);
-        }
-
-        // Perform aggregations efficiently in JavaScript (faster than multiple DB queries)
-        let totalCollected = 0;
-        let totalGamesPlayed = 0;
-        const totalPlayers = aggregationData?.length || 0;
-
-        if (aggregationData && aggregationData.length > 0) {
-            for (const record of aggregationData) {
-                totalCollected += (parseFloat(record.verified_paid_amount) || 0) +
-                    (parseFloat(record.standard_paid_amount) || 0) +
-                    (parseFloat(record.total_continue_payments) || 0);
-                totalGamesPlayed += (record.total_games_played || 0);
-            }
-        }
-
-        const prizePool = totalCollected * 0.7; // 70% goes to prize pool
-
-        return {
-            total_players: totalPlayers,
-            total_prize_pool: prizePool,
-            total_collected: totalCollected,
-            total_games_played: totalGamesPlayed
-        };
-
-    } catch (error) {
-        // Ultimate fallback with minimal data to prevent complete failure
-        console.error('Tournament stats aggregation failed:', error);
-        return {
-            total_players: 0,
-            total_prize_pool: 0,
-            total_collected: 0,
-            total_games_played: 0
-        };
+    if (countError) {
+        throw new Error(`Failed to get player count: ${countError.message}`);
     }
+
+    // Get payment aggregations - only fetch the numeric fields we need for prize pool calculation
+    const { data: paymentsData, error: paymentsError } = await supabase
+        .from('user_tournament_records')
+        .select('verified_paid_amount, standard_paid_amount, total_continue_payments')
+        .eq('tournament_day', tournamentDay)
+        .or('verified_entry_paid.eq.true,standard_entry_paid.eq.true');
+
+    if (paymentsError) {
+        throw new Error(`Failed to get payment data: ${paymentsError.message}`);
+    }
+
+    // Calculate aggregations efficiently - optimized for UI needs only
+    let totalCollected = 0;
+
+    if (paymentsData && paymentsData.length > 0) {
+        for (const record of paymentsData) {
+            totalCollected += (parseFloat(record.verified_paid_amount) || 0) +
+                (parseFloat(record.standard_paid_amount) || 0) +
+                (parseFloat(record.total_continue_payments) || 0);
+        }
+    }
+
+    const prizePool = totalCollected * 0.7; // 70% goes to prize pool
+
+    return {
+        total_players: totalPlayers || 0,
+        total_prize_pool: prizePool,
+        total_collected: totalCollected,
+        total_games_played: 0 // Not calculated for performance - only needed for debug logging
+    };
 }
 
 /**

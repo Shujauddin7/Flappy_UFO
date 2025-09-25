@@ -44,11 +44,10 @@ export async function GET() {
         // 🚀 OPTIMIZED DATABASE QUERY - Using shared query utilities
         const queryStartTime = Date.now();
 
-        // Get leaderboard data using OPTIMIZED query for maximum speed
+        // Get leaderboard data using standardized query
         const players = await getLeaderboardData(tournamentDay, {
             limit: 1000, // Reasonable limit to prevent massive queries
-            includeZeroScores: true, // Show ALL players including those with score 0
-            useOptimizedQuery: true // 🚀 USE HIGH-PERFORMANCE OPTIMIZED QUERY
+            includeZeroScores: true // Show ALL players including those with score 0
         });
 
         const queryTime = Date.now() - queryStartTime;
