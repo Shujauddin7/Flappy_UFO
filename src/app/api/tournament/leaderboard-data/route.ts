@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getCached, setCached } from '@/lib/redis';
+import { setCached } from '@/lib/redis';
 import { getCurrentActiveTournament } from '@/utils/database';
 import { getLeaderboardData } from '@/utils/leaderboard-queries';
 import { CACHE_TTL } from '@/utils/leaderboard-cache';
 import { getTopPlayers, populateLeaderboard } from '@/lib/leaderboard-redis';
 
 export async function GET() {
-    const startTime = Date.now();
     console.log('🚀 LEADERBOARD DATA API START - Professional Gaming Performance');
 
     try {
@@ -75,11 +74,11 @@ export async function GET() {
         try {
             await populateLeaderboard(
                 tournamentDay,
-                dbPlayers.map(p => ({
+                dbPlayers.map((p: { user_id: string; highest_score: number; username?: string | null; wallet?: string }) => ({
                     user_id: p.user_id,
                     highest_score: p.highest_score,
-                    username: (p as any).username,
-                    wallet: (p as any).wallet
+                    username: p.username ?? null,
+                    wallet: p.wallet
                 }))
             );
             console.log('✅ Redis leaderboard populated from DB fallback');
