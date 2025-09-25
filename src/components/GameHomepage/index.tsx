@@ -8,6 +8,7 @@ import { walletAuth } from '@/auth/wallet';
 import dynamic from 'next/dynamic';
 import { TournamentEntryModal } from '@/components/TournamentEntryModal';
 import InfoModal from '@/components/INFO';
+import { CACHE_TTL } from '@/utils/leaderboard-cache';
 import { canContinue, spendCoins, getCoins, addCoins } from '@/utils/coins';
 
 // Dynamically import FlappyGame to avoid SSR issues
@@ -270,13 +271,13 @@ export default function GameHomepage() {
                     sessionStorage.setItem(tournamentKey, JSON.stringify({
                         data: tournamentData,
                         timestamp: Date.now(),
-                        ttl: 300000 // Cache for 5 minutes (much longer)
+                        ttl: CACHE_TTL.PRELOAD_TOURNAMENT // Use standardized preload tournament cache TTL
                     }));
 
                     sessionStorage.setItem(leaderboardKey, JSON.stringify({
                         data: leaderboardData,
                         timestamp: Date.now(),
-                        ttl: 180000 // Cache for 3 minutes (much longer)
+                        ttl: CACHE_TTL.PRELOAD_LEADERBOARD // Use standardized preload leaderboard cache TTL
                     }));
 
                     console.log(`✅ Leaderboard pre-loaded successfully in ${preloadTime}ms - leaderboard will now load instantly!`);

@@ -5,6 +5,7 @@ import { Page } from '@/components/PageLayout';
 import { TournamentLeaderboard } from '@/components/TournamentLeaderboard';
 import { PlayerRankCard } from '@/components/PlayerRankCard';
 import { useSession } from 'next-auth/react';
+import { CACHE_TTL } from '@/utils/leaderboard-cache';
 
 interface LeaderboardPlayer {
     id: string;
@@ -50,7 +51,7 @@ export default function LeaderboardPage() {
             if (cached) {
                 try {
                     const parsed = JSON.parse(cached);
-                    if (Date.now() - parsed.timestamp < 30000 && parsed.data.end_time) { // 30 second cache for instant updates + must have end_time
+                    if (Date.now() - parsed.timestamp < CACHE_TTL.TOURNAMENT && parsed.data.end_time) { // Use standardized tournament cache TTL
                         console.log('⚡ INSTANT LOAD: Using cached tournament data');
                         console.log(`   Cached Players: ${parsed.data.total_players}`);
                         console.log(`   Cached Prize: $${parsed.data.total_prize_pool}`);
@@ -88,7 +89,7 @@ export default function LeaderboardPage() {
             if (cached) {
                 try {
                     const parsed = JSON.parse(cached);
-                    return Date.now() - parsed.timestamp < 30000 && parsed.data.end_time; // Cache valid + has end_time
+                    return Date.now() - parsed.timestamp < CACHE_TTL.TOURNAMENT && parsed.data.end_time; // Use standardized cache TTL
                 } catch {
                     return false;
                 }
@@ -104,7 +105,7 @@ export default function LeaderboardPage() {
             if (cached) {
                 try {
                     const parsed = JSON.parse(cached);
-                    if (Date.now() - parsed.timestamp < 15000) { // 15 second cache for instant leaderboard updates
+                    if (Date.now() - parsed.timestamp < CACHE_TTL.LEADERBOARD) { // Use standardized leaderboard cache TTL
                         console.log('⚡ INSTANT LOAD: Using cached leaderboard data');
                         return parsed.data;
                     }

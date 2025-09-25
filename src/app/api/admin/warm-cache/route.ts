@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { setCached } from '@/lib/redis';
 import { createClient } from '@supabase/supabase-js';
+import { CACHE_TTL } from '@/utils/leaderboard-cache';
 
 export async function POST() {
     try {
@@ -77,7 +78,7 @@ async function warmLeaderboardCache() {
             cached: false,
             fetched_at: new Date().toISOString()
         };
-        await setCached('tournament:leaderboard:current', emptyData, 15);
+        await setCached('tournament:leaderboard:current', emptyData, CACHE_TTL.REAL_TIME / 1000); // Use standardized real-time TTL (convert to seconds)
         console.log('🏆 Leaderboard cache warmed: No active tournament');
         return;
     }
@@ -113,8 +114,8 @@ async function warmLeaderboardCache() {
         fetched_at: new Date().toISOString()
     };
 
-    await setCached('tournament:leaderboard:current', leaderboardData, 300);
-    console.log(`🏆 Leaderboard cache warmed: ${playersWithRank.length} players ready for 5 minutes`);
+    await setCached('tournament:leaderboard:current', leaderboardData, CACHE_TTL.REDIS_CACHE); // Use standardized Redis cache TTL
+    console.log(`🏆 Leaderboard cache warmed: ${playersWithRank.length} players ready for ${CACHE_TTL.REDIS_CACHE / 60} minutes`);
 }
 
 async function warmPrizePoolCache() {
@@ -181,7 +182,7 @@ async function warmPrizePoolCache() {
         fetched_at: new Date().toISOString()
     };
 
-    await setCached('tournament:prizes:current', prizeData, 30);
+    await setCached('tournament:prizes:current', prizeData, CACHE_TTL.LEADERBOARD / 1000); // Use standardized leaderboard TTL (convert to seconds)
     console.log(`💰 Prize pool cache warmed: ${prizePoolAmount} WLD pool ready`);
 }
 
@@ -234,8 +235,8 @@ async function warmTournamentCache() {
         fetched_at: new Date().toISOString()
     };
 
-    await setCached('tournament:current', tournamentData, 60);
-    console.log(`🎯 Tournament cache warmed: ${tournament.tournament_day} ready`);
+    await setCached('tournament:current', tournamentData, CACHE_TTL.TOURNAMENT / 1000); // Use standardized tournament TTL (convert to seconds)
+    console.log(`🎯 Tournament cache warmed: ${tournament.tournament_day} ready for ${CACHE_TTL.TOURNAMENT / 60000} minutes`);
 }
 
 function getSupabaseClient() {

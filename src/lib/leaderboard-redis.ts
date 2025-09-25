@@ -11,14 +11,29 @@ async function getRedisClient(): Promise<Redis | null> {
         const redisToken = isProduction ? process.env.UPSTASH_REDIS_PROD_TOKEN : process.env.UPSTASH_REDIS_DEV_TOKEN;
 
         if (!redisUrl || !redisToken) {
-            console.warn('⚠️ Redis credentials missing for leaderboard');
+            console.error(`❌ Redis credentials missing for ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'} environment`);
+            console.error('Missing variables:', {
+                hasUrl: !!redisUrl,
+                hasToken: !!redisToken,
+                environment: isProduction ? 'prod' : 'dev'
+            });
             return null;
         }
 
-        redisClient = new Redis({
-            url: redisUrl,
-            token: redisToken,
-        });
+        try {
+            redisClient = new Redis({
+                url: redisUrl,
+                token: redisToken,
+            });
+
+            // Test the connection with a simple ping
+            await redisClient.ping();
+            console.log('✅ Redis connection established successfully');
+        } catch (error) {
+            console.error('❌ Failed to initialize Redis connection:', error);
+            redisClient = null;
+            return null;
+        }
     }
 
     return redisClient;

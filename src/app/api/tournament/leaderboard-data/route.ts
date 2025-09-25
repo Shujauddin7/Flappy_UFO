@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getCached, setCached } from '@/lib/redis';
 import { getCurrentActiveTournament } from '@/utils/database';
 import { getLeaderboardData } from '@/utils/leaderboard-queries';
+import { CACHE_TTL } from '@/utils/leaderboard-cache';
 
 export async function GET() {
     const startTime = Date.now();
@@ -43,10 +44,11 @@ export async function GET() {
         // 🚀 OPTIMIZED DATABASE QUERY - Using shared query utilities
         const queryStartTime = Date.now();
 
-        // Get leaderboard data using standardized query
+        // Get leaderboard data using OPTIMIZED query for maximum speed
         const players = await getLeaderboardData(tournamentDay, {
             limit: 1000, // Reasonable limit to prevent massive queries
-            includeZeroScores: true // Show ALL players including those with score 0
+            includeZeroScores: true, // Show ALL players including those with score 0
+            useOptimizedQuery: true // 🚀 USE HIGH-PERFORMANCE OPTIMIZED QUERY
         });
 
         const queryTime = Date.now() - queryStartTime;
@@ -80,9 +82,9 @@ export async function GET() {
             fetched_at: new Date().toISOString()
         };
 
-        // 💾 STEP 3: Cache the fresh data for 5 minutes (persistent like mobile games)
-        console.log('💾 Caching leaderboard data for 5 minutes (persistent mobile game style)...');
-        await setCached(cacheKey, responseData, 300); // 5 minutes instead of 15 seconds
+        // 💾 STEP 3: Cache the fresh data using standardized TTL (persistent like mobile games)
+        console.log('💾 Caching leaderboard data using standardized TTL (persistent mobile game style)...');
+        await setCached(cacheKey, responseData, CACHE_TTL.REDIS_CACHE); // Use standardized Redis cache TTL
         console.log('✅ Data cached successfully for persistent availability');
 
         const responseTime = Date.now() - startTime;

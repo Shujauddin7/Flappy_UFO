@@ -123,7 +123,7 @@ export default function FlappyGame({
         // We can access them via imagePreloader.getImage(planetName)
     }, [imagePreloader]);
 
-    // Check for grace period (Sunday 15:00-15:30 UTC) - only for tournament mode
+    // Check for grace period using dynamic tournament end time - only for tournament mode
     useEffect(() => {
         if (gameMode !== 'tournament') {
             setIsGracePeriod(false);
@@ -131,22 +131,54 @@ export default function FlappyGame({
             return;
         }
 
-        const checkGracePeriod = () => {
-            const now = new Date();
-            const utcDay = now.getUTCDay(); // 0 = Sunday
-            const utcHour = now.getUTCHours();
-            const utcMinute = now.getUTCMinutes();
+        const checkGracePeriod = async () => {
+            try {
+                const response = await fetch('/api/tournament/current');
+                const data = await response.json();
 
-            // Grace period: Sunday 15:00-15:30 UTC
-            const inGracePeriod = utcDay === 0 && utcHour === 15 && utcMinute >= 0 && utcMinute < 30;
+                if (!data.tournament || !data.tournament.end_time) {
+                    setIsGracePeriod(false);
+                    setGracePeriodMessage('');
+                    return;
+                }
 
-            if (inGracePeriod) {
-                const minutesRemaining = 30 - utcMinute;
-                setIsGracePeriod(true);
-                setGracePeriodMessage(`Tournament ends in ${minutesRemaining} minutes. Calculating prizes...`);
-            } else {
-                setIsGracePeriod(false);
-                setGracePeriodMessage('');
+                const now = new Date();
+                const tournamentEnd = new Date(data.tournament.end_time);
+                const gracePeriodStart = new Date(tournamentEnd.getTime() - (30 * 60 * 1000)); // 30 minutes before end
+
+                // Check if we're in the grace period (30 minutes before tournament end)
+                const inGracePeriod = now >= gracePeriodStart && now < tournamentEnd;
+
+                if (inGracePeriod) {
+                    const minutesRemaining = Math.ceil((tournamentEnd.getTime() - now.getTime()) / (60 * 1000));
+                    setIsGracePeriod(true);
+                    setGracePeriodMessage(`Tournament ends in ${minutesRemaining} minutes. Calculating prizes...`);
+                } else if (now >= tournamentEnd) {
+                    // Tournament has ended
+                    setIsGracePeriod(true);
+                    setGracePeriodMessage('Tournament has ended. Please wait for the next tournament.');
+                } else {
+                    setIsGracePeriod(false);
+                    setGracePeriodMessage('');
+                }
+            } catch (error) {
+                console.warn('Failed to check tournament status for grace period:', error);
+                // Fallback to the old hardcoded logic if API fails
+                const now = new Date();
+                const utcDay = now.getUTCDay(); // 0 = Sunday
+                const utcHour = now.getUTCHours();
+                const utcMinute = now.getUTCMinutes();
+
+                const inGracePeriod = utcDay === 0 && utcHour === 15 && utcMinute >= 0 && utcMinute < 30;
+
+                if (inGracePeriod) {
+                    const minutesRemaining = 30 - utcMinute;
+                    setIsGracePeriod(true);
+                    setGracePeriodMessage(`Tournament ends in ${minutesRemaining} minutes. Calculating prizes...`);
+                } else {
+                    setIsGracePeriod(false);
+                    setGracePeriodMessage('');
+                }
             }
         };
 

@@ -1,7 +1,28 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createClient } from '@supabase/supabase-js';
+
+// Virtual scrolling configuration
+const VIRTUAL_SCROLL_CONFIG = {
+    itemHeight: 72, // Height of each player row in pixels
+    visibleItems: 15, // Number of items visible at once
+    bufferSize: 10, // Extra items to render for smooth scrolling
+    maxMemoryItems: 500, // Maximum items to keep in memory before cleanup
+};
+
+// Cache coordination for preventing race conditions
+interface CacheUpdateTracker {
+    lastUpdateTime: number;
+    pendingUpdates: Set<string>;
+    updateInProgress: boolean;
+}
+
+const cacheTracker: CacheUpdateTracker = {
+    lastUpdateTime: 0,
+    pendingUpdates: new Set(),
+    updateInProgress: false
+};
 
 // Types for the optimized leaderboard
 interface Player {
@@ -75,13 +96,17 @@ interface InfiniteScrollLeaderboardProps {
     tournamentDay?: string;
     className?: string;
     apiEndpoint?: string; // Allow custom API endpoint
+    maxHeight?: number; // Maximum height of the scrollable container
 }
 
 // Player row component with skeleton loader
 function PlayerRow({ player, isLoading = false }: { player?: Player; isLoading?: boolean }) {
     if (isLoading) {
         return (
-            <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg animate-pulse">
+            <div
+                className="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg animate-pulse"
+                style={{ height: VIRTUAL_SCROLL_CONFIG.itemHeight }}
+            >
                 <div className="flex items-center space-x-4">
                     <div className="w-8 h-8 bg-gray-700 rounded-full"></div>
                     <div className="space-y-2">
@@ -114,7 +139,10 @@ function PlayerRow({ player, isLoading = false }: { player?: Player; isLoading?:
     };
 
     return (
-        <div className="flex items-center justify-between p-4 bg-gray-800/30 hover:bg-gray-800/50 rounded-lg transition-colors duration-200 border border-gray-700/50">
+        <div
+            className="flex items-center justify-between p-4 bg-gray-800/30 hover:bg-gray-800/50 rounded-lg transition-colors duration-200 border border-gray-700/50"
+            style={{ height: VIRTUAL_SCROLL_CONFIG.itemHeight }}
+        >
             <div className="flex items-center space-x-4">
                 <div className={`w-12 text-center ${getRankStyle(player.rank)}`}>
                     {getRankIcon(player.rank)}
@@ -138,11 +166,38 @@ function PlayerRow({ player, isLoading = false }: { player?: Player; isLoading?:
     );
 }
 
+// Virtual scrolling hook for memory-efficient rendering
+function useVirtualScroll(
+    itemCount: number,
+    scrollTop: number
+) {
+    return useMemo(() => {
+        const { itemHeight, visibleItems, bufferSize } = VIRTUAL_SCROLL_CONFIG;
+        const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) - bufferSize);
+        const endIndex = Math.min(
+            itemCount - 1,
+            startIndex + visibleItems + bufferSize * 2
+        );
+
+        const offsetY = startIndex * itemHeight;
+        const totalHeight = itemCount * itemHeight;
+
+        return {
+            startIndex,
+            endIndex,
+            offsetY,
+            totalHeight,
+            visibleCount: endIndex - startIndex + 1
+        };
+    }, [itemCount, scrollTop]);
+}
+
 export default function InfiniteScrollLeaderboard({
     initialData = null,
     tournamentDay,
     className = '',
-    apiEndpoint = '/api/leaderboard'
+    apiEndpoint = '/api/leaderboard',
+    maxHeight = 600
 }: InfiniteScrollLeaderboardProps) {
     const [players, setPlayers] = useState<Player[]>(initialData?.players || []);
     const [loading, setLoading] = useState(false);
@@ -150,9 +205,23 @@ export default function InfiniteScrollLeaderboard({
     const [offset, setOffset] = useState(initialData?.pagination.nextOffset || 20);
     const [error, setError] = useState<string | null>(null);
     const [performance, setPerformance] = useState<{ source: string; responseTime: number; cached: boolean } | null>(null);
+    const [scrollTop, setScrollTop] = useState(0);
 
-    const observerRef = useRef<HTMLDivElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
     const supabaseRef = useRef<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
+
+    // Calculate virtual scrolling parameters
+    const virtualScroll = useVirtualScroll(players.length, scrollTop);
+
+    // Memory cleanup: Remove old players when we have too many
+    useEffect(() => {
+        if (players.length > VIRTUAL_SCROLL_CONFIG.maxMemoryItems) {
+            console.log(`🧹 Memory cleanup: removing ${players.length - VIRTUAL_SCROLL_CONFIG.maxMemoryItems} old players`);
+            setPlayers(prev => prev.slice(-VIRTUAL_SCROLL_CONFIG.maxMemoryItems));
+            // Adjust offset to maintain pagination consistency
+            setOffset(prev => prev - (players.length - VIRTUAL_SCROLL_CONFIG.maxMemoryItems));
+        }
+    }, [players.length]);
 
     // Initialize Supabase client for realtime updates
     useEffect(() => {
@@ -163,9 +232,16 @@ export default function InfiniteScrollLeaderboard({
         if (supabaseUrl && supabaseAnonKey) {
             supabaseRef.current = createClient(supabaseUrl, supabaseAnonKey);
         }
+
+        // Cleanup function to prevent memory leaks
+        return () => {
+            if (supabaseRef.current) {
+                supabaseRef.current.removeAllChannels();
+            }
+        };
     }, []);
 
-    // Load more players
+    // Load more players with virtual scrolling optimization
     const loadMorePlayers = useCallback(async () => {
         if (loading || !hasMore) return;
 
@@ -209,25 +285,84 @@ export default function InfiniteScrollLeaderboard({
         }
     }, [offset, hasMore, loading, tournamentDay, apiEndpoint]);
 
-    // Intersection Observer for infinite scroll
-    useEffect(() => {
-        const observer = new IntersectionObserver(
-            (entries) => {
-                if (entries[0].isIntersecting && hasMore && !loading) {
-                    loadMorePlayers();
-                }
-            },
-            { threshold: 0.1 }
-        );
+    // Handle scroll events for virtual scrolling
+    const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+        const scrollTop = e.currentTarget.scrollTop;
+        setScrollTop(scrollTop);
 
-        if (observerRef.current) {
-            observer.observe(observerRef.current);
+        // Check if we need to load more content
+        const { scrollHeight, clientHeight } = e.currentTarget;
+        const scrollPercent = (scrollTop + clientHeight) / scrollHeight;
+
+        if (scrollPercent > 0.8 && hasMore && !loading) {
+            loadMorePlayers();
+        }
+    }, [hasMore, loading, loadMorePlayers]);
+
+    // Coordinated leaderboard refresh function with memory optimization
+    const performLeaderboardRefresh = useCallback(async () => {
+        if (cacheTracker.updateInProgress) {
+            console.log('🔄 Skipping refresh - update already in progress');
+            return;
         }
 
-        return () => observer.disconnect();
-    }, [loadMorePlayers, hasMore, loading]);
+        cacheTracker.updateInProgress = true;
+        const pendingUpdates = Array.from(cacheTracker.pendingUpdates);
+        cacheTracker.pendingUpdates.clear();
 
-    // Realtime updates for score submissions
+        console.log('🔄 Starting coordinated leaderboard refresh for updates:', pendingUpdates);
+
+        try {
+            // Reset the infinite scroll state and clear memory
+            setPlayers([]);
+            setOffset(0);
+            setHasMore(true);
+            setScrollTop(0); // Reset scroll position
+
+            // Load fresh data
+            await loadMorePlayers();
+
+            console.log('✅ Coordinated leaderboard refresh completed');
+        } catch (error) {
+            console.error('❌ Coordinated leaderboard refresh failed:', error);
+        } finally {
+            cacheTracker.updateInProgress = false;
+        }
+    }, [loadMorePlayers]);
+
+    // Debounced realtime update handler to prevent race conditions
+    const handleRealtimeUpdate = useCallback((payload: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+        const updateId = payload.new?.user_id || payload.old?.user_id || 'unknown';
+        const currentTime = Date.now();
+
+        console.log('⚡ Realtime update received:', { updateId, currentTime });
+
+        // Add to pending updates
+        cacheTracker.pendingUpdates.add(updateId);
+
+        // If an update is already in progress, don't start another one
+        if (cacheTracker.updateInProgress) {
+            console.log('⏳ Update already in progress, queuing update for:', updateId);
+            return;
+        }
+
+        // Debounce mechanism - wait for a pause in updates before refreshing
+        const timeSinceLastUpdate = currentTime - cacheTracker.lastUpdateTime;
+        const debounceDelay = timeSinceLastUpdate < 2000 ? 2000 : 500; // 2s if updates are frequent, 0.5s otherwise
+
+        console.log(`⏱️ Debouncing update for ${debounceDelay}ms, pending updates:`, Array.from(cacheTracker.pendingUpdates));
+
+        setTimeout(() => {
+            // Check if we should still update (no newer updates have been queued)
+            if (cacheTracker.lastUpdateTime <= currentTime) {
+                performLeaderboardRefresh();
+            }
+        }, debounceDelay);
+
+        cacheTracker.lastUpdateTime = currentTime;
+    }, [performLeaderboardRefresh]);
+
+    // Realtime updates for score submissions with race condition prevention
     useEffect(() => {
         if (!supabaseRef.current || !tournamentDay) return;
 
@@ -241,24 +376,21 @@ export default function InfiniteScrollLeaderboard({
                     table: 'user_tournament_records',
                     filter: `tournament_day=eq.${tournamentDay}`
                 },
-                (payload: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
-                    console.log('⚡ Realtime update received:', payload);
-
-                    // Refresh leaderboard data after a short delay (let Redis sync)
-                    setTimeout(() => {
-                        setPlayers([]);
-                        setOffset(0);
-                        setHasMore(true);
-                        loadMorePlayers();
-                    }, 1000);
-                }
+                handleRealtimeUpdate
             )
             .subscribe();
 
         return () => {
-            supabaseRef.current?.removeChannel(channel);
+            if (channel) {
+                supabaseRef.current?.removeChannel(channel);
+            }
         };
-    }, [tournamentDay, loadMorePlayers]);
+    }, [tournamentDay, handleRealtimeUpdate]);
+
+    // Get visible players for virtual scrolling
+    const visiblePlayers = useMemo(() => {
+        return players.slice(virtualScroll.startIndex, virtualScroll.endIndex + 1);
+    }, [players, virtualScroll.startIndex, virtualScroll.endIndex]);
 
     // Empty state
     if (!loading && players.length === 0 && !initialData) {
@@ -277,23 +409,45 @@ export default function InfiniteScrollLeaderboard({
             {performance && (
                 <div className="text-xs text-gray-500 text-center p-2 bg-gray-900/50 rounded">
                     ⚡ {performance.cached ? 'Cached' : 'Fresh'} data from {performance.source} • {performance.responseTime}ms
+                    {players.length > VIRTUAL_SCROLL_CONFIG.visibleItems && (
+                        <span className="ml-2">📊 Virtual scroll active ({visiblePlayers.length}/{players.length} rendered)</span>
+                    )}
                 </div>
             )}
 
-            {/* Players list */}
-            <div className="space-y-2">
-                {players.map((player) => (
-                    <PlayerRow key={`${player.user_id}-${player.rank}`} player={player} />
-                ))}
+            {/* Virtual scrolling container */}
+            <div
+                ref={containerRef}
+                className="overflow-auto border border-gray-700 rounded-lg bg-gray-900/30"
+                style={{ maxHeight: maxHeight }}
+                onScroll={handleScroll}
+            >
+                {/* Virtual scroll spacer - top */}
+                <div style={{ height: virtualScroll.offsetY }} />
 
-                {/* Loading skeletons */}
-                {loading && (
-                    <>
-                        {[...Array(5)].map((_, i) => (
-                            <PlayerRow key={`skeleton-${i}`} isLoading={true} />
-                        ))}
-                    </>
-                )}
+                {/* Visible players */}
+                <div className="space-y-2 px-2">
+                    {visiblePlayers.map((player) => (
+                        <PlayerRow
+                            key={`${player.user_id}-${player.rank}`}
+                            player={player}
+                        />
+                    ))}
+
+                    {/* Loading skeletons */}
+                    {loading && (
+                        <>
+                            {[...Array(5)].map((_, i) => (
+                                <PlayerRow key={`skeleton-${i}`} isLoading={true} />
+                            ))}
+                        </>
+                    )}
+                </div>
+
+                {/* Virtual scroll spacer - bottom */}
+                <div style={{
+                    height: Math.max(0, virtualScroll.totalHeight - virtualScroll.offsetY - (visiblePlayers.length * VIRTUAL_SCROLL_CONFIG.itemHeight))
+                }} />
             </div>
 
             {/* Error state */}
@@ -309,19 +463,17 @@ export default function InfiniteScrollLeaderboard({
                 </div>
             )}
 
-            {/* Load more trigger */}
-            {hasMore && !loading && !error && (
-                <div ref={observerRef} className="h-20 flex items-center justify-center">
-                    <div className="text-gray-400 text-sm">Loading more players...</div>
-                </div>
-            )}
-
             {/* End of list */}
             {!hasMore && players.length > 0 && (
                 <div className="text-center py-6 text-gray-400">
                     🏁 You&apos;ve reached the end of the leaderboard!
                     <div className="text-sm mt-2">
                         Total players: {players.length}
+                        {players.length > VIRTUAL_SCROLL_CONFIG.maxMemoryItems && (
+                            <span className="ml-2 text-yellow-400">
+                                (Memory optimized - showing recent {VIRTUAL_SCROLL_CONFIG.maxMemoryItems})
+                            </span>
+                        )}
                     </div>
                 </div>
             )}

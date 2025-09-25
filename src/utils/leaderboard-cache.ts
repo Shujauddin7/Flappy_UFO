@@ -77,9 +77,13 @@ export const CACHE_KEYS = {
     LEADERBOARD: 'preloaded_leaderboard'
 } as const;
 
-// TTL constants (in milliseconds)
+// TTL constants (in milliseconds) - Standardized across the entire application
 export const CACHE_TTL = {
-    TOURNAMENT: 60000,    // 1 minute - tournament info changes less frequently
-    LEADERBOARD: 30000,   // 30 seconds - leaderboard changes more frequently
-    REAL_TIME: 15000      // 15 seconds - for real-time features
+    TOURNAMENT: 60000,     // 1 minute - tournament info changes less frequently
+    LEADERBOARD: 30000,    // 30 seconds - leaderboard changes more frequently  
+    REAL_TIME: 15000,      // 15 seconds - for real-time features
+    PRELOAD_TOURNAMENT: 300000,  // 5 minutes - for preloaded tournament data on homepage
+    PRELOAD_LEADERBOARD: 180000, // 3 minutes - for preloaded leaderboard data on homepage
+    REDIS_CACHE: 300,      // 5 minutes in seconds - for Redis cache warming
+    NO_TOURNAMENT: 300     // 5 minutes in seconds - when no tournament exists
 } as const;
