@@ -46,7 +46,7 @@ export const TournamentLeaderboard = ({
 }: TournamentLeaderboardProps) => {
     const [topPlayers, setTopPlayers] = useState<LeaderboardPlayer[]>([]);
     const [allPlayers, setAllPlayers] = useState<LeaderboardPlayer[]>([]);
-    const [loading, setLoading] = useState(!preloadedData); // 🚀 OPTIMIZATION: Don't show loading if we have preloaded data
+    const [loading, setLoading] = useState(false); // 🚀 FIX: Initialize as false, set true only for actual network requests
     const [currentUserData, setCurrentUserData] = useState<LeaderboardPlayer | null>(null);
 
     // Setup intersection observer for user card visibility - OPTIMIZED: Only after data is loaded
@@ -89,8 +89,7 @@ export const TournamentLeaderboard = ({
                 if (players.length === 0) {
                     setTopPlayers([]);
                     setAllPlayers([]);
-                    setLoading(false);
-                    return;
+                    return; // 🚀 FIX: Don't set loading when we have instant data (even if empty)
                 }
 
                 // Set both top players and all players
@@ -130,9 +129,12 @@ export const TournamentLeaderboard = ({
                     setCurrentUserData(userRank || null);
                 }
 
-                setLoading(false);
-                return;
+                return; // 🚀 FIX: Return early without setting loading state
             }
+
+            // 🚀 FIX: Only set loading true when making actual network requests
+            console.log('🌐 Making network request for leaderboard data...');
+            setLoading(true);
 
             // Fetch leaderboard data via API (uses service key permissions)
             const response = await fetch('/api/tournament/leaderboard-data');
@@ -197,7 +199,7 @@ export const TournamentLeaderboard = ({
         } catch (err) {
             console.error('Failed to fetch leaderboard:', err);
         } finally {
-            setLoading(false);
+            setLoading(false); // 🚀 FIX: Always clear loading state after network requests
         }
     }, [currentUserId, currentUsername, preloadedData, onUserRankUpdate]);
 

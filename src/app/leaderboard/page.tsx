@@ -198,64 +198,82 @@ export default function LeaderboardPage() {
             try {
                 console.log('⚡ Loading essential tournament data...');
 
-                // Load only essential data - tournament stats (fast)
-                const tournamentRes = await fetch('/api/tournament/stats');
-                const tournament = await tournamentRes.json();
+                // 🚀 PERFORMANCE FIX: Use cached data first, then update in background
+                const cachedTournament = sessionStorage.getItem('tournament_data');
+                const cachedLeaderboard = sessionStorage.getItem('leaderboard_data');
 
-                console.log('🎯 API Response:', tournament);
+                if (cachedTournament && cachedLeaderboard) {
+                    try {
+                        const parsedTournament = JSON.parse(cachedTournament);
+                        const parsedLeaderboard = JSON.parse(cachedLeaderboard);
 
-                if (tournament.has_active_tournament) {
-                    const newTournamentData = {
-                        id: tournament.tournament_day || 'current',
-                        tournament_day: tournament.tournament_day || '2025-09-07',
-                        is_active: true,
-                        total_players: tournament.total_players || 0,
-                        total_prize_pool: tournament.total_prize_pool || 0,
-                        total_collected: tournament.total_collected || 0,
-                        admin_fee: 0,
-                        guarantee_amount: 0,
-                        admin_net_result: 0,
-                        start_time: tournament.tournament_start_date || new Date().toISOString(),
-                        end_time: tournament.end_time || null // Use real database end_time, not hardcoded
-                    };
+                        // Check if cache is still fresh
+                        const tournamentFresh = Date.now() - parsedTournament.timestamp < CACHE_TTL.TOURNAMENT;
+                        const leaderboardFresh = Date.now() - parsedLeaderboard.timestamp < CACHE_TTL.LEADERBOARD;
 
-                    console.log('🎯 New Tournament Data:', newTournamentData);
-
-                    setCurrentTournament(newTournamentData);
-
-                    // ⚡ PERSISTENCE: Cache for instant loading on navigation
-                    sessionStorage.setItem('tournament_data', JSON.stringify({
-                        data: newTournamentData,
-                        timestamp: Date.now()
-                    }));
-
-                    console.log(`⚡ Tournament data loaded: ${tournament.total_players} players, $${tournament.total_prize_pool} prize`);
-
-                    // Load leaderboard data in parallel (not blocking UI)
-                    const loadLeaderboard = async () => {
-                        try {
-                            const leaderboardRes = await fetch('/api/tournament/leaderboard-data');
-                            const leaderboard = await leaderboardRes.json();
-
-                            if (leaderboard.players) {
-                                setPreloadedLeaderboardData(leaderboard);
-
-                                // ⚡ CACHE LEADERBOARD: Cache for instant loading
-                                sessionStorage.setItem('leaderboard_data', JSON.stringify({
-                                    data: leaderboard,
-                                    timestamp: Date.now()
-                                }));
-
-                                console.log(`⚡ Leaderboard loaded: ${leaderboard.players.length} entries`);
-                            }
-                        } catch (err) {
-                            console.warn('Background leaderboard load failed:', err);
+                        if (tournamentFresh && leaderboardFresh) {
+                            console.log('⚡ INSTANT LOAD: Using fresh cached data');
+                            setCurrentTournament(parsedTournament.data);
+                            setPreloadedLeaderboardData(parsedLeaderboard.data);
+                            return; // Skip network request entirely
                         }
-                    };
-
-                    // Start leaderboard loading immediately (parallel, not delayed)
-                    loadLeaderboard();
+                    } catch (e) {
+                        console.warn('Cache parse error:', e);
+                    }
                 }
+
+                // Load only essential data - tournament stats (fast)
+                const response = await fetch('/api/tournament/stats');
+                const tournamentData = await response.json();
+
+                const newTournamentData: TournamentData = {
+                    id: 'current',
+                    tournament_day: tournamentData.tournament_day,
+                    is_active: true,
+                    total_players: tournamentData.total_players,
+                    total_prize_pool: tournamentData.total_prize_pool,
+                    total_collected: tournamentData.total_collected,
+                    admin_fee: tournamentData.admin_fee,
+                    guarantee_amount: tournamentData.guarantee_amount,
+                    admin_net_result: tournamentData.admin_net_result,
+                    start_time: new Date().toISOString(),
+                    end_time: null // Will be calculated from tournament timing
+                };
+
+                setCurrentTournament(newTournamentData);
+
+                // ⚡ PERSISTENCE: Cache for instant loading on navigation
+                sessionStorage.setItem('tournament_data', JSON.stringify({
+                    data: newTournamentData,
+                    timestamp: Date.now()
+                }));
+
+                console.log(`⚡ Tournament data loaded: ${tournamentData.total_players} players, $${tournamentData.total_prize_pool} prize`);
+
+                // Load leaderboard data in parallel (not blocking UI)
+                const loadLeaderboard = async () => {
+                    try {
+                        const leaderboardRes = await fetch('/api/tournament/leaderboard-data');
+                        const leaderboard = await leaderboardRes.json();
+
+                        if (leaderboard.players) {
+                            setPreloadedLeaderboardData(leaderboard);
+
+                            // ⚡ CACHE LEADERBOARD: Cache for instant loading
+                            sessionStorage.setItem('leaderboard_data', JSON.stringify({
+                                data: leaderboard,
+                                timestamp: Date.now()
+                            }));
+
+                            console.log(`⚡ Leaderboard loaded: ${leaderboard.players.length} entries`);
+                        }
+                    } catch (err) {
+                        console.warn('Background leaderboard load failed:', err);
+                    }
+                };
+
+                // Start leaderboard loading immediately (parallel, not delayed)
+                loadLeaderboard();
 
             } catch (error) {
                 console.error('Essential data load failed:', error);

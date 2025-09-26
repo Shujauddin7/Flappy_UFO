@@ -63,19 +63,33 @@ export default function GameHomepage() {
     useEffect(() => {
         console.log('🎮 GAME STARTUP: Beginning professional cache warming...');
 
+        // 🚀 OPTIMIZATION: Check if cache is already warm to prevent redundant calls
+        const isAlreadyWarming = sessionStorage.getItem('cache_warming_in_progress');
+        if (isAlreadyWarming) {
+            console.log('⚡ SKIP: Cache warming already in progress');
+            return;
+        }
+
+        // Mark warming as in progress
+        sessionStorage.setItem('cache_warming_in_progress', Date.now().toString());
+
         // Warm cache immediately when app loads for instant tournament access
         fetch('/api/warm-cache', { method: 'POST' })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     console.log('🚀 CACHE PRE-WARMED: Tournament will load instantly!');
-                    console.log(`⏱️ Warming took ${data.performance.total_time_ms}ms`);
+                    console.log(`⏱️ Warming took ${data.performance?.total_time_ms || 'unknown'}ms`);
                 } else {
                     console.warn('⚠️ Cache warming had issues (non-critical)');
                 }
             })
             .catch(err => {
                 console.warn('⚠️ Cache warming failed (non-critical):', err);
+            })
+            .finally(() => {
+                // Clear the warming flag after completion
+                sessionStorage.removeItem('cache_warming_in_progress');
             });
     }, []); // Run once on app startup
 
