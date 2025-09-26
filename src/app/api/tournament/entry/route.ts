@@ -178,7 +178,7 @@ export async function POST(req: NextRequest) {
         if (tournamentFetchError || !tournament) {
             console.error('❌ No active tournament found:', tournamentFetchError);
             return NextResponse.json({
-                error: 'No active tournament found. Please contact support.',
+                error: 'No active tournament found. Please contact support at flappyufo.help@gmail.com.',
                 details: tournamentFetchError?.message || 'No tournament available'
             }, { status: 404 });
         }

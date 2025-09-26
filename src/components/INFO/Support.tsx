@@ -1,6 +1,41 @@
 'use client';
 
 export default function Support() {
+    // Helper function to render text with clickable email links
+    const renderContentWithLinks = (text: string) => {
+        // Regular expression to find email addresses
+        const emailRegex = /([\w\.-]+@[\w\.-]+\.\w+)/g;
+        
+        // Split text by email addresses
+        const parts = text.split(emailRegex);
+        
+        return parts.map((part, index) => {
+            // Check if this part is an email
+            if (emailRegex.test(part)) {
+                return (
+                    <a
+                        key={index}
+                        href={`mailto:${part}`}
+                        className="text-[#00F5FF] hover:text-[#66FFFF] underline underline-offset-2 font-semibold transition-colors duration-200 hover:glow"
+                        style={{
+                            textShadow: '0 0 8px rgba(0, 245, 255, 0.6)',
+                            textDecoration: 'underline',
+                            textUnderlineOffset: '3px'
+                        }}
+                        onClick={(e) => {
+                            // Ensure the mailto link works on mobile devices
+                            e.preventDefault();
+                            window.location.href = `mailto:${part}`;
+                        }}
+                    >
+                        {part}
+                    </a>
+                );
+            }
+            return part;
+        });
+    };
+
     const supportData = [
         {
             heading: "Need Help? We've Got You Covered! 🛸",
@@ -20,8 +55,8 @@ export default function Support() {
         {
             heading: "Contact Information",
             content: [
-                "📧 Email Support: xxx",
-                "🐦 Twitter Updates: xxxfor game updates and announcements"
+                "📧 Email Support: flappyufo.help@gmail.com",
+                "🐦 Twitter Updates: @FlappyUFO for game updates and announcements"
             ]
         },
         {
@@ -35,10 +70,10 @@ export default function Support() {
         {
             heading: "Have Ideas? We'd Love to Hear! 💡",
             content: [
-                "� Feature Suggestions: Got ideas to make Flappy UFO even more fun? We're always looking for ways to improve the game experience!",
+                "💡 Feature Suggestions: Got ideas to make Flappy UFO even more fun? We're always looking for ways to improve the game experience!",
                 "🎮 Gameplay Ideas: Think of new game modes, power-ups, or challenges? Share your creative vision with us!",
-                "� Community Feedback: Your input shapes the future of Flappy UFO. Every suggestion is valued and considered!",
-                "📝 Contact: Drop us your ideas at [contact] - let's make this galaxy adventure even more amazing together!"
+                "🌟 Community Feedback: Your input shapes the future of Flappy UFO. Every suggestion is valued and considered!",
+                "📝 Contact: Drop us your ideas at flappyufo.help@gmail.com - let's make this galaxy adventure even more amazing together!"
             ]
         },
 
@@ -70,7 +105,7 @@ export default function Support() {
                         <div className="space-y-3">
                             {section.content.map((item, itemIndex) => (
                                 <p key={itemIndex} className="text-white text-sm leading-relaxed">
-                                    {item}
+                                    {renderContentWithLinks(item)}
                                 </p>
                             ))}
                         </div>
@@ -79,11 +114,8 @@ export default function Support() {
 
                 {/* Footer */}
                 <div className="text-center pt-6 border-t border-[#00F5FF] border-opacity-20">
-                    <p className="text-[#00F5FF] text-sm opacity-80 mb-2">
+                    <p className="text-[#00F5FF] text-sm opacity-80">
                         Still need help? Don&apos;t hesitate to reach out!
-                    </p>
-                    <p className="text-white text-xs opacity-70">
-                        Support Team Available 24/7 | Average Response: &lt;4 hours 🚀
                     </p>
                 </div>
             </div>

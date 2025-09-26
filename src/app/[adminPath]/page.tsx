@@ -365,7 +365,7 @@ export default function AdminDashboard() {
     if (validAdminWallets.length === 0) {
         return (
             <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center">
-                <div className="text-white text-xl">Admin configuration error. Please contact support.</div>
+                <div className="text-white text-xl">Admin configuration error. Please contact support at flappyufo.help@gmail.com.</div>
             </div>
         );
     }

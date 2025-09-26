@@ -592,7 +592,7 @@ export default function GameHomepage() {
 
             // More specific error message
             const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-            alert(`Payment successful but failed to register tournament entry.\n\nError: ${errorMessage}\n\nPlease contact support if this persists.`);
+            alert(`Payment successful but failed to register tournament entry.\n\nError: ${errorMessage}\n\nPlease contact support at flappyufo.help@gmail.com if this persists.`);
             throw error;
         }
     };

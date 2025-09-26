@@ -4130,3 +4130,9 @@ canvas,
 [role="button"] {
   touch-action: manipulation;
 }
+
+/* Email link hover glow effect */
+.hover\:glow:hover {
+  text-shadow: 0 0 12px rgba(0, 245, 255, 0.8), 0 0 20px rgba(0, 245, 255, 0.6) !important;
+  filter: brightness(1.2);
+}
