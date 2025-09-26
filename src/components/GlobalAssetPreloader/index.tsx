@@ -37,15 +37,16 @@ export function GlobalAssetPreloader({ children, showLoadingScreen = false }: Gl
                         </p>
                     </div>
 
-                    {/* Circular Progress Indicator */}
+                    {/* Circular Progress Indicator - Single Circle Design */}
                     <div className="flex flex-col items-center">
                         <div className="relative w-36 h-36">
-                            {/* Outer glow effect */}
+                            {/* Outer glow effect with subtle pulse */}
                             <div
                                 className="absolute inset-0 rounded-full"
                                 style={{
-                                    background: 'radial-gradient(circle, rgba(0, 245, 255, 0.1) 0%, transparent 70%)',
-                                    filter: 'blur(8px)'
+                                    background: 'radial-gradient(circle, rgba(0, 245, 255, 0.15) 0%, transparent 70%)',
+                                    filter: 'blur(8px)',
+                                    animation: 'pulse 3s ease-in-out infinite'
                                 }}
                             />
 
@@ -91,15 +92,6 @@ export function GlobalAssetPreloader({ children, showLoadingScreen = false }: Gl
                                     </span>
                                 </div>
                             </div>
-
-                            {/* Pulse animation */}
-                            <div
-                                className="absolute inset-0 rounded-full border border-cyan-400 opacity-30"
-                                style={{
-                                    animation: 'pulse 2s infinite',
-                                    boxShadow: '0 0 20px rgba(0, 245, 255, 0.3)'
-                                }}
-                            />
                         </div>
                     </div>
 
