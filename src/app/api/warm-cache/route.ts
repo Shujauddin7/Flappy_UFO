@@ -1,46 +1,45 @@
 import { NextResponse } from 'next/server';
-import { warmAllCaches } from '@/utils/cache-warming';
 
 /**
- * CACHE WARMING API ENDPOINT
- * Manually trigger cache warming for instant performance
- * Can be called by cron jobs, webhooks, or manual testing
+ * SIMPLIFIED CACHE WARMING API ENDPOINT
+ * Directly calls leaderboard endpoint to warm cache for instant performance
  */
-export async function POST() {
+export async function POST(request: Request) {
     const startTime = Date.now();
-    console.log('🔥 MANUAL CACHE WARMING TRIGGERED - API Endpoint');
+    console.log('🔥 SIMPLIFIED CACHE WARMING STARTED');
 
     try {
-        const result = await warmAllCaches();
+        // Get the origin from the request
+        const url = new URL(request.url);
+        const baseUrl = url.origin;
+
+        console.log('🏆 Warming leaderboard cache directly...');
+        const leaderboardResponse = await fetch(`${baseUrl}/api/tournament/leaderboard-data`, {
+            method: 'GET',
+            headers: {
+                'User-Agent': 'Cache-Warmer/1.0'
+            }
+        });
+
+        const leaderboardData = await leaderboardResponse.json();
         const totalTime = Date.now() - startTime;
 
-        if (result.success) {
+        if (leaderboardResponse.ok) {
             console.log(`✅ Cache warming completed successfully in ${totalTime}ms`);
-            console.log('🎮 Ready for professional mobile game performance!');
+            console.log(`📊 Cached ${leaderboardData.total_players || 0} players`);
 
             return NextResponse.json({
                 success: true,
-                message: 'All caches warmed successfully',
+                message: 'Leaderboard cache warmed successfully',
                 performance: {
                     total_time_ms: totalTime,
+                    players_cached: leaderboardData.total_players || 0,
                     ready_for_instant_loading: true
                 },
-                cache_status: result.details,
                 timestamp: new Date().toISOString()
             });
         } else {
-            console.log(`⚠️ Cache warming completed with some failures in ${totalTime}ms`);
-
-            return NextResponse.json({
-                success: false,
-                message: 'Some caches failed to warm',
-                performance: {
-                    total_time_ms: totalTime,
-                    ready_for_instant_loading: false
-                },
-                cache_status: result.details,
-                timestamp: new Date().toISOString()
-            }, { status: 207 }); // Multi-status response
+            throw new Error(`Leaderboard warming failed: ${leaderboardData.error || 'Unknown error'}`);
         }
 
     } catch (error) {
