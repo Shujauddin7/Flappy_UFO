@@ -5,10 +5,10 @@ export default function Support() {
     const renderContentWithLinks = (text: string) => {
         // Regular expression to find email addresses
         const emailRegex = /([\w\.-]+@[\w\.-]+\.\w+)/g;
-        
+
         // Split text by email addresses
         const parts = text.split(emailRegex);
-        
+
         return parts.map((part, index) => {
             // Check if this part is an email
             if (emailRegex.test(part)) {
@@ -40,7 +40,8 @@ export default function Support() {
         {
             heading: "Need Help? We've Got You Covered! 🛸",
             content: [
-                "Our support team is here to help you navigate the galaxy and resolve any issues you encounter while playing Flappy UFO."
+                "Our support team is here to help you navigate the galaxy and resolve any issues you encounter while playing Flappy UFO.",
+                "Email: flappyufo.help@gmail.com"
             ]
         },
         {
@@ -50,13 +51,6 @@ export default function Support() {
                 "💰 Payment Problems: Payment failed or entry not recorded? Check your World App wallet balance first. All payments are verified before creating entries.",
                 "🆔 Verification Issues: Can't get verified pricing? Ensure you're completing World ID Orb verification within the tournament entry flow. Verification resets weekly.",
                 "🏆 Tournament Questions: Confused about tournament timing or rules? Check the FAQ section for detailed explanations of all tournament mechanics."
-            ]
-        },
-        {
-            heading: "Contact Information",
-            content: [
-                "📧 Email Support: flappyufo.help@gmail.com",
-                "🐦 Twitter Updates: @FlappyUFO for game updates and announcements"
             ]
         },
         {
