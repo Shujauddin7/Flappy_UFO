@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Page } from '@/components/PageLayout';
 import { getCoins } from '@/utils/coins';
-import { useGameImagePreloader } from '@/hooks/useImagePreloader';
+import { useGameAssets } from '@/hooks/useGlobalAssetPreloader';
 
 interface GameObject {
     x: number;
@@ -73,8 +73,8 @@ export default function FlappyGame({
     const [isGracePeriod, setIsGracePeriod] = useState(false);
     const [gracePeriodMessage, setGracePeriodMessage] = useState('');
 
-    // Use the game image preloader
-    const imagePreloader = useGameImagePreloader();
+    // Use global asset preloader for better performance and caching
+    const globalAssets = useGameAssets();
 
     const gameStateRef = useRef<GameState>({
         ufo: { x: 100, y: 300, velocity: 0, rotation: 0 },
@@ -117,11 +117,11 @@ export default function FlappyGame({
         setGameState({ ...gameStateRef.current });
     }, [gameMode, continueFromScore]);
 
-    // Load planet images using the image preloader
+    // Load planet images using the global asset preloader
     useEffect(() => {
-        // Images are preloaded by the useGameImagePreloader hook
-        // We can access them via imagePreloader.getImage(planetName)
-    }, [imagePreloader]);
+        // Images are preloaded by the global asset preloader
+        // We can access them via globalAssets.getPlanetImage(planetName)
+    }, [globalAssets]);
 
     // Check for grace period using dynamic tournament end time - only for tournament mode
     useEffect(() => {
@@ -732,7 +732,7 @@ export default function FlappyGame({
         // Draw planets, asteroids, coins, and dust particles
         state.obstacles.forEach(obstacle => {
             if (obstacle.type === 'planet' && obstacle.planetType) {
-                const img = imagePreloader.getPlanetImage(obstacle.planetType);
+                const img = globalAssets.getPlanetImage(obstacle.planetType);
                 const centerX = obstacle.x + obstacle.width / 2;
                 const centerY = obstacle.y + obstacle.height / 2;
                 const radius = obstacle.width / 2;
@@ -1153,7 +1153,7 @@ export default function FlappyGame({
             // Game is over, but we still need to render one more time to show the final state
             // The parent component will show the modal
         }
-    }, [checkCollisions, createObstacles, createParticles, onGameEnd, imagePreloader]);
+    }, [checkCollisions, createObstacles, createParticles, onGameEnd, globalAssets]);
 
     // Input handlers
     useEffect(() => {
@@ -1231,16 +1231,19 @@ export default function FlappyGame({
 
     return (
         <Page>
-            {/* Loading Screen - Show while images are preloading */}
-            {imagePreloader.isLoading || !imagePreloader.allLoaded ? (
+            {/* Loading Screen - Show while global assets are preloading */}
+            {globalAssets.isLoading || !globalAssets.allLoaded ? (
                 <div
-                    className="fixed inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-slate-900 via-blue-900 to-slate-900 z-50"
-                    style={{ background: 'linear-gradient(135deg, #0B1426 0%, #1a237e 50%, #0B1426 100%)' }}
+                    className="fixed inset-0 flex flex-col items-center justify-center z-50"
+                    style={{
+                        background: 'linear-gradient(135deg, #0B1426 0%, #1a237e 50%, #0B1426 100%)',
+                        backdropFilter: 'blur(10px)'
+                    }}
                 >
                     <div className="text-center space-y-8 max-w-sm px-6">
                         {/* Game Title */}
-                        <div className="space-y-3">
-                            <h1 className="text-3xl font-bold text-white">
+                        <div className="space-y-4">
+                            <h1 className="text-4xl font-bold text-white mb-2">
                                 🛸 Flappy UFO
                             </h1>
                             <p className="text-cyan-300 text-lg font-medium">
@@ -1248,53 +1251,75 @@ export default function FlappyGame({
                             </p>
                         </div>
 
-                        {/* Circular Progress Indicator */}
-                        <div className="flex flex-col items-center space-y-4">
-                            <div className="relative w-32 h-32">
-                                <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 36 36">
+                        {/* Circular Progress Indicator - Improved Design */}
+                        <div className="flex flex-col items-center">
+                            <div className="relative w-36 h-36">
+                                {/* Outer glow effect */}
+                                <div
+                                    className="absolute inset-0 rounded-full"
+                                    style={{
+                                        background: 'radial-gradient(circle, rgba(0, 245, 255, 0.1) 0%, transparent 70%)',
+                                        filter: 'blur(8px)'
+                                    }}
+                                />
+
+                                <svg className="w-36 h-36 transform -rotate-90" viewBox="0 0 36 36">
                                     {/* Background circle */}
                                     <path
-                                        className="text-slate-800"
-                                        stroke="currentColor"
-                                        strokeWidth="3"
+                                        stroke="rgba(255, 255, 255, 0.1)"
+                                        strokeWidth="2.5"
                                         fill="transparent"
                                         d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                        style={{
-                                            opacity: 0.3
-                                        }}
                                     />
-                                    {/* Progress circle */}
+                                    {/* Progress circle with animated gradient */}
                                     <path
-                                        className="text-cyan-400"
-                                        stroke="currentColor"
+                                        stroke="url(#progressGradient)"
                                         strokeWidth="3"
                                         strokeLinecap="round"
                                         fill="transparent"
-                                        strokeDasharray={`${imagePreloader.loadingProgress}, 100`}
+                                        strokeDasharray={`${globalAssets.loadingProgress}, 100`}
                                         style={{
-                                            filter: 'drop-shadow(0 0 12px #00f5ff)',
-                                            transition: 'stroke-dasharray 0.5s ease-in-out'
+                                            filter: 'drop-shadow(0 0 8px #00f5ff)',
+                                            transition: 'stroke-dasharray 0.3s ease-out'
                                         }}
                                         d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                                     />
+                                    {/* Define gradient for progress circle */}
+                                    <defs>
+                                        <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" style={{ stopColor: '#00f5ff', stopOpacity: 1 }} />
+                                            <stop offset="50%" style={{ stopColor: '#9333ea', stopOpacity: 1 }} />
+                                            <stop offset="100%" style={{ stopColor: '#ec4899', stopOpacity: 1 }} />
+                                        </linearGradient>
+                                    </defs>
                                 </svg>
-                                {/* Percentage text in center */}
+
+                                {/* Percentage text in center - Enhanced */}
                                 <div className="absolute inset-0 flex items-center justify-center">
                                     <div className="text-center">
-                                        <span className="text-2xl font-bold text-white block">
-                                            {imagePreloader.loadingProgress}%
+                                        <span className="text-3xl font-bold text-white block mb-1">
+                                            {globalAssets.loadingProgress}%
                                         </span>
-                                        <span className="text-xs text-cyan-300 uppercase tracking-wider">
-                                            Complete
+                                        <span className="text-xs text-cyan-300 uppercase tracking-widest font-medium">
+                                            COMPLETE
                                         </span>
                                     </div>
                                 </div>
+
+                                {/* Pulse animation */}
+                                <div
+                                    className="absolute inset-0 rounded-full border border-cyan-400 opacity-30"
+                                    style={{
+                                        animation: 'pulse 2s infinite',
+                                        boxShadow: '0 0 20px rgba(0, 245, 255, 0.3)'
+                                    }}
+                                />
                             </div>
                         </div>
 
                         {/* Error Messages */}
-                        {imagePreloader.errors.length > 0 && (
-                            <div className="mt-4 p-3 bg-red-900 bg-opacity-50 rounded-lg">
+                        {globalAssets.errors.length > 0 && (
+                            <div className="mt-4 p-3 bg-red-900 bg-opacity-30 rounded-lg border border-red-500 border-opacity-30">
                                 <p className="text-red-300 text-sm">
                                     Some images couldn&apos;t load, but the game will work with fallbacks.
                                 </p>
@@ -1318,7 +1343,7 @@ export default function FlappyGame({
                     touchAction: 'none',
                     zIndex: 10,
                     // Hide canvas while loading
-                    opacity: imagePreloader.isLoading || !imagePreloader.allLoaded ? 0 : 1,
+                    opacity: globalAssets.isLoading || !globalAssets.allLoaded ? 0 : 1,
                     transition: 'opacity 0.5s ease-in-out'
                 }}
             />

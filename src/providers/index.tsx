@@ -1,4 +1,5 @@
 'use client';
+import { GlobalAssetPreloader } from '@/components/GlobalAssetPreloader';
 import { MiniKitProvider } from '@worldcoin/minikit-js/minikit-provider';
 import { Session } from 'next-auth';
 import { SessionProvider } from 'next-auth/react';
@@ -43,7 +44,9 @@ export default function ClientProviders({
           // Enhanced session options for proper session restoration
           basePath="/api/auth"
         >
-          {children}
+          <GlobalAssetPreloader>
+            {children}
+          </GlobalAssetPreloader>
         </SessionProvider>
       </MiniKitProvider>
     </ErudaProvider>

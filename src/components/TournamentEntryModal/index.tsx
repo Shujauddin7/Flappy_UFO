@@ -33,6 +33,21 @@ export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
 
     return (
         <Page.Main className="tournament-entry-screen">
+            {/* Processing Overlay */}
+            {isProcessingEntry && (
+                <div
+                    className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50"
+                    style={{ backdropFilter: 'blur(4px)' }}
+                >
+                    <div className="text-center space-y-4 px-6">
+                        <div className="animate-spin rounded-full h-16 w-16 border-4 border-cyan-400 border-t-transparent mx-auto"></div>
+                        <h3 className="text-xl font-bold text-white">Processing Payment</h3>
+                        <p className="text-cyan-300">Please wait while we process your tournament entry...</p>
+                        <p className="text-sm text-gray-400">Do not close this window</p>
+                    </div>
+                </div>
+            )}
+
             <div className="epic-title-section">
                 <h1 className="epic-title">
                     <span className="choose-word">Choose Your</span>
@@ -171,16 +186,28 @@ export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
             <div className="bottom-nav-container">
                 <div className="space-nav-icons">
                     <button
-                        className="space-nav-btn back-nav"
+                        className={`space-nav-btn back-nav ${isProcessingEntry ? 'disabled' : ''}`}
                         onClick={onBack}
+                        disabled={isProcessingEntry}
                         aria-label="Go Back"
+                        style={{
+                            opacity: isProcessingEntry ? 0.5 : 1,
+                            cursor: isProcessingEntry ? 'not-allowed' : 'pointer',
+                            pointerEvents: isProcessingEntry ? 'none' : 'auto'
+                        }}
                     >
                         <div className="space-icon">⬅️</div>
                     </button>
                     <button
-                        className="space-nav-btn prizes-nav"
+                        className={`space-nav-btn prizes-nav ${isProcessingEntry ? 'disabled' : ''}`}
                         onClick={() => window.location.href = '/leaderboard'}
+                        disabled={isProcessingEntry}
                         aria-label="Leaderboard"
+                        style={{
+                            opacity: isProcessingEntry ? 0.5 : 1,
+                            cursor: isProcessingEntry ? 'not-allowed' : 'pointer',
+                            pointerEvents: isProcessingEntry ? 'none' : 'auto'
+                        }}
                     >
                         <div className="space-icon">🏆</div>
                     </button>

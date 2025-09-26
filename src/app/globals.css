@@ -926,6 +926,29 @@ body {
   transform: translateY(-4px) scale(1.02);
 }
 
+/* Disabled state for payment processing */
+.space-nav-btn.disabled,
+.space-nav-btn:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  transform: none !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+  background: rgba(30, 41, 59, 0.3) !important;
+  border-color: rgba(100, 116, 139, 0.3) !important;
+}
+
+.space-nav-btn.disabled::before,
+.space-nav-btn:disabled::before {
+  opacity: 0.3 !important;
+}
+
+.space-nav-btn.disabled .space-icon,
+.space-nav-btn:disabled .space-icon {
+  filter: grayscale(1) !important;
+  opacity: 0.5 !important;
+}
+
 /* Touch devices */
 @media (hover: none) and (pointer: coarse) {
   .space-nav-btn:active {
@@ -935,6 +958,12 @@ body {
     background: linear-gradient(135deg,
         rgba(0, 245, 255, 0.35) 0%,
         rgba(147, 51, 234, 0.35) 100%);
+  }
+
+  /* Ensure disabled state works on touch devices too */
+  .space-nav-btn.disabled:active,
+  .space-nav-btn:disabled:active {
+    transform: none !important;
   }
 }
 
