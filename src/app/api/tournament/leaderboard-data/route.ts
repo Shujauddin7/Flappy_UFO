@@ -10,7 +10,7 @@ export async function GET() {
         // 🎯 STEP 1: Check for cached response first (INSTANT if available)
         const cacheKey = 'tournament_leaderboard_response';
         const cachedResponse = await getCached(cacheKey);
-        
+
         if (cachedResponse) {
             console.log('⚡ CACHE HIT: Returning instant cached leaderboard data');
             return NextResponse.json({
@@ -33,7 +33,7 @@ export async function GET() {
                 cached: false,
                 fetched_at: new Date().toISOString()
             };
-            
+
             // Cache the "no tournament" response for 1 minute
             await setCached(cacheKey, noTournamentResponse, 60);
             return NextResponse.json(noTournamentResponse);
