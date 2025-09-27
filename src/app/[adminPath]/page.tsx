@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { resetCoins } from '@/utils/coins';
+import { AdminPasswordAuth } from '@/components/AdminPasswordAuth';
 
 // Import AdminPayout as dynamic component to prevent SSR issues with MiniKit
 const AdminPayout = dynamic(() => import('@/components/AdminPayout').then(mod => ({ default: mod.AdminPayout })), {
@@ -53,6 +54,9 @@ export default function AdminDashboard() {
     const [isValidAdminPath, setIsValidAdminPath] = useState(false);
     const [selectedAdminWallet, setSelectedAdminWallet] = useState<string>('');
 
+    // Password authentication state (no session storage)
+    const [isPasswordAuthenticated, setIsPasswordAuthenticated] = useState(false);
+
     // Multi-admin wallet system
     const primaryAdminWallet = process.env.NEXT_PUBLIC_ADMIN_WALLET;
     const backupAdminWallet = process.env.NEXT_PUBLIC_BACKUP_ADMIN_WALLET;
@@ -60,16 +64,32 @@ export default function AdminDashboard() {
     // Get all valid admin wallets (filter out undefined)
     const validAdminWallets = [primaryAdminWallet, backupAdminWallet].filter(Boolean) as string[];
 
-    // Check if user is any valid admin
+    // Check if user is any valid admin (wallet auth)
     const currentUserWallet = session?.user?.walletAddress;
-    const isAdmin = currentUserWallet && validAdminWallets.includes(currentUserWallet);
+    const isWalletAdmin = currentUserWallet && validAdminWallets.includes(currentUserWallet);
 
-    // Set default selected admin wallet to current user's wallet if they're admin
+
+
+    // Combined admin check - either wallet or password
+    const isAdmin = isWalletAdmin || isPasswordAuthenticated;
+
+    // Set default selected admin wallet
     useEffect(() => {
-        if (isAdmin && currentUserWallet && !selectedAdminWallet) {
+        if (isWalletAdmin && currentUserWallet && !selectedAdminWallet) {
             setSelectedAdminWallet(currentUserWallet);
+        } else if (isPasswordAuthenticated && primaryAdminWallet && !selectedAdminWallet) {
+            setSelectedAdminWallet(primaryAdminWallet);
         }
-    }, [isAdmin, currentUserWallet, selectedAdminWallet]);
+    }, [isWalletAdmin, currentUserWallet, selectedAdminWallet, isPasswordAuthenticated, primaryAdminWallet]);
+
+    // Password authentication handler
+    const handlePasswordAuthSuccess = () => {
+        setIsPasswordAuthenticated(true);
+        // Use primary admin wallet for password auth
+        if (primaryAdminWallet) {
+            setSelectedAdminWallet(primaryAdminWallet);
+        }
+    };
 
     // Check if this is a valid admin path immediately
     useEffect(() => {
@@ -98,8 +118,17 @@ export default function AdminDashboard() {
         }
 
         if (!isAdmin) {
-            router.push('/');
-            return;
+            // If no authentication method is active, show options
+            if (!session && !isPasswordAuthenticated) {
+                // Show authentication options (this will be handled in render)
+                return;
+            }
+
+            // If user is signed in but not an admin wallet, redirect
+            if (session && !isWalletAdmin && !isPasswordAuthenticated) {
+                router.push('/');
+                return;
+            }
         }
 
         const calculateBasePrize = (rank: number): number => {
@@ -236,7 +265,7 @@ export default function AdminDashboard() {
         };
 
         loadCurrentTournament();
-    }, [session, isAdmin, router, params?.adminPath, isValidAdminPath, validAdminWallets.length]);
+    }, [session, isAdmin, router, params?.adminPath, isValidAdminPath, validAdminWallets.length, isPasswordAuthenticated, isWalletAdmin]);
 
     // Early return if not a valid admin path - prevents any admin content from rendering
     if (!isValidAdminPath) {
@@ -354,6 +383,46 @@ export default function AdminDashboard() {
         return null; // Return nothing instead of showing admin content
     }
 
+    // Show authentication options if no valid session exists
+    if (!session && !isPasswordAuthenticated) {
+        return (
+            <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center p-4">
+                <div className="w-full max-w-md">
+                    <div className="bg-gray-800 rounded-2xl shadow-2xl p-8 border border-gray-700">
+                        <div className="text-center mb-8">
+                            <div className="w-16 h-16 bg-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center">
+                                <span className="text-2xl">🛸</span>
+                            </div>
+                            <h1 className="text-2xl font-bold text-white mb-2">
+                                Flappy UFO Admin
+                            </h1>
+                            <p className="text-gray-400">
+                                Sign in to access admin dashboard
+                            </p>
+                        </div>
+
+                        {/* Default: Sign in with World ID */}
+                        <div className="mb-6">
+                            <button
+                                onClick={() => window.location.href = '/api/auth/signin'}
+                                className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-medium transition-colors mb-4"
+                            >
+                                Sign in with World ID
+                            </button>
+                        </div>
+
+                        {/* Password Authentication */}
+                        <div className="border-t border-gray-600 pt-6">
+                            <AdminPasswordAuth
+                                onSuccess={handlePasswordAuthSuccess}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     if (!session) {
         return (
             <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center">
@@ -372,23 +441,75 @@ export default function AdminDashboard() {
 
     if (!isAdmin) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center">
-                <div className="text-white text-xl">Access denied. Admin privileges required.</div>
+            <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center p-4">
+                <div className="text-center">
+                    <div className="bg-red-900/50 border border-red-600 rounded-lg p-6 mb-4">
+                        <h2 className="text-red-200 text-xl font-bold mb-2">Access Denied</h2>
+                        <p className="text-red-300">Admin privileges required.</p>
+                        {session && !isWalletAdmin && (
+                            <p className="text-red-300 mt-2 text-sm">
+                                Your wallet ({currentUserWallet?.slice(0, 6)}...{currentUserWallet?.slice(-4)}) is not authorized.
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="space-y-3">
+                        <button
+                            onClick={() => window.location.href = '/'}
+                            className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                        >
+                            Go Home
+                        </button>
+
+                        {session && (
+                            <button
+                                onClick={() => signOut()}
+                                className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium transition-colors ml-3"
+                            >
+                                Sign Out
+                            </button>
+                        )}
+                    </div>
+                </div>
             </div>
         );
     }
+
+    // Logout function
+    const handleLogout = () => {
+        if (isPasswordAuthenticated) {
+            // Just refresh page for password auth
+            window.location.reload();
+        } else {
+            resetCoins(); // Reset practice mode coins on signout
+            signOut();
+        }
+    };
 
     return (
         <div className="h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-pink-900 p-6 overflow-y-auto">
             <div className="max-w-7xl mx-auto pb-20">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-8">
-                    <h1 className="text-4xl font-bold text-white">Admin Dashboard</h1>
+                    <div>
+                        <h1 className="text-4xl font-bold text-white">Admin Dashboard</h1>
+                        <div className="text-sm text-gray-300 mt-1 flex items-center gap-2">
+                            {isWalletAdmin && (
+                                <>
+                                    <span className="bg-blue-600 px-2 py-1 rounded text-xs">📱 Wallet Auth</span>
+                                    <span>Connected: {currentUserWallet?.slice(0, 6)}...{currentUserWallet?.slice(-4)}</span>
+                                </>
+                            )}
+                            {isPasswordAuthenticated && (
+                                <>
+                                    <span className="bg-purple-600 px-2 py-1 rounded text-xs">💻 Password Auth</span>
+                                    <span>Admin access active</span>
+                                </>
+                            )}
+                        </div>
+                    </div>
                     <button
-                        onClick={() => {
-                            resetCoins(); // Reset practice mode coins on signout
-                            signOut();
-                        }}
+                        onClick={handleLogout}
                         className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-colors"
                     >
                         Sign Out
