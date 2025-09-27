@@ -258,8 +258,39 @@ export default function LeaderboardPage() {
         // Load once on mount - Redis cache + periodic refresh handles updates
         loadEssentialData();
 
-        // NO POLLING - Periodic updates handled by InfiniteScrollLeaderboard's Redis cache refresh
-    }, []); // Load once, rely on periodic Redis cache updates
+        // 🚀 SSE CONNECTION: Listen for instant tournament stats updates
+        if (currentTournament?.tournament_day) {
+            console.log('🔥 Starting SSE for tournament stats updates...');
+
+            const eventSource = new EventSource(`/api/leaderboard/stream?tournament_day=${encodeURIComponent(currentTournament.tournament_day)}`);
+
+            eventSource.addEventListener('tournament_stats_update', (event) => {
+                const data = JSON.parse(event.data);
+                console.log('⚡ INSTANT tournament stats update received!', data.stats);
+
+                // Update tournament data instantly
+                if (data.stats) {
+                    setCurrentTournament(prev => prev ? {
+                        ...prev,
+                        total_players: data.stats.total_players || prev.total_players,
+                        total_prize_pool: data.stats.total_prize_pool || prev.total_prize_pool,
+                        total_collected: data.stats.total_collected || prev.total_collected
+                    } : prev);
+                }
+            });
+
+            eventSource.onerror = (error) => {
+                console.error('❌ SSE tournament stats connection error:', error);
+            };
+
+            return () => {
+                console.log('🛑 Closing SSE tournament stats connection');
+                eventSource.close();
+            };
+        }
+
+        // NO POLLING - Instant updates handled by SSE + Redis cache
+    }, [currentTournament?.tournament_day]); // Load once, rely on SSE + Redis cache updates
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
         setCurrentUserRank(userRank);
         // We'll handle visibility based on scroll position, not rank number

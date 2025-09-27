@@ -337,6 +337,17 @@ export async function POST(req: NextRequest) {
                     console.log('SSE update trigger failed (non-critical):', sseError);
                 }
 
+                // 🚨 TOURNAMENT STATS SSE: High scores can affect tournament analytics
+                console.log('📡 Triggering tournament stats SSE for high score analytics...');
+                try {
+                    const { setCached } = await import('@/lib/redis');
+                    const statsUpdateKey = `tournament_stats_updates:${tournamentDay}`;
+                    await setCached(statsUpdateKey, Date.now().toString(), 300); // 5 min TTL
+                    console.log('✅ Tournament stats SSE trigger set - cross-device analytics update');
+                } catch (statsError) {
+                    console.log('Tournament stats SSE trigger failed (non-critical):', statsError);
+                }
+
                 // 🚨 NEW HIGH SCORE: Invalidate leaderboard cache so it shows immediately
                 console.log('🏆 New high score! Invalidating leaderboard cache...');
                 await deleteCached('tournament:leaderboard:current');

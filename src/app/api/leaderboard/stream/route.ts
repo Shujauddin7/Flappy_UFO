@@ -98,6 +98,34 @@ export async function GET(request: NextRequest) {
                             lastUpdateTime = updateTime;
                         }
                     }
+
+                    // Check for tournament stats updates (prize pool, total players)
+                    const statsUpdateKey = `tournament_stats_updates:${tournamentDay}`;
+                    const statsLastUpdate = await redis!.get(statsUpdateKey);
+
+                    if (statsLastUpdate && typeof statsLastUpdate === 'string') {
+                        const statsUpdateTime = parseInt(statsLastUpdate);
+                        if (statsUpdateTime > lastUpdateTime) {
+                            console.log('📡 Broadcasting tournament stats update via SSE');
+
+                            // Fetch updated tournament stats
+                            try {
+                                const statsResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/tournament/stats`);
+                                const statsData = await statsResponse.json();
+
+                                if (statsData.success) {
+                                    sendEvent('tournament_stats_update', {
+                                        stats: statsData.data,
+                                        tournament_day: tournamentDay,
+                                        timestamp: new Date().toISOString(),
+                                        source: 'redis_sse'
+                                    });
+                                }
+                            } catch (statsError) {
+                                console.error('❌ Error fetching tournament stats for SSE:', statsError);
+                            }
+                        }
+                    }
                 } catch (error) {
                     console.error('❌ Error polling for updates:', error);
                 }

@@ -83,6 +83,7 @@ interface InfiniteScrollLeaderboardProps {
     className?: string;
     apiEndpoint?: string; // Allow custom API endpoint
     maxHeight?: number; // Maximum height of the scrollable container
+    onTournamentStatsUpdate?: (stats: Record<string, unknown>) => void; // Callback for tournament stats updates
 }
 
 // Player row component with skeleton loader
@@ -196,7 +197,8 @@ export default function InfiniteScrollLeaderboard({
     tournamentDay,
     className = '',
     apiEndpoint = '/api/leaderboard',
-    maxHeight = 600
+    maxHeight = 600,
+    onTournamentStatsUpdate
 }: InfiniteScrollLeaderboardProps) {
     const [players, setPlayers] = useState<Player[]>(initialData?.players || []);
     const [loading, setLoading] = useState(false);
@@ -340,6 +342,17 @@ export default function InfiniteScrollLeaderboard({
             }
         });
 
+        // Handle tournament stats updates (prize pool, total players)
+        eventSource.addEventListener('tournament_stats_update', (event) => {
+            const data = JSON.parse(event.data);
+            console.log('⚡ INSTANT tournament stats update received via SSE!', data.stats);
+
+            // Pass stats update to parent component
+            if (onTournamentStatsUpdate && data.stats) {
+                onTournamentStatsUpdate(data.stats);
+            }
+        });
+
         // Handle heartbeat (keep connection alive)
         eventSource.addEventListener('heartbeat', () => {
             console.log('💓 SSE heartbeat received');
@@ -361,7 +374,7 @@ export default function InfiniteScrollLeaderboard({
             console.log('🛑 Closing SSE connection');
             eventSource.close();
         };
-    }, [tournamentDay, performLeaderboardRefresh]);
+    }, [tournamentDay, performLeaderboardRefresh, onTournamentStatsUpdate]);
 
     // Get visible players for virtual scrolling
     const visiblePlayers = useMemo(() => {

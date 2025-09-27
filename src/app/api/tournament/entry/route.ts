@@ -471,6 +471,17 @@ export async function POST(req: NextRequest) {
             console.log('Sign-in aggregates update skipped (non-critical):', e);
         }
 
+        // 🚨 INSTANT SSE BROADCAST: New tournament entry affects prize pool + total players
+        console.log('📡 Broadcasting tournament stats update via SSE (new player joined)...');
+        try {
+            const { setCached } = await import('@/lib/redis');
+            const updateKey = `tournament_stats_updates:${finalTournament.tournament_day}`;
+            await setCached(updateKey, Date.now().toString(), 300); // 5 min TTL
+            console.log('✅ Tournament stats SSE trigger set - all users will see updated prize pool & total players');
+        } catch (sseError) {
+            console.log('Tournament stats SSE trigger failed (non-critical):', sseError);
+        }
+
         return NextResponse.json({
             success: true,
             data: {
