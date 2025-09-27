@@ -255,11 +255,11 @@ export default function LeaderboardPage() {
             }
         };
 
-        // Load once on mount - Redis + Supabase realtime handles updates
+        // Load once on mount - Redis cache + periodic refresh handles updates
         loadEssentialData();
 
-        // NO POLLING - Real-time updates handled by TournamentLeaderboard's Supabase subscription
-    }, []); // Load once, rely on real-time updates
+        // NO POLLING - Periodic updates handled by InfiniteScrollLeaderboard's Redis cache refresh
+    }, []); // Load once, rely on periodic Redis cache updates
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
         setCurrentUserRank(userRank);
         // We'll handle visibility based on scroll position, not rank number

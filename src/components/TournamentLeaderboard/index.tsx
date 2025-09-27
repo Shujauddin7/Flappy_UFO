@@ -197,12 +197,12 @@ export const TournamentLeaderboard = ({
     useEffect(() => {
         fetchLeaderboardData();
 
-        // NO POLLING - Use Supabase real-time subscriptions as per Plan.md
-        // Real-time updates are handled by the existing Supabase subscription system
-        // The InfiniteScrollLeaderboard component handles real-time updates via:
-        // - Supabase realtime subscriptions on user_tournament_records table
+        // NO POLLING - Use Redis cache with periodic refresh
+        // Updates are handled by the InfiniteScrollLeaderboard's periodic refresh
+        // The InfiniteScrollLeaderboard component handles updates via:
+        // - 30-second periodic refresh from Redis cache APIs
         // - Automatic cache invalidation and re-warming on score changes
-        console.log('⚡ TournamentLeaderboard: Using real-time updates, no polling needed');
+        console.log('⚡ TournamentLeaderboard: Using Redis cache refresh, no polling needed');
 
     }, [fetchLeaderboardData, isGracePeriod, preloadedData]);
 

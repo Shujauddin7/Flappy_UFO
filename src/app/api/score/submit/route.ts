@@ -326,6 +326,17 @@ export async function POST(req: NextRequest) {
                 console.log('⚡ Updating Redis leaderboard with new high score...');
                 await updateLeaderboardScore(tournamentDay, user.id, score);
 
+                // 🚨 INSTANT SSE BROADCAST: Trigger SSE update for instant leaderboard refresh
+                console.log('📡 Triggering SSE broadcast for instant leaderboard updates...');
+                try {
+                    const { setCached } = await import('@/lib/redis');
+                    const updateKey = `leaderboard_updates:${tournamentDay}`;
+                    await setCached(updateKey, Date.now().toString(), 300); // 5 min TTL
+                    console.log('✅ SSE update trigger set - all connected users will get instant updates');
+                } catch (sseError) {
+                    console.log('SSE update trigger failed (non-critical):', sseError);
+                }
+
                 // 🚨 NEW HIGH SCORE: Invalidate leaderboard cache so it shows immediately
                 console.log('🏆 New high score! Invalidating leaderboard cache...');
                 await deleteCached('tournament:leaderboard:current');
@@ -433,7 +444,18 @@ export async function POST(req: NextRequest) {
         await deleteCached('tournament:current');
         console.log('✅ Prize pool and tournament caches invalidated for instant updates');
 
-        // 🚀 KEEP LEADERBOARD READY: Warm cache immediately for instant next access
+        // � SSE BROADCAST: Trigger SSE update for any score submission
+        console.log('📡 Triggering SSE broadcast for leaderboard updates...');
+        try {
+            const { setCached } = await import('@/lib/redis');
+            const updateKey = `leaderboard_updates:${tournamentDay}`;
+            await setCached(updateKey, Date.now().toString(), 300); // 5 min TTL
+            console.log('✅ SSE update trigger set - connected users will get updates');
+        } catch (sseError) {
+            console.log('SSE update trigger failed (non-critical):', sseError);
+        }
+
+        // �🚀 KEEP LEADERBOARD READY: Warm cache immediately for instant next access
         console.log('⚡ Warming cache immediately to keep leaderboard always ready...');
         fetch('/api/admin/warm-cache', { method: 'POST' })
             .then(() => console.log('✅ Cache warmed to keep data always ready'))

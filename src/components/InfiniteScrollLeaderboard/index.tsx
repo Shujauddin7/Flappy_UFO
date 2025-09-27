@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 
 // Virtual scrolling configuration
 const VIRTUAL_SCROLL_CONFIG = {
@@ -9,19 +8,6 @@ const VIRTUAL_SCROLL_CONFIG = {
     visibleItems: 15, // Number of items visible at once
     bufferSize: 10, // Extra items to render for smooth scrolling
     maxMemoryItems: 500, // Maximum items to keep in memory before cleanup
-};
-
-// Cache coordination for preventing race conditions
-interface CacheUpdateTracker {
-    lastUpdateTime: number;
-    pendingUpdates: Set<string>;
-    updateInProgress: boolean;
-}
-
-const cacheTracker: CacheUpdateTracker = {
-    lastUpdateTime: 0,
-    pendingUpdates: new Set(),
-    updateInProgress: false
 };
 
 // Types for the optimized leaderboard
@@ -221,7 +207,6 @@ export default function InfiniteScrollLeaderboard({
     const [scrollTop, setScrollTop] = useState(0);
 
     const containerRef = useRef<HTMLDivElement>(null);
-    const supabaseRef = useRef<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
 
     // Calculate virtual scrolling parameters
     const virtualScroll = useVirtualScroll(players.length, scrollTop);
@@ -235,24 +220,6 @@ export default function InfiniteScrollLeaderboard({
             setOffset(prev => prev - (players.length - VIRTUAL_SCROLL_CONFIG.maxMemoryItems));
         }
     }, [players.length]);
-
-    // Initialize Supabase client for realtime updates
-    useEffect(() => {
-        const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
-        const supabaseUrl = isProduction ? process.env.NEXT_PUBLIC_SUPABASE_PROD_URL : process.env.NEXT_PUBLIC_SUPABASE_DEV_URL;
-        const supabaseAnonKey = isProduction ? process.env.NEXT_PUBLIC_SUPABASE_PROD_ANON_KEY : process.env.NEXT_PUBLIC_SUPABASE_DEV_ANON_KEY;
-
-        if (supabaseUrl && supabaseAnonKey) {
-            supabaseRef.current = createClient(supabaseUrl, supabaseAnonKey);
-        }
-
-        // Cleanup function to prevent memory leaks
-        return () => {
-            if (supabaseRef.current) {
-                supabaseRef.current.removeAllChannels();
-            }
-        };
-    }, []);
 
     // Load more players with virtual scrolling optimization
     const loadMorePlayers = useCallback(async () => {
@@ -312,18 +279,9 @@ export default function InfiniteScrollLeaderboard({
         }
     }, [hasMore, loading, loadMorePlayers]);
 
-    // Coordinated leaderboard refresh function with memory optimization
+    // Simple leaderboard refresh function
     const performLeaderboardRefresh = useCallback(async () => {
-        if (cacheTracker.updateInProgress) {
-            console.log('🔄 Skipping refresh - update already in progress');
-            return;
-        }
-
-        cacheTracker.updateInProgress = true;
-        const pendingUpdates = Array.from(cacheTracker.pendingUpdates);
-        cacheTracker.pendingUpdates.clear();
-
-        console.log('🔄 Starting coordinated leaderboard refresh for updates:', pendingUpdates);
+        console.log('🔄 Refreshing leaderboard from Redis cache...');
 
         try {
             // Reset the infinite scroll state and clear memory
@@ -332,73 +290,78 @@ export default function InfiniteScrollLeaderboard({
             setHasMore(true);
             setScrollTop(0); // Reset scroll position
 
-            // Load fresh data
+            // Load fresh data from Redis cache
             await loadMorePlayers();
 
-            console.log('✅ Coordinated leaderboard refresh completed');
+            console.log('✅ Leaderboard refresh completed');
         } catch (error) {
-            console.error('❌ Coordinated leaderboard refresh failed:', error);
-        } finally {
-            cacheTracker.updateInProgress = false;
+            console.error('❌ Leaderboard refresh failed:', error);
         }
     }, [loadMorePlayers]);
 
-    // Debounced realtime update handler to prevent race conditions
-    const handleRealtimeUpdate = useCallback((payload: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
-        const updateId = payload.new?.user_id || payload.old?.user_id || 'unknown';
-        const currentTime = Date.now();
 
-        console.log('⚡ Realtime update received:', { updateId, currentTime });
 
-        // Add to pending updates
-        cacheTracker.pendingUpdates.add(updateId);
-
-        // If an update is already in progress, don't start another one
-        if (cacheTracker.updateInProgress) {
-            console.log('⏳ Update already in progress, queuing update for:', updateId);
-            return;
-        }
-
-        // Debounce mechanism - wait for a pause in updates before refreshing
-        const timeSinceLastUpdate = currentTime - cacheTracker.lastUpdateTime;
-        const debounceDelay = timeSinceLastUpdate < 2000 ? 2000 : 500; // 2s if updates are frequent, 0.5s otherwise
-
-        console.log(`⏱️ Debouncing update for ${debounceDelay}ms, pending updates:`, Array.from(cacheTracker.pendingUpdates));
-
-        setTimeout(() => {
-            // Check if we should still update (no newer updates have been queued)
-            if (cacheTracker.lastUpdateTime <= currentTime) {
-                performLeaderboardRefresh();
-            }
-        }, debounceDelay);
-
-        cacheTracker.lastUpdateTime = currentTime;
-    }, [performLeaderboardRefresh]);
-
-    // Realtime updates for score submissions with race condition prevention
+    // SSE connection for instant leaderboard updates (replaces polling)
     useEffect(() => {
-        if (!supabaseRef.current || !tournamentDay) return;
+        if (!tournamentDay) return;
 
-        const channel = supabaseRef.current
-            .channel(`leaderboard:${tournamentDay}`)
-            .on(
-                'postgres_changes',
-                {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'user_tournament_records',
-                    filter: `tournament_day=eq.${tournamentDay}`
-                },
-                handleRealtimeUpdate
-            )
-            .subscribe();
+        console.log('🔥 Starting SSE connection for instant leaderboard updates...');
 
-        return () => {
-            if (channel) {
-                supabaseRef.current?.removeChannel(channel);
+        // Create EventSource connection to SSE endpoint
+        const eventSource = new EventSource(`/api/leaderboard/stream?tournament_day=${encodeURIComponent(tournamentDay)}`);
+
+        // Handle connection established
+        eventSource.addEventListener('connected', (event) => {
+            const data = JSON.parse(event.data);
+            console.log('✅ SSE connected:', data.message);
+        });
+
+        // Handle leaderboard updates (INSTANT!)
+        eventSource.addEventListener('leaderboard_update', (event) => {
+            const data = JSON.parse(event.data);
+            console.log('⚡ INSTANT leaderboard update received via SSE!', data.players.length, 'players');
+
+            // Update leaderboard data instantly
+            if (data.players && data.players.length > 0) {
+                const formattedPlayers = data.players.map((player: Record<string, unknown>, index: number) => ({
+                    ...player,
+                    rank: index + 1,
+                    highest_score: player.score // Map for compatibility
+                })) as Player[];
+
+                setPlayers(formattedPlayers);
+                setOffset(20); // Reset offset for fresh data
+                setHasMore(formattedPlayers.length >= 20);
+                setPerformance({
+                    source: 'redis_sse',
+                    responseTime: 0, // Instant!
+                    cached: true
+                });
             }
+        });
+
+        // Handle heartbeat (keep connection alive)
+        eventSource.addEventListener('heartbeat', () => {
+            console.log('💓 SSE heartbeat received');
+        });
+
+        // Handle connection errors
+        eventSource.onerror = (error) => {
+            console.error('❌ SSE connection error:', error);
+
+            // Fallback to periodic refresh if SSE fails
+            console.log('� SSE failed, falling back to periodic refresh...');
+            setTimeout(() => {
+                performLeaderboardRefresh();
+            }, 5000);
         };
-    }, [tournamentDay, handleRealtimeUpdate]);
+
+        // Cleanup on unmount
+        return () => {
+            console.log('🛑 Closing SSE connection');
+            eventSource.close();
+        };
+    }, [tournamentDay, performLeaderboardRefresh]);
 
     // Get visible players for virtual scrolling
     const visiblePlayers = useMemo(() => {
