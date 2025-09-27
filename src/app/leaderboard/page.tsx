@@ -173,7 +173,7 @@ export default function LeaderboardPage() {
         return () => clearInterval(interval);
     }, []);
 
-    // ⚡ REDIS-POWERED INSTANT LOADING: Use your professional gaming cache system
+    // ⚡ FAST LOADING: Use existing Redis-cached APIs with instant display
     useEffect(() => {
         const loadEssentialData = async () => {
             try {
@@ -198,9 +198,16 @@ export default function LeaderboardPage() {
                     }
                 }
 
-                // Fetch from Redis-cached API (should be 50-400ms as per Plan.md)
-                const response = await fetch('/api/tournament/stats');
-                const tournamentData = await response.json();
+                // � PARALLEL API CALLS: Load both at same time for speed
+                const [tournamentResponse, leaderboardResponse] = await Promise.all([
+                    fetch('/api/tournament/stats'),
+                    fetch('/api/tournament/leaderboard-data')
+                ]);
+
+                const [tournamentData, leaderboard] = await Promise.all([
+                    tournamentResponse.json(),
+                    leaderboardResponse.json()
+                ]);
 
                 const newTournamentData: TournamentData = {
                     id: 'current',
@@ -216,7 +223,9 @@ export default function LeaderboardPage() {
                     end_time: tournamentData.end_time || null
                 };
 
+                // Update both tournament and leaderboard data
                 setCurrentTournament(newTournamentData);
+                setPreloadedLeaderboardData(leaderboard);
 
                 // Cache for next instant load
                 sessionStorage.setItem('tournament_data', JSON.stringify({
@@ -224,28 +233,12 @@ export default function LeaderboardPage() {
                     timestamp: Date.now()
                 }));
 
-                console.log(`⚡ Redis data loaded: ${tournamentData.total_players} players, ${tournamentData.total_prize_pool} WLD`);
+                sessionStorage.setItem('leaderboard_data', JSON.stringify({
+                    data: leaderboard,
+                    timestamp: Date.now()
+                }));
 
-                // Load leaderboard data (also Redis-cached)
-                const loadLeaderboard = async () => {
-                    try {
-                        const leaderboardRes = await fetch('/api/tournament/leaderboard-data');
-                        const leaderboard = await leaderboardRes.json();
-
-                        if (leaderboard.players) {
-                            setPreloadedLeaderboardData(leaderboard);
-                            sessionStorage.setItem('leaderboard_data', JSON.stringify({
-                                data: leaderboard,
-                                timestamp: Date.now()
-                            }));
-                            console.log(`⚡ Leaderboard loaded: ${leaderboard.players.length} entries`);
-                        }
-                    } catch (err) {
-                        console.warn('Background leaderboard load failed:', err);
-                    }
-                };
-
-                loadLeaderboard();
+                console.log(`⚡ PARALLEL DATA LOADED: ${tournamentData.total_players} players, ${tournamentData.total_prize_pool} WLD, ${leaderboard.players?.length || 0} entries`);
 
             } catch (error) {
                 console.error('Essential data load failed:', error);

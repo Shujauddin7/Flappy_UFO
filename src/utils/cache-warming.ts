@@ -196,9 +196,7 @@ export async function warmLeaderboardCache(): Promise<boolean> {
                 }
 
                 // Make internal API call with proper base URL handling
-                const baseUrl = process.env.VERCEL_URL
-                    ? `https://${process.env.VERCEL_URL}`
-                    : 'http://localhost:3000';
+                const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
 
                 const response = await fetch(`${baseUrl}/api/tournament/leaderboard-data`, {
                     headers: {
