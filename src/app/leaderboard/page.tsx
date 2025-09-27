@@ -98,6 +98,9 @@ export default function LeaderboardPage() {
         return false;
     });
 
+    // Track actual network loading state (separate from having cached data)
+    const [isActuallyLoading, setIsActuallyLoading] = useState(false);
+
     const [preloadedLeaderboardData, setPreloadedLeaderboardData] = useState<LeaderboardApiResponse | null>(() => {
         // Try to load cached leaderboard data for instant display
         if (typeof window !== 'undefined') {
@@ -197,6 +200,7 @@ export default function LeaderboardPage() {
         const loadEssentialData = async () => {
             try {
                 console.log('⚡ Loading essential tournament data...');
+                setIsActuallyLoading(true); // Set loading state for actual network request
 
                 // 🚀 PERFORMANCE FIX: Use cached data first, then update in background
                 const cachedTournament = sessionStorage.getItem('tournament_data');
@@ -232,15 +236,18 @@ export default function LeaderboardPage() {
                     is_active: true,
                     total_players: tournamentData.total_players,
                     total_prize_pool: tournamentData.total_prize_pool,
-                    total_collected: tournamentData.total_collected,
-                    admin_fee: tournamentData.admin_fee,
-                    guarantee_amount: tournamentData.guarantee_amount,
-                    admin_net_result: tournamentData.admin_net_result,
+                    total_collected: tournamentData.total_collected || 0,
+                    admin_fee: tournamentData.admin_fee || 0,
+                    guarantee_amount: tournamentData.guarantee_amount || 0,
+                    admin_net_result: tournamentData.admin_net_result || 0,
                     start_time: new Date().toISOString(),
-                    end_time: null // Will be calculated from tournament timing
+                    end_time: tournamentData.end_time || null
                 };
 
                 setCurrentTournament(newTournamentData);
+
+                // Clear loading state since we have data (even if it's zero values)
+                setIsActuallyLoading(false);
 
                 // ⚡ PERSISTENCE: Cache for instant loading on navigation
                 sessionStorage.setItem('tournament_data', JSON.stringify({
@@ -278,6 +285,8 @@ export default function LeaderboardPage() {
             } catch (error) {
                 console.error('Essential data load failed:', error);
                 setError('Failed to load tournament data');
+            } finally {
+                setIsActuallyLoading(false); // Always clear loading state
             }
         };
 
@@ -444,14 +453,14 @@ export default function LeaderboardPage() {
                         {/* Prize Pool Info */}
                         <div className="prize-pool-info">
                             <div className="prize-pool-text">
-                                Prize pool: <span className={`prize-pool-highlight ${(!hasCachedData && (!currentTournament?.total_prize_pool || currentTournament.total_prize_pool === 0)) ? 'loading-blur' : ''}`}>
+                                Prize pool: <span className={`prize-pool-highlight ${isActuallyLoading ? 'loading-blur' : ''}`}>
                                     {(!currentTournament?.total_prize_pool || currentTournament.total_prize_pool === 0)
                                         ? '0.00 WLD'
                                         : `${currentTournament.total_prize_pool.toFixed(2)} WLD`}
                                 </span>
                             </div>
                             <div className="players-text">
-                                <span className={`human-count-number ${(!hasCachedData && (!currentTournament?.total_players || currentTournament.total_players === 0)) ? 'loading-blur' : ''}`}>
+                                <span className={`human-count-number ${isActuallyLoading ? 'loading-blur' : ''}`}>
                                     {(!currentTournament?.total_players || currentTournament.total_players === 0)
                                         ? '0'
                                         : currentTournament.total_players}

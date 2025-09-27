@@ -167,11 +167,24 @@ function PlayerRow({ player, isLoading = false }: { player?: Player; isLoading?:
 }
 
 // Virtual scrolling hook for memory-efficient rendering
+// Only use complex virtual scrolling for large datasets
 function useVirtualScroll(
     itemCount: number,
     scrollTop: number
 ) {
     return useMemo(() => {
+        // For small datasets, render everything (better UX)
+        if (itemCount <= 50) {
+            return {
+                startIndex: 0,
+                endIndex: itemCount - 1,
+                offsetY: 0,
+                totalHeight: itemCount * VIRTUAL_SCROLL_CONFIG.itemHeight,
+                visibleCount: itemCount
+            };
+        }
+
+        // Use virtual scrolling for large datasets
         const { itemHeight, visibleItems, bufferSize } = VIRTUAL_SCROLL_CONFIG;
         const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) - bufferSize);
         const endIndex = Math.min(
@@ -392,8 +405,8 @@ export default function InfiniteScrollLeaderboard({
         return players.slice(virtualScroll.startIndex, virtualScroll.endIndex + 1);
     }, [players, virtualScroll.startIndex, virtualScroll.endIndex]);
 
-    // Empty state
-    if (!loading && players.length === 0 && !initialData) {
+    // Empty state - show immediately if no players and no initial data
+    if (players.length === 0 && !initialData && !loading) {
         return (
             <div className={`text-center py-12 ${className}`}>
                 <div className="text-gray-400 text-lg mb-4">🏆</div>

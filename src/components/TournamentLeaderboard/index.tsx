@@ -46,7 +46,7 @@ export const TournamentLeaderboard = ({
 }: TournamentLeaderboardProps) => {
     const [topPlayers, setTopPlayers] = useState<LeaderboardPlayer[]>([]);
     const [allPlayers, setAllPlayers] = useState<LeaderboardPlayer[]>([]);
-    const [loading, setLoading] = useState(false); // 🚀 FIX: Initialize as false, set true only for actual network requests
+    const [loading, setLoading] = useState(false); // Only true during actual network requests
     const [currentUserData, setCurrentUserData] = useState<LeaderboardPlayer | null>(null);
 
     // Setup intersection observer for user card visibility - OPTIMIZED: Only after data is loaded
@@ -81,26 +81,20 @@ export const TournamentLeaderboard = ({
 
     const fetchLeaderboardData = useCallback(async () => {
         try {
-            // 🚀 NEW: Use preloaded data if available (skips API call)
+            // 🚀 Use preloaded data if available (skips API call completely)
             if (preloadedData) {
-                console.log('🚀 Using preloaded leaderboard data - skipping API call');
+                console.log('🚀 Using preloaded leaderboard data - no API call needed');
                 const players = preloadedData.players || [];
 
-                if (players.length === 0) {
-                    setTopPlayers([]);
-                    setAllPlayers([]);
-                    return; // 🚀 FIX: Don't set loading when we have instant data (even if empty)
-                }
-
-                // Set both top players and all players
+                // Set data immediately without loading state
                 setTopPlayers(players.slice(0, 10));
                 setAllPlayers(players);
 
-                // 🚀 OPTIMIZATION: Process user rank immediately without loading delay
+                // Process user rank immediately
                 if ((currentUserId || currentUsername) && onUserRankUpdate) {
                     let userRank = null;
 
-                    // Strategy 1: Direct wallet match (most reliable for this app since wallet is unique)
+                    // Strategy 1: Direct wallet match (most reliable)
                     if (currentUserId) {
                         userRank = players.find((player: LeaderboardPlayer) =>
                             player.wallet === currentUserId ||
@@ -108,33 +102,30 @@ export const TournamentLeaderboard = ({
                         );
                     }
 
-                    // Strategy 2: Username match (secondary option)
+                    // Strategy 2: Username match (secondary)
                     if (!userRank && currentUsername) {
                         userRank = players.find((player: LeaderboardPlayer) =>
                             player.username === currentUsername
                         );
                     }
 
-                    // Strategy 3: Direct user_id match (legacy support)
+                    // Strategy 3: Direct user_id match (legacy)
                     if (!userRank && currentUserId) {
                         userRank = players.find((player: LeaderboardPlayer) =>
                             player.user_id === currentUserId
                         );
                     }
 
-                    // Always notify parent, even if null
                     onUserRankUpdate(userRank || null);
-
-                    // Set current user data for intersection observer
                     setCurrentUserData(userRank || null);
                 }
 
-                return; // 🚀 FIX: Return early without setting loading state
+                return; // Skip network request entirely
             }
 
-            // 🚀 FIX: Only set loading true when making actual network requests
+            // Only make network request if no preloaded data available
             console.log('🌐 Making network request for leaderboard data...');
-            setLoading(true);
+            setLoading(true); // Set loading only for actual network requests
 
             // Fetch leaderboard data via API (uses service key permissions)
             const response = await fetch('/api/tournament/leaderboard-data');
@@ -206,15 +197,14 @@ export const TournamentLeaderboard = ({
     useEffect(() => {
         fetchLeaderboardData();
 
-        // 🚀 OPTIMIZATION: Only set up polling if we DON'T have preloaded data
+        // Only set up polling if we DON'T have preloaded data AND not in grace period
         // This prevents redundant API calls when parent already loaded the data
         if (!isGracePeriod && !preloadedData) {
-            // Refresh every 5 seconds for instant updates like modern apps
-            // Instagram/TikTok style - everyone sees changes immediately
+            // Refresh every 10 seconds (reduced from 5 seconds for better performance)
             const intervalId = setInterval(() => {
-                console.log('⚡ Instant leaderboard refresh (like Instagram)...');
+                console.log('⚡ Leaderboard refresh...');
                 fetchLeaderboardData();
-            }, 5000); // 5 seconds for instant feel, Redis cache handles the load
+            }, 10000); // 10 seconds for better performance, Redis cache handles the load
 
             return () => {
                 clearInterval(intervalId);

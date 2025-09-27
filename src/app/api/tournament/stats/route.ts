@@ -43,15 +43,16 @@ export async function GET() {
 
 
         if (!currentTournament) {
-            // Cache the "no tournament" response too for instant future responses
+            // Cache the "no tournament" response for instant future responses
             const noTournamentResponse = {
                 tournament_day: null,
                 total_players: 0,
                 total_prize_pool: 0,
-                has_active_tournament: false
+                has_active_tournament: false,
+                is_empty: true // Flag to distinguish from loading state
             };
 
-            await setCached(cacheKey, noTournamentResponse, 60); // Cache for 1 minute for real-time updates
+            await setCached(cacheKey, noTournamentResponse, 60); // Cache for 1 minute
 
             return NextResponse.json({
                 ...noTournamentResponse,
@@ -88,14 +89,15 @@ export async function GET() {
             total_players: stats.total_players,
             total_prize_pool: Number(stats.total_prize_pool.toFixed(2)),
             has_active_tournament: true,
+            is_empty: stats.total_players === 0, // Flag to help frontend distinguish empty vs loading
             tournament_start_date: currentTournament.created_at,
             end_time: endTime, // Always provide end_time for countdown timer
             tournament_status: 'active'
         };
 
-        // 🚀 STEP 4: Cache for 3 minutes (frequent updates but still instant for users)
+        // Cache for 2 minutes (balance between freshness and performance)
         console.log('💾 Warming cache for instant future responses...');
-        await setCached(cacheKey, responseData, 30); // 30 seconds cache for real-time feel
+        await setCached(cacheKey, responseData, 120); // 2 minutes cache for good performance
 
         const responseTime = Date.now() - startTime;
         console.log(`✅ Tournament stats cached successfully for instant loading`);
