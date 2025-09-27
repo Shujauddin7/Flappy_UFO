@@ -200,11 +200,11 @@ export const TournamentLeaderboard = ({
         // Only set up polling if we DON'T have preloaded data AND not in grace period
         // This prevents redundant API calls when parent already loaded the data
         if (!isGracePeriod && !preloadedData) {
-            // Refresh every 10 seconds (reduced from 5 seconds for better performance)
+            // Refresh every 15 seconds (reduced from 10s for less flickering)
             const intervalId = setInterval(() => {
                 console.log('⚡ Leaderboard refresh...');
                 fetchLeaderboardData();
-            }, 10000); // 10 seconds for better performance, Redis cache handles the load
+            }, 15000); // 15 seconds to reduce skeleton flickering
 
             return () => {
                 clearInterval(intervalId);

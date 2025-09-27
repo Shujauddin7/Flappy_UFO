@@ -82,23 +82,7 @@ export default function LeaderboardPage() {
         };
     });
 
-    // Track if we have cached data to prevent unnecessary loading states
-    const [hasCachedData] = useState(() => {
-        if (typeof window !== 'undefined') {
-            const cached = sessionStorage.getItem('tournament_data');
-            if (cached) {
-                try {
-                    const parsed = JSON.parse(cached);
-                    return Date.now() - parsed.timestamp < CACHE_TTL.TOURNAMENT && parsed.data.end_time; // Use standardized cache TTL
-                } catch {
-                    return false;
-                }
-            }
-        }
-        return false;
-    });
-
-    // Track actual network loading state (separate from having cached data)
+    // Track actual network loading state (only true during API calls)
     const [isActuallyLoading, setIsActuallyLoading] = useState(false);
 
     const [preloadedLeaderboardData, setPreloadedLeaderboardData] = useState<LeaderboardApiResponse | null>(() => {
@@ -191,13 +175,7 @@ export default function LeaderboardPage() {
 
     // ⚡ INSTAGRAM-STYLE DATA LOADING: Instant + persistent
     useEffect(() => {
-        // Only load if we don't have cached data - prevent unnecessary requests
-        if (hasCachedData) {
-            console.log('⚡ SKIP LOADING: Using cached tournament data');
-            return;
-        }
-
-        const loadEssentialData = async () => {
+        const loadEssentialData = async (skipCache = false) => {
             try {
                 console.log('⚡ Loading essential tournament data...');
                 setIsActuallyLoading(true); // Set loading state for actual network request
@@ -206,27 +184,22 @@ export default function LeaderboardPage() {
                 const cachedTournament = sessionStorage.getItem('tournament_data');
                 const cachedLeaderboard = sessionStorage.getItem('leaderboard_data');
 
-                if (cachedTournament && cachedLeaderboard) {
+                // Show cached data immediately if available and not forcing refresh
+                if (cachedTournament && cachedLeaderboard && !skipCache) {
                     try {
                         const parsedTournament = JSON.parse(cachedTournament);
                         const parsedLeaderboard = JSON.parse(cachedLeaderboard);
 
-                        // Check if cache is still fresh
-                        const tournamentFresh = Date.now() - parsedTournament.timestamp < CACHE_TTL.TOURNAMENT;
-                        const leaderboardFresh = Date.now() - parsedLeaderboard.timestamp < CACHE_TTL.LEADERBOARD;
-
-                        if (tournamentFresh && leaderboardFresh) {
-                            console.log('⚡ INSTANT LOAD: Using fresh cached data');
-                            setCurrentTournament(parsedTournament.data);
-                            setPreloadedLeaderboardData(parsedLeaderboard.data);
-                            return; // Skip network request entirely
-                        }
+                        // Show cached data immediately
+                        setCurrentTournament(parsedTournament.data);
+                        setPreloadedLeaderboardData(parsedLeaderboard.data);
+                        console.log('⚡ SHOWING CACHED DATA: Immediate display');
                     } catch (e) {
                         console.warn('Cache parse error:', e);
                     }
                 }
 
-                // Load only essential data - tournament stats (fast)
+                // Always fetch fresh data in background
                 const response = await fetch('/api/tournament/stats');
                 const tournamentData = await response.json();
 
@@ -246,18 +219,15 @@ export default function LeaderboardPage() {
 
                 setCurrentTournament(newTournamentData);
 
-                // Clear loading state since we have data (even if it's zero values)
-                setIsActuallyLoading(false);
-
-                // ⚡ PERSISTENCE: Cache for instant loading on navigation
+                // ⚡ CACHE UPDATE: Save fresh data for next instant load
                 sessionStorage.setItem('tournament_data', JSON.stringify({
                     data: newTournamentData,
                     timestamp: Date.now()
                 }));
 
-                console.log(`⚡ Tournament data loaded: ${tournamentData.total_players} players, $${tournamentData.total_prize_pool} prize`);
+                console.log(`⚡ Tournament data updated: ${tournamentData.total_players} players, ${tournamentData.total_prize_pool} WLD prize`);
 
-                // Load leaderboard data in parallel (not blocking UI)
+                // Load leaderboard data in parallel
                 const loadLeaderboard = async () => {
                     try {
                         const leaderboardRes = await fetch('/api/tournament/leaderboard-data');
@@ -265,33 +235,38 @@ export default function LeaderboardPage() {
 
                         if (leaderboard.players) {
                             setPreloadedLeaderboardData(leaderboard);
-
-                            // ⚡ CACHE LEADERBOARD: Cache for instant loading
                             sessionStorage.setItem('leaderboard_data', JSON.stringify({
                                 data: leaderboard,
                                 timestamp: Date.now()
                             }));
-
-                            console.log(`⚡ Leaderboard loaded: ${leaderboard.players.length} entries`);
+                            console.log(`⚡ Leaderboard updated: ${leaderboard.players.length} entries`);
                         }
                     } catch (err) {
                         console.warn('Background leaderboard load failed:', err);
                     }
                 };
 
-                // Start leaderboard loading immediately (parallel, not delayed)
                 loadLeaderboard();
 
             } catch (error) {
                 console.error('Essential data load failed:', error);
                 setError('Failed to load tournament data');
             } finally {
-                setIsActuallyLoading(false); // Always clear loading state
+                setIsActuallyLoading(false);
             }
         };
 
+        // Initial load
         loadEssentialData();
-    }, [hasCachedData]); // Run when cache status changes
+
+        // Auto-refresh every 30 seconds for live updates
+        const refreshInterval = setInterval(() => {
+            console.log('🔄 Auto-refreshing tournament data...');
+            loadEssentialData(true); // Skip cache, force fresh data
+        }, 30000);
+
+        return () => clearInterval(refreshInterval);
+    }, []); // Always load on mount
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
         setCurrentUserRank(userRank);
         // We'll handle visibility based on scroll position, not rank number
