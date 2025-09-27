@@ -173,19 +173,18 @@ export default function LeaderboardPage() {
         return () => clearInterval(interval);
     }, []);
 
-    // ⚡ INSTAGRAM-STYLE DATA LOADING: Instant + persistent
+    // ⚡ REDIS-POWERED INSTANT LOADING: Use your professional gaming cache system
     useEffect(() => {
-        const loadEssentialData = async (skipCache = false) => {
+        const loadEssentialData = async () => {
             try {
-                console.log('⚡ Loading essential tournament data...');
-                setIsActuallyLoading(true); // Set loading state for actual network request
+                console.log('⚡ Loading tournament data from Redis cache...');
+                setIsActuallyLoading(true);
 
-                // 🚀 PERFORMANCE FIX: Use cached data first, then update in background
+                // 🚀 Show cached data immediately for instant display
                 const cachedTournament = sessionStorage.getItem('tournament_data');
                 const cachedLeaderboard = sessionStorage.getItem('leaderboard_data');
 
-                // Show cached data immediately if available and not forcing refresh
-                if (cachedTournament && cachedLeaderboard && !skipCache) {
+                if (cachedTournament && cachedLeaderboard) {
                     try {
                         const parsedTournament = JSON.parse(cachedTournament);
                         const parsedLeaderboard = JSON.parse(cachedLeaderboard);
@@ -193,13 +192,13 @@ export default function LeaderboardPage() {
                         // Show cached data immediately
                         setCurrentTournament(parsedTournament.data);
                         setPreloadedLeaderboardData(parsedLeaderboard.data);
-                        console.log('⚡ SHOWING CACHED DATA: Immediate display');
+                        console.log('⚡ INSTANT DISPLAY: Using cached data');
                     } catch (e) {
                         console.warn('Cache parse error:', e);
                     }
                 }
 
-                // Always fetch fresh data in background
+                // Fetch from Redis-cached API (should be 50-400ms as per Plan.md)
                 const response = await fetch('/api/tournament/stats');
                 const tournamentData = await response.json();
 
@@ -219,15 +218,15 @@ export default function LeaderboardPage() {
 
                 setCurrentTournament(newTournamentData);
 
-                // ⚡ CACHE UPDATE: Save fresh data for next instant load
+                // Cache for next instant load
                 sessionStorage.setItem('tournament_data', JSON.stringify({
                     data: newTournamentData,
                     timestamp: Date.now()
                 }));
 
-                console.log(`⚡ Tournament data updated: ${tournamentData.total_players} players, ${tournamentData.total_prize_pool} WLD prize`);
+                console.log(`⚡ Redis data loaded: ${tournamentData.total_players} players, ${tournamentData.total_prize_pool} WLD`);
 
-                // Load leaderboard data in parallel
+                // Load leaderboard data (also Redis-cached)
                 const loadLeaderboard = async () => {
                     try {
                         const leaderboardRes = await fetch('/api/tournament/leaderboard-data');
@@ -239,7 +238,7 @@ export default function LeaderboardPage() {
                                 data: leaderboard,
                                 timestamp: Date.now()
                             }));
-                            console.log(`⚡ Leaderboard updated: ${leaderboard.players.length} entries`);
+                            console.log(`⚡ Leaderboard loaded: ${leaderboard.players.length} entries`);
                         }
                     } catch (err) {
                         console.warn('Background leaderboard load failed:', err);
@@ -256,17 +255,11 @@ export default function LeaderboardPage() {
             }
         };
 
-        // Initial load
+        // Load once on mount - Redis + Supabase realtime handles updates
         loadEssentialData();
 
-        // Auto-refresh every 30 seconds for live updates
-        const refreshInterval = setInterval(() => {
-            console.log('🔄 Auto-refreshing tournament data...');
-            loadEssentialData(true); // Skip cache, force fresh data
-        }, 30000);
-
-        return () => clearInterval(refreshInterval);
-    }, []); // Always load on mount
+        // NO POLLING - Real-time updates handled by TournamentLeaderboard's Supabase subscription
+    }, []); // Load once, rely on real-time updates
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
         setCurrentUserRank(userRank);
         // We'll handle visibility based on scroll position, not rank number

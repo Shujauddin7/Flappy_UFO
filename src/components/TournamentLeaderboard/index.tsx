@@ -197,19 +197,13 @@ export const TournamentLeaderboard = ({
     useEffect(() => {
         fetchLeaderboardData();
 
-        // Only set up polling if we DON'T have preloaded data AND not in grace period
-        // This prevents redundant API calls when parent already loaded the data
-        if (!isGracePeriod && !preloadedData) {
-            // Refresh every 15 seconds (reduced from 10s for less flickering)
-            const intervalId = setInterval(() => {
-                console.log('⚡ Leaderboard refresh...');
-                fetchLeaderboardData();
-            }, 15000); // 15 seconds to reduce skeleton flickering
+        // NO POLLING - Use Supabase real-time subscriptions as per Plan.md
+        // Real-time updates are handled by the existing Supabase subscription system
+        // The InfiniteScrollLeaderboard component handles real-time updates via:
+        // - Supabase realtime subscriptions on user_tournament_records table
+        // - Automatic cache invalidation and re-warming on score changes
+        console.log('⚡ TournamentLeaderboard: Using real-time updates, no polling needed');
 
-            return () => {
-                clearInterval(intervalId);
-            };
-        }
     }, [fetchLeaderboardData, isGracePeriod, preloadedData]);
 
     // Force refresh when currentUserId or currentUsername changes (user logs in/out)
