@@ -107,7 +107,8 @@ export default function AdminDashboard() {
 
     useEffect(() => {
         // Early returns to prevent unnecessary execution
-        if (!session) return;
+        // Allow execution for either session (World ID) OR password authentication
+        if (!session && !isPasswordAuthenticated) return;
         if (!isValidAdminPath) return; // Don't execute admin logic for invalid paths
 
         // Security: Check admin wallet configuration (path obscurity through dynamic routing)
@@ -423,13 +424,8 @@ export default function AdminDashboard() {
         );
     }
 
-    if (!session) {
-        return (
-            <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center">
-                <div className="text-white text-xl">Please sign in to access admin panel</div>
-            </div>
-        );
-    }
+    // This condition is now handled above - password auth users don't need session
+    // Removed: if (!session) check because password authentication is valid without session
 
     if (validAdminWallets.length === 0) {
         return (
