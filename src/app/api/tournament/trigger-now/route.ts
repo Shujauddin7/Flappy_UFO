@@ -20,10 +20,10 @@ export async function POST() {
             }, { status: 500 });
         }
 
-        console.log('🚀 Triggering daily cron job with proper authorization...');
+        console.log('🚀 Triggering weekly cron job with proper authorization...');
 
         // Call the real cron job with proper authorization
-        const response = await fetch(`${baseUrl}/api/tournament/daily-cron`, {
+        const response = await fetch(`${baseUrl}/api/tournament/weekly-cron`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${cronSecret}`,

@@ -1117,30 +1117,79 @@ export default function FlappyGame({
             ctx.globalAlpha = 1;
         }
 
-        // UI - Score on left, Stars on right with highlighting
-        ctx.font = 'bold 26px Arial, sans-serif';
+        // UI - Score on left, Stars on right with highlighted number boxes
+        const isMobile = canvas.width < 600;
+        const fontSize = isMobile ? 20 : 24;
+        const boxPadding = isMobile ? 6 : 8;
+        const yPosition = isMobile ? 35 : 45;
+        
+        ctx.font = `bold ${fontSize}px Arial, sans-serif`;
 
-        // Score display on the left with enhanced highlighting
-        ctx.fillStyle = '#00BFFF';
-        ctx.shadowColor = '#00BFFF';
-        ctx.shadowBlur = 12;
-        ctx.strokeStyle = '#FFFFFF';
-        ctx.lineWidth = 2;
-        ctx.strokeText(`🛸 Score: ${state.score}`, 20, 50);
-        ctx.fillText(`🛸 Score: ${state.score}`, 20, 50);
-
-        // Stars display on the right with enhanced highlighting
-        const starsText = `⭐ ${state.coins}`;
-        const starsTextWidth = ctx.measureText(starsText).width;
-        const starsX = canvas.width - starsTextWidth - 20; // 20px from right edge
-
+        // Score display on the left
+        const scoreIcon = '🛸';
+        const scoreLabel = 'Score: ';
+        const scoreNumber = state.score.toString();
+        
+        // Measure text widths for positioning
+        ctx.fillStyle = '#FFFFFF';
+        const scoreLabelWidth = ctx.measureText(scoreLabel).width;
+        const scoreNumberWidth = ctx.measureText(scoreNumber).width;
+        
+        // Draw score icon and label (no background)
+        ctx.shadowBlur = 0;
+        ctx.fillText(scoreIcon, 15, yPosition);
+        const scoreIconWidth = ctx.measureText(scoreIcon).width;
+        ctx.fillText(scoreLabel, 15 + scoreIconWidth + 8, yPosition);
+        
+        // Draw score number with black background box
+        const scoreBoxX = 15 + scoreIconWidth + 8 + scoreLabelWidth;
+        const scoreBoxY = yPosition - fontSize;
+        const scoreBoxWidth = scoreNumberWidth + boxPadding * 2;
+        const scoreBoxHeight = fontSize + boxPadding;
+        
+        // Black background box for score number
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.fillRect(scoreBoxX - boxPadding, scoreBoxY, scoreBoxWidth, scoreBoxHeight);
+        
+        // Cyan score number
+        ctx.fillStyle = '#00FFFF';
+        ctx.shadowColor = '#00FFFF';
+        ctx.shadowBlur = 6;
+        ctx.fillText(scoreNumber, scoreBoxX, yPosition);
+        
+        // Stars display on the right
+        const starsIcon = '⭐';
+        const starsNumber = state.coins.toString();
+        
+        // Measure text widths for right alignment
+        ctx.fillStyle = '#FFFFFF';
+        ctx.shadowBlur = 0;
+        const starsIconWidth = ctx.measureText(starsIcon).width;
+        const starsNumberWidth = ctx.measureText(starsNumber).width;
+        
+        // Calculate positions from right edge
+        const starsNumberX = canvas.width - 15 - starsNumberWidth - boxPadding;
+        const starsIconX = starsNumberX - boxPadding - starsIconWidth - 8;
+        
+        // Draw stars icon (no background)
         ctx.fillStyle = '#FFD700';
-        ctx.shadowColor = '#FFD700';
-        ctx.shadowBlur = 12;
-        ctx.strokeStyle = '#FFFFFF';
-        ctx.lineWidth = 2;
-        ctx.strokeText(starsText, starsX, 50);
-        ctx.fillText(starsText, starsX, 50);
+        ctx.fillText(starsIcon, starsIconX, yPosition);
+        
+        // Draw stars number with black background box
+        const starsBoxX = starsNumberX - boxPadding;
+        const starsBoxY = yPosition - fontSize;
+        const starsBoxWidth = starsNumberWidth + boxPadding * 2;
+        const starsBoxHeight = fontSize + boxPadding;
+        
+        // Black background box for stars number
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.fillRect(starsBoxX, starsBoxY, starsBoxWidth, starsBoxHeight);
+        
+        // Cyan stars number
+        ctx.fillStyle = '#00FFFF';
+        ctx.shadowColor = '#00FFFF';
+        ctx.shadowBlur = 6;
+        ctx.fillText(starsNumber, starsNumberX, yPosition);
 
         ctx.shadowBlur = 0;        // Game status
         if (state.gameStatus === 'ready') {
