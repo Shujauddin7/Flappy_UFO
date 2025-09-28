@@ -1117,16 +1117,31 @@ export default function FlappyGame({
             ctx.globalAlpha = 1;
         }
 
-        // UI (remove environment indicator)
-        ctx.font = 'bold 24px Arial, sans-serif';
+        // UI - Score on left, Stars on right with highlighting
+        ctx.font = 'bold 26px Arial, sans-serif';
+
+        // Score display on the left with enhanced highlighting
         ctx.fillStyle = '#00BFFF';
         ctx.shadowColor = '#00BFFF';
-        ctx.shadowBlur = 8;
+        ctx.shadowBlur = 12;
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 2;
+        ctx.strokeText(`🛸 Score: ${state.score}`, 20, 50);
         ctx.fillText(`🛸 Score: ${state.score}`, 20, 50);
+
+        // Stars display on the right with enhanced highlighting
+        const starsText = `⭐ ${state.coins}`;
+        const starsTextWidth = ctx.measureText(starsText).width;
+        const starsX = canvas.width - starsTextWidth - 20; // 20px from right edge
 
         ctx.fillStyle = '#FFD700';
         ctx.shadowColor = '#FFD700';
-        ctx.fillText(`⭐ ${state.coins}`, 20, 80);
+        ctx.shadowBlur = 12;
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 2;
+        ctx.strokeText(starsText, starsX, 50);
+        ctx.fillText(starsText, starsX, 50);
+
         ctx.shadowBlur = 0;        // Game status
         if (state.gameStatus === 'ready') {
             ctx.font = 'bold 32px Arial, sans-serif';
