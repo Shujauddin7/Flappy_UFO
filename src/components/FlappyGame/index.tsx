@@ -1122,69 +1122,69 @@ export default function FlappyGame({
         const fontSize = isMobile ? 20 : 24;
         const boxPadding = isMobile ? 6 : 8;
         const yPosition = isMobile ? 35 : 45;
-        
+
         ctx.font = `bold ${fontSize}px Arial, sans-serif`;
 
         // Score display on the left
         const scoreIcon = '🛸';
         const scoreLabel = 'Score: ';
         const scoreNumber = state.score.toString();
-        
+
         // Measure text widths for positioning
         ctx.fillStyle = '#FFFFFF';
         const scoreLabelWidth = ctx.measureText(scoreLabel).width;
         const scoreNumberWidth = ctx.measureText(scoreNumber).width;
-        
+
         // Draw score icon and label (no background)
         ctx.shadowBlur = 0;
         ctx.fillText(scoreIcon, 15, yPosition);
         const scoreIconWidth = ctx.measureText(scoreIcon).width;
         ctx.fillText(scoreLabel, 15 + scoreIconWidth + 8, yPosition);
-        
+
         // Draw score number with black background box
         const scoreBoxX = 15 + scoreIconWidth + 8 + scoreLabelWidth;
         const scoreBoxY = yPosition - fontSize;
         const scoreBoxWidth = scoreNumberWidth + boxPadding * 2;
         const scoreBoxHeight = fontSize + boxPadding;
-        
+
         // Black background box for score number
         ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
         ctx.fillRect(scoreBoxX - boxPadding, scoreBoxY, scoreBoxWidth, scoreBoxHeight);
-        
+
         // Cyan score number
         ctx.fillStyle = '#00FFFF';
         ctx.shadowColor = '#00FFFF';
         ctx.shadowBlur = 6;
         ctx.fillText(scoreNumber, scoreBoxX, yPosition);
-        
+
         // Stars display on the right
         const starsIcon = '⭐';
         const starsNumber = state.coins.toString();
-        
+
         // Measure text widths for right alignment
         ctx.fillStyle = '#FFFFFF';
         ctx.shadowBlur = 0;
         const starsIconWidth = ctx.measureText(starsIcon).width;
         const starsNumberWidth = ctx.measureText(starsNumber).width;
-        
+
         // Calculate positions from right edge
         const starsNumberX = canvas.width - 15 - starsNumberWidth - boxPadding;
         const starsIconX = starsNumberX - boxPadding - starsIconWidth - 8;
-        
+
         // Draw stars icon (no background)
         ctx.fillStyle = '#FFD700';
         ctx.fillText(starsIcon, starsIconX, yPosition);
-        
+
         // Draw stars number with black background box
         const starsBoxX = starsNumberX - boxPadding;
         const starsBoxY = yPosition - fontSize;
         const starsBoxWidth = starsNumberWidth + boxPadding * 2;
         const starsBoxHeight = fontSize + boxPadding;
-        
+
         // Black background box for stars number
         ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
         ctx.fillRect(starsBoxX, starsBoxY, starsBoxWidth, starsBoxHeight);
-        
+
         // Cyan stars number
         ctx.fillStyle = '#00FFFF';
         ctx.shadowColor = '#00FFFF';
