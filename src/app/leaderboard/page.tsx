@@ -209,7 +209,7 @@ export default function LeaderboardPage() {
                 // � PARALLEL API CALLS: Load both at same time for speed
                 const [tournamentResponse, leaderboardResponse] = await Promise.all([
                     fetch('/api/tournament/stats'),
-                    fetch('/api/leaderboard?limit=20')
+                    fetch('/api/tournament/leaderboard-data')
                 ]);
 
                 const [tournamentData, leaderboard] = await Promise.all([
