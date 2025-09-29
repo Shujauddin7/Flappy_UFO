@@ -97,8 +97,7 @@ export async function getOptimizedTournamentStats(tournamentDay: string) {
             .from('tournaments')
             .select(`
                 id,
-                tournament_day,
-                name,
+                                tournament_day,
                 total_tournament_players,
                 total_prize_pool,
                 total_collected,
@@ -121,7 +120,7 @@ export async function getOptimizedTournamentStats(tournamentDay: string) {
         // Format to match Redis cache structure exactly
         const formattedStats = {
             tournament_day: data.tournament_day,
-            tournament_name: data.name || `Tournament ${data.tournament_day}`,
+            tournament_name: `Tournament ${data.tournament_day}`,
             total_players: data.total_tournament_players || 0,
             total_prize_pool: Number((data.total_prize_pool || 0).toFixed(2)),
             has_active_tournament: data.is_active,
