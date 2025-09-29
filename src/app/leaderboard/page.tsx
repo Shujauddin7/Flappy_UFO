@@ -85,6 +85,9 @@ export default function LeaderboardPage() {
     // Track actual network loading state (only true during API calls)
     const [isActuallyLoading, setIsActuallyLoading] = useState(false);
 
+    // Track if we have data to prevent unnecessary loading blur
+    const [hasData, setHasData] = useState(false);
+
     const [preloadedLeaderboardData, setPreloadedLeaderboardData] = useState<LeaderboardApiResponse | null>(() => {
         // Try to load cached leaderboard data for instant display
         if (typeof window !== 'undefined') {
@@ -178,11 +181,15 @@ export default function LeaderboardPage() {
         const loadEssentialData = async () => {
             try {
                 console.log('⚡ Loading tournament data from Redis cache...');
-                setIsActuallyLoading(true);
 
-                // 🚀 Show cached data immediately for instant display
+                // Check if we have cached data first
                 const cachedTournament = sessionStorage.getItem('tournament_data');
                 const cachedLeaderboard = sessionStorage.getItem('leaderboard_data');
+
+                // Only show loading if we don't have cached data
+                if (!cachedTournament && !cachedLeaderboard) {
+                    setIsActuallyLoading(true);
+                }
 
                 if (cachedTournament && cachedLeaderboard) {
                     try {
@@ -192,6 +199,7 @@ export default function LeaderboardPage() {
                         // Show cached data immediately
                         setCurrentTournament(parsedTournament.data);
                         setPreloadedLeaderboardData(parsedLeaderboard.data);
+                        setHasData(true);
                         console.log('⚡ INSTANT DISPLAY: Using cached data');
                     } catch (e) {
                         console.warn('Cache parse error:', e);
@@ -225,6 +233,7 @@ export default function LeaderboardPage() {
 
                 // Update both tournament and leaderboard data
                 setCurrentTournament(newTournamentData);
+                setHasData(true);
                 setPreloadedLeaderboardData(leaderboard);
 
                 // Cache for next instant load
@@ -452,14 +461,14 @@ export default function LeaderboardPage() {
                         {/* Prize Pool Info */}
                         <div className="prize-pool-info">
                             <div className="prize-pool-text">
-                                Prize pool: <span className={`prize-pool-highlight ${isActuallyLoading ? 'loading-blur' : ''}`}>
+                                Prize pool: <span className={`prize-pool-highlight ${isActuallyLoading && !hasData ? 'loading-blur' : ''}`}>
                                     {(!currentTournament?.total_prize_pool || currentTournament.total_prize_pool === 0)
                                         ? '0.00 WLD'
                                         : `${currentTournament.total_prize_pool.toFixed(2)} WLD`}
                                 </span>
                             </div>
                             <div className="players-text">
-                                <span className={`human-count-number ${isActuallyLoading ? 'loading-blur' : ''}`}>
+                                <span className={`human-count-number ${isActuallyLoading && !hasData ? 'loading-blur' : ''}`}>
                                     {(!currentTournament?.total_players || currentTournament.total_players === 0)
                                         ? '0'
                                         : currentTournament.total_players}
