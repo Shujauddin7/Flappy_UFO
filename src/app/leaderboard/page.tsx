@@ -43,8 +43,8 @@ interface TournamentData {
 export default function LeaderboardPage() {
     const { data: session } = useSession();
 
-    // ⚡ INSTAGRAM-STYLE INSTANT LOADING: Real data immediately, persist across navigation
-    const [currentTournament, setCurrentTournament] = useState<TournamentData>(() => {
+    // ⚡ INSTANT LOADING: Real data immediately, persist across navigation
+    const [currentTournament, setCurrentTournament] = useState<TournamentData | null>(() => {
         // Try to get cached data first for instant loading
         if (typeof window !== 'undefined') {
             const cached = sessionStorage.getItem('tournament_data');
@@ -62,15 +62,9 @@ export default function LeaderboardPage() {
             }
         }
 
-        // No fallback data - let loading state handle it
+        // Return null - will show loading blur until data loads
         return null;
     });
-
-    // Track actual network loading state (only true during API calls)
-    const [isActuallyLoading, setIsActuallyLoading] = useState(false);
-
-    // Track if we have data to prevent unnecessary loading blur
-    const [hasData, setHasData] = useState(true); // Start with true to prevent blur on navigation
 
     const [preloadedLeaderboardData, setPreloadedLeaderboardData] = useState<LeaderboardApiResponse | null>(() => {
         // Load cached data immediately for instant display
@@ -205,7 +199,6 @@ export default function LeaderboardPage() {
     useEffect(() => {
         const loadEssentialData = async () => {
             try {
-                setIsActuallyLoading(true);
 
                 // Try cached data first for instant display
                 if (typeof window !== 'undefined') {
@@ -222,7 +215,6 @@ export default function LeaderboardPage() {
 
                                 setCurrentTournament(parsedTournament.data);
                                 setPreloadedLeaderboardData(parsedLeaderboard.data);
-                                setHasData(true);
                                 console.log('⚡ INSTANT DISPLAY: Using cached data');
                             }
                         } catch (e) {
@@ -258,7 +250,6 @@ export default function LeaderboardPage() {
 
                 // Update both tournament and leaderboard data
                 setCurrentTournament(newTournamentData);
-                setHasData(true);
                 setPreloadedLeaderboardData(leaderboard);
 
                 // Cache for next instant load
@@ -277,8 +268,6 @@ export default function LeaderboardPage() {
             } catch (error) {
                 console.error('Essential data load failed:', error);
                 setError('Failed to load tournament data');
-            } finally {
-                setIsActuallyLoading(false);
             }
         };
 
@@ -500,17 +489,17 @@ export default function LeaderboardPage() {
                         {/* Prize Pool Info */}
                         <div className="prize-pool-info">
                             <div className="prize-pool-text">
-                                Prize pool: <span className={`prize-pool-highlight ${isActuallyLoading && !hasData ? 'loading-blur' : ''}`}>
-                                    {(!currentTournament?.total_prize_pool || currentTournament.total_prize_pool === 0)
-                                        ? '0.00 WLD'
-                                        : `${currentTournament.total_prize_pool.toFixed(2)} WLD`}
+                                Prize pool: <span className={`prize-pool-highlight ${!currentTournament ? 'loading-blur' : ''}`}>
+                                    {currentTournament
+                                        ? `${currentTournament.total_prize_pool.toFixed(2)} WLD`
+                                        : 'Loading...'}
                                 </span>
                             </div>
                             <div className="players-text">
-                                <span className={`human-count-number ${isActuallyLoading && !hasData ? 'loading-blur' : ''}`}>
-                                    {(!currentTournament?.total_players || currentTournament.total_players === 0)
-                                        ? '0'
-                                        : currentTournament.total_players}
+                                <span className={`human-count-number ${!currentTournament ? 'loading-blur' : ''}`}>
+                                    {currentTournament
+                                        ? currentTournament.total_players
+                                        : '...'}
                                 </span> <span className="humans-playing-highlight">humans are playing to win the prize pool</span>
                             </div>
                         </div>
