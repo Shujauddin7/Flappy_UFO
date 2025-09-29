@@ -51,35 +51,19 @@ export default function LeaderboardPage() {
             if (cached) {
                 try {
                     const parsed = JSON.parse(cached);
-                    if (Date.now() - parsed.timestamp < CACHE_TTL.TOURNAMENT && parsed.data.end_time) { // Use standardized tournament cache TTL
-                        console.log('⚡ INSTANT LOAD: Using cached tournament data');
-                        console.log(`   Cached Players: ${parsed.data.total_players}`);
-                        console.log(`   Cached Prize: $${parsed.data.total_prize_pool}`);
-                        console.log(`   Cached End Time: ${parsed.data.end_time}`);
-                        return parsed.data;
-                    } else {
-                        console.log('🔄 Cache invalid or missing end_time, will reload');
-                    }
+                    // Use cached data immediately regardless of timestamp for speed
+                    console.log('⚡ INSTANT LOAD: Using cached tournament data');
+                    console.log(`   Cached Players: ${parsed.data.total_players}`);
+                    console.log(`   Cached Prize: $${parsed.data.total_prize_pool}`);
+                    return parsed.data;
                 } catch (e) {
                     console.warn('Cache parse error:', e);
                 }
             }
         }
 
-        // Fallback data - will be replaced immediately
-        return {
-            id: 'current',
-            tournament_day: '2025-10-05',
-            is_active: true,
-            total_players: 1, // Show reasonable fallback instead of 0
-            total_prize_pool: 1.0, // Show reasonable fallback instead of 0  
-            total_collected: 0,
-            admin_fee: 0,
-            guarantee_amount: 0,
-            admin_net_result: 0,
-            start_time: new Date().toISOString(),
-            end_time: null // No hardcoded time - will use real DB data
-        };
+        // No fallback data - let loading state handle it
+        return null;
     });
 
     // Track actual network loading state (only true during API calls)
@@ -95,10 +79,9 @@ export default function LeaderboardPage() {
             if (cached) {
                 try {
                     const parsed = JSON.parse(cached);
-                    if (Date.now() - parsed.timestamp < CACHE_TTL.LEADERBOARD) {
-                        console.log('⚡ INSTANT LOAD: Using cached leaderboard data');
-                        return parsed.data;
-                    }
+                    // Use cached data immediately for speed
+                    console.log('⚡ INSTANT LOAD: Using cached leaderboard data');
+                    return parsed.data;
                 } catch {
                     // Ignore cache parse errors
                 }
