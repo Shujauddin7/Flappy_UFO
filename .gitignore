@@ -3,6 +3,9 @@
 # Database schema files (development only)
 supabase-*.sql
 
+# pg_cron setup guide (local reference only)
+supabase.pg_cron.md
+
 # Development tools (exclude from production)
 src/components/DevTools/
 src/components/MobileDebugConsole/

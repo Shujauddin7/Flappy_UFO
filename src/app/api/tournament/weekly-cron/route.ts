@@ -3,10 +3,11 @@ import { createClient } from '@supabase/supabase-js';
 import { deleteCached } from '@/lib/redis';
 
 export async function GET(req: NextRequest) {
-    console.log('🕐 Weekly Tournament Cron Job Triggered at:', new Date().toISOString());
+    console.log('🕐 MANUAL Tournament Creation Backup Triggered at:', new Date().toISOString());
+    console.log('📝 NOTE: Primary automation now runs via Supabase pg_cron - this is backup/manual trigger only');
 
     try {
-        // Enhanced authentication for Vercel cron jobs and manual triggers
+        // Enhanced authentication for manual triggers (no longer used by Vercel cron)
         const userAgent = req.headers.get('user-agent');
         const vercelCronHeader = req.headers.get('vercel-cron');
         const authHeader = req.headers.get('authorization');
@@ -71,25 +72,29 @@ export async function GET(req: NextRequest) {
         // Initialize Supabase client with service role key for admin operations
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-        // Simplified tournament date calculation (Sunday 15:30 UTC boundary)
+        // Tournament date calculation (Sunday 15:30 UTC boundary)
         // Each tournament runs from Sunday 15:30 UTC to next Sunday 15:30 UTC
+        // The tournament is NAMED after the Sunday when it ENDS
         const now = new Date();
         const utcDay = now.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
         const utcHour = now.getUTCHours();
         const utcMinute = now.getUTCMinutes();
 
-        // Calculate the Sunday for the current/next tournament
+        // Calculate the Sunday for the tournament we should create/activate
         const tournamentSunday = new Date(now);
 
         if (utcDay === 0) {
             // It's Sunday
             if (utcHour < 15 || (utcHour === 15 && utcMinute < 30)) {
-                // Before 15:30 UTC on Sunday - use previous Sunday
-                tournamentSunday.setUTCDate(now.getUTCDate() - 7);
+                // Before 15:30 UTC on Sunday - tournament ends TODAY (current week)
+                // Use current Sunday
+            } else {
+                // At/After 15:30 UTC on Sunday - create NEXT week's tournament
+                // Tournament ends next Sunday
+                tournamentSunday.setUTCDate(now.getUTCDate() + 7);
             }
-            // After 15:30 UTC on Sunday - use current Sunday (today)
         } else {
-            // Not Sunday - create tournament for NEXT Sunday (to fill the gap)
+            // Not Sunday - create tournament that ends on NEXT Sunday
             tournamentSunday.setUTCDate(now.getUTCDate() + (7 - utcDay));
         }
 
