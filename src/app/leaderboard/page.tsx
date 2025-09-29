@@ -261,6 +261,13 @@ export default function LeaderboardPage() {
                 const data = JSON.parse(event.data);
                 console.log('⚡ INSTANT tournament stats update received!', data.stats);
 
+                // CRITICAL: Immediately clear frontend tournament cache to prevent conflicts
+                if (typeof window !== 'undefined') {
+                    sessionStorage.removeItem('tournament_data');
+                    sessionStorage.removeItem('preloaded_tournament');
+                    console.log('🧹 Cleared frontend tournament cache for instant update');
+                }
+
                 // Update tournament data instantly
                 if (data.stats) {
                     setCurrentTournament(prev => prev ? {

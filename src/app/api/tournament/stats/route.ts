@@ -36,9 +36,34 @@ export async function GET() {
             }
         }
 
-        console.log('🔄 Cache miss - fetching and warming cache for future instant responses');
+        console.log('🔄 Cache miss - fetching with optimized database query');
 
-        // 🚀 STEP 2: Get tournament data using shared utilities
+        // 🚀 STEP 2: Try optimized database query first
+        try {
+            const { getOptimizedTournamentStats } = await import('@/utils/optimized-database');
+            const optimizedStats = await getOptimizedTournamentStats(
+                new Date().toISOString().split('T')[0] // Today's date as tournament_day
+            );
+
+            if (optimizedStats) {
+                // Cache the optimized result immediately
+                await setCached(cacheKey, optimizedStats, 30); // 30 seconds cache
+
+                const responseTime = Date.now() - startTime;
+                console.log(`✅ Optimized tournament stats query completed in ${responseTime}ms`);
+
+                return NextResponse.json({
+                    ...optimizedStats,
+                    cached: false,
+                    response_time_ms: responseTime,
+                    fetched_at: new Date().toISOString()
+                });
+            }
+        } catch (optimizedError) {
+            console.warn('⚠️ Optimized query failed, falling back to legacy method:', optimizedError);
+        }
+
+        // 🔄 STEP 3: Fallback to legacy method if optimized query fails
         const currentTournament = await getCurrentActiveTournament();
 
 
@@ -95,9 +120,7 @@ export async function GET() {
             tournament_status: 'active'
         };
 
-        // Cache for 2 minutes (balance between freshness and performance)
-        console.log('💾 Warming cache for instant future responses...');
-        await setCached(cacheKey, responseData, 120); // 2 minutes cache for good performance
+        // Cache for 30 seconds (balance between freshness and performance)\n        console.log('💾 Warming cache for instant future responses...');\n        await setCached(cacheKey, responseData, 30); // 30 seconds cache for better real-time feel
 
         const responseTime = Date.now() - startTime;
         console.log(`✅ Tournament stats cached successfully for instant loading`);

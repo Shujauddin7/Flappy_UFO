@@ -68,34 +68,39 @@ export async function GET(request: NextRequest) {
             // Note: Using polling approach that's compatible with Upstash Redis
 
             let isActive = true;
-            let lastUpdateTime = Date.now();
+            let lastLeaderboardUpdateTime = 0; // Track leaderboard updates separately
+            let lastTournamentStatsUpdateTime = 0; // Track stats updates separately
 
-            // Poll Redis for leaderboard changes every 2 seconds
+            // Poll Redis for leaderboard changes every 1.5 seconds (faster for better UX)
             const pollForUpdates = async () => {
                 if (!isActive) return;
 
                 try {
-                    // Check if there are any new updates in Redis
+                    // Check for leaderboard updates
                     const updateKey = `leaderboard_updates:${tournamentDay}`;
                     const lastUpdate = await redis!.get(updateKey);
 
-                    if (lastUpdate && typeof lastUpdate === 'string' && lastUpdate !== lastUpdateTime.toString()) {
-                        console.log('📡 Broadcasting leaderboard update via SSE');
+                    if (lastUpdate && typeof lastUpdate === 'string') {
+                        const updateTime = parseInt(lastUpdate);
+                        if (updateTime > lastLeaderboardUpdateTime) {
+                            console.log('📡 Broadcasting leaderboard update via SSE');
 
-                        // Fetch updated leaderboard data from Redis cache
-                        const { getTopPlayers } = await import('@/lib/leaderboard-redis');
-                        const updatedPlayers = await getTopPlayers(tournamentDay, 0, 20);
+                            // Fetch updated leaderboard data from Redis cache
+                            const { getTopPlayers } = await import('@/lib/leaderboard-redis');
+                            const updatedPlayers = await getTopPlayers(tournamentDay, 0, 20);
 
-                        if (updatedPlayers && updatedPlayers.length > 0) {
-                            sendEvent('leaderboard_update', {
-                                players: updatedPlayers,
-                                tournament_day: tournamentDay,
-                                timestamp: new Date().toISOString(),
-                                source: 'redis_sse'
-                            });
+                            if (updatedPlayers && updatedPlayers.length > 0) {
+                                sendEvent('leaderboard_update', {
+                                    players: updatedPlayers,
+                                    tournament_day: tournamentDay,
+                                    timestamp: new Date().toISOString(),
+                                    source: 'redis_sse',
+                                    responseTime: 0, // Instant from Redis!
+                                    cached: true
+                                });
 
-                            const updateTime = typeof lastUpdate === 'string' ? parseInt(lastUpdate) : Date.now();
-                            lastUpdateTime = updateTime;
+                                lastLeaderboardUpdateTime = updateTime;
+                            }
                         }
                     }
 
@@ -105,21 +110,32 @@ export async function GET(request: NextRequest) {
 
                     if (statsLastUpdate && typeof statsLastUpdate === 'string') {
                         const statsUpdateTime = parseInt(statsLastUpdate);
-                        if (statsUpdateTime > lastUpdateTime) {
+                        if (statsUpdateTime > lastTournamentStatsUpdateTime) {
                             console.log('📡 Broadcasting tournament stats update via SSE');
 
-                            // Fetch updated tournament stats
+                            // Fetch updated tournament stats with timeout
                             try {
-                                const statsResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/tournament/stats`);
+                                const controller = new AbortController();
+                                const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+                                const statsResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/tournament/stats`, {
+                                    signal: controller.signal
+                                });
+
+                                clearTimeout(timeoutId);
                                 const statsData = await statsResponse.json();
 
-                                if (statsData.success) {
+                                if (statsResponse.ok && statsData) {
                                     sendEvent('tournament_stats_update', {
-                                        stats: statsData.data,
+                                        stats: statsData,
                                         tournament_day: tournamentDay,
                                         timestamp: new Date().toISOString(),
                                         source: 'redis_sse'
                                     });
+
+                                    lastTournamentStatsUpdateTime = statsUpdateTime;
+                                } else {
+                                    console.warn('⚠️ Tournament stats fetch returned non-OK response');
                                 }
                             } catch (statsError) {
                                 console.error('❌ Error fetching tournament stats for SSE:', statsError);
@@ -128,40 +144,71 @@ export async function GET(request: NextRequest) {
                     }
                 } catch (error) {
                     console.error('❌ Error polling for updates:', error);
+                    // Don't stop polling on individual errors
                 }
 
                 // Continue polling if connection is still active
                 if (isActive) {
-                    setTimeout(pollForUpdates, 2000); // Poll every 2 seconds
+                    setTimeout(pollForUpdates, 1500); // Poll every 1.5 seconds for better responsiveness
                 }
             };
 
-            // Start polling
-            pollForUpdates();
+            // Start polling immediately
+            setTimeout(pollForUpdates, 100); // Start quickly after connection
 
-            // Send periodic heartbeat to keep connection alive
+            // Send periodic heartbeat to keep connection alive (more frequent for mobile)
             const heartbeatInterval = setInterval(() => {
                 if (!isActive) {
                     clearInterval(heartbeatInterval);
                     return;
                 }
 
-                sendEvent('heartbeat', {
-                    timestamp: new Date().toISOString()
-                });
-            }, 30000); // Heartbeat every 30 seconds
+                try {
+                    sendEvent('heartbeat', {
+                        timestamp: new Date().toISOString(),
+                        connection_status: 'active'
+                    });
+                } catch (heartbeatError) {
+                    console.error('❌ Heartbeat failed, connection may be dead:', heartbeatError);
+                    // Consider connection dead if heartbeat fails
+                    isActive = false;
+                }
+            }, 15000); // Heartbeat every 15 seconds (better for mobile)
 
-            // Cleanup function
+            // Cleanup function with proper error handling
             const cleanup = () => {
-                console.log('🛑 SSE stream cleanup triggered');
+                console.log('🛑 SSE stream cleanup triggered for tournament:', tournamentDay);
                 isActive = false;
                 clearInterval(heartbeatInterval);
+
+                // Send final disconnect message if possible
+                try {
+                    sendEvent('disconnected', {
+                        message: 'Stream connection closed',
+                        timestamp: new Date().toISOString()
+                    });
+                } catch {
+                    // Ignore errors during cleanup
+                }
             };
 
-            // Handle client disconnect
-            request.signal.addEventListener('abort', cleanup);
+            // Handle client disconnect and connection errors
+            request.signal.addEventListener('abort', () => {
+                console.log('📱 Client disconnected from SSE stream');
+                cleanup();
+            });
 
-            return cleanup;
+            // Set up connection timeout as failsafe
+            const connectionTimeout = setTimeout(() => {
+                console.log('⏰ SSE connection timed out after 10 minutes');
+                cleanup();
+            }, 10 * 60 * 1000); // 10 minute max connection time
+
+            // Return cleanup function that also clears timeout
+            return () => {
+                clearTimeout(connectionTimeout);
+                cleanup();
+            };
         },
 
         cancel() {

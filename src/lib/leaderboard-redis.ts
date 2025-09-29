@@ -89,9 +89,7 @@ export async function populateLeaderboard(
         const scoreKey = `leaderboard:${tournamentDay}`;
         const detailsKey = `leaderboard:${tournamentDay}:details`;
 
-        // Clear existing leaderboard data
-        await redis.del(scoreKey);
-        await redis.del(detailsKey);
+        // Clear existing leaderboard data atomically (use pipeline for better performance)\n        // Note: Using separate operations to avoid issues with Redis MULTI/EXEC\n        const pipeline = redis.pipeline ? redis.pipeline() : null;\n        \n        if (pipeline) {\n            // Use pipeline for atomic operations if available\n            pipeline.del(scoreKey);\n            pipeline.del(detailsKey);\n            await pipeline.exec();\n        } else {\n            // Fallback to individual operations\n            await redis.del(scoreKey);\n            await redis.del(detailsKey);\n        }
 
         // Batch add all players (Redis ZADD supports multiple members)
         if (players.length > 0) {

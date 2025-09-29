@@ -61,33 +61,53 @@ export async function GET(req: NextRequest) {
                 console.log('⚠️ Could not get cached tournament stats, continuing without');
             }
         } else {
-            // Fallback to database query using shared utilities
-            console.log('📊 Redis miss - using database fallback');
-            players = await getLeaderboardData(currentTournamentDay, {
-                limit,
-                offset,
-                includeZeroScores: false
-            });
+            // Optimized database fallback with consistent Redis-like performance
+            console.log('📊 Redis miss - using optimized database fallback');
 
-            // Add missing properties for compatibility
-            players = players.map(player => ({
-                ...player,
-                score: player.highest_score // Map highest_score to score for compatibility
-            }));
+            const { getOptimizedLeaderboard } = await import('@/utils/optimized-database');
+            const optimizedPlayers = await getOptimizedLeaderboard(currentTournamentDay, offset, limit);
+
+            if (optimizedPlayers) {
+                players = optimizedPlayers;
+                source = 'database_optimized';
+            } else {
+                // Final fallback to existing query system
+                console.log('⚠️ Optimized query failed, using legacy fallback');
+                players = await getLeaderboardData(currentTournamentDay, {
+                    limit,
+                    offset,
+                    includeZeroScores: false
+                });
+
+                // Add missing properties for compatibility
+                players = players.map(player => ({
+                    ...player,
+                    score: player.highest_score // Map highest_score to score for compatibility
+                }));
+
+                source = 'database_legacy';
+            }
 
             // For database fallback, get ONLY essential tournament stats for UI display
             try {
-                const { getTournamentStats } = await import('@/utils/leaderboard-queries');
-                const stats = await getTournamentStats(currentTournamentDay);
+                const { getOptimizedTournamentStats } = await import('@/utils/optimized-database');
+                const optimizedStats = await getOptimizedTournamentStats(currentTournamentDay);
 
-                // UI ESSENTIAL DATA ONLY - what's actually displayed
-                tournamentStats = {
-                    total_players: stats.total_players,
-                    total_prize_pool: Number(stats.total_prize_pool.toFixed(2))
-                };
+                if (optimizedStats) {
+                    tournamentStats = {
+                        total_players: optimizedStats.total_players,
+                        total_prize_pool: optimizedStats.total_prize_pool
+                    };
+                } else {
+                    // Legacy fallback
+                    const { getTournamentStats } = await import('@/utils/leaderboard-queries');
+                    const stats = await getTournamentStats(currentTournamentDay);
 
-                // Keep debug info but separate for your reference (not sent to frontend)
-                console.log(`📊 Tournament Debug Info: Collected: ${stats.total_collected} WLD, Games: ${stats.total_games_played}`);
+                    tournamentStats = {
+                        total_players: stats.total_players,
+                        total_prize_pool: Number(stats.total_prize_pool.toFixed(2))
+                    };
+                }
             } catch (error) {
                 console.warn('⚠️ Could not get tournament stats:', error);
             }

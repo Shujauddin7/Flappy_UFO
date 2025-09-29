@@ -323,6 +323,13 @@ export default function InfiniteScrollLeaderboard({
             const data = JSON.parse(event.data);
             console.log('⚡ INSTANT leaderboard update received via SSE!', data.players.length, 'players');
 
+            // CRITICAL: Immediately clear frontend cache to prevent conflicts
+            if (typeof window !== 'undefined') {
+                sessionStorage.removeItem('leaderboard_data');
+                sessionStorage.removeItem('preloaded_leaderboard');
+                console.log('🧹 Cleared frontend leaderboard cache for instant update');
+            }
+
             // Update leaderboard data instantly
             if (data.players && data.players.length > 0) {
                 const formattedPlayers = data.players.map((player: Record<string, unknown>, index: number) => ({
@@ -342,10 +349,17 @@ export default function InfiniteScrollLeaderboard({
             }
         });
 
-        // Handle tournament stats updates (prize pool, total players)
+        // Handle tournament stats updates with immediate cache invalidation
         eventSource.addEventListener('tournament_stats_update', (event) => {
             const data = JSON.parse(event.data);
             console.log('⚡ INSTANT tournament stats update received via SSE!', data.stats);
+
+            // CRITICAL: Immediately clear frontend tournament cache to prevent conflicts
+            if (typeof window !== 'undefined') {
+                sessionStorage.removeItem('tournament_data');
+                sessionStorage.removeItem('preloaded_tournament');
+                console.log('🧹 Cleared frontend tournament cache for instant update');
+            }
 
             // Pass stats update to parent component
             if (onTournamentStatsUpdate && data.stats) {
@@ -363,7 +377,7 @@ export default function InfiniteScrollLeaderboard({
             console.error('❌ SSE connection error:', error);
 
             // Fallback to periodic refresh if SSE fails
-            console.log('� SSE failed, falling back to periodic refresh...');
+            console.log('⚠️ SSE failed, falling back to periodic refresh...');
             setTimeout(() => {
                 performLeaderboardRefresh();
             }, 5000);

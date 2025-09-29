@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { createClient } from '@supabase/supabase-js';
-import { deleteCached } from '@/lib/redis';
 import { updateLeaderboardScore } from '@/lib/leaderboard-redis';
 
 // Helper function to update user statistics safely (prevents race conditions)
@@ -326,37 +325,22 @@ export async function POST(req: NextRequest) {
                 console.log('⚡ Updating Redis leaderboard with new high score...');
                 await updateLeaderboardScore(tournamentDay, user.id, score);
 
-                // 🚨 INSTANT SSE BROADCAST: Trigger SSE update for instant leaderboard refresh
-                console.log('📡 Triggering SSE broadcast for instant leaderboard updates...');
+                // 🚨 NEW HIGH SCORE: Update all caches systematically
+                console.log('🏆 New high score! Updating all caches systematically...');
+
                 try {
-                    const { setCached } = await import('@/lib/redis');
-                    const updateKey = `leaderboard_updates:${tournamentDay}`;
-                    await setCached(updateKey, Date.now().toString(), 300); // 5 min TTL
-                    console.log('✅ SSE update trigger set - all connected users will get instant updates');
-                } catch (sseError) {
-                    console.log('SSE update trigger failed (non-critical):', sseError);
+                    const { invalidateAllTournamentCaches } = await import('@/utils/tournament-cache-helpers');
+                    await invalidateAllTournamentCaches({
+                        tournamentDay,
+                        triggerSSE: true,
+                        rewarmCache: true,
+                        source: 'new_high_score'
+                    });
+                    console.log('✅ All caches updated for new high score');
+                } catch (cacheError) {
+                    console.error('❌ Cache update failed for new high score:', cacheError);
+                    // Continue with the request even if caching fails
                 }
-
-                // 🚨 TOURNAMENT STATS SSE: High scores can affect tournament analytics
-                console.log('📡 Triggering tournament stats SSE for high score analytics...');
-                try {
-                    const { setCached } = await import('@/lib/redis');
-                    const statsUpdateKey = `tournament_stats_updates:${tournamentDay}`;
-                    await setCached(statsUpdateKey, Date.now().toString(), 300); // 5 min TTL
-                    console.log('✅ Tournament stats SSE trigger set - cross-device analytics update');
-                } catch (statsError) {
-                    console.log('Tournament stats SSE trigger failed (non-critical):', statsError);
-                }
-
-                // 🚨 NEW HIGH SCORE: Invalidate leaderboard cache so it shows immediately
-                console.log('🏆 New high score! Invalidating leaderboard cache...');
-                await deleteCached('tournament:leaderboard:current');
-                console.log('✅ Leaderboard cache invalidated');
-
-                // 🚨 Also invalidate prize pool cache (affects total players/revenue)
-                console.log('💰 Invalidating prize pool cache...');
-                await deleteCached('tournament:prizes:current');
-                console.log('✅ Prize pool cache invalidated');
 
                 // 🔄 SYNC: Update tournament_sign_ins highest_score and total_games_played
                 try {
@@ -380,12 +364,6 @@ export async function POST(req: NextRequest) {
                 } catch (e) {
                     console.log('Sign-in score aggregate update skipped (non-critical):', e);
                 }
-
-                // 🚀 INSTANT RELOAD: Immediately warm cache again for next user
-                console.log('⚡ Triggering immediate cache warming for instant next access...');
-                fetch('/api/admin/warm-cache', { method: 'POST' })
-                    .then(() => console.log('✅ Cache warmed immediately after score update'))
-                    .catch(err => console.log('Cache warming failed (non-critical):', err));
 
                 return NextResponse.json({
                     success: true,
@@ -448,29 +426,33 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // 🚀 INSTANT UPDATES: Clear all caches for immediate prize pool/human count updates
-        // Even regular scores contribute revenue and change total players
-        console.log('⚡ Clearing all caches for instant prize pool and human count updates...');
-        await deleteCached('tournament:prizes:current');
-        await deleteCached('tournament:current');
-        console.log('✅ Prize pool and tournament caches invalidated for instant updates');
+        // 🚀 INSTANT UPDATES: Clear tournament stats caches for immediate prize pool updates
+        // Regular scores don't affect leaderboard rankings but do affect tournament stats
+        console.log('⚡ Updating tournament stats caches for regular score submission...');
 
-        // � SSE BROADCAST: Trigger SSE update for any score submission
-        console.log('📡 Triggering SSE broadcast for leaderboard updates...');
         try {
-            const { setCached } = await import('@/lib/redis');
-            const updateKey = `leaderboard_updates:${tournamentDay}`;
-            await setCached(updateKey, Date.now().toString(), 300); // 5 min TTL
-            console.log('✅ SSE update trigger set - connected users will get updates');
-        } catch (sseError) {
-            console.log('SSE update trigger failed (non-critical):', sseError);
+            const { invalidateTournamentStatsCache } = await import('@/utils/tournament-cache-helpers');
+            await invalidateTournamentStatsCache({
+                tournamentDay,
+                triggerSSE: true,
+                rewarmCache: true,
+                source: 'regular_score'
+            });
+            console.log('✅ Tournament stats updated for regular score');
+        } catch (cacheError) {
+            console.error('❌ Tournament stats cache update failed:', cacheError);
         }
 
-        // �🚀 KEEP LEADERBOARD READY: Warm cache immediately for instant next access
-        console.log('⚡ Warming cache immediately to keep leaderboard always ready...');
-        fetch('/api/admin/warm-cache', { method: 'POST' })
-            .then(() => console.log('✅ Cache warmed to keep data always ready'))
-            .catch(err => console.log('Cache warming failed (non-critical):', err));
+        // � SSE BROADCAST: Trigger tournament stats update (not leaderboard for regular scores)
+        console.log('📡 Triggering SSE broadcast for tournament stats updates...');
+        try {
+            const { setCached } = await import('@/lib/redis');
+            const statsUpdateKey = `tournament_stats_updates:${tournamentDay}`;
+            await setCached(statsUpdateKey, Date.now().toString(), 300); // 5 min TTL
+            console.log('✅ Tournament stats SSE trigger set');
+        } catch (sseError) {
+            console.log('Tournament stats SSE trigger failed (non-critical):', sseError);
+        }
 
         // Keep leaderboard cache since regular scores don't change rankings
         console.log('📊 Regular score submitted, keeping leaderboard cache for performance');
