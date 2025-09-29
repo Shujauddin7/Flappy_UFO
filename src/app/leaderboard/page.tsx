@@ -168,36 +168,44 @@ export default function LeaderboardPage() {
     useEffect(() => {
         const loadEssentialData = async () => {
             try {
-                console.log('⚡ Loading tournament data from Redis cache...');
+                setIsActuallyLoading(true);
 
-                // Check if we have cached data first
-                const cachedTournament = sessionStorage.getItem('tournament_data');
-                const cachedLeaderboard = sessionStorage.getItem('leaderboard_data');
+                // Try cached data first for instant display
+                if (typeof window !== 'undefined') {
+                    const cachedTournament = sessionStorage.getItem('tournament_data');
+                    const cachedLeaderboard = sessionStorage.getItem('leaderboard_data');
 
-                // Only show loading if we don't have cached data
-                if (!cachedTournament && !cachedLeaderboard) {
-                    setIsActuallyLoading(true);
-                }
+                    if (cachedTournament && cachedLeaderboard) {
+                        try {
+                            const parsedTournament = JSON.parse(cachedTournament);
+                            const parsedLeaderboard = JSON.parse(cachedLeaderboard);
 
-                if (cachedTournament && cachedLeaderboard) {
-                    try {
-                        const parsedTournament = JSON.parse(cachedTournament);
-                        const parsedLeaderboard = JSON.parse(cachedLeaderboard);
+                            if (Date.now() - parsedTournament.timestamp < CACHE_TTL.TOURNAMENT &&
+                                Date.now() - parsedLeaderboard.timestamp < CACHE_TTL.LEADERBOARD) {
 
-                        // Show cached data immediately
-                        setCurrentTournament(parsedTournament.data);
-                        setPreloadedLeaderboardData(parsedLeaderboard.data);
-                        setHasData(true);
-                        console.log('⚡ INSTANT DISPLAY: Using cached data');
-                    } catch (e) {
-                        console.warn('Cache parse error:', e);
+                                setCurrentTournament(parsedTournament.data);
+                                setPreloadedLeaderboardData(parsedLeaderboard.data);
+                                setHasData(true);
+                                console.log('⚡ INSTANT DISPLAY: Using cached data');
+                            }
+                        } catch (e) {
+                            console.warn('Cache parse error:', e);
+                        }
                     }
                 }
 
-                // � PARALLEL API CALLS: Load both at same time for speed
+                // 🚀 FORCE REFRESH: Clear Redis cache to get fresh usernames
+                try {
+                    await fetch('/api/admin/warm-cache', { method: 'POST' });
+                    console.log('🧹 Redis cache refreshed for fresh data');
+                } catch {
+                    console.log('⚠️ Cache refresh failed, continuing anyway');
+                }
+
+                // � PARALLEL API CALLS: Use FAST APIs for both
                 const [tournamentResponse, leaderboardResponse] = await Promise.all([
                     fetch('/api/tournament/stats'),
-                    fetch('/api/tournament/leaderboard-data')
+                    fetch('/api/leaderboard?limit=20')  // Fast Redis API like tournament stats
                 ]);
 
                 const [tournamentData, leaderboard] = await Promise.all([
