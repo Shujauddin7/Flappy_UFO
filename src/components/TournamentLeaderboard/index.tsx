@@ -46,7 +46,7 @@ export const TournamentLeaderboard = ({
 }: TournamentLeaderboardProps) => {
     const [topPlayers, setTopPlayers] = useState<LeaderboardPlayer[]>([]);
     const [allPlayers, setAllPlayers] = useState<LeaderboardPlayer[]>([]);
-    const [loading, setLoading] = useState(false); // Only true during actual network requests
+    const [loading, setLoading] = useState(true); // Start with loading true, set false when data loads
     const [currentUserData, setCurrentUserData] = useState<LeaderboardPlayer | null>(null);
 
     // Setup intersection observer for user card visibility - OPTIMIZED: Only after data is loaded
@@ -100,6 +100,7 @@ export const TournamentLeaderboard = ({
                 // Set data immediately without loading state
                 setTopPlayers(players.slice(0, 10));
                 setAllPlayers(players);
+                setLoading(false); // Data loaded, stop loading
 
                 console.log('✅ Player data set:', {
                     topPlayersSet: players.slice(0, 10).length,
@@ -216,7 +217,7 @@ export const TournamentLeaderboard = ({
             preloadedPlayersCount: preloadedData?.players?.length || 0,
             isGracePeriod
         });
-        
+
         fetchLeaderboardData();
 
         // NO POLLING - Use Redis cache with periodic refresh

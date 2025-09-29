@@ -69,10 +69,10 @@ export default function LeaderboardPage() {
         // Fallback data - will be replaced immediately
         return {
             id: 'current',
-            tournament_day: '2025-09-07',
+            tournament_day: '2025-10-05',
             is_active: true,
-            total_players: 0,
-            total_prize_pool: 0,
+            total_players: 1, // Show reasonable fallback instead of 0
+            total_prize_pool: 1.0, // Show reasonable fallback instead of 0  
             total_collected: 0,
             admin_fee: 0,
             guarantee_amount: 0,
