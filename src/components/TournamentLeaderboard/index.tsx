@@ -81,14 +81,30 @@ export const TournamentLeaderboard = ({
 
     const fetchLeaderboardData = useCallback(async () => {
         try {
+            console.log('🔍 fetchLeaderboardData called:', {
+                hasPreloadedData: !!preloadedData,
+                preloadedPlayersCount: preloadedData?.players?.length || 0,
+                preloadedData: preloadedData
+            });
+
             // 🚀 Use preloaded data if available (skips API call completely)
             if (preloadedData) {
                 console.log('🚀 Using preloaded leaderboard data - no API call needed');
                 const players = preloadedData.players || [];
 
+                console.log('📊 Processing preloaded players:', {
+                    playersCount: players.length,
+                    firstPlayer: players[0]
+                });
+
                 // Set data immediately without loading state
                 setTopPlayers(players.slice(0, 10));
                 setAllPlayers(players);
+
+                console.log('✅ Player data set:', {
+                    topPlayersSet: players.slice(0, 10).length,
+                    allPlayersSet: players.length
+                });
 
                 // Process user rank immediately
                 if ((currentUserId || currentUsername) && onUserRankUpdate) {
@@ -195,6 +211,12 @@ export const TournamentLeaderboard = ({
     }, [currentUserId, currentUsername, preloadedData, onUserRankUpdate]);
 
     useEffect(() => {
+        console.log('🔄 TournamentLeaderboard useEffect triggered:', {
+            hasPreloadedData: !!preloadedData,
+            preloadedPlayersCount: preloadedData?.players?.length || 0,
+            isGracePeriod
+        });
+        
         fetchLeaderboardData();
 
         // NO POLLING - Use Redis cache with periodic refresh
