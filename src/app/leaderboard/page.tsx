@@ -194,18 +194,10 @@ export default function LeaderboardPage() {
                     }
                 }
 
-                // 🚀 FORCE REFRESH: Clear Redis cache to get fresh usernames
-                try {
-                    await fetch('/api/admin/warm-cache', { method: 'POST' });
-                    console.log('🧹 Redis cache refreshed for fresh data');
-                } catch {
-                    console.log('⚠️ Cache refresh failed, continuing anyway');
-                }
-
-                // � PARALLEL API CALLS: Use FAST APIs for both
+                // 🚀 PARALLEL API CALLS: Tournament stats (fast) + Leaderboard (correct data)
                 const [tournamentResponse, leaderboardResponse] = await Promise.all([
-                    fetch('/api/tournament/stats'),
-                    fetch('/api/leaderboard?limit=20')  // Fast Redis API like tournament stats
+                    fetch('/api/tournament/stats'),  // Fast for tournament stats
+                    fetch('/api/tournament/leaderboard-data')  // Correct data for players
                 ]);
 
                 const [tournamentData, leaderboard] = await Promise.all([
