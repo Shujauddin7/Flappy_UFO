@@ -89,21 +89,9 @@ export default function LeaderboardPage() {
     const [hasData, setHasData] = useState(false);
 
     const [preloadedLeaderboardData, setPreloadedLeaderboardData] = useState<LeaderboardApiResponse | null>(() => {
-        // Try to load cached leaderboard data for instant display
-        if (typeof window !== 'undefined') {
-            const cached = sessionStorage.getItem('leaderboard_data');
-            if (cached) {
-                try {
-                    const parsed = JSON.parse(cached);
-                    if (Date.now() - parsed.timestamp < CACHE_TTL.LEADERBOARD) { // Use standardized leaderboard cache TTL
-                        console.log('⚡ INSTANT LOAD: Using cached leaderboard data');
-                        return parsed.data;
-                    }
-                } catch {
-                    // Ignore cache parse errors
-                }
-            }
-        }
+        // TEMPORARY FIX: Skip cached data to ensure fresh data always loads
+        // This prevents showing stale "Unknown" player names after tournament reset
+        console.log('🔄 Skipping cached leaderboard data to ensure fresh display');
         return null;
     });
     const [currentUserRank, setCurrentUserRank] = useState<LeaderboardPlayer | null>(null);
@@ -285,6 +273,20 @@ export default function LeaderboardPage() {
                         total_prize_pool: data.stats.total_prize_pool || prev.total_prize_pool,
                         total_collected: data.stats.total_collected || prev.total_collected
                     } : prev);
+                }
+            });
+
+            // Add leaderboard update listener
+            eventSource.addEventListener('leaderboard_update', (event) => {
+                const data = JSON.parse(event.data);
+                if (data.players) {
+                    setPreloadedLeaderboardData({
+                        players: data.players,
+                        tournament_day: data.tournament_day,
+                        total_players: data.players.length,
+                        cached: true,
+                        fetched_at: data.timestamp
+                    });
                 }
             });
 
