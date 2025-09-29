@@ -1,6 +1,10 @@
 import { NextRequest } from 'next/server';
 import { Redis } from '@upstash/redis';
 
+// CRITICAL: Force dynamic rendering and Node.js runtime for SSE
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 // Initialize Redis client for pub/sub
 const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
 const redisUrl = isProduction ? process.env.UPSTASH_REDIS_PROD_URL : process.env.UPSTASH_REDIS_DEV_URL;

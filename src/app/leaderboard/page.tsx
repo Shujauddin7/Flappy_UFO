@@ -304,15 +304,27 @@ export default function LeaderboardPage() {
 
             // Add leaderboard update listener
             eventSource.addEventListener('leaderboard_update', (event) => {
+                console.log('🔥 SSE leaderboard_update received:', event.data);
                 const data = JSON.parse(event.data);
+                console.log('📊 Parsed leaderboard data:', {
+                    playersCount: data.players?.length || 0,
+                    tournamentDay: data.tournament_day,
+                    timestamp: data.timestamp
+                });
+
                 if (data.players) {
-                    setPreloadedLeaderboardData({
+                    const leaderboardData = {
                         players: data.players,
                         tournament_day: data.tournament_day,
                         total_players: data.players.length,
                         cached: true,
                         fetched_at: data.timestamp
-                    });
+                    };
+
+                    console.log('✅ Updating preloadedLeaderboardData via SSE');
+                    setPreloadedLeaderboardData(leaderboardData);
+                } else {
+                    console.warn('⚠️ SSE leaderboard update missing players data');
                 }
             });
 

@@ -211,6 +211,7 @@ export const TournamentLeaderboard = ({
         }
     }, [currentUserId, currentUsername, preloadedData, onUserRankUpdate]);
 
+    // Initial load effect - uses preloaded data if available
     useEffect(() => {
         console.log('🔄 TournamentLeaderboard useEffect triggered:', {
             hasPreloadedData: !!preloadedData,
@@ -218,6 +219,7 @@ export const TournamentLeaderboard = ({
             isGracePeriod
         });
 
+        // Always try to fetch fresh data - preloaded is just for initial display
         fetchLeaderboardData();
 
         // NO POLLING - Use Redis cache with periodic refresh
@@ -227,15 +229,14 @@ export const TournamentLeaderboard = ({
         // - Automatic cache invalidation and re-warming on score changes
         console.log('⚡ TournamentLeaderboard: Using Redis cache refresh, no polling needed');
 
-    }, [fetchLeaderboardData, isGracePeriod, preloadedData]);
+    }, [fetchLeaderboardData, isGracePeriod, preloadedData]); // Include all dependencies
 
     // Force refresh when currentUserId or currentUsername changes (user logs in/out)
-    // 🚀 OPTIMIZATION: Skip if we have preloaded data to avoid redundant calls
     useEffect(() => {
-        if ((currentUserId || currentUsername) && !preloadedData) {
+        if (currentUserId || currentUsername) {
             fetchLeaderboardData();
         }
-    }, [currentUserId, currentUsername, fetchLeaderboardData, preloadedData]);
+    }, [currentUserId, currentUsername, fetchLeaderboardData]);
 
     // Add effect for manual refresh trigger
     useEffect(() => {
