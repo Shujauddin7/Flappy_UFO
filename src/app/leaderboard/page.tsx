@@ -86,12 +86,24 @@ export default function LeaderboardPage() {
     const [isActuallyLoading, setIsActuallyLoading] = useState(false);
 
     // Track if we have data to prevent unnecessary loading blur
-    const [hasData, setHasData] = useState(false);
+    const [hasData, setHasData] = useState(true); // Start with true to prevent blur on navigation
 
     const [preloadedLeaderboardData, setPreloadedLeaderboardData] = useState<LeaderboardApiResponse | null>(() => {
-        // TEMPORARY FIX: Skip cached data to ensure fresh data always loads
-        // This prevents showing stale "Unknown" player names after tournament reset
-        console.log('🔄 Skipping cached leaderboard data to ensure fresh display');
+        // Load cached data immediately for instant display
+        if (typeof window !== 'undefined') {
+            const cached = sessionStorage.getItem('leaderboard_data');
+            if (cached) {
+                try {
+                    const parsed = JSON.parse(cached);
+                    if (Date.now() - parsed.timestamp < CACHE_TTL.LEADERBOARD) {
+                        console.log('⚡ INSTANT LOAD: Using cached leaderboard data');
+                        return parsed.data;
+                    }
+                } catch {
+                    // Ignore cache parse errors
+                }
+            }
+        }
         return null;
     });
     const [currentUserRank, setCurrentUserRank] = useState<LeaderboardPlayer | null>(null);
