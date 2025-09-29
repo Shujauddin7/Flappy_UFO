@@ -95,6 +95,48 @@ export default function LeaderboardPage() {
     const [shouldShowFixedCard, setShouldShowFixedCard] = useState(false);
     const [showPrizeBreakdown, setShowPrizeBreakdown] = useState(false);
 
+    // 🧹 DATABASE RESET DETECTION: Clear cache when database is reset
+    useEffect(() => {
+        const checkForDatabaseReset = async () => {
+            if (typeof window === 'undefined') return;
+
+            try {
+                // Get current database state
+                const leaderboardRes = await fetch('/api/tournament/leaderboard-data');
+                const leaderboardData = await leaderboardRes.json();
+
+                // Check cached data
+                const cachedLeaderboard = sessionStorage.getItem('leaderboard_data');
+
+                if (cachedLeaderboard) {
+                    const parsedLeaderboard = JSON.parse(cachedLeaderboard);
+
+                    // Detect database reset: cached data has more players than current database
+                    const cachedPlayerCount = parsedLeaderboard?.data?.players?.length || 0;
+                    const currentPlayerCount = leaderboardData?.players?.length || 0;
+
+                    if (cachedPlayerCount > currentPlayerCount) {
+                        console.log('🚨 DATABASE RESET DETECTED!');
+                        console.log(`   Cached players: ${cachedPlayerCount}`);
+                        console.log(`   Current players: ${currentPlayerCount}`);
+                        console.log('   Clearing all cached data...');
+
+                        // Clear all cache immediately
+                        sessionStorage.clear();
+
+                        // Force reload fresh data
+                        window.location.reload();
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.warn('Cache check failed:', error);
+            }
+        };
+
+        checkForDatabaseReset();
+    }, []); // Run once on mount
+
     // 🧹 TOURNAMENT RESET DETECTION: Clear cache when tournament day changes
     useEffect(() => {
         const checkAndClearStaleCache = () => {
