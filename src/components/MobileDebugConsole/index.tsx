@@ -54,7 +54,7 @@ export default function MobileDebugConsole() {
             setLogs(prev => [...prev.slice(-9), {
                 timestamp: isNaN(now.getTime()) ? 'Invalid Time' : now.toLocaleTimeString(),
                 type: 'error',
-                message: args.map(arg => 
+                message: args.map(arg =>
                     typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
                 ).join(' ')
             }]);
@@ -66,7 +66,7 @@ export default function MobileDebugConsole() {
             setLogs(prev => [...prev.slice(-9), {
                 timestamp: isNaN(now.getTime()) ? 'Invalid Time' : now.toLocaleTimeString(),
                 type: 'warning',
-                message: args.map(arg => 
+                message: args.map(arg =>
                     typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
                 ).join(' ')
             }]);
