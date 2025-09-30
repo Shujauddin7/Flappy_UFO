@@ -46,6 +46,17 @@ export default function LeaderboardPage() {
 
     // ⚡ INSTANT LOADING: Real data immediately, persist across navigation
     const [currentTournament, setCurrentTournament] = useState<TournamentData | null>(() => {
+        // 🧹 QUICK FIX: Add cache clearing to browser console
+        if (typeof window !== 'undefined') {
+            // @ts-expect-error - Debug helper
+            window.clearGameCache = () => {
+                console.log('🧹 Clearing all game caches...');
+                sessionStorage.clear();
+                localStorage.clear();
+                window.location.reload();
+            };
+        }
+
         // Try to get cached data first for instant loading
         if (typeof window !== 'undefined') {
             const cached = sessionStorage.getItem('tournament_data');
@@ -110,16 +121,35 @@ export default function LeaderboardPage() {
                     const cachedPlayerCount = parsedLeaderboard?.data?.players?.length || 0;
                     const currentPlayerCount = leaderboardData?.players?.length || 0;
 
-                    if (cachedPlayerCount > currentPlayerCount) {
-                        console.log('🚨 DATABASE RESET DETECTED!');
+                    // 🚨 AGGRESSIVE RESET DETECTION: Clear cache if ANY of these conditions:
+                    // 1. Cached has more players than current (database reset)
+                    // 2. Current database has 0 players but cache has players (fresh reset) 
+                    // 3. Tournament day mismatch (new tournament created)
+                    // 4. ANY cached data exists when database is empty (safest approach)
+                    const cachedTournamentDay = parsedLeaderboard?.data?.tournament_day;
+                    const currentTournamentDay = leaderboardData?.tournament_day;
+
+                    const shouldClearCache = (
+                        cachedPlayerCount > currentPlayerCount || // Database reset detected
+                        (currentPlayerCount === 0 && cachedPlayerCount >= 0) || // ANY cache when DB is empty
+                        (cachedTournamentDay && currentTournamentDay && cachedTournamentDay !== currentTournamentDay) || // Tournament change
+                        !leaderboardData?.players || // No current data available
+                        leaderboardData?.players?.length === 0 // Explicit empty database
+                    );
+
+                    if (shouldClearCache) {
+                        console.log('🚨 CACHE CLEAR TRIGGERED - DATABASE RESET OR FRESH STATE!');
                         console.log(`   Cached players: ${cachedPlayerCount}`);
                         console.log(`   Current players: ${currentPlayerCount}`);
-                        console.log('   Clearing all cached data...');
+                        console.log(`   Cached tournament: ${cachedTournamentDay}`);
+                        console.log(`   Current tournament: ${currentTournamentDay}`);
+                        console.log('   🧹 CLEARING ALL CACHE AND FORCING FRESH LOAD...');
 
-                        // Clear all cache immediately
+                        // Clear all browser cache immediately
                         sessionStorage.clear();
+                        localStorage.clear();
 
-                        // Force reload fresh data
+                        // Force reload to get fresh data
                         window.location.reload();
                         return;
                     }
