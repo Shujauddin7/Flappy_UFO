@@ -451,35 +451,52 @@ export default function LeaderboardPage() {
                 try {
                     const data = JSON.parse(event.data);
 
-                    if (data.players) {
+                    if (data && data.players && Array.isArray(data.players)) {
                         const leaderboardData = {
                             players: data.players,
-                            tournament_day: data.tournament_day,
+                            tournament_day: data.tournament_day || new Date().toISOString().split('T')[0],
                             total_players: data.players.length,
                             cached: true,
-                            fetched_at: data.timestamp,
+                            fetched_at: data.timestamp || new Date().toISOString(),
                             // Add unique identifier for change detection
                             sse_update_id: `sse_${Date.now()}_${Math.random()}`
                         };
 
-                        // Update data directly without aggressive cache clearing
-                        setPreloadedLeaderboardData(leaderboardData);
-                        console.log(`🚀 REAL-TIME LEADERBOARD UPDATE! Source: ${data.source || 'websocket'}, Players: ${data.players.length}, Devices: ALL UPDATED`);
+                        // CRITICAL: Validate each player has required structure
+                        const validPlayers = data.players.filter((player: unknown): player is LeaderboardPlayer => {
+                            const p = player as Record<string, unknown>;
+                            return p &&
+                                typeof p.user_id === 'string' &&
+                                typeof p.score === 'number' &&
+                                typeof p.rank === 'number';
+                        });
 
-                        // Force cache update for instant loading on next visit
-                        try {
-                            sessionStorage.setItem('leaderboard_data', JSON.stringify({
-                                data: leaderboardData,
-                                timestamp: Date.now()
-                            }));
-                        } catch {
-                            // Ignore cache storage errors
+                        if (validPlayers.length > 0) {
+                            leaderboardData.players = validPlayers;
+                            leaderboardData.total_players = validPlayers.length;
+
+                            // Update data directly without aggressive cache clearing
+                            setPreloadedLeaderboardData(leaderboardData);
+                            console.log(`🚀 REAL-TIME LEADERBOARD UPDATE! Source: ${data.source || 'websocket'}, Players: ${validPlayers.length}, Devices: ALL UPDATED`);
+
+                            // Force cache update for instant loading on next visit
+                            try {
+                                sessionStorage.setItem('leaderboard_data', JSON.stringify({
+                                    data: leaderboardData,
+                                    timestamp: Date.now()
+                                }));
+                            } catch {
+                                // Ignore cache storage errors
+                            }
+                        } else {
+                            console.warn('⚠️ Redis WebSocket leaderboard update has no valid players');
                         }
                     } else {
                         console.warn('⚠️ Redis WebSocket leaderboard update missing players data');
                     }
                 } catch (parseError) {
                     console.error('❌ WebSocket leaderboard JSON parse error:', parseError);
+                    // Don't crash the app - just log and continue
                 }
             });
 
