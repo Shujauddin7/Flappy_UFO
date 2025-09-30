@@ -58,6 +58,7 @@ export const TournamentLeaderboard = ({
         return initialLoading;
     });
     const [currentUserData, setCurrentUserData] = useState<LeaderboardPlayer | null>(null);
+    const [forceUpdateTrigger, setForceUpdateTrigger] = useState(0); // Force re-render trigger
 
     // CRITICAL DEBUG: Log when preloaded data becomes available
     useEffect(() => {
@@ -65,7 +66,8 @@ export const TournamentLeaderboard = ({
             hasData: !!preloadedData,
             playersCount: preloadedData?.players?.length || 0,
             timestamp: Date.now(),
-            currentLoadingState: loading
+            currentLoadingState: loading,
+            sse_update_id: preloadedData?.sse_update_id
         });
     }, [preloadedData, loading]);
 
@@ -80,9 +82,13 @@ export const TournamentLeaderboard = ({
             setAllPlayers(players);
             setLoading(false);
 
+            // Trigger force re-render
+            setForceUpdateTrigger(prev => prev + 1);
+
             console.log('✅ DIRECT UPDATE COMPLETE:', {
                 topPlayersCount: players.slice(0, 10).length,
-                allPlayersCount: players.length
+                allPlayersCount: players.length,
+                forceUpdateTrigger: forceUpdateTrigger + 1
             });
 
             // Update user rank if needed

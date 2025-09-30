@@ -573,7 +573,6 @@ export default function LeaderboardPage() {
                         </div>
 
                         <TournamentLeaderboard
-                            key={preloadedLeaderboardData?.sse_update_id || 'initial'} // Force re-render on SSE updates
                             tournamentId={currentTournament?.id}
                             currentUserId={session?.user?.walletAddress || null}
                             currentUsername={session?.user?.username || null}
