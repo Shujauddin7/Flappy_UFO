@@ -69,14 +69,38 @@ export async function updateLeaderboardScore(
         await redis.expire(scoreKey, 48 * 60 * 60);
         await redis.expire(detailsKey, 48 * 60 * 60);
 
-        // 🚨 CRITICAL FIX: Immediately trigger SSE update after Redis update
+        // 🚨 CRITICAL FIX: Immediately trigger real-time updates via Redis pub/sub
+        // This replaces the polling-based trigger system with instant pub/sub events
         const updateKey = `leaderboard_updates:${tournamentDay}`;
-        await redis.set(updateKey, Date.now().toString(), { ex: 300 }); // 5 min TTL
-        console.log('✅ SSE trigger set immediately after Redis leaderboard update');
+        await redis.set(updateKey, Date.now().toString(), { ex: 300 }); // Keep for SSE fallback
+        console.log('✅ SSE trigger set for fallback compatibility');
 
-        // 🔥 ALSO trigger tournament stats update for cross-device sync consistency  
+        // 🔥 NEW: Publish real-time event with actual leaderboard data for instant updates
+        try {
+            const currentLeaderboard = await getTopPlayers(tournamentDay, 0, 50);
+            if (currentLeaderboard && currentLeaderboard.length > 0) {
+                const pubsubMessage = JSON.stringify({
+                    type: 'leaderboard_update',
+                    tournament_day: tournamentDay,
+                    players: currentLeaderboard,
+                    timestamp: new Date().toISOString(),
+                    source: 'redis_pubsub_instant',
+                    trigger_user: userId,
+                    trigger_score: score
+                });
+
+                // Publish to Redis pub/sub channel for instant WebSocket broadcasts
+                await redis.publish('leaderboard_channel', pubsubMessage);
+                console.log('🚀 INSTANT Redis pub/sub event published with leaderboard data');
+            }
+        } catch (pubsubError) {
+            console.error('❌ Redis pub/sub publish failed (non-critical):', pubsubError);
+            // Continue execution even if pub/sub fails
+        }
+
+        // Also trigger tournament stats update for cross-device sync consistency  
         const statsUpdateKey = `tournament_stats_updates:${tournamentDay}`;
-        await redis.set(statsUpdateKey, Date.now().toString(), { ex: 300 }); // 5 min TTL
+        await redis.set(statsUpdateKey, Date.now().toString(), { ex: 300 }); // Keep for SSE fallback
         console.log('✅ Tournament stats SSE trigger also set for complete sync');
 
         console.log(`⚡ Redis leaderboard updated: ${userId} = ${score} points`);

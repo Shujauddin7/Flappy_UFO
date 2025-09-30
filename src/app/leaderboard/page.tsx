@@ -305,11 +305,11 @@ export default function LeaderboardPage() {
         // Load once on mount - Redis cache + periodic refresh handles updates
         loadEssentialData();
 
-        // 🚀 SSE CONNECTION: Listen for instant tournament stats updates
+        // 🚀 ENHANCED REAL-TIME CONNECTION: Listen for instant updates via WebSocket-like SSE
         if (currentTournament?.tournament_day) {
-            console.log('🔥 Starting SSE for tournament stats updates...');
+            console.log('🔥 Starting enhanced real-time connection for instant updates...');
 
-            const eventSource = new EventSource(`/api/leaderboard/stream?tournament_day=${encodeURIComponent(currentTournament.tournament_day)}`);
+            const eventSource = new EventSource(`/api/leaderboard/ws?tournament_day=${encodeURIComponent(currentTournament.tournament_day)}`);
 
             eventSource.addEventListener('tournament_stats_update', (event) => {
                 const data = JSON.parse(event.data);
