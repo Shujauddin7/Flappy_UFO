@@ -443,38 +443,6 @@ export async function POST(req: NextRequest) {
             console.error('❌ Cache update failed for regular score:', cacheError);
         }
 
-        // Keep leaderboard cache since regular scores don't change rankings
-        console.log('📊 Regular score submitted, keeping leaderboard cache for performance');        // 🚀 INSTANT UPDATES: Clear tournament stats caches for immediate prize pool updates
-        // Regular scores don't affect leaderboard rankings but do affect tournament stats
-        console.log('⚡ Updating tournament stats caches for regular score submission...');
-
-        try {
-            const { invalidateTournamentStatsCache } = await import('@/utils/tournament-cache-helpers');
-            await invalidateTournamentStatsCache({
-                tournamentDay,
-                triggerSSE: true,
-                rewarmCache: true,
-                source: 'regular_score'
-            });
-            console.log('✅ Tournament stats updated for regular score');
-        } catch (cacheError) {
-            console.error('❌ Tournament stats cache update failed:', cacheError);
-        }
-
-        // � SSE BROADCAST: Trigger tournament stats update (not leaderboard for regular scores)
-        console.log('📡 Triggering SSE broadcast for tournament stats updates...');
-        try {
-            const { setCached } = await import('@/lib/redis');
-            const statsUpdateKey = `tournament_stats_updates:${tournamentDay}`;
-            await setCached(statsUpdateKey, Date.now().toString(), 300); // 5 min TTL
-            console.log('✅ Tournament stats SSE trigger set');
-        } catch (sseError) {
-            console.log('Tournament stats SSE trigger failed (non-critical):', sseError);
-        }
-
-        // Keep leaderboard cache since regular scores don't change rankings
-        console.log('📊 Regular score submitted, keeping leaderboard cache for performance');
-
         return NextResponse.json({
             success: true,
             data: {
