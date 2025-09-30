@@ -89,21 +89,53 @@ export async function GET(request: NextRequest) {
                         if (updateTime > lastLeaderboardUpdateTime) {
                             console.log('📡 Broadcasting leaderboard update via SSE');
 
-                            // Fetch updated leaderboard data from Redis cache
-                            const { getTopPlayers } = await import('@/lib/leaderboard-redis');
-                            const updatedPlayers = await getTopPlayers(tournamentDay, 0, 20);
+                            // 🔧 CRITICAL FIX: Fetch fresh leaderboard data from API endpoint (like tournament stats)
+                            // This ensures we get truly fresh data instead of potentially stale Redis cache
+                            try {
+                                const controller = new AbortController();
+                                const timeoutId = setTimeout(() => controller.abort(), 3000);
 
-                            if (updatedPlayers && updatedPlayers.length > 0) {
-                                sendEvent('leaderboard_update', {
-                                    players: updatedPlayers,
-                                    tournament_day: tournamentDay,
-                                    timestamp: new Date().toISOString(),
-                                    source: 'redis_sse',
-                                    responseTime: 0, // Instant from Redis!
-                                    cached: true
+                                const leaderboardResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/tournament/leaderboard-data`, {
+                                    signal: controller.signal
                                 });
 
-                                lastLeaderboardUpdateTime = updateTime;
+                                clearTimeout(timeoutId);
+                                const leaderboardData = await leaderboardResponse.json();
+
+                                if (leaderboardResponse.ok && leaderboardData?.players) {
+                                    sendEvent('leaderboard_update', {
+                                        players: leaderboardData.players,
+                                        tournament_day: tournamentDay,
+                                        timestamp: new Date().toISOString(),
+                                        source: 'api_sse_fresh_data',
+                                        responseTime: 0,
+                                        cached: false // Fresh from database!
+                                    });
+
+                                    lastLeaderboardUpdateTime = updateTime;
+                                } else {
+                                    console.warn('⚠️ Leaderboard API fetch returned non-OK response');
+                                }
+                            } catch (leaderboardError) {
+                                console.error('❌ Error fetching fresh leaderboard data for SSE:', leaderboardError);
+
+                                // Fallback to Redis cache if API fails (preserve existing behavior)
+                                console.log('🔄 Falling back to Redis cache for leaderboard data...');
+                                const { getTopPlayers } = await import('@/lib/leaderboard-redis');
+                                const updatedPlayers = await getTopPlayers(tournamentDay, 0, 20);
+
+                                if (updatedPlayers && updatedPlayers.length > 0) {
+                                    sendEvent('leaderboard_update', {
+                                        players: updatedPlayers,
+                                        tournament_day: tournamentDay,
+                                        timestamp: new Date().toISOString(),
+                                        source: 'redis_sse_fallback',
+                                        responseTime: 0,
+                                        cached: true
+                                    });
+
+                                    lastLeaderboardUpdateTime = updateTime;
+                                }
                             }
                         }
                     }
