@@ -26,40 +26,23 @@ async function updateTournamentPrizePool(supabase: any, tournamentId: string) {
             return sum + entryPayments + continuePayments;
         }, 0) || 0;
 
-        // Count total players for guarantee calculation
-        const totalPlayers = data?.length || 0;
-
-        // NEW GUARANTEE SYSTEM (per Plan.md): Admin adds 1 WLD per top 10 winner when total collected < 72 WLD
-        let guaranteeAmount = 0;
+        // Simple 70/30 split - NO guarantee system for continue payments
         const adminFeeAmount = totalRevenue * 0.30; // Always 30%
-        const basePrizePool = totalRevenue * 0.70; // Always 70%
-
-        if (totalRevenue < 72) {
-            const top10Winners = Math.min(totalPlayers, 10);
-            guaranteeAmount = top10Winners * 1.0; // Admin adds 1 WLD per top 10 winner
-        }
-
-        const totalPrizePool = basePrizePool + guaranteeAmount; // 70% + guarantee (if needed)
-        const adminNetResult = adminFeeAmount - guaranteeAmount; // Can be negative
+        const totalPrizePool = totalRevenue * 0.70; // Always 70% - no guarantee added
 
         console.log('💰 Tournament totals updated after continue payment:', {
             totalRevenue,
-            basePrizePool,
-            guaranteeAmount,
             totalPrizePool,
-            adminFeeAmount,
-            adminNetResult
+            adminFeeAmount
         });
 
-        // Update tournament with NEW guarantee system
+        // Update tournament with simple 70/30 split
         const { error: updateError } = await supabase
             .from('tournaments')
             .update({
                 total_prize_pool: totalPrizePool,
                 total_collected: totalRevenue,
-                admin_fee: adminFeeAmount,
-                guarantee_amount: guaranteeAmount,
-                admin_net_result: adminNetResult
+                admin_fee: adminFeeAmount
             })
             .eq('id', tournamentId);
 
@@ -68,11 +51,8 @@ async function updateTournamentPrizePool(supabase: any, tournamentId: string) {
         } else {
             console.log('✅ Tournament analytics updated with continue payment:', {
                 total_collected: totalRevenue,
-                base_prize_pool: basePrizePool,
-                guarantee_amount: guaranteeAmount,
                 total_prize_pool: totalPrizePool,
-                admin_fee: adminFeeAmount,
-                admin_net_result: adminNetResult
+                admin_fee: adminFeeAmount
             });
         }
     } catch (error) {
