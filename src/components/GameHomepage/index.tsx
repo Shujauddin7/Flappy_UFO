@@ -716,51 +716,82 @@ export default function GameHomepage() {
 
     // Handle when user chooses NOT to continue (final game over)
     const handleFinalGameOver = async (score: number) => {
-        if (gameMode === 'tournament' && session?.user?.walletAddress && !isSubmittingScore) {
-            setIsSubmittingScore(true);
+        // CRITICAL: Prevent duplicate submissions and race conditions
+        if (gameMode !== 'tournament' || !session?.user?.walletAddress || isSubmittingScore) {
+            console.log('⚠️ Skipping score submission:', { gameMode, hasWallet: !!session?.user?.walletAddress, isSubmitting: isSubmittingScore });
+            return;
+        }
 
-            try {
-                const response = await fetch('/api/score/submit', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        wallet: session.user.walletAddress,
-                        score: score,
-                        game_duration: Math.max(score * 2000, 5000),
-                        used_continue: false,
-                        continue_amount: 0
-                    }),
-                });
+        setIsSubmittingScore(true);
 
-                const result = await response.json();
+        try {
+            console.log('🎯 Starting final score submission:', { score, wallet: session.user.walletAddress });
 
-                // Update modal with high score info
-                if (result.success && !result.data.is_duplicate && result.data.is_new_high_score) {
-                    setGameResult(prev => ({
-                        ...prev,
-                        isNewHighScore: result.data.is_new_high_score,
-                        previousHigh: result.data.previous_highest_score,
-                        currentHigh: result.data.current_highest_score
-                    }));
+            const response = await fetch('/api/score/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    wallet: session.user.walletAddress,
+                    score: score,
+                    game_duration: Math.max(score * 2000, 5000),
+                    used_continue: false,
+                    continue_amount: 0
+                }),
+            });
 
-                    // 🚀 SMART CACHE: Only clear cache on NEW HIGH SCORES (matches server logic)
-                    console.log('� NEW HIGH SCORE! - invalidating leaderboard cache for immediate update');
-                    const envPrefix = process.env.NODE_ENV === 'production' ? 'prod_' : 'dev_';
+            if (!response.ok) {
+                throw new Error(`Score submission failed: ${response.status} ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            console.log('✅ Score submission result:', result);
+
+            // CRITICAL: Only update state if component is still mounted and in tournament mode
+            if (gameMode === 'tournament' && !isSubmittingScore) {
+                console.log('⚠️ Component state changed during submission, skipping result update');
+                return;
+            }
+
+            // Update modal with high score info
+            if (result.success && !result.data.is_duplicate && result.data.is_new_high_score) {
+                setGameResult(prev => ({
+                    ...prev,
+                    isNewHighScore: result.data.is_new_high_score,
+                    previousHigh: result.data.previous_highest_score,
+                    currentHigh: result.data.current_highest_score
+                }));
+
+                // 🚀 SMART CACHE: Only clear cache on NEW HIGH SCORES (matches server logic)
+                console.log('🏆 NEW HIGH SCORE! - invalidating leaderboard cache for immediate update');
+                const envPrefix = process.env.NODE_ENV === 'production' ? 'prod_' : 'dev_';
+                try {
                     sessionStorage.removeItem(`${envPrefix}preloaded_leaderboard`);
                     sessionStorage.removeItem(`${envPrefix}preloaded_tournament`);
-                } else if (result.success) {
-                    // 🚀 PERFORMANCE: Keep cache for regular scores - no leaderboard position change
-                    console.log('� Regular score submitted - keeping cache for faster navigation');
+                } catch (cacheError) {
+                    console.warn('Cache clear failed:', cacheError);
                 }
-            } catch (error) {
-                console.error('Final score submission failed:', error);
+            } else if (result.success) {
+                // 🚀 PERFORMANCE: Keep cache for regular scores - no leaderboard position change
+                console.log('📊 Regular score submitted - keeping cache for faster navigation');
+            } else if (!result.success) {
+                console.error('Score submission failed:', result.error);
+                setGameResult(prev => ({
+                    ...prev,
+                    error: result.error || 'Score submission failed'
+                }));
+            }
+        } catch (error) {
+            console.error('❌ Final score submission failed:', error);
+            // Only update state if still in valid state
+            if (gameMode === 'tournament') {
                 setGameResult(prev => ({
                     ...prev,
                     error: 'Unable to submit final score. Please check your connection.'
                 }));
-            } finally {
-                setIsSubmittingScore(false);
             }
+        } finally {
+            // Always clear submission state
+            setIsSubmittingScore(false);
         }
     };
 
@@ -1105,28 +1136,36 @@ export default function GameHomepage() {
                                 <button
                                     className="modal-button secondary"
                                     onClick={async () => {
-                                        if (gameMode === 'tournament' && tournamentContinueUsed) {
-                                            // For tournament mode after continue used: redirect to new entry
-                                            setContinueFromScore(0);
-                                            setGameResult({ show: false, score: 0, coins: 0, mode: '' });
-                                            setTournamentContinueUsed(false); // Reset for new entry
-                                            setCurrentScreen('tournamentEntry');
-                                        } else if (gameMode === 'tournament' && !tournamentContinueUsed) {
-                                            // For tournament mode first crash: submit final score without continue
-                                            await handleFinalGameOver(gameResult.score);
-                                            // Reset all game state and go back to mode selection
-                                            setContinueFromScore(0);
-                                            setGameResult({ show: false, score: 0, coins: 0, mode: '' });
-                                            setTournamentContinueUsed(false);
-                                            setGameMode(null); // Clear game mode so user must choose again
-                                            setCurrentScreen('gameSelect'); // Go back to mode selection
-                                        } else {
-                                            // Practice mode: Reset all game state and go back to mode selection
-                                            setContinueFromScore(0);
-                                            setGameResult({ show: false, score: 0, coins: 0, mode: '' });
-                                            setTournamentContinueUsed(false);
-                                            setGameMode(null); // Clear game mode so user must choose again
-                                            setCurrentScreen('gameSelect'); // Go back to mode selection
+                                        try {
+                                            if (gameMode === 'tournament' && tournamentContinueUsed) {
+                                                // For tournament mode after continue used: redirect to new entry
+                                                setContinueFromScore(0);
+                                                setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+                                                setTournamentContinueUsed(false); // Reset for new entry
+                                                setCurrentScreen('tournamentEntry');
+                                            } else if (gameMode === 'tournament' && !tournamentContinueUsed) {
+                                                // For tournament mode first crash: submit final score without continue
+                                                console.log('🎯 Submitting final score before play again...');
+                                                await handleFinalGameOver(gameResult.score);
+                                                // Reset all game state and go back to mode selection
+                                                setContinueFromScore(0);
+                                                setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+                                                setTournamentContinueUsed(false);
+                                                setGameMode(null); // Clear game mode so user must choose again
+                                                setCurrentScreen('gameSelect'); // Go back to mode selection
+                                            } else {
+                                                // Practice mode: Reset all game state and go back to mode selection
+                                                setContinueFromScore(0);
+                                                setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+                                                setTournamentContinueUsed(false);
+                                                setGameMode(null); // Clear game mode so user must choose again
+                                                setCurrentScreen('gameSelect'); // Go back to mode selection
+                                            }
+                                        } catch (error) {
+                                            console.error('❌ Play Again navigation error:', error);
+                                            // Fallback navigation - always try to recover
+                                            setCurrentScreen('gameSelect');
+                                            setGameMode(null);
                                         }
                                     }}
                                 >
@@ -1136,16 +1175,24 @@ export default function GameHomepage() {
                                 <button
                                     className="modal-button primary"
                                     onClick={async () => {
-                                        // If tournament mode and continue not used, submit final score
-                                        if (gameMode === 'tournament' && !tournamentContinueUsed) {
-                                            await handleFinalGameOver(gameResult.score);
+                                        try {
+                                            // If tournament mode and continue not used, submit final score
+                                            if (gameMode === 'tournament' && !tournamentContinueUsed) {
+                                                console.log('🎯 Submitting final score before going home...');
+                                                await handleFinalGameOver(gameResult.score);
+                                            }
+                                            // Reset all game state
+                                            setContinueFromScore(0); // Reset continue score
+                                            setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+                                            setIsSubmittingScore(false); // Ensure submission state is cleared
+                                            setCurrentScreen('home');
+                                            setGameMode(null);
+                                        } catch (error) {
+                                            console.error('❌ Go Home navigation error:', error);
+                                            // Fallback navigation - always try to recover
+                                            setCurrentScreen('home');
+                                            setGameMode(null);
                                         }
-                                        // Reset all game state
-                                        setContinueFromScore(0); // Reset continue score
-                                        setGameResult({ show: false, score: 0, coins: 0, mode: '' });
-                                        setIsSubmittingScore(false); // Ensure submission state is cleared
-                                        setCurrentScreen('home');
-                                        setGameMode(null);
                                     }}
                                 >
                                     Go Home
