@@ -111,7 +111,8 @@ export async function GET() {
         const responseData = {
             tournament_day: tournamentDay,
             tournament_name: currentTournament.name || `Tournament ${tournamentDay}`,
-            total_players: stats.total_players,
+            total_players: stats.total_players, // Keep for backward compatibility
+            total_tournament_players: stats.total_players, // CLEAR: Actual tournament participants who paid
             total_prize_pool: Number(stats.total_prize_pool.toFixed(2)),
             has_active_tournament: true,
             is_empty: stats.total_players === 0, // Flag to help frontend distinguish empty vs loading

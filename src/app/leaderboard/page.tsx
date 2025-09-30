@@ -31,7 +31,8 @@ interface TournamentData {
     id: string;
     tournament_day: string;
     is_active: boolean;
-    total_players: number;
+    total_players: number; // Total users in system (for backward compatibility)
+    total_tournament_players: number; // Actual tournament participants who paid
     total_prize_pool: number;
     total_collected: number;
     admin_fee: number;
@@ -152,8 +153,9 @@ export default function LeaderboardPage() {
                 console.log('🔍 CACHE CHECK:', {
                     currentPlayers: leaderboardData?.players?.length || 0,
                     currentTotalPlayers: statsData?.total_players || 0,
+                    currentTournamentPlayers: statsData?.total_tournament_players || 0,
                     cachedPlayers: cachedLeaderboard ? JSON.parse(cachedLeaderboard)?.data?.players?.length || 0 : 0,
-                    isEmpty: (leaderboardData?.players?.length || 0) === 0 && (statsData?.total_players || 0) === 0
+                    isEmpty: (leaderboardData?.players?.length || 0) === 0 && (statsData?.total_tournament_players || 0) === 0
                 });
 
                 if (cachedLeaderboard || cachedTournament) {
@@ -162,19 +164,19 @@ export default function LeaderboardPage() {
 
                     const cachedPlayerCount = parsedLeaderboard?.data?.players?.length || 0;
                     const currentPlayerCount = leaderboardData?.players?.length || 0;
-                    const currentTotalPlayers = statsData?.total_players || 0;
+                    const currentTournamentPlayers = statsData?.total_tournament_players || 0;
 
-                    // 🚨 ULTRA-AGGRESSIVE: Clear cache if database is truly empty
-                    const isDatabaseEmpty = currentPlayerCount === 0 && currentTotalPlayers === 0;
-                    const hasStaleCache = cachedPlayerCount > 0 && isDatabaseEmpty;
+                    // 🚨 ULTRA-AGGRESSIVE: Clear cache if tournament has no participants
+                    const isTournamentEmpty = currentPlayerCount === 0 && currentTournamentPlayers === 0;
+                    const hasStaleCache = cachedPlayerCount > 0 && isTournamentEmpty;
 
                     const cachedTournamentDay = parsedLeaderboard?.data?.tournament_day || parsedTournament?.data?.tournament_day;
                     const currentTournamentDay = leaderboardData?.tournament_day || statsData?.tournament_day;
 
                     const shouldClearCache = (
-                        isDatabaseEmpty || // Database is completely empty - ALWAYS clear
-                        hasStaleCache || // Has cached data but database is empty
-                        cachedPlayerCount > currentPlayerCount || // Database reset detected
+                        isTournamentEmpty || // Tournament has no participants - ALWAYS clear
+                        hasStaleCache || // Has cached data but tournament is empty
+                        cachedPlayerCount > currentPlayerCount || // Tournament reset detected
                         (cachedTournamentDay && currentTournamentDay && cachedTournamentDay !== currentTournamentDay) // Tournament change
                     );
 
@@ -322,7 +324,8 @@ export default function LeaderboardPage() {
                     id: 'current',
                     tournament_day: tournamentData.tournament_day,
                     is_active: true,
-                    total_players: tournamentData.total_players,
+                    total_players: tournamentData.total_players || 0, // System users
+                    total_tournament_players: tournamentData.total_tournament_players || tournamentData.total_players || 0, // Tournament participants
                     total_prize_pool: tournamentData.total_prize_pool,
                     total_collected: tournamentData.total_collected || 0,
                     admin_fee: tournamentData.admin_fee || 0,
@@ -390,6 +393,7 @@ export default function LeaderboardPage() {
                     setCurrentTournament(prev => prev ? {
                         ...prev,
                         total_players: data.stats.total_players || prev.total_players,
+                        total_tournament_players: data.stats.total_tournament_players || data.stats.total_players || prev.total_tournament_players,
                         total_prize_pool: data.stats.total_prize_pool || prev.total_prize_pool,
                         total_collected: data.stats.total_collected || prev.total_collected
                     } : prev);
@@ -601,7 +605,7 @@ export default function LeaderboardPage() {
                             <div className="players-text">
                                 <span className={`human-count-number ${!currentTournament ? 'loading-blur' : ''}`}>
                                     {currentTournament
-                                        ? currentTournament.total_players
+                                        ? currentTournament.total_tournament_players // Show actual tournament participants who paid
                                         : '...'}
                                 </span> <span className="humans-playing-highlight">humans are playing to win the prize pool</span>
                             </div>
