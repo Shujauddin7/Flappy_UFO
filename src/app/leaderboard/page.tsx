@@ -46,30 +46,28 @@ export default function LeaderboardPage() {
 
     // ⚡ INSTANT LOADING: Real data immediately, persist across navigation
     const [currentTournament, setCurrentTournament] = useState<TournamentData | null>(() => {
-        // 🧹 QUICK FIX: Add cache clearing to browser console
-        if (typeof window !== 'undefined') {
-            // @ts-expect-error - Debug helper
-            window.clearGameCache = () => {
-                console.log('🧹 Clearing all game caches...');
-                sessionStorage.clear();
-                localStorage.clear();
-                window.location.reload();
-            };
-        }
-
-        // Try to get cached data first for instant loading
+        // Only load cached data if it's very recent (less than 5 seconds old)
         if (typeof window !== 'undefined') {
             const cached = sessionStorage.getItem('tournament_data');
             if (cached) {
                 try {
                     const parsed = JSON.parse(cached);
-                    // Use cached data immediately regardless of timestamp for speed
-                    console.log('⚡ INSTANT LOAD: Using cached tournament data');
-                    console.log(`   Cached Players: ${parsed.data.total_players}`);
-                    console.log(`   Cached Prize: $${parsed.data.total_prize_pool}`);
-                    return parsed.data;
+                    const cacheAge = Date.now() - (parsed.timestamp || 0);
+
+                    // Only use cached data if it's less than 5 seconds old
+                    if (cacheAge < 5000) {
+                        console.log('⚡ FRESH CACHE: Using recent tournament data');
+                        console.log(`   Cached Players: ${parsed.data.total_players}`);
+                        console.log(`   Cached Prize: $${parsed.data.total_prize_pool}`);
+                        console.log(`   Cache age: ${cacheAge}ms`);
+                        return parsed.data;
+                    } else {
+                        console.log('🗑️ STALE CACHE: Tournament data too old, clearing...');
+                        sessionStorage.removeItem('tournament_data');
+                    }
                 } catch (e) {
                     console.warn('Cache parse error:', e);
+                    sessionStorage.removeItem('tournament_data');
                 }
             }
         }
@@ -79,17 +77,27 @@ export default function LeaderboardPage() {
     });
 
     const [preloadedLeaderboardData, setPreloadedLeaderboardData] = useState<LeaderboardApiResponse | null>(() => {
-        // Load cached data immediately for instant display
+        // Only load cached leaderboard data if it's very recent (less than 5 seconds old)
         if (typeof window !== 'undefined') {
             const cached = sessionStorage.getItem('leaderboard_data');
             if (cached) {
                 try {
                     const parsed = JSON.parse(cached);
-                    // Use cached data immediately for speed
-                    console.log('⚡ INSTANT LOAD: Using cached leaderboard data');
-                    return parsed.data;
+                    const cacheAge = Date.now() - (parsed.timestamp || 0);
+
+                    // Only use cached data if it's less than 5 seconds old
+                    if (cacheAge < 5000) {
+                        console.log('⚡ FRESH CACHE: Using recent leaderboard data');
+                        console.log(`   Players: ${parsed.data?.players?.length || 0}`);
+                        console.log(`   Cache age: ${cacheAge}ms`);
+                        return parsed.data;
+                    } else {
+                        console.log('🗑️ STALE CACHE: Leaderboard data too old, clearing...');
+                        sessionStorage.removeItem('leaderboard_data');
+                    }
                 } catch {
-                    // Ignore cache parse errors
+                    console.warn('Leaderboard cache parse error');
+                    sessionStorage.removeItem('leaderboard_data');
                 }
             }
         }
@@ -101,35 +109,49 @@ export default function LeaderboardPage() {
     const [shouldShowFixedCard, setShouldShowFixedCard] = useState(false);
     const [showPrizeBreakdown, setShowPrizeBreakdown] = useState(false);
 
-    // 🧹 DATABASE RESET DETECTION: Clear cache when database is reset
+    // 🚨 ULTRA-AGGRESSIVE CACHE CLEARING: Immediate detection of database resets
     useEffect(() => {
         const checkForDatabaseReset = async () => {
             if (typeof window === 'undefined') return;
 
             try {
-                // Get current database state
-                const leaderboardRes = await fetch('/api/tournament/leaderboard-data');
+                // Get current database state with cache busting
+                const leaderboardRes = await fetch(`/api/tournament/leaderboard-data?bust=${Date.now()}`);
                 const leaderboardData = await leaderboardRes.json();
+
+                // Get tournament stats too for complete validation
+                const statsRes = await fetch(`/api/tournament/stats?bust=${Date.now()}`);
+                const statsData = await statsRes.json();
 
                 // Check cached data
                 const cachedLeaderboard = sessionStorage.getItem('leaderboard_data');
+                const cachedTournament = sessionStorage.getItem('tournament_data');
 
-                if (cachedLeaderboard) {
-                    const parsedLeaderboard = JSON.parse(cachedLeaderboard);
+                console.log('🔍 CACHE CHECK:', {
+                    currentPlayers: leaderboardData?.players?.length || 0,
+                    currentTotalPlayers: statsData?.total_players || 0,
+                    cachedPlayers: cachedLeaderboard ? JSON.parse(cachedLeaderboard)?.data?.players?.length || 0 : 0,
+                    isEmpty: (leaderboardData?.players?.length || 0) === 0 && (statsData?.total_players || 0) === 0
+                });
 
-                    // Detect database reset: cached data has more players than current database
+                if (cachedLeaderboard || cachedTournament) {
+                    const parsedLeaderboard = cachedLeaderboard ? JSON.parse(cachedLeaderboard) : null;
+                    const parsedTournament = cachedTournament ? JSON.parse(cachedTournament) : null;
+
                     const cachedPlayerCount = parsedLeaderboard?.data?.players?.length || 0;
                     const currentPlayerCount = leaderboardData?.players?.length || 0;
+                    const currentTotalPlayers = statsData?.total_players || 0;
 
-                    // 🚨 AGGRESSIVE RESET DETECTION: Clear cache if ANY of these conditions:
-                    // 1. Current database has 0 players (ALWAYS clear cache for empty DB)
-                    // 2. Cached has more players than current (database reset)  
-                    // 3. Tournament day mismatch (new tournament created)
-                    const cachedTournamentDay = parsedLeaderboard?.data?.tournament_day;
-                    const currentTournamentDay = leaderboardData?.tournament_day;
+                    // 🚨 ULTRA-AGGRESSIVE: Clear cache if database is truly empty
+                    const isDatabaseEmpty = currentPlayerCount === 0 && currentTotalPlayers === 0;
+                    const hasStaleCache = cachedPlayerCount > 0 && isDatabaseEmpty;
+
+                    const cachedTournamentDay = parsedLeaderboard?.data?.tournament_day || parsedTournament?.data?.tournament_day;
+                    const currentTournamentDay = leaderboardData?.tournament_day || statsData?.tournament_day;
 
                     const shouldClearCache = (
-                        currentPlayerCount === 0 || // Database is empty - ALWAYS clear cache (CRITICAL FIX)
+                        isDatabaseEmpty || // Database is completely empty - ALWAYS clear
+                        hasStaleCache || // Has cached data but database is empty
                         cachedPlayerCount > currentPlayerCount || // Database reset detected
                         (cachedTournamentDay && currentTournamentDay && cachedTournamentDay !== currentTournamentDay) // Tournament change
                     );
@@ -218,8 +240,13 @@ export default function LeaderboardPage() {
         // Check for stale cache on component mount
         checkAndClearStaleCache();
 
-        // Also check more frequently for fresh database states (every 5 seconds)
-        const interval = setInterval(checkAndClearStaleCache, 5000); return () => clearInterval(interval);
+        // Ultra-frequent checks for empty database states (every 2 seconds)
+        const interval = setInterval(checkAndClearStaleCache, 2000);
+
+        // Also run immediate check on mount
+        setTimeout(checkAndClearStaleCache, 100);
+
+        return () => clearInterval(interval);
     }, []);
 
     // ⚡ FAST LOADING: Use existing Redis-cached APIs with instant display
@@ -307,11 +334,23 @@ export default function LeaderboardPage() {
 
             const eventSource = new EventSource(`/api/leaderboard/websocket?tournament_day=${encodeURIComponent(currentTournament.tournament_day)}`);
 
-            // Listen for Redis WebSocket connection confirmation
+            // Listen for Redis WebSocket connection confirmation with detailed logging
             eventSource.addEventListener('connected', (event) => {
                 const data = JSON.parse(event.data);
-                console.log(`🚀 Redis WebSocket connected: ${data.protocol} - ${data.performance}`);
+                console.log(`🚀 WEBSOCKET CONNECTED: ${data.protocol} - ${data.performance}`);
+                console.log(`   Tournament: ${data.tournament_day}`);
+                console.log(`   Timestamp: ${data.timestamp}`);
+                console.log(`   ✅ Real-time updates active!`);
             });
+
+            // Add error and close event listeners for debugging
+            eventSource.addEventListener('error', (event) => {
+                console.error('❌ WEBSOCKET ERROR:', event);
+                console.log('   Connection state:', eventSource.readyState);
+            });
+
+            // EventSource doesn't have onopen/onclose, only onerror
+            // Connection status is handled by the 'connected' event above
 
             eventSource.addEventListener('tournament_stats_update', (event) => {
                 const data = JSON.parse(event.data);
