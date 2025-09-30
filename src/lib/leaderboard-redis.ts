@@ -69,6 +69,16 @@ export async function updateLeaderboardScore(
         await redis.expire(scoreKey, 48 * 60 * 60);
         await redis.expire(detailsKey, 48 * 60 * 60);
 
+        // 🚨 CRITICAL FIX: Immediately trigger SSE update after Redis update
+        const updateKey = `leaderboard_updates:${tournamentDay}`;
+        await redis.set(updateKey, Date.now().toString(), { ex: 300 }); // 5 min TTL
+        console.log('✅ SSE trigger set immediately after Redis leaderboard update');
+
+        // 🔥 ALSO trigger tournament stats update for cross-device sync consistency  
+        const statsUpdateKey = `tournament_stats_updates:${tournamentDay}`;
+        await redis.set(statsUpdateKey, Date.now().toString(), { ex: 300 }); // 5 min TTL
+        console.log('✅ Tournament stats SSE trigger also set for complete sync');
+
         console.log(`⚡ Redis leaderboard updated: ${userId} = ${score} points`);
         return true;
     } catch (error) {
