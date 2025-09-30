@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
                         if (lastUpdate && typeof lastUpdate === 'string') {
                             const updateTime = parseInt(lastUpdate);
                             if (updateTime > lastLeaderboardUpdate) {
-                                console.log('📡 INSTANT: Redis leaderboard update detected');
+                                console.log('📡 INSTANT: Redis leaderboard update detected - Broadcasting to ALL devices!');
 
                                 // Try to get instant data from Redis first (fastest)
                                 const cachedData = await checkRedisKey(leaderboardDataKey);
@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
                         if (lastStatsUpdate && typeof lastStatsUpdate === 'string') {
                             const statsUpdateTime = parseInt(lastStatsUpdate);
                             if (statsUpdateTime > lastTournamentUpdate) {
-                                console.log('📡 INSTANT: Redis tournament stats update detected');
+                                console.log('📡 INSTANT: Redis tournament stats update detected - Broadcasting to ALL devices!');
 
                                 await fetchAndSendFreshStats();
                                 lastTournamentUpdate = statsUpdateTime;

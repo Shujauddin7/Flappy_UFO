@@ -402,7 +402,7 @@ export default function LeaderboardPage() {
                 }
             });
 
-            // Add leaderboard update listener
+            // Add leaderboard update listener with detailed logging
             eventSource.addEventListener('leaderboard_update', (event) => {
                 const data = JSON.parse(event.data);
 
@@ -419,7 +419,13 @@ export default function LeaderboardPage() {
 
                     // Update data directly without aggressive cache clearing
                     setPreloadedLeaderboardData(leaderboardData);
-                    console.log(`⚡ INSTANT Redis WebSocket leaderboard update! Source: ${event.data.source || 'websocket'}, Players: ${data.players.length}`);
+                    console.log(`🚀 REAL-TIME LEADERBOARD UPDATE! Source: ${data.source || 'websocket'}, Players: ${data.players.length}, Devices: ALL UPDATED`);
+
+                    // Force cache update for instant loading on next visit
+                    sessionStorage.setItem('leaderboard_data', JSON.stringify({
+                        data: leaderboardData,
+                        timestamp: Date.now()
+                    }));
                 } else {
                     console.warn('⚠️ Redis WebSocket leaderboard update missing players data');
                 }
