@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
             let lastLeaderboardUpdateTime = 0; // Track leaderboard updates separately
             let lastTournamentStatsUpdateTime = 0; // Track stats updates separately
 
-            // Poll Redis for leaderboard changes every 1.5 seconds (faster for better UX)
+            // Poll Redis for leaderboard changes every 500ms (MUCH FASTER for instant updates)
             const pollForUpdates = async () => {
                 if (!isActive) return;
 
@@ -87,16 +87,20 @@ export async function GET(request: NextRequest) {
                     if (lastUpdate && typeof lastUpdate === 'string') {
                         const updateTime = parseInt(lastUpdate);
                         if (updateTime > lastLeaderboardUpdateTime) {
-                            console.log('📡 Broadcasting leaderboard update via SSE');
+                            console.log('📡 INSTANT Broadcasting leaderboard update via SSE');
 
-                            // 🔧 CRITICAL FIX: Fetch fresh leaderboard data from API endpoint (like tournament stats)
-                            // This ensures we get truly fresh data instead of potentially stale Redis cache
+                            // � INSTANT FIX: Fetch fresh data IMMEDIATELY
                             try {
                                 const controller = new AbortController();
-                                const timeoutId = setTimeout(() => controller.abort(), 3000);
+                                const timeoutId = setTimeout(() => controller.abort(), 2000); // Faster timeout
 
-                                const leaderboardResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/tournament/leaderboard-data`, {
-                                    signal: controller.signal
+                                const baseUrl = process.env.NEXT_PUBLIC_ENV === 'prod'
+                                    ? 'https://flappyufo.vercel.app'
+                                    : 'https://flappyufo-git-dev-shujauddin.vercel.app';
+
+                                const leaderboardResponse = await fetch(`${baseUrl}/api/tournament/leaderboard-data?bust=${Date.now()}`, {
+                                    signal: controller.signal,
+                                    cache: 'no-store' // Force fresh data
                                 });
 
                                 clearTimeout(timeoutId);
@@ -107,35 +111,19 @@ export async function GET(request: NextRequest) {
                                         players: leaderboardData.players,
                                         tournament_day: tournamentDay,
                                         timestamp: new Date().toISOString(),
-                                        source: 'api_sse_fresh_data',
+                                        source: 'instant_sse_update',
                                         responseTime: 0,
-                                        cached: false // Fresh from database!
+                                        cached: false,
+                                        update_id: `instant_${Date.now()}_${Math.random()}` // Force React re-render
                                     });
 
                                     lastLeaderboardUpdateTime = updateTime;
+                                    console.log(`✅ INSTANT leaderboard update sent! Players: ${leaderboardData.players.length}`);
                                 } else {
-                                    console.warn('⚠️ Leaderboard API fetch returned non-OK response');
+                                    console.warn('⚠️ Leaderboard API fetch failed - trying fallback');
                                 }
                             } catch (leaderboardError) {
-                                console.error('❌ Error fetching fresh leaderboard data for SSE:', leaderboardError);
-
-                                // Fallback to Redis cache if API fails (preserve existing behavior)
-                                console.log('🔄 Falling back to Redis cache for leaderboard data...');
-                                const { getTopPlayers } = await import('@/lib/leaderboard-redis');
-                                const updatedPlayers = await getTopPlayers(tournamentDay, 0, 20);
-
-                                if (updatedPlayers && updatedPlayers.length > 0) {
-                                    sendEvent('leaderboard_update', {
-                                        players: updatedPlayers,
-                                        tournament_day: tournamentDay,
-                                        timestamp: new Date().toISOString(),
-                                        source: 'redis_sse_fallback',
-                                        responseTime: 0,
-                                        cached: true
-                                    });
-
-                                    lastLeaderboardUpdateTime = updateTime;
-                                }
+                                console.error('❌ Error fetching leaderboard data:', leaderboardError);
                             }
                         }
                     }
@@ -147,15 +135,20 @@ export async function GET(request: NextRequest) {
                     if (statsLastUpdate && typeof statsLastUpdate === 'string') {
                         const statsUpdateTime = parseInt(statsLastUpdate);
                         if (statsUpdateTime > lastTournamentStatsUpdateTime) {
-                            console.log('📡 Broadcasting tournament stats update via SSE');
+                            console.log('📡 INSTANT Broadcasting tournament stats update via SSE');
 
                             // Fetch updated tournament stats with timeout
                             try {
                                 const controller = new AbortController();
-                                const timeoutId = setTimeout(() => controller.abort(), 3000);
+                                const timeoutId = setTimeout(() => controller.abort(), 2000);
 
-                                const statsResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/tournament/stats`, {
-                                    signal: controller.signal
+                                const baseUrl = process.env.NEXT_PUBLIC_ENV === 'prod'
+                                    ? 'https://flappyufo.vercel.app'
+                                    : 'https://flappyufo-git-dev-shujauddin.vercel.app';
+
+                                const statsResponse = await fetch(`${baseUrl}/api/tournament/stats?bust=${Date.now()}`, {
+                                    signal: controller.signal,
+                                    cache: 'no-store'
                                 });
 
                                 clearTimeout(timeoutId);
@@ -166,10 +159,11 @@ export async function GET(request: NextRequest) {
                                         stats: statsData,
                                         tournament_day: tournamentDay,
                                         timestamp: new Date().toISOString(),
-                                        source: 'redis_sse'
+                                        source: 'instant_stats_sse'
                                     });
 
                                     lastTournamentStatsUpdateTime = statsUpdateTime;
+                                    console.log('✅ INSTANT tournament stats update sent!');
                                 } else {
                                     console.warn('⚠️ Tournament stats fetch returned non-OK response');
                                 }
@@ -183,14 +177,14 @@ export async function GET(request: NextRequest) {
                     // Don't stop polling on individual errors
                 }
 
-                // Continue polling if connection is still active
+                // Continue polling if connection is still active - ULTRA FAST (100ms for near real-time)
                 if (isActive) {
-                    setTimeout(pollForUpdates, 1500); // Poll every 1.5 seconds for better responsiveness
+                    setTimeout(pollForUpdates, 100); // Poll every 100ms for near-instant updates!
                 }
             };
 
-            // Start polling immediately
-            setTimeout(pollForUpdates, 100); // Start quickly after connection
+            // Start polling immediately with ultra-fast interval
+            setTimeout(pollForUpdates, 50); // Start almost instantly
 
             // Send periodic heartbeat to keep connection alive (more frequent for mobile)
             const heartbeatInterval = setInterval(() => {

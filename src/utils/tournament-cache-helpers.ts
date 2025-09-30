@@ -22,13 +22,15 @@ export async function invalidateTournamentStatsCache(options: TournamentStatsUpd
     console.log(`🔄 Invalidating tournament stats cache (${source})`);
 
     try {
-        // Step 1: Invalidate all tournament-related caches
+        // Step 1: Invalidate all tournament-related caches - MORE AGGRESSIVE
         const cacheKeys = [
             'tournament_stats_instant',
             'tournament:current',
             'tournament:prizes:current',
             `tournament:stats:${tournamentDay}`,
-            `tournament:prizes:${tournamentDay}`
+            `tournament:prizes:${tournamentDay}`,
+            'tournament_leaderboard_response', // CRITICAL: Add this key!
+            `tournament_leaderboard_response:${tournamentDay}` // Date-specific too
         ];
 
         await Promise.all(cacheKeys.map(key => deleteCached(key)));
@@ -43,7 +45,9 @@ export async function invalidateTournamentStatsCache(options: TournamentStatsUpd
 
         // Step 3: Rewarm cache immediately if requested
         if (rewarmCache) {
-            const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+            const baseUrl = process.env.NEXT_PUBLIC_ENV === 'prod'
+                ? 'https://flappyufo.vercel.app'
+                : 'https://flappyufo-git-dev-shujauddin.vercel.app';
             if (baseUrl) {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
@@ -82,15 +86,19 @@ export async function invalidateTournamentStatsCache(options: TournamentStatsUpd
  * Used when high scores are submitted
  */
 export async function invalidateLeaderboardCache(options: TournamentStatsUpdateOptions): Promise<boolean> {
-    const { tournamentDay, triggerSSE = true, source = 'unknown' } = options;
+    const { tournamentDay, triggerSSE = true, rewarmCache = true, source = 'unknown' } = options;
 
     console.log(`🏆 Invalidating leaderboard cache (${source})`);
 
     try {
-        // Step 1: Invalidate leaderboard caches
+        // Step 1: Invalidate leaderboard caches - MORE AGGRESSIVE
         const cacheKeys = [
             'tournament:leaderboard:current',
-            `tournament:leaderboard:${tournamentDay}`
+            `tournament:leaderboard:${tournamentDay}`,
+            'tournament_leaderboard_response', // CRITICAL: Main cache key
+            `tournament_leaderboard_response:${tournamentDay}`, // Date-specific
+            `leaderboard:${tournamentDay}`, // Redis sorted set
+            `leaderboard:${tournamentDay}:details` // Redis player details
         ];
 
         await Promise.all(cacheKeys.map(key => deleteCached(key)));
@@ -101,6 +109,36 @@ export async function invalidateLeaderboardCache(options: TournamentStatsUpdateO
             const updateKey = `leaderboard_updates:${tournamentDay}`;
             await setCached(updateKey, Date.now().toString(), 300); // 5 min TTL
             console.log('✅ Leaderboard SSE trigger set');
+        }
+
+        // Step 3: 🚀 CRITICAL FIX - Rewarm cache immediately (same as tournament stats!)
+        if (rewarmCache) {
+            const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+            if (baseUrl) {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+                try {
+                    const response = await fetch(`${baseUrl}/api/tournament/leaderboard-data`, {
+                        method: 'GET',
+                        headers: { 'Content-Type': 'application/json' },
+                        signal: controller.signal,
+                        cache: 'no-store'
+                    });
+
+                    clearTimeout(timeoutId);
+
+                    if (response.ok) {
+                        console.log('✅ Leaderboard cache rewarmed - instant SSE updates ready!');
+                    } else {
+                        console.warn('⚠️ Leaderboard rewarming returned non-OK status:', response.status);
+                    }
+                } catch (fetchError) {
+                    clearTimeout(timeoutId);
+                    console.error('❌ Leaderboard rewarming failed:', fetchError);
+                    return false;
+                }
+            }
         }
 
         return true;
