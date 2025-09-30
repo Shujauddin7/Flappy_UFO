@@ -3,6 +3,83 @@ import { auth } from '@/auth';
 import { createClient } from '@supabase/supabase-js';
 import { updateLeaderboardScore } from '@/lib/leaderboard-redis';
 
+// Helper function to update tournament analytics when continue payments are made
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function updateTournamentPrizePool(supabase: any, tournamentId: string) {
+    try {
+        // Get ALL payment data for this tournament
+        const { data, error } = await supabase
+            .from('user_tournament_records')
+            .select('verified_paid_amount, standard_paid_amount, total_continue_payments')
+            .eq('tournament_id', tournamentId);
+
+        if (error) {
+            console.error('❌ Error fetching tournament payments:', error);
+            return;
+        }
+
+        // Calculate total revenue from ALL payments: entry payments + continue payments
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const totalRevenue = data?.reduce((sum: number, record: any) => {
+            const entryPayments = (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0);
+            const continuePayments = record.total_continue_payments || 0;
+            return sum + entryPayments + continuePayments;
+        }, 0) || 0;
+
+        // Count total players for guarantee calculation
+        const totalPlayers = data?.length || 0;
+
+        // NEW GUARANTEE SYSTEM (per Plan.md): Admin adds 1 WLD per top 10 winner when total collected < 72 WLD
+        let guaranteeAmount = 0;
+        const adminFeeAmount = totalRevenue * 0.30; // Always 30%
+        const basePrizePool = totalRevenue * 0.70; // Always 70%
+
+        if (totalRevenue < 72) {
+            const top10Winners = Math.min(totalPlayers, 10);
+            guaranteeAmount = top10Winners * 1.0; // Admin adds 1 WLD per top 10 winner
+        }
+
+        const totalPrizePool = basePrizePool + guaranteeAmount; // 70% + guarantee (if needed)
+        const adminNetResult = adminFeeAmount - guaranteeAmount; // Can be negative
+
+        console.log('💰 Tournament totals updated after continue payment:', {
+            totalRevenue,
+            basePrizePool,
+            guaranteeAmount,
+            totalPrizePool,
+            adminFeeAmount,
+            adminNetResult
+        });
+
+        // Update tournament with NEW guarantee system
+        const { error: updateError } = await supabase
+            .from('tournaments')
+            .update({
+                total_prize_pool: totalPrizePool,
+                total_collected: totalRevenue,
+                admin_fee: adminFeeAmount,
+                guarantee_amount: guaranteeAmount,
+                admin_net_result: adminNetResult
+            })
+            .eq('id', tournamentId);
+
+        if (updateError) {
+            console.error('❌ Error updating tournament analytics:', updateError);
+        } else {
+            console.log('✅ Tournament analytics updated with continue payment:', {
+                total_collected: totalRevenue,
+                base_prize_pool: basePrizePool,
+                guarantee_amount: guaranteeAmount,
+                total_prize_pool: totalPrizePool,
+                admin_fee: adminFeeAmount,
+                admin_net_result: adminNetResult
+            });
+        }
+    } catch (error) {
+        console.error('❌ Error in updateTournamentPrizePool:', error);
+    }
+}
+
 // Helper function to update user statistics safely (prevents race conditions)
 async function updateUserStatistics(userId: string, newScore: number, shouldUpdateHighScore: boolean = false) {
     try {
@@ -205,6 +282,31 @@ export async function POST(req: NextRequest) {
         const finalContinuesUsed = used_continue !== undefined ? (used_continue ? 1 : 0) : (gameUsedContinue ? 1 : 0);
         const finalContinuePayments = continue_amount !== undefined ? continue_amount : (gamesContinuePayment > 0 ? gamesContinuePayment : 0);
 
+        // 💰 CRITICAL FIX: Update user's continue payment total when payment is made
+        if (finalContinuePayments > 0) {
+            console.log('💳 Continue payment detected:', finalContinuePayments, 'WLD');
+
+            // Update the user_tournament_records with new continue payment total
+            const newContinueTotal = (record.total_continue_payments || 0) + finalContinuePayments;
+            const { error: continueUpdateError } = await supabase
+                .from('user_tournament_records')
+                .update({
+                    total_continue_payments: newContinueTotal,
+                    total_continues_used: (record.total_continues_used || 0) + finalContinuesUsed,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', record.id);
+
+            if (continueUpdateError) {
+                console.error('❌ Failed to update continue payment total:', continueUpdateError);
+                return NextResponse.json({
+                    error: `Failed to record continue payment: ${continueUpdateError.message}`
+                }, { status: 500 });
+            }
+
+            console.log('✅ Continue payment total updated:', newContinueTotal, 'WLD');
+        }
+
         // First, always insert the individual score into game_scores table
         console.log('📊 Inserting game score:', {
             user_tournament_record_id: record.id,
@@ -325,7 +427,13 @@ export async function POST(req: NextRequest) {
                 console.log('⚡ Updating Redis leaderboard with new high score...');
                 await updateLeaderboardScore(tournamentDay, user.id, score);
 
-                // 🚨 NEW HIGH SCORE: Update all caches systematically
+                // � CRITICAL FIX: Update tournament totals if continue payment was made (high score path)
+                if (finalContinuePayments > 0) {
+                    console.log('💰 Updating tournament prize pool after continue payment (high score)...');
+                    await updateTournamentPrizePool(supabase, record.tournament_id);
+                }
+
+                // �🚨 NEW HIGH SCORE: Update all caches systematically
                 console.log('🏆 New high score! Updating all caches systematically...');
 
                 try {
@@ -426,7 +534,13 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // 🚀 CRITICAL FIX: Update BOTH tournament stats AND leaderboard for ALL scores
+        // � CRITICAL FIX: Update tournament totals if continue payment was made
+        if (finalContinuePayments > 0) {
+            console.log('💰 Updating tournament prize pool after continue payment...');
+            await updateTournamentPrizePool(supabase, record.tournament_id);
+        }
+
+        // �🚀 CRITICAL FIX: Update BOTH tournament stats AND leaderboard for ALL scores
         // This ensures consistent SSE update timing for both prize pool and player scores
         console.log('⚡ Updating ALL caches for consistent SSE experience...');
 
