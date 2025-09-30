@@ -113,7 +113,9 @@ export async function invalidateLeaderboardCache(options: TournamentStatsUpdateO
 
         // Step 3: 🚀 CRITICAL FIX - Rewarm cache immediately (same as tournament stats!)
         if (rewarmCache) {
-            const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+            const baseUrl = process.env.NEXT_PUBLIC_ENV === 'prod'
+                ? 'https://flappyufo.vercel.app'
+                : 'https://flappyufo-git-dev-shujauddin.vercel.app';
             if (baseUrl) {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
