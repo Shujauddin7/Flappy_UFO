@@ -95,7 +95,7 @@ export const useGameAuth = () => {
                                 console.log('🎯 Step 3: Tracking tournament sign-in...');
                                 const signInPayload = {
                                     wallet: user.id,
-                                    username: user.username || `Player_${user.id.slice(-6)}`, // Better fallback than 'Unknown'
+                                    username: user.username || 'Unknown',
                                     worldId: user.world_id || null,
                                     tournamentId: tournamentData.tournament.id
                                 };
