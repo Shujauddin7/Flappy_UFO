@@ -353,7 +353,8 @@ export default function LeaderboardPage() {
 
                     console.log('✅ Updating preloadedLeaderboardData via SSE', {
                         updateId: leaderboardData.sse_update_id,
-                        playersCount: data.players.length
+                        playersCount: data.players.length,
+                        newDataUpdate: true
                     });
 
                     // 🚨 CRITICAL FIX: Update data directly without aggressive cache clearing
@@ -605,6 +606,7 @@ export default function LeaderboardPage() {
                         </div>
 
                         <TournamentLeaderboard
+                            key={`leaderboard-${preloadedLeaderboardData?.sse_update_id || Date.now()}`} // 🚨 FORCE RE-RENDER
                             tournamentId={currentTournament?.id}
                             currentUserId={session?.user?.walletAddress || null}
                             currentUsername={session?.user?.username || null}
