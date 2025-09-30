@@ -313,13 +313,8 @@ export default function LeaderboardPage() {
 
             eventSource.addEventListener('tournament_stats_update', (event) => {
                 const data = JSON.parse(event.data);
-                console.log('⚡ INSTANT tournament stats update received!', data.stats);
 
-                // 🚨 CRITICAL FIX: Don't clear cache aggressively - just update state
-                // This prevents cache clearing wars between components
-                console.log('🎯 Updating tournament stats directly without cache clearing');
-
-                // Update tournament data instantly
+                // Update tournament data instantly without cache clearing
                 if (data.stats) {
                     setCurrentTournament(prev => prev ? {
                         ...prev,
@@ -332,13 +327,7 @@ export default function LeaderboardPage() {
 
             // Add leaderboard update listener
             eventSource.addEventListener('leaderboard_update', (event) => {
-                console.log('🔥 SSE leaderboard_update received:', event.data);
                 const data = JSON.parse(event.data);
-                console.log('📊 Parsed leaderboard data:', {
-                    playersCount: data.players?.length || 0,
-                    tournamentDay: data.tournament_day,
-                    timestamp: data.timestamp
-                });
 
                 if (data.players) {
                     const leaderboardData = {
@@ -347,21 +336,12 @@ export default function LeaderboardPage() {
                         total_players: data.players.length,
                         cached: true,
                         fetched_at: data.timestamp,
-                        // CRITICAL: Add unique identifier to force React re-render
+                        // Add unique identifier for change detection
                         sse_update_id: `sse_${Date.now()}_${Math.random()}`
                     };
 
-                    console.log('✅ Updating preloadedLeaderboardData via SSE', {
-                        updateId: leaderboardData.sse_update_id,
-                        playersCount: data.players.length,
-                        newDataUpdate: true
-                    });
-
-                    // 🚨 CRITICAL FIX: Update data directly without aggressive cache clearing
-                    // This prevents cache clearing wars and improves cross-device updates
+                    // Update data directly without aggressive cache clearing
                     setPreloadedLeaderboardData(leaderboardData);
-
-                    console.log('🎯 Leaderboard updated directly via SSE without cache clearing wars');
                 } else {
                     console.warn('⚠️ SSE leaderboard update missing players data');
                 }
@@ -606,7 +586,6 @@ export default function LeaderboardPage() {
                         </div>
 
                         <TournamentLeaderboard
-                            key={`leaderboard-${preloadedLeaderboardData?.sse_update_id || Date.now()}`} // 🚨 FORCE RE-RENDER
                             tournamentId={currentTournament?.id}
                             currentUserId={session?.user?.walletAddress || null}
                             currentUsername={session?.user?.username || null}

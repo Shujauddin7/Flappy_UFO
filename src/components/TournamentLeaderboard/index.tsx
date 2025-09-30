@@ -58,7 +58,6 @@ export const TournamentLeaderboard = ({
         return initialLoading;
     });
     const [currentUserData, setCurrentUserData] = useState<LeaderboardPlayer | null>(null);
-    const [, setForceUpdateTrigger] = useState(0); // Force re-render trigger (getter intentionally omitted)
 
     // CRITICAL DEBUG: Log when preloaded data becomes available
     useEffect(() => {
@@ -72,55 +71,43 @@ export const TournamentLeaderboard = ({
     }, [preloadedData, loading]);
 
     // 🚀 CRITICAL FIX: Direct preloaded data processing for SSE updates
-        useEffect(() => {
-            if (preloadedData?.players) {
-                console.log('🔄 DIRECT SSE UPDATE: Processing preloaded data change');
-                const players = preloadedData.players;
-    
-                // Force immediate update of component state
-                setTopPlayers(players.slice(0, 10));
-                setAllPlayers(players);
-                setLoading(false);
-    
-                // Trigger force re-render and log the new value from within the functional updater
-                setForceUpdateTrigger(prev => {
-                    const newVal = prev + 1;
-                    console.log('✅ DIRECT UPDATE COMPLETE:', {
-                        topPlayersCount: players.slice(0, 10).length,
-                        allPlayersCount: players.length,
-                        forceUpdateTrigger: newVal
-                    });
-                    return newVal;
-                });
-    
-                // Update user rank if needed
-                if ((currentUserId || currentUsername) && onUserRankUpdate) {
-                    let userRank = null;
-    
-                    if (currentUserId) {
-                        userRank = players.find((player: LeaderboardPlayer) =>
-                            player.wallet === currentUserId ||
-                            (player.wallet && currentUserId && player.wallet.toLowerCase() === currentUserId.toLowerCase())
-                        );
-                    }
-    
-                    if (!userRank && currentUsername) {
-                        userRank = players.find((player: LeaderboardPlayer) =>
-                            player.username === currentUsername
-                        );
-                    }
-    
-                    if (!userRank && currentUserId) {
-                        userRank = players.find((player: LeaderboardPlayer) =>
-                            player.user_id === currentUserId
-                        );
-                    }
-    
-                    onUserRankUpdate(userRank || null);
-                    setCurrentUserData(userRank || null);
+    useEffect(() => {
+        if (preloadedData?.players) {
+            const players = preloadedData.players;
+
+            // Smooth update of component state without forced re-renders
+            setTopPlayers(players.slice(0, 10));
+            setAllPlayers(players);
+            setLoading(false);
+
+            // Update user rank if needed
+            if ((currentUserId || currentUsername) && onUserRankUpdate) {
+                let userRank = null;
+
+                if (currentUserId) {
+                    userRank = players.find((player: LeaderboardPlayer) =>
+                        player.wallet === currentUserId ||
+                        (player.wallet && currentUserId && player.wallet.toLowerCase() === currentUserId.toLowerCase())
+                    );
                 }
+
+                if (!userRank && currentUsername) {
+                    userRank = players.find((player: LeaderboardPlayer) =>
+                        player.username === currentUsername
+                    );
+                }
+
+                if (!userRank && currentUserId) {
+                    userRank = players.find((player: LeaderboardPlayer) =>
+                        player.user_id === currentUserId
+                    );
+                }
+
+                onUserRankUpdate(userRank || null);
+                setCurrentUserData(userRank || null);
             }
-        }, [preloadedData, currentUserId, currentUsername, onUserRankUpdate]);
+        }
+    }, [preloadedData, currentUserId, currentUsername, onUserRankUpdate]);
 
     // Setup intersection observer for user card visibility - OPTIMIZED: Only after data is loaded
     useEffect(() => {
