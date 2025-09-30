@@ -285,12 +285,9 @@ export default function LeaderboardPage() {
                 const data = JSON.parse(event.data);
                 console.log('⚡ INSTANT tournament stats update received!', data.stats);
 
-                // CRITICAL: Immediately clear frontend tournament cache to prevent conflicts
-                if (typeof window !== 'undefined') {
-                    sessionStorage.removeItem('tournament_data');
-                    sessionStorage.removeItem('preloaded_tournament');
-                    console.log('🧹 Cleared frontend tournament cache for instant update');
-                }
+                // 🚨 CRITICAL FIX: Don't clear cache aggressively - just update state
+                // This prevents cache clearing wars between components
+                console.log('🎯 Updating tournament stats directly without cache clearing');
 
                 // Update tournament data instantly
                 if (data.stats) {
@@ -328,7 +325,12 @@ export default function LeaderboardPage() {
                         updateId: leaderboardData.sse_update_id,
                         playersCount: data.players.length
                     });
+
+                    // 🚨 CRITICAL FIX: Update data directly without aggressive cache clearing
+                    // This prevents cache clearing wars and improves cross-device updates
                     setPreloadedLeaderboardData(leaderboardData);
+
+                    console.log('🎯 Leaderboard updated directly via SSE without cache clearing wars');
                 } else {
                     console.warn('⚠️ SSE leaderboard update missing players data');
                 }

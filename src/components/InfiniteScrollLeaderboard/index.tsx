@@ -83,7 +83,7 @@ interface InfiniteScrollLeaderboardProps {
     className?: string;
     apiEndpoint?: string; // Allow custom API endpoint
     maxHeight?: number; // Maximum height of the scrollable container
-    onTournamentStatsUpdate?: (stats: Record<string, unknown>) => void; // Callback for tournament stats updates
+    // onTournamentStatsUpdate removed - handled by parent SSE connection
 }
 
 // Player row component with skeleton loader
@@ -197,8 +197,8 @@ export default function InfiniteScrollLeaderboard({
     tournamentDay,
     className = '',
     apiEndpoint = '/api/leaderboard',
-    maxHeight = 600,
-    onTournamentStatsUpdate
+    maxHeight = 600
+    // onTournamentStatsUpdate removed - handled by parent SSE connection
 }: InfiniteScrollLeaderboardProps) {
     const [players, setPlayers] = useState<Player[]>(initialData?.players || []);
     const [loading, setLoading] = useState(false);
@@ -281,114 +281,17 @@ export default function InfiniteScrollLeaderboard({
         }
     }, [hasMore, loading, loadMorePlayers]);
 
-    // Simple leaderboard refresh function
-    const performLeaderboardRefresh = useCallback(async () => {
-        console.log('🔄 Refreshing leaderboard from Redis cache...');
+    // 🚨 CRITICAL FIX: Removed duplicate SSE connection to prevent conflicts
+    // SSE is now handled by parent component (leaderboard page) only
+    // This component receives updates through props/callbacks instead
 
-        try {
-            // Reset the infinite scroll state and clear memory
-            setPlayers([]);
-            setOffset(0);
-            setHasMore(true);
-            setScrollTop(0); // Reset scroll position
-
-            // Load fresh data from Redis cache
-            await loadMorePlayers();
-
-            console.log('✅ Leaderboard refresh completed');
-        } catch (error) {
-            console.error('❌ Leaderboard refresh failed:', error);
-        }
-    }, [loadMorePlayers]);
-
-
-
-    // SSE connection for instant leaderboard updates (replaces polling)
-    useEffect(() => {
-        if (!tournamentDay) return;
-
-        console.log('🔥 Starting SSE connection for instant leaderboard updates...');
-
-        // Create EventSource connection to SSE endpoint
-        const eventSource = new EventSource(`/api/leaderboard/stream?tournament_day=${encodeURIComponent(tournamentDay)}`);
-
-        // Handle connection established
-        eventSource.addEventListener('connected', (event) => {
-            const data = JSON.parse(event.data);
-            console.log('✅ SSE connected:', data.message);
-        });
-
-        // Handle leaderboard updates (INSTANT!)
-        eventSource.addEventListener('leaderboard_update', (event) => {
-            const data = JSON.parse(event.data);
-            console.log('⚡ INSTANT leaderboard update received via SSE!', data.players.length, 'players');
-
-            // CRITICAL: Immediately clear frontend cache to prevent conflicts
-            if (typeof window !== 'undefined') {
-                sessionStorage.removeItem('leaderboard_data');
-                sessionStorage.removeItem('preloaded_leaderboard');
-                console.log('🧹 Cleared frontend leaderboard cache for instant update');
-            }
-
-            // Update leaderboard data instantly
-            if (data.players && data.players.length > 0) {
-                const formattedPlayers = data.players.map((player: Record<string, unknown>, index: number) => ({
-                    ...player,
-                    rank: index + 1,
-                    highest_score: player.score // Map for compatibility
-                })) as Player[];
-
-                setPlayers(formattedPlayers);
-                setOffset(20); // Reset offset for fresh data
-                setHasMore(formattedPlayers.length >= 20);
-                setPerformance({
-                    source: 'redis_sse',
-                    responseTime: 0, // Instant!
-                    cached: true
-                });
-            }
-        });
-
-        // Handle tournament stats updates with immediate cache invalidation
-        eventSource.addEventListener('tournament_stats_update', (event) => {
-            const data = JSON.parse(event.data);
-            console.log('⚡ INSTANT tournament stats update received via SSE!', data.stats);
-
-            // CRITICAL: Immediately clear frontend tournament cache to prevent conflicts
-            if (typeof window !== 'undefined') {
-                sessionStorage.removeItem('tournament_data');
-                sessionStorage.removeItem('preloaded_tournament');
-                console.log('🧹 Cleared frontend tournament cache for instant update');
-            }
-
-            // Pass stats update to parent component
-            if (onTournamentStatsUpdate && data.stats) {
-                onTournamentStatsUpdate(data.stats);
-            }
-        });
-
-        // Handle heartbeat (keep connection alive)
-        eventSource.addEventListener('heartbeat', () => {
-            console.log('💓 SSE heartbeat received');
-        });
-
-        // Handle connection errors
-        eventSource.onerror = (error) => {
-            console.error('❌ SSE connection error:', error);
-
-            // Fallback to periodic refresh if SSE fails
-            console.log('⚠️ SSE failed, falling back to periodic refresh...');
-            setTimeout(() => {
-                performLeaderboardRefresh();
-            }, 5000);
-        };
-
-        // Cleanup on unmount
-        return () => {
-            console.log('🛑 Closing SSE connection');
-            eventSource.close();
-        };
-    }, [tournamentDay, performLeaderboardRefresh, onTournamentStatsUpdate]);
+    // Note: Previously this component created its own SSE connection which caused:
+    // 1. Multiple SSE connections to same endpoint
+    // 2. Cache clearing wars between components  
+    // 3. Race conditions in data updates
+    // 4. Cross-device update failures
+    //
+    // Now the parent page manages SSE and passes data via props for better consistency
 
     // Get visible players for virtual scrolling
     const visiblePlayers = useMemo(() => {

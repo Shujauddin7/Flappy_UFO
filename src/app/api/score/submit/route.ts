@@ -426,7 +426,25 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // 🚀 INSTANT UPDATES: Clear tournament stats caches for immediate prize pool updates
+        // 🚀 CRITICAL FIX: Update BOTH tournament stats AND leaderboard for ALL scores
+        // This ensures consistent SSE update timing for both prize pool and player scores
+        console.log('⚡ Updating ALL caches for consistent SSE experience...');
+
+        try {
+            const { invalidateAllTournamentCaches } = await import('@/utils/tournament-cache-helpers');
+            await invalidateAllTournamentCaches({
+                tournamentDay,
+                triggerSSE: true,
+                rewarmCache: true,
+                source: 'regular_score_with_leaderboard_update'
+            });
+            console.log('✅ Both tournament stats AND leaderboard updated for regular score');
+        } catch (cacheError) {
+            console.error('❌ Cache update failed for regular score:', cacheError);
+        }
+
+        // Keep leaderboard cache since regular scores don't change rankings
+        console.log('📊 Regular score submitted, keeping leaderboard cache for performance');        // 🚀 INSTANT UPDATES: Clear tournament stats caches for immediate prize pool updates
         // Regular scores don't affect leaderboard rankings but do affect tournament stats
         console.log('⚡ Updating tournament stats caches for regular score submission...');
 
