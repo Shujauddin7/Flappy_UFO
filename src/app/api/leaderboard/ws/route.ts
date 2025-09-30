@@ -33,9 +33,9 @@ export async function GET(request: NextRequest) {
         // For Vercel Edge Runtime, we need to handle WebSocket differently
         // Vercel doesn't support WebSocket upgrades in Edge Runtime yet
         // Fall back to SSE for now with improved performance
-        
+
         console.log('⚠️ WebSocket upgrade not supported in Vercel Edge Runtime, falling back to enhanced SSE');
-        
+
         // Enhanced SSE with faster polling and immediate triggers
         const stream = new ReadableStream({
             start(controller) {

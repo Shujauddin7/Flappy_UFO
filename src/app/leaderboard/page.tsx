@@ -130,11 +130,9 @@ export default function LeaderboardPage() {
                     const currentTournamentDay = leaderboardData?.tournament_day;
 
                     const shouldClearCache = (
+                        currentPlayerCount === 0 || // Database is empty - ALWAYS clear cache
                         cachedPlayerCount > currentPlayerCount || // Database reset detected
-                        (currentPlayerCount === 0 && cachedPlayerCount >= 0) || // ANY cache when DB is empty
-                        (cachedTournamentDay && currentTournamentDay && cachedTournamentDay !== currentTournamentDay) || // Tournament change
-                        !leaderboardData?.players || // No current data available
-                        leaderboardData?.players?.length === 0 // Explicit empty database
+                        (cachedTournamentDay && currentTournamentDay && cachedTournamentDay !== currentTournamentDay) // Tournament change
                     );
 
                     if (shouldClearCache) {
@@ -220,10 +218,8 @@ export default function LeaderboardPage() {
         // Check for stale cache on component mount
         checkAndClearStaleCache();
 
-        // Also check periodically (every 30 seconds) to catch tournament changes
-        const interval = setInterval(checkAndClearStaleCache, 30000);
-
-        return () => clearInterval(interval);
+        // Also check more frequently for fresh database states (every 5 seconds)
+        const interval = setInterval(checkAndClearStaleCache, 5000); return () => clearInterval(interval);
     }, []);
 
     // ⚡ FAST LOADING: Use existing Redis-cached APIs with instant display
