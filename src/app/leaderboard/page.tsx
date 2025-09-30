@@ -24,6 +24,7 @@ interface LeaderboardApiResponse {
     total_players: number;
     cached?: boolean;
     fetched_at?: string;
+    sse_update_id?: string; // For forcing React re-renders on SSE updates
 }
 
 interface TournamentData {
@@ -318,10 +319,15 @@ export default function LeaderboardPage() {
                         tournament_day: data.tournament_day,
                         total_players: data.players.length,
                         cached: true,
-                        fetched_at: data.timestamp
+                        fetched_at: data.timestamp,
+                        // CRITICAL: Add unique identifier to force React re-render
+                        sse_update_id: `sse_${Date.now()}_${Math.random()}`
                     };
 
-                    console.log('✅ Updating preloadedLeaderboardData via SSE');
+                    console.log('✅ Updating preloadedLeaderboardData via SSE', {
+                        updateId: leaderboardData.sse_update_id,
+                        playersCount: data.players.length
+                    });
                     setPreloadedLeaderboardData(leaderboardData);
                 } else {
                     console.warn('⚠️ SSE leaderboard update missing players data');
@@ -567,6 +573,7 @@ export default function LeaderboardPage() {
                         </div>
 
                         <TournamentLeaderboard
+                            key={preloadedLeaderboardData?.sse_update_id || 'initial'} // Force re-render on SSE updates
                             tournamentId={currentTournament?.id}
                             currentUserId={session?.user?.walletAddress || null}
                             currentUsername={session?.user?.username || null}
