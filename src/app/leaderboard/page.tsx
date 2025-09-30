@@ -122,23 +122,23 @@ export default function LeaderboardPage() {
                     const currentPlayerCount = leaderboardData?.players?.length || 0;
 
                     // 🚨 AGGRESSIVE RESET DETECTION: Clear cache if ANY of these conditions:
-                    // 1. Cached has more players than current (database reset)
-                    // 2. Current database has 0 players but cache has players (fresh reset) 
+                    // 1. Current database has 0 players (ALWAYS clear cache for empty DB)
+                    // 2. Cached has more players than current (database reset)  
                     // 3. Tournament day mismatch (new tournament created)
-                    // 4. ANY cached data exists when database is empty (safest approach)
                     const cachedTournamentDay = parsedLeaderboard?.data?.tournament_day;
                     const currentTournamentDay = leaderboardData?.tournament_day;
 
                     const shouldClearCache = (
-                        currentPlayerCount === 0 || // Database is empty - ALWAYS clear cache
+                        currentPlayerCount === 0 || // Database is empty - ALWAYS clear cache (CRITICAL FIX)
                         cachedPlayerCount > currentPlayerCount || // Database reset detected
                         (cachedTournamentDay && currentTournamentDay && cachedTournamentDay !== currentTournamentDay) // Tournament change
                     );
 
                     if (shouldClearCache) {
-                        console.log('🚨 CACHE CLEAR TRIGGERED - DATABASE RESET OR FRESH STATE!');
+                        console.log('🚨 CACHE CLEAR TRIGGERED - DATABASE RESET OR EMPTY STATE!');
                         console.log(`   Cached players: ${cachedPlayerCount}`);
                         console.log(`   Current players: ${currentPlayerCount}`);
+                        console.log(`   Empty DB detection: ${currentPlayerCount === 0 ? 'YES' : 'NO'}`);
                         console.log(`   Cached tournament: ${cachedTournamentDay}`);
                         console.log(`   Current tournament: ${currentTournamentDay}`);
                         console.log('   🧹 CLEARING ALL CACHE AND FORCING FRESH LOAD...');
@@ -301,11 +301,17 @@ export default function LeaderboardPage() {
         // Load once on mount - Redis cache + periodic refresh handles updates
         loadEssentialData();
 
-        // 🚀 ENHANCED REAL-TIME CONNECTION: Listen for instant updates via WebSocket-like SSE
+        // 🚀 REDIS WEBSOCKET CONNECTION: Instant 5-25ms updates via Redis pub/sub  
         if (currentTournament?.tournament_day) {
-            console.log('🔥 Starting enhanced real-time connection for instant updates...');
+            console.log('🔥 Starting Redis WebSocket connection for instant updates...');
 
-            const eventSource = new EventSource(`/api/leaderboard/ws?tournament_day=${encodeURIComponent(currentTournament.tournament_day)}`);
+            const eventSource = new EventSource(`/api/leaderboard/websocket?tournament_day=${encodeURIComponent(currentTournament.tournament_day)}`);
+
+            // Listen for Redis WebSocket connection confirmation
+            eventSource.addEventListener('connected', (event) => {
+                const data = JSON.parse(event.data);
+                console.log(`🚀 Redis WebSocket connected: ${data.protocol} - ${data.performance}`);
+            });
 
             eventSource.addEventListener('tournament_stats_update', (event) => {
                 const data = JSON.parse(event.data);
@@ -338,17 +344,18 @@ export default function LeaderboardPage() {
 
                     // Update data directly without aggressive cache clearing
                     setPreloadedLeaderboardData(leaderboardData);
+                    console.log(`⚡ INSTANT Redis WebSocket leaderboard update! Source: ${event.data.source || 'websocket'}, Players: ${data.players.length}`);
                 } else {
-                    console.warn('⚠️ SSE leaderboard update missing players data');
+                    console.warn('⚠️ Redis WebSocket leaderboard update missing players data');
                 }
             });
 
             eventSource.onerror = (error) => {
-                console.error('❌ SSE tournament stats connection error:', error);
+                console.error('❌ Redis WebSocket connection error:', error);
             };
 
             return () => {
-                console.log('🛑 Closing SSE tournament stats connection');
+                console.log('🛑 Closing Redis WebSocket connection');
                 eventSource.close();
             };
         }

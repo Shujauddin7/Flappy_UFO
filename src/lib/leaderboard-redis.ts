@@ -69,16 +69,33 @@ export async function updateLeaderboardScore(
         await redis.expire(scoreKey, 48 * 60 * 60);
         await redis.expire(detailsKey, 48 * 60 * 60);
 
-        // 🚨 CRITICAL FIX: Immediately trigger real-time updates via Redis pub/sub
-        // This replaces the polling-based trigger system with instant pub/sub events
+        // 🚨 CRITICAL: Immediately trigger real-time updates via Redis pub/sub + data storage
         const updateKey = `leaderboard_updates:${tournamentDay}`;
-        await redis.set(updateKey, Date.now().toString(), { ex: 300 }); // Keep for SSE fallback
-        console.log('✅ SSE trigger set for fallback compatibility');
+        const dataKey = `leaderboard_data:${tournamentDay}`;
+        
+        // Set update trigger timestamp
+        await redis.set(updateKey, Date.now().toString(), { ex: 300 });
+        console.log('✅ Redis update trigger set');
 
-        // 🔥 NEW: Publish real-time event with actual leaderboard data for instant updates
+        // � NEW: Store complete leaderboard data in Redis for instant WebSocket access
         try {
             const currentLeaderboard = await getTopPlayers(tournamentDay, 0, 50);
             if (currentLeaderboard && currentLeaderboard.length > 0) {
+                
+                // Store full leaderboard data in Redis for instant access
+                const leaderboardData = {
+                    players: currentLeaderboard,
+                    tournament_day: tournamentDay,
+                    timestamp: new Date().toISOString(),
+                    total_players: currentLeaderboard.length,
+                    source: 'redis_instant_storage'
+                };
+
+                // Store data for instant WebSocket retrieval (5-minute expiry)
+                await redis.set(dataKey, JSON.stringify(leaderboardData), { ex: 300 });
+                console.log(`🚀 INSTANT: Leaderboard data stored in Redis for WebSocket (${currentLeaderboard.length} players)`);
+
+                // Also trigger pub/sub for existing systems (backward compatibility)
                 const pubsubMessage = JSON.stringify({
                     type: 'leaderboard_update',
                     tournament_day: tournamentDay,
@@ -89,13 +106,13 @@ export async function updateLeaderboardScore(
                     trigger_score: score
                 });
 
-                // Publish to Redis pub/sub channel for instant WebSocket broadcasts
+                // This will be handled by WebSocket subscribers for instant updates
                 await redis.publish('leaderboard_channel', pubsubMessage);
-                console.log('🚀 INSTANT Redis pub/sub event published with leaderboard data');
+                console.log('✅ Redis pub/sub event also published for compatibility');
             }
-        } catch (pubsubError) {
-            console.error('❌ Redis pub/sub publish failed (non-critical):', pubsubError);
-            // Continue execution even if pub/sub fails
+        } catch (dataError) {
+            console.error('❌ Redis data storage failed (non-critical):', dataError);
+            // Continue execution even if data storage fails
         }
 
         // Also trigger tournament stats update for cross-device sync consistency  
