@@ -46,8 +46,27 @@ export const TournamentLeaderboard = ({
 }: TournamentLeaderboardProps) => {
     const [topPlayers, setTopPlayers] = useState<LeaderboardPlayer[]>([]);
     const [allPlayers, setAllPlayers] = useState<LeaderboardPlayer[]>([]);
-    const [loading, setLoading] = useState(true); // Start with loading true, set false when data loads
+    const [loading, setLoading] = useState(() => {
+        // Only start with loading true if we don't have preloaded data immediately
+        const initialLoading = !preloadedData;
+        console.log('🏁 TournamentLeaderboard MOUNT:', {
+            hasPreloadedData: !!preloadedData,
+            playersCount: preloadedData?.players?.length || 0,
+            initialLoadingState: initialLoading
+        });
+        return initialLoading;
+    });
     const [currentUserData, setCurrentUserData] = useState<LeaderboardPlayer | null>(null);
+
+    // CRITICAL DEBUG: Log when preloaded data becomes available
+    useEffect(() => {
+        console.log('🔍 PRELOADED DATA CHANGE DETECTED:', {
+            hasData: !!preloadedData,
+            playersCount: preloadedData?.players?.length || 0,
+            timestamp: Date.now(),
+            currentLoadingState: loading
+        });
+    }, [preloadedData, loading]);
 
     // Setup intersection observer for user card visibility - OPTIMIZED: Only after data is loaded
     useEffect(() => {
@@ -150,6 +169,7 @@ export const TournamentLeaderboard = ({
 
             if (!response.ok) {
                 console.error('Error fetching leaderboard:', data.error);
+                setLoading(false); // CRITICAL FIX: Clear loading on error
                 return;
             }
 
@@ -162,6 +182,7 @@ export const TournamentLeaderboard = ({
             if (players.length === 0) {
                 setTopPlayers([]);
                 setAllPlayers([]);
+                setLoading(false); // CRITICAL FIX: Clear loading even with no players
                 return;
             }
 
@@ -216,8 +237,16 @@ export const TournamentLeaderboard = ({
         console.log('🔄 TournamentLeaderboard useEffect triggered:', {
             hasPreloadedData: !!preloadedData,
             preloadedPlayersCount: preloadedData?.players?.length || 0,
-            isGracePeriod
+            isGracePeriod,
+            currentLoadingState: loading
         });
+
+        // CRITICAL DEBUG: Log exact timing of data availability
+        if (preloadedData) {
+            console.log('✅ PRELOADED DATA AVAILABLE - should load instantly');
+        } else {
+            console.log('⏳ NO PRELOADED DATA - will make network request');
+        }
 
         // Always try to fetch fresh data - preloaded is just for initial display
         fetchLeaderboardData();
@@ -229,7 +258,8 @@ export const TournamentLeaderboard = ({
         // - Automatic cache invalidation and re-warming on score changes
         console.log('⚡ TournamentLeaderboard: Using Redis cache refresh, no polling needed');
 
-    }, [fetchLeaderboardData, isGracePeriod, preloadedData]); // Include all dependencies
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [fetchLeaderboardData, isGracePeriod, preloadedData]); // Exclude loading to prevent infinite loops
 
     // Force refresh when currentUserId or currentUsername changes (user logs in/out)
     useEffect(() => {
