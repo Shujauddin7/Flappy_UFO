@@ -39,8 +39,9 @@ export default function MobileDebugConsole() {
             ).join(' ');
 
             if (message.includes('🔍') || message.includes('✅') || message.includes('❌') || message.includes('📋')) {
+                const now = new Date();
                 setLogs(prev => [...prev.slice(-9), {
-                    timestamp: new Date().toLocaleTimeString(),
+                    timestamp: isNaN(now.getTime()) ? 'Invalid Time' : now.toLocaleTimeString(),
                     type: 'info',
                     message
                 }]);
@@ -48,28 +49,26 @@ export default function MobileDebugConsole() {
         };
 
         console.error = (...args: unknown[]) => {
-            originalError.apply(console, args);
-            const message = args.map(arg =>
-                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-            ).join(' ');
-
+            originalError(...args);
+            const now = new Date();
             setLogs(prev => [...prev.slice(-9), {
-                timestamp: new Date().toLocaleTimeString(),
+                timestamp: isNaN(now.getTime()) ? 'Invalid Time' : now.toLocaleTimeString(),
                 type: 'error',
-                message
+                message: args.map(arg => 
+                    typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+                ).join(' ')
             }]);
         };
 
         console.warn = (...args: unknown[]) => {
-            originalWarn.apply(console, args);
-            const message = args.map(arg =>
-                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-            ).join(' ');
-
+            originalWarn(...args);
+            const now = new Date();
             setLogs(prev => [...prev.slice(-9), {
-                timestamp: new Date().toLocaleTimeString(),
+                timestamp: isNaN(now.getTime()) ? 'Invalid Time' : now.toLocaleTimeString(),
                 type: 'warning',
-                message
+                message: args.map(arg => 
+                    typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+                ).join(' ')
             }]);
         };
 

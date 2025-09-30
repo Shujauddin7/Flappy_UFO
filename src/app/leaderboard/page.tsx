@@ -386,7 +386,9 @@ export default function LeaderboardPage() {
                     timestamp: Date.now()
                 }));
 
-                console.log(`⚡ PARALLEL DATA LOADED: ${tournamentData.total_players} players, ${tournamentData.total_prize_pool} WLD, ${leaderboard.players?.length || 0} entries`);
+                console.log(`⚡ PARALLEL DATA LOADED: ${tournamentData.total_players} players, ${tournamentData.total_prize_pool
+                    
+                } WLD, ${leaderboard.players?.length || 0} entries`);
 
             } catch (error) {
                 console.error('Essential data load failed:', error);
