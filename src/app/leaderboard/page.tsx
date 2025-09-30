@@ -358,15 +358,15 @@ export default function LeaderboardPage() {
 
                 const newTournamentData: TournamentData = {
                     id: 'current',
-                    tournament_day: tournamentData.tournament_day,
+                    tournament_day: tournamentData.tournament_day || new Date().toISOString().split('T')[0],
                     is_active: true,
                     total_players: tournamentData.total_players || 0, // System users
                     total_tournament_players: tournamentData.total_tournament_players ?? tournamentData.total_players ?? 0, // Tournament participants with safe fallback
-                    total_prize_pool: tournamentData.total_prize_pool,
-                    total_collected: tournamentData.total_collected || 0,
-                    admin_fee: tournamentData.admin_fee || 0,
-                    guarantee_amount: tournamentData.guarantee_amount || 0,
-                    admin_net_result: tournamentData.admin_net_result || 0,
+                    total_prize_pool: Number(tournamentData.total_prize_pool) || 0,
+                    total_collected: Number(tournamentData.total_collected) || 0,
+                    admin_fee: Number(tournamentData.admin_fee) || 0,
+                    guarantee_amount: Number(tournamentData.guarantee_amount) || 0,
+                    admin_net_result: Number(tournamentData.admin_net_result) || 0,
                     start_time: new Date().toISOString(),
                     end_time: tournamentData.end_time || null
                 };
