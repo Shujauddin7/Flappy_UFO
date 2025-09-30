@@ -78,7 +78,7 @@ export const PlayerRankCard: React.FC<PlayerRankCardProps> = ({
 
             <div className="score-section">
                 <div className="player-score">
-                    {player.highest_score.toLocaleString()}
+                    {(player.highest_score || 0).toLocaleString()}
                 </div>
             </div>
 

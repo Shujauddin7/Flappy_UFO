@@ -36,7 +36,7 @@ type GameMode = 'practice' | 'tournament';
 export default function GameHomepage() {
     // CRITICAL: Track if component is mounted to prevent state updates after unmount
     const isMountedRef = useRef(true);
-    
+
     const [currentScreen, setCurrentScreen] = useState<'home' | 'gameSelect' | 'tournamentEntry' | 'playing'>('home');
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
     const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);

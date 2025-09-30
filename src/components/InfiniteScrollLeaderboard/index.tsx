@@ -145,7 +145,7 @@ function PlayerRow({ player, isLoading = false }: { player?: Player; isLoading?:
             </div>
             <div className="text-right">
                 <p className="text-lg font-bold text-green-400">
-                    {player.highest_score.toLocaleString()}
+                    {(player.highest_score || 0).toLocaleString()}
                 </p>
                 <p className="text-xs text-gray-500">points</p>
             </div>
