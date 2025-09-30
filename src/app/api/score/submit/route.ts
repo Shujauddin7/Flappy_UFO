@@ -520,9 +520,16 @@ export async function POST(req: NextRequest) {
             await updateTournamentPrizePool(supabase, record.tournament_id);
         }
 
-        // �🚀 CRITICAL FIX: Update BOTH tournament stats AND leaderboard for ALL scores
+        // 🚀 CRITICAL FIX: Update BOTH tournament stats AND leaderboard for ALL scores
         // This ensures consistent SSE update timing for both prize pool and player scores
         console.log('⚡ Updating ALL caches for consistent SSE experience...');
+
+        // 🔥 INSTANT FIX: Update Redis leaderboard for ALL scores (not just high scores)
+        console.log('⚡ Updating Redis leaderboard for ALL scores...');
+        await updateLeaderboardScore(tournamentDay, user.id, record.highest_score, {
+            username: user.username,
+            wallet: walletToCheck
+        });
 
         try {
             const { invalidateAllTournamentCaches } = await import('@/utils/tournament-cache-helpers');
