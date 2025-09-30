@@ -690,10 +690,30 @@ export default function FlappyGame({
             if (checkCollisions()) {
                 state.gameStatus = 'gameOver';
 
-                // Call onGameEnd immediately
+                // Call onGameEnd immediately with crash protection
                 if (!state.gameEndCalled) {
                     state.gameEndCalled = true;
-                    onGameEnd(state.score, state.coinsCollectedThisGame); // Pass only newly collected coins
+
+                    console.log('🎮 GAME OVER - Calling onGameEnd with:', {
+                        score: state.score,
+                        coins: state.coinsCollectedThisGame,
+                        timestamp: new Date().toISOString()
+                    });
+
+                    try {
+                        onGameEnd(state.score, state.coinsCollectedThisGame); // Pass only newly collected coins
+                        console.log('✅ onGameEnd called successfully');
+                    } catch (gameEndError) {
+                        console.error('❌ CRASH in onGameEnd callback:', gameEndError);
+                        // Continue game loop but log the error
+                        const error = gameEndError as Error;
+                        console.error('Error details:', {
+                            message: error.message || 'Unknown error',
+                            stack: error.stack || 'No stack trace',
+                            score: state.score,
+                            coins: state.coinsCollectedThisGame
+                        });
+                    }
                 }
 
                 // Explosion particles for visual effect

@@ -34,11 +34,20 @@ interface Star {
 type GameMode = 'practice' | 'tournament';
 
 export default function GameHomepage() {
+    // CRITICAL: Track if component is mounted to prevent state updates after unmount
+    const isMountedRef = useRef(true);
+    
     const [currentScreen, setCurrentScreen] = useState<'home' | 'gameSelect' | 'tournamentEntry' | 'playing'>('home');
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
     const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
 
-    // Debug state changes
+    // Cleanup on unmount to prevent state updates
+    useEffect(() => {
+        return () => {
+            console.log('🗑️ GameHomepage unmounting - preventing future state updates');
+            isMountedRef.current = false;
+        };
+    }, []);    // Debug state changes
     useEffect(() => {
         console.log('Screen changed to:', currentScreen);
     }, [currentScreen]);
@@ -716,6 +725,12 @@ export default function GameHomepage() {
 
     // Handle when user chooses NOT to continue (final game over)
     const handleFinalGameOver = async (score: number) => {
+        // CRITICAL: Check if component is still mounted
+        if (!isMountedRef.current) {
+            console.log('⚠️ Component unmounted, skipping score submission');
+            return;
+        }
+
         // CRITICAL: Prevent duplicate submissions and race conditions
         if (gameMode !== 'tournament' || !session?.user?.walletAddress || isSubmittingScore) {
             console.log('⚠️ Skipping score submission:', { gameMode, hasWallet: !!session?.user?.walletAddress, isSubmitting: isSubmittingScore });
@@ -739,6 +754,12 @@ export default function GameHomepage() {
                 }),
             });
 
+            // Check if component is still mounted before continuing
+            if (!isMountedRef.current) {
+                console.log('⚠️ Component unmounted during API call, skipping result processing');
+                return;
+            }
+
             if (!response.ok) {
                 throw new Error(`Score submission failed: ${response.status} ${response.statusText}`);
             }
@@ -747,8 +768,13 @@ export default function GameHomepage() {
             console.log('✅ Score submission result:', result);
 
             // CRITICAL: Only update state if component is still mounted and in tournament mode
-            if (gameMode === 'tournament' && !isSubmittingScore) {
-                console.log('⚠️ Component state changed during submission, skipping result update');
+            if (!isMountedRef.current) {
+                console.log('⚠️ Component unmounted after API response, skipping state updates');
+                return;
+            }
+
+            if (gameMode !== 'tournament') {
+                console.log('⚠️ Game mode changed during submission, skipping result update');
                 return;
             }
 
@@ -775,27 +801,29 @@ export default function GameHomepage() {
                 console.log('📊 Regular score submitted - keeping cache for faster navigation');
             } else if (!result.success) {
                 console.error('Score submission failed:', result.error);
-                setGameResult(prev => ({
-                    ...prev,
-                    error: result.error || 'Score submission failed'
-                }));
+                if (isMountedRef.current) {
+                    setGameResult(prev => ({
+                        ...prev,
+                        error: result.error || 'Score submission failed'
+                    }));
+                }
             }
         } catch (error) {
             console.error('❌ Final score submission failed:', error);
-            // Only update state if still in valid state
-            if (gameMode === 'tournament') {
+            // Only update state if still in valid state and mounted
+            if (isMountedRef.current && gameMode === 'tournament') {
                 setGameResult(prev => ({
                     ...prev,
                     error: 'Unable to submit final score. Please check your connection.'
                 }));
             }
         } finally {
-            // Always clear submission state
-            setIsSubmittingScore(false);
+            // Always clear submission state if mounted
+            if (isMountedRef.current) {
+                setIsSubmittingScore(false);
+            }
         }
-    };
-
-    // Handle going back from tournament entry screen
+    };    // Handle going back from tournament entry screen
     const handleTournamentEntryBack = () => {
         setCurrentScreen('gameSelect');
     };
