@@ -72,7 +72,7 @@ export async function updateLeaderboardScore(
         // 🚨 CRITICAL: Immediately trigger real-time updates via Redis pub/sub + data storage
         const updateKey = `leaderboard_updates:${tournamentDay}`;
         const dataKey = `leaderboard_data:${tournamentDay}`;
-        
+
         // Set update trigger timestamp
         await redis.set(updateKey, Date.now().toString(), { ex: 300 });
         console.log('✅ Redis update trigger set');
@@ -81,7 +81,7 @@ export async function updateLeaderboardScore(
         try {
             const currentLeaderboard = await getTopPlayers(tournamentDay, 0, 50);
             if (currentLeaderboard && currentLeaderboard.length > 0) {
-                
+
                 // Store full leaderboard data in Redis for instant access
                 const leaderboardData = {
                     players: currentLeaderboard,
