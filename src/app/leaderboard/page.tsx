@@ -32,7 +32,7 @@ interface TournamentData {
     tournament_day: string;
     is_active: boolean;
     total_players: number; // Total users in system (for backward compatibility)
-    total_tournament_players: number; // Actual tournament participants who paid
+    total_tournament_players?: number; // Actual tournament participants who paid (optional to prevent crashes)
     total_prize_pool: number;
     total_collected: number;
     admin_fee: number;
@@ -325,7 +325,7 @@ export default function LeaderboardPage() {
                     tournament_day: tournamentData.tournament_day,
                     is_active: true,
                     total_players: tournamentData.total_players || 0, // System users
-                    total_tournament_players: tournamentData.total_tournament_players || tournamentData.total_players || 0, // Tournament participants
+                    total_tournament_players: tournamentData.total_tournament_players ?? tournamentData.total_players ?? 0, // Tournament participants with safe fallback
                     total_prize_pool: tournamentData.total_prize_pool,
                     total_collected: tournamentData.total_collected || 0,
                     admin_fee: tournamentData.admin_fee || 0,
@@ -393,10 +393,12 @@ export default function LeaderboardPage() {
                     setCurrentTournament(prev => prev ? {
                         ...prev,
                         total_players: data.stats.total_players || prev.total_players,
-                        total_tournament_players: data.stats.total_tournament_players || data.stats.total_players || prev.total_tournament_players,
+                        total_tournament_players: data.stats.total_tournament_players ?? data.stats.total_players ?? prev.total_tournament_players ?? prev.total_players,
                         total_prize_pool: data.stats.total_prize_pool || prev.total_prize_pool,
                         total_collected: data.stats.total_collected || prev.total_collected
                     } : prev);
+
+                    console.log(`⚡ REAL-TIME TOURNAMENT UPDATE: ${data.stats.total_tournament_players ?? data.stats.total_players ?? 0} players, $${data.stats.total_prize_pool ?? 0} prize pool`);
                 }
             });
 
@@ -605,7 +607,7 @@ export default function LeaderboardPage() {
                             <div className="players-text">
                                 <span className={`human-count-number ${!currentTournament ? 'loading-blur' : ''}`}>
                                     {currentTournament
-                                        ? currentTournament.total_tournament_players // Show actual tournament participants who paid
+                                        ? (currentTournament.total_tournament_players ?? currentTournament.total_players ?? 0) // Safe fallback to prevent crashes
                                         : '...'}
                                 </span> <span className="humans-playing-highlight">humans are playing to win the prize pool</span>
                             </div>
