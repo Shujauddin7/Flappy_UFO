@@ -158,13 +158,33 @@ export default function LeaderboardPage() {
                     currentPlayers: leaderboardData?.players?.length || 0,
                     currentTotalPlayers: statsData?.total_players || 0,
                     currentTournamentPlayers: statsData?.total_tournament_players || 0,
-                    cachedPlayers: cachedLeaderboard ? JSON.parse(cachedLeaderboard)?.data?.players?.length || 0 : 0,
+                    cachedPlayers: (() => {
+                        try {
+                            return cachedLeaderboard ? JSON.parse(cachedLeaderboard)?.data?.players?.length || 0 : 0;
+                        } catch {
+                            return 0;
+                        }
+                    })(),
                     isEmpty: (leaderboardData?.players?.length || 0) === 0 && (statsData?.total_tournament_players || 0) === 0
                 });
 
                 if (cachedLeaderboard || cachedTournament) {
-                    const parsedLeaderboard = cachedLeaderboard ? JSON.parse(cachedLeaderboard) : null;
-                    const parsedTournament = cachedTournament ? JSON.parse(cachedTournament) : null;
+                    let parsedLeaderboard = null;
+                    let parsedTournament = null;
+
+                    try {
+                        parsedLeaderboard = cachedLeaderboard ? JSON.parse(cachedLeaderboard) : null;
+                    } catch {
+                        // Clear corrupted leaderboard cache
+                        sessionStorage.removeItem('leaderboard_data');
+                    }
+
+                    try {
+                        parsedTournament = cachedTournament ? JSON.parse(cachedTournament) : null;
+                    } catch {
+                        // Clear corrupted tournament cache
+                        sessionStorage.removeItem('tournament_data');
+                    }
 
                     const cachedPlayerCount = parsedLeaderboard?.data?.players?.length || 0;
                     const currentPlayerCount = leaderboardData?.players?.length || 0;
@@ -233,7 +253,15 @@ export default function LeaderboardPage() {
 
                 if (!cachedTournament) return;
 
-                const parsed = JSON.parse(cachedTournament);
+                let parsed;
+                try {
+                    parsed = JSON.parse(cachedTournament);
+                } catch {
+                    // Clear corrupted cache and return
+                    sessionStorage.removeItem('tournament_data');
+                    return;
+                }
+
                 const cachedTournamentDay = parsed?.data?.tournament_day;
 
                 // If we have cached data, fetch current tournament to compare
@@ -379,16 +407,14 @@ export default function LeaderboardPage() {
             eventSource.addEventListener('connected', (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    console.log(`🚀 WEBSOCKET CONNECTED: ${data.protocol || 'unknown'} - ${data.performance || 'unknown'}`);
-                    console.log(`   Tournament: ${data.tournament_day || 'unknown'}`);
-                    console.log(`   Timestamp: ${data.timestamp || 'unknown'}`);
+                    console.log(`🚀 WEBSOCKET CONNECTED: ${data.protocol} - ${data.performance}`);
+                    console.log(`   Tournament: ${data.tournament_day}`);
+                    console.log(`   Timestamp: ${data.timestamp}`);
                     console.log(`   ✅ Real-time updates active!`);
                 } catch (parseError) {
-                    console.error('❌ Failed to parse WebSocket connected event:', parseError);
+                    console.error('❌ WebSocket connected event JSON parse error:', parseError);
                 }
-            });
-
-            // Add error and close event listeners for debugging
+            });            // Add error and close event listeners for debugging
             eventSource.addEventListener('error', (event) => {
                 console.error('❌ WEBSOCKET ERROR:', event);
                 console.log('   Connection state:', eventSource.readyState);
@@ -425,13 +451,13 @@ export default function LeaderboardPage() {
                 try {
                     const data = JSON.parse(event.data);
 
-                    if (data && data.players && Array.isArray(data.players)) {
+                    if (data.players) {
                         const leaderboardData = {
                             players: data.players,
-                            tournament_day: data.tournament_day || 'unknown',
+                            tournament_day: data.tournament_day,
                             total_players: data.players.length,
                             cached: true,
-                            fetched_at: data.timestamp || new Date().toISOString(),
+                            fetched_at: data.timestamp,
                             // Add unique identifier for change detection
                             sse_update_id: `sse_${Date.now()}_${Math.random()}`
                         };
@@ -440,20 +466,20 @@ export default function LeaderboardPage() {
                         setPreloadedLeaderboardData(leaderboardData);
                         console.log(`🚀 REAL-TIME LEADERBOARD UPDATE! Source: ${data.source || 'websocket'}, Players: ${data.players.length}, Devices: ALL UPDATED`);
 
-                        // Safe cache update for instant loading on next visit
+                        // Force cache update for instant loading on next visit
                         try {
                             sessionStorage.setItem('leaderboard_data', JSON.stringify({
                                 data: leaderboardData,
                                 timestamp: Date.now()
                             }));
-                        } catch (cacheError) {
-                            console.warn('Failed to update leaderboard cache:', cacheError);
+                        } catch {
+                            // Ignore cache storage errors
                         }
                     } else {
-                        console.warn('⚠️ Redis WebSocket leaderboard update missing or invalid players data');
+                        console.warn('⚠️ Redis WebSocket leaderboard update missing players data');
                     }
                 } catch (parseError) {
-                    console.error('❌ Failed to parse leaderboard update:', parseError);
+                    console.error('❌ WebSocket leaderboard JSON parse error:', parseError);
                 }
             });
 
