@@ -45,6 +45,10 @@ interface TournamentData {
 export default function LeaderboardPage() {
     const { data: session } = useSession();
 
+    // 🛡️ CRASH PROTECTION: Error state management
+    const [hasError, setHasError] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string>('');
+
     // ⚡ INSTANT LOADING: Real data immediately, persist across navigation
     const [currentTournament, setCurrentTournament] = useState<TournamentData | null>(() => {
         // Safe cache loading with crash protection
@@ -187,14 +191,18 @@ export default function LeaderboardPage() {
                         console.log(`   Empty DB detection: ${currentPlayerCount === 0 ? 'YES' : 'NO'}`);
                         console.log(`   Cached tournament: ${cachedTournamentDay}`);
                         console.log(`   Current tournament: ${currentTournamentDay}`);
-                        console.log('   🧹 CLEARING ALL CACHE AND FORCING FRESH LOAD...');
+                        console.log('   🧹 CLEARING CACHE WITHOUT RELOAD...');
 
-                        // Clear all browser cache immediately
-                        sessionStorage.clear();
-                        localStorage.clear();
+                        // Clear cache but don't reload (prevents crash loops)
+                        try {
+                            sessionStorage.clear();
+                            localStorage.clear();
+                            console.log('✅ Cache cleared successfully');
+                        } catch (clearError) {
+                            console.warn('Cache clear failed:', clearError);
+                        }
 
-                        // Force reload to get fresh data
-                        window.location.reload();
+                        // Let the component re-render with fresh data instead of reloading
                         return;
                     }
                 }
@@ -369,11 +377,15 @@ export default function LeaderboardPage() {
 
             // Listen for Redis WebSocket connection confirmation with detailed logging
             eventSource.addEventListener('connected', (event) => {
-                const data = JSON.parse(event.data);
-                console.log(`🚀 WEBSOCKET CONNECTED: ${data.protocol} - ${data.performance}`);
-                console.log(`   Tournament: ${data.tournament_day}`);
-                console.log(`   Timestamp: ${data.timestamp}`);
-                console.log(`   ✅ Real-time updates active!`);
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log(`🚀 WEBSOCKET CONNECTED: ${data.protocol || 'unknown'} - ${data.performance || 'unknown'}`);
+                    console.log(`   Tournament: ${data.tournament_day || 'unknown'}`);
+                    console.log(`   Timestamp: ${data.timestamp || 'unknown'}`);
+                    console.log(`   ✅ Real-time updates active!`);
+                } catch (parseError) {
+                    console.error('❌ Failed to parse WebSocket connected event:', parseError);
+                }
             });
 
             // Add error and close event listeners for debugging
@@ -386,58 +398,82 @@ export default function LeaderboardPage() {
             // Connection status is handled by the 'connected' event above
 
             eventSource.addEventListener('tournament_stats_update', (event) => {
-                const data = JSON.parse(event.data);
+                try {
+                    const data = JSON.parse(event.data);
 
-                // Update tournament data instantly without cache clearing
-                if (data.stats) {
-                    setCurrentTournament(prev => prev ? {
-                        ...prev,
-                        total_players: data.stats.total_players || prev.total_players,
-                        total_tournament_players: data.stats.total_tournament_players ?? data.stats.total_players ?? prev.total_tournament_players ?? prev.total_players,
-                        total_prize_pool: data.stats.total_prize_pool || prev.total_prize_pool,
-                        total_collected: data.stats.total_collected || prev.total_collected
-                    } : prev);
+                    // Update tournament data instantly without cache clearing
+                    if (data && data.stats) {
+                        setCurrentTournament(prev => prev ? {
+                            ...prev,
+                            total_players: data.stats.total_players || prev.total_players,
+                            total_tournament_players: data.stats.total_tournament_players ?? data.stats.total_players ?? prev.total_tournament_players ?? prev.total_players,
+                            total_prize_pool: data.stats.total_prize_pool || prev.total_prize_pool,
+                            total_collected: data.stats.total_collected || prev.total_collected
+                        } : prev);
 
-                    console.log(`⚡ REAL-TIME TOURNAMENT UPDATE: ${data.stats.total_tournament_players ?? data.stats.total_players ?? 0} players, $${data.stats.total_prize_pool ?? 0} prize pool`);
+                        console.log(`⚡ REAL-TIME TOURNAMENT UPDATE: ${data.stats.total_tournament_players ?? data.stats.total_players ?? 0} players, $${data.stats.total_prize_pool ?? 0} prize pool`);
+                    } else {
+                        console.warn('⚠️ Tournament stats update missing data');
+                    }
+                } catch (parseError) {
+                    console.error('❌ Failed to parse tournament stats update:', parseError);
                 }
             });
 
             // Add leaderboard update listener with detailed logging
             eventSource.addEventListener('leaderboard_update', (event) => {
-                const data = JSON.parse(event.data);
+                try {
+                    const data = JSON.parse(event.data);
 
-                if (data.players) {
-                    const leaderboardData = {
-                        players: data.players,
-                        tournament_day: data.tournament_day,
-                        total_players: data.players.length,
-                        cached: true,
-                        fetched_at: data.timestamp,
-                        // Add unique identifier for change detection
-                        sse_update_id: `sse_${Date.now()}_${Math.random()}`
-                    };
+                    if (data && data.players && Array.isArray(data.players)) {
+                        const leaderboardData = {
+                            players: data.players,
+                            tournament_day: data.tournament_day || 'unknown',
+                            total_players: data.players.length,
+                            cached: true,
+                            fetched_at: data.timestamp || new Date().toISOString(),
+                            // Add unique identifier for change detection
+                            sse_update_id: `sse_${Date.now()}_${Math.random()}`
+                        };
 
-                    // Update data directly without aggressive cache clearing
-                    setPreloadedLeaderboardData(leaderboardData);
-                    console.log(`🚀 REAL-TIME LEADERBOARD UPDATE! Source: ${data.source || 'websocket'}, Players: ${data.players.length}, Devices: ALL UPDATED`);
+                        // Update data directly without aggressive cache clearing
+                        setPreloadedLeaderboardData(leaderboardData);
+                        console.log(`🚀 REAL-TIME LEADERBOARD UPDATE! Source: ${data.source || 'websocket'}, Players: ${data.players.length}, Devices: ALL UPDATED`);
 
-                    // Force cache update for instant loading on next visit
-                    sessionStorage.setItem('leaderboard_data', JSON.stringify({
-                        data: leaderboardData,
-                        timestamp: Date.now()
-                    }));
-                } else {
-                    console.warn('⚠️ Redis WebSocket leaderboard update missing players data');
+                        // Safe cache update for instant loading on next visit
+                        try {
+                            sessionStorage.setItem('leaderboard_data', JSON.stringify({
+                                data: leaderboardData,
+                                timestamp: Date.now()
+                            }));
+                        } catch (cacheError) {
+                            console.warn('Failed to update leaderboard cache:', cacheError);
+                        }
+                    } else {
+                        console.warn('⚠️ Redis WebSocket leaderboard update missing or invalid players data');
+                    }
+                } catch (parseError) {
+                    console.error('❌ Failed to parse leaderboard update:', parseError);
                 }
             });
 
+            // Enhanced error handling for WebSocket
             eventSource.onerror = (error) => {
                 console.error('❌ Redis WebSocket connection error:', error);
+                console.log('🔍 WebSocket state:', {
+                    readyState: eventSource.readyState,
+                    url: eventSource.url
+                });
             };
 
+            // Safe cleanup
             return () => {
-                console.log('🛑 Closing Redis WebSocket connection');
-                eventSource.close();
+                try {
+                    console.log('🛑 Closing Redis WebSocket connection');
+                    eventSource.close();
+                } catch (closeError) {
+                    console.warn('WebSocket close failed:', closeError);
+                }
             };
         }
 
@@ -486,6 +522,77 @@ export default function LeaderboardPage() {
         const timeInterval = setInterval(() => setCurrentTime(new Date()), 1000);
         return () => clearInterval(timeInterval);
     }, []);
+
+    // 🛡️ GLOBAL ERROR HANDLER: Add after all hooks to prevent conditional hook errors
+    useEffect(() => {
+        const handleError = (event: ErrorEvent) => {
+            console.error('🚨 CRITICAL ERROR CAUGHT:', event.error);
+            setHasError(true);
+            setErrorMessage(event.error?.message || 'Unknown error');
+
+            // Clear potentially corrupted cache
+            try {
+                sessionStorage.removeItem('tournament_data');
+                sessionStorage.removeItem('leaderboard_data');
+            } catch {
+                // Ignore cleanup errors
+            }
+        };
+
+        const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+            console.error('🚨 UNHANDLED PROMISE REJECTION:', event.reason);
+            setHasError(true);
+            setErrorMessage(event.reason?.message || 'Promise rejection');
+        };
+
+        window.addEventListener('error', handleError);
+        window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+        return () => {
+            window.removeEventListener('error', handleError);
+            window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+        };
+    }, [setHasError, setErrorMessage]);
+
+    // Show error recovery UI if something breaks
+    if (hasError) {
+        return (
+            <Page>
+                <div className="flex flex-col items-center justify-center min-h-screen text-center p-4">
+                    <h1 className="text-2xl font-bold text-red-500 mb-4">🚨 App Error Detected</h1>
+                    <p className="text-gray-300 mb-4">Error: {errorMessage}</p>
+                    <div className="space-y-2">
+                        <button
+                            onClick={() => {
+                                try {
+                                    sessionStorage.clear();
+                                    localStorage.clear();
+                                    setHasError(false);
+                                    setErrorMessage('');
+                                    window.location.reload();
+                                } catch {
+                                    // If even this fails, just reload
+                                    window.location.href = window.location.href;
+                                }
+                            }}
+                            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 mr-2"
+                        >
+                            Clear Cache & Retry
+                        </button>
+                        <button
+                            onClick={() => {
+                                setHasError(false);
+                                setErrorMessage('');
+                            }}
+                            className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+                        >
+                            Try Again
+                        </button>
+                    </div>
+                </div>
+            </Page>
+        );
+    }
 
     // Calculate time remaining
     const getTimeRemaining = () => {
