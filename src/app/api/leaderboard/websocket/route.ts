@@ -85,21 +85,21 @@ export async function GET(request: NextRequest) {
                         // Check for leaderboard updates with instant Redis data access
                         const leaderboardUpdateKey = `leaderboard_updates:${tournamentDay}`;
                         const leaderboardDataKey = `leaderboard_data:${tournamentDay}`;
-
+                        
                         const lastUpdate = await checkRedisKey(leaderboardUpdateKey);
-
+                        
                         if (lastUpdate && typeof lastUpdate === 'string') {
                             const updateTime = parseInt(lastUpdate);
                             if (updateTime > lastLeaderboardUpdate) {
                                 console.log('📡 INSTANT: Redis leaderboard update detected');
-
+                                
                                 // Try to get instant data from Redis first (fastest)
                                 const cachedData = await checkRedisKey(leaderboardDataKey);
-
+                                
                                 if (cachedData && typeof cachedData === 'string') {
                                     try {
                                         const leaderboardData = JSON.parse(cachedData);
-
+                                        
                                         sendEvent('leaderboard_update', {
                                             players: leaderboardData.players || [],
                                             tournament_day: tournamentDay,
@@ -108,17 +108,17 @@ export async function GET(request: NextRequest) {
                                             latency: Date.now() - updateTime,
                                             update_id: `instant_${updateTime}_${Math.random()}`
                                         });
-
+                                        
                                         lastLeaderboardUpdate = updateTime;
                                         console.log(`✅ INSTANT Redis data sent! Latency: ${Date.now() - updateTime}ms, Players: ${leaderboardData.players?.length || 0}`);
-
+                                        
                                         // Skip API fallback since we have instant Redis data
                                         return; // Exit early, no need for API fallback
                                     } catch (parseError) {
                                         console.error('❌ Error parsing Redis leaderboard data:', parseError);
                                     }
                                 }
-
+                                
                                 // Fallback: fetch from API if Redis data not available
                                 console.log('⚠️ Redis data not available, falling back to API...');
                                 await fetchAndSendFreshLeaderboard();
@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
                             const statsUpdateTime = parseInt(lastStatsUpdate);
                             if (statsUpdateTime > lastTournamentUpdate) {
                                 console.log('📡 INSTANT: Redis tournament stats update detected');
-
+                                
                                 await fetchAndSendFreshStats();
                                 lastTournamentUpdate = statsUpdateTime;
                             }
@@ -177,7 +177,7 @@ export async function GET(request: NextRequest) {
                                 latency: '5-25ms',
                                 update_id: `redis_${Date.now()}_${Math.random()}`
                             });
-
+                            
                             console.log(`✅ INSTANT leaderboard sent! Players: ${data.players.length}`);
                         }
                     } catch (error) {
@@ -210,7 +210,7 @@ export async function GET(request: NextRequest) {
                                 timestamp: new Date().toISOString(),
                                 source: 'redis_instant_stats'
                             });
-
+                            
                             console.log('✅ INSTANT tournament stats sent');
                         }
                     } catch (error) {
