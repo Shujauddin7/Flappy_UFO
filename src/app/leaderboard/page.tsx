@@ -46,58 +46,80 @@ export default function LeaderboardPage() {
 
     // ⚡ INSTANT LOADING: Real data immediately, persist across navigation
     const [currentTournament, setCurrentTournament] = useState<TournamentData | null>(() => {
-        // Only load cached data if it's very recent (less than 5 seconds old)
+        // Safe cache loading with crash protection
         if (typeof window !== 'undefined') {
-            const cached = sessionStorage.getItem('tournament_data');
-            if (cached) {
-                try {
+            try {
+                const cached = sessionStorage.getItem('tournament_data');
+                if (cached) {
                     const parsed = JSON.parse(cached);
-                    const cacheAge = Date.now() - (parsed.timestamp || 0);
 
-                    // Only use cached data if it's less than 5 seconds old
-                    if (cacheAge < 5000) {
-                        console.log('⚡ FRESH CACHE: Using recent tournament data');
-                        console.log(`   Cached Players: ${parsed.data.total_players}`);
-                        console.log(`   Cached Prize: $${parsed.data.total_prize_pool}`);
-                        console.log(`   Cache age: ${cacheAge}ms`);
-                        return parsed.data;
+                    // Safety checks for data structure
+                    if (parsed && parsed.data && parsed.timestamp && typeof parsed.timestamp === 'number') {
+                        const cacheAge = Date.now() - parsed.timestamp;
+
+                        // Only use cached data if it's less than 5 seconds old
+                        if (cacheAge < 5000) {
+                            console.log('⚡ FRESH CACHE: Using recent tournament data');
+                            console.log(`   Cached Players: ${parsed.data.total_players || 'N/A'}`);
+                            console.log(`   Cached Prize: $${parsed.data.total_prize_pool || 'N/A'}`);
+                            console.log(`   Cache age: ${cacheAge}ms`);
+                            return parsed.data;
+                        } else {
+                            console.log('🗑️ STALE CACHE: Tournament data too old, clearing...');
+                            sessionStorage.removeItem('tournament_data');
+                        }
                     } else {
-                        console.log('🗑️ STALE CACHE: Tournament data too old, clearing...');
+                        console.log('🗑️ INVALID CACHE: Tournament data structure invalid, clearing...');
                         sessionStorage.removeItem('tournament_data');
                     }
-                } catch (e) {
-                    console.warn('Cache parse error:', e);
+                }
+            } catch (e) {
+                console.warn('Cache error, clearing all cache:', e);
+                // Clear all potentially corrupted cache
+                try {
                     sessionStorage.removeItem('tournament_data');
+                    sessionStorage.removeItem('leaderboard_data');
+                } catch {
+                    // Ignore cleanup errors
                 }
             }
-        }
-
-        // Return null - will show loading blur until data loads
+        }        // Return null - will show loading blur until data loads
         return null;
     });
 
     const [preloadedLeaderboardData, setPreloadedLeaderboardData] = useState<LeaderboardApiResponse | null>(() => {
-        // Only load cached leaderboard data if it's very recent (less than 5 seconds old)
+        // Safe leaderboard cache loading with crash protection
         if (typeof window !== 'undefined') {
-            const cached = sessionStorage.getItem('leaderboard_data');
-            if (cached) {
-                try {
+            try {
+                const cached = sessionStorage.getItem('leaderboard_data');
+                if (cached) {
                     const parsed = JSON.parse(cached);
-                    const cacheAge = Date.now() - (parsed.timestamp || 0);
 
-                    // Only use cached data if it's less than 5 seconds old
-                    if (cacheAge < 5000) {
-                        console.log('⚡ FRESH CACHE: Using recent leaderboard data');
-                        console.log(`   Players: ${parsed.data?.players?.length || 0}`);
-                        console.log(`   Cache age: ${cacheAge}ms`);
-                        return parsed.data;
+                    // Safety checks for data structure
+                    if (parsed && parsed.data && parsed.timestamp && typeof parsed.timestamp === 'number') {
+                        const cacheAge = Date.now() - parsed.timestamp;
+
+                        // Only use cached data if it's less than 5 seconds old
+                        if (cacheAge < 5000) {
+                            console.log('⚡ FRESH CACHE: Using recent leaderboard data');
+                            console.log(`   Players: ${parsed.data?.players?.length || 0}`);
+                            console.log(`   Cache age: ${cacheAge}ms`);
+                            return parsed.data;
+                        } else {
+                            console.log('🗑️ STALE CACHE: Leaderboard data too old, clearing...');
+                            sessionStorage.removeItem('leaderboard_data');
+                        }
                     } else {
-                        console.log('🗑️ STALE CACHE: Leaderboard data too old, clearing...');
+                        console.log('🗑️ INVALID CACHE: Leaderboard data structure invalid, clearing...');
                         sessionStorage.removeItem('leaderboard_data');
                     }
-                } catch {
-                    console.warn('Leaderboard cache parse error');
+                }
+            } catch (e) {
+                console.warn('Leaderboard cache error, clearing:', e);
+                try {
                     sessionStorage.removeItem('leaderboard_data');
+                } catch {
+                    // Ignore cleanup errors
                 }
             }
         }
@@ -175,7 +197,15 @@ export default function LeaderboardPage() {
                     }
                 }
             } catch (error) {
-                console.warn('Cache check failed:', error);
+                console.warn('Database reset check failed, clearing potentially corrupted cache:', error);
+                // Safe cache clearing without auto-reload to prevent crash loops
+                try {
+                    sessionStorage.clear();
+                    localStorage.clear();
+                    console.log('🧹 Cache cleared due to error, page will load fresh data');
+                } catch (clearError) {
+                    console.warn('Cache clearing also failed:', clearError);
+                }
             }
         };
 
