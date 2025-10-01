@@ -403,13 +403,27 @@ export default function LeaderboardPage() {
 
     // 🚀 SUPABASE REALTIME: Fix cross-device updates and username issues
     useEffect(() => {
-        if (!currentTournament?.tournament_day) return;
+        if (!currentTournament?.tournament_day) {
+            console.log('❌ Realtime setup skipped: No tournament_day available');
+            return;
+        }
+
+        if (!currentTournament?.id) {
+            console.log('❌ Realtime setup skipped: No tournament id available');
+            return;
+        }
 
         console.log('🚀 Setting up Supabase Realtime for cross-device sync...');
+        console.log(`   Tournament ID: ${currentTournament.id}`);
+        console.log(`   Tournament Day: ${currentTournament.tournament_day}`);
 
         // Create Supabase client
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
         const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+        
+        console.log(`   Supabase URL: ${supabaseUrl}`);
+        console.log(`   Anon Key: ${supabaseAnonKey ? 'Present' : 'Missing'}`);
+        
         const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
         // Subscribe to user_tournament_records changes for real-time leaderboard updates
@@ -485,6 +499,14 @@ export default function LeaderboardPage() {
             )
             .subscribe((status) => {
                 console.log('🔌 Supabase Realtime status:', status);
+                if (status === 'SUBSCRIBED') {
+                    console.log('✅ Realtime subscription active and ready!');
+                    console.log(`   Listening for changes to tournament_id: ${currentTournament.id}`);
+                } else if (status === 'CLOSED') {
+                    console.log('❌ Realtime subscription closed');
+                } else if (status === 'CHANNEL_ERROR') {
+                    console.log('❌ Realtime subscription error');
+                }
             });
 
         // Cleanup subscription
