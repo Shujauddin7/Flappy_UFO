@@ -48,9 +48,12 @@ export async function invalidateTournamentStatsCache(options: TournamentStatsUpd
 
         // Step 3: Rewarm cache immediately if requested
         if (rewarmCache) {
-            const baseUrl = process.env.NEXT_PUBLIC_ENV === 'prod'
-                ? 'https://flappyufo.vercel.app'
-                : 'https://flappyufo-git-dev-shujauddin.vercel.app';
+            // CRITICAL FIX: Use dynamic URL to avoid cross-environment issues
+            const baseUrl = process.env.VERCEL_URL
+                ? `https://${process.env.VERCEL_URL}`
+                : (process.env.NEXT_PUBLIC_ENV === 'prod'
+                    ? 'https://flappyufo.vercel.app'
+                    : 'https://flappyufo-git-dev-shujauddin.vercel.app');
             if (baseUrl) {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
@@ -119,9 +122,12 @@ export async function invalidateLeaderboardCache(options: TournamentStatsUpdateO
 
         // Step 3: 🚀 CRITICAL FIX - Rewarm cache immediately (same as tournament stats!)
         if (rewarmCache) {
-            const baseUrl = process.env.NEXT_PUBLIC_ENV === 'prod'
-                ? 'https://flappyufo.vercel.app'
-                : 'https://flappyufo-git-dev-shujauddin.vercel.app';
+            // CRITICAL FIX: Use dynamic URL to avoid cross-environment issues
+            const baseUrl = process.env.VERCEL_URL
+                ? `https://${process.env.VERCEL_URL}`
+                : (process.env.NEXT_PUBLIC_ENV === 'prod'
+                    ? 'https://flappyufo.vercel.app'
+                    : 'https://flappyufo-git-dev-shujauddin.vercel.app');
             if (baseUrl) {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout

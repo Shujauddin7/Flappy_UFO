@@ -526,16 +526,14 @@ export async function POST(req: NextRequest) {
 
         // 🔥 INSTANT FIX: Update Redis leaderboard for ALL scores (not just high scores)
         console.log('⚡ Updating Redis leaderboard for ALL scores...');
-        const redisUpdateSuccess = await updateLeaderboardScore(tournamentDay, user.id, record.highest_score, {
+        const redisUpdateSuccess = await updateLeaderboardScore(tournamentDay, user.id, score > record.highest_score ? score : record.highest_score, {
             username: user.username,
             wallet: walletToCheck
         });
 
         if (!redisUpdateSuccess) {
             console.warn('⚠️ Redis leaderboard update failed, but continuing with cache invalidation');
-        }
-
-        try {
+        } try {
             // CRITICAL: Force immediate cache clearing and rewarming for instant updates
             const { invalidateAllTournamentCaches } = await import('@/utils/tournament-cache-helpers');
             await invalidateAllTournamentCaches({
@@ -546,16 +544,24 @@ export async function POST(req: NextRequest) {
             });
             console.log('✅ Both tournament stats AND leaderboard updated for ALL score submissions');
 
-            // ADDITIONAL: Clear browser cache keys that might cause stale display
+            // CRITICAL: Clear ALL cache keys that could cause stale display
             const additionalCacheKeys = [
                 'tournament_leaderboard_response',
                 `tournament_leaderboard_response:${tournamentDay}`,
-                'tournament_stats_instant'
+                'tournament_stats_instant',
+                `leaderboard_data:${tournamentDay}`,
+                `leaderboard_updates:${tournamentDay}`,
+                `tournament_stats_updates:${tournamentDay}`
             ];
 
-            const { deleteCached } = await import('@/lib/redis');
+            const { deleteCached, setCached } = await import('@/lib/redis');
             await Promise.all(additionalCacheKeys.map(key => deleteCached(key)));
-            console.log('✅ Additional browser cache keys cleared for instant updates');
+
+            // FORCE SSE TRIGGERS for instant updates
+            await setCached(`leaderboard_updates:${tournamentDay}`, Date.now().toString(), 300);
+            await setCached(`tournament_stats_updates:${tournamentDay}`, Date.now().toString(), 300);
+
+            console.log('✅ All cache keys cleared and SSE triggers set for instant cross-device updates');
 
         } catch (cacheError) {
             console.error('❌ Cache update failed but score recorded:', cacheError);

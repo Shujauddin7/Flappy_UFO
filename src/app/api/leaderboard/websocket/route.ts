@@ -153,9 +153,12 @@ export async function GET(request: NextRequest) {
                 // Helper: Fetch fresh leaderboard data
                 const fetchAndSendFreshLeaderboard = async () => {
                     try {
-                        const baseUrl = isProduction
-                            ? 'https://flappyufo.vercel.app'
-                            : 'https://flappyufo-git-dev-shujauddin.vercel.app';
+                        // CRITICAL FIX: Use relative URLs to avoid cross-environment issues
+                        const baseUrl = process.env.VERCEL_URL
+                            ? `https://${process.env.VERCEL_URL}`
+                            : (isProduction
+                                ? 'https://flappyufo.vercel.app'
+                                : 'https://flappyufo-git-dev-shujauddin.vercel.app');
 
                         const controller = new AbortController();
                         const timeoutId = setTimeout(() => controller.abort(), 2000);
@@ -188,9 +191,12 @@ export async function GET(request: NextRequest) {
                 // Helper: Fetch fresh tournament stats
                 const fetchAndSendFreshStats = async () => {
                     try {
-                        const baseUrl = isProduction
-                            ? 'https://flappyufo.vercel.app'
-                            : 'https://flappyufo-git-dev-shujauddin.vercel.app';
+                        // CRITICAL FIX: Use relative URLs to avoid cross-environment issues
+                        const baseUrl = process.env.VERCEL_URL
+                            ? `https://${process.env.VERCEL_URL}`
+                            : (isProduction
+                                ? 'https://flappyufo.vercel.app'
+                                : 'https://flappyufo-git-dev-shujauddin.vercel.app');
 
                         const controller = new AbortController();
                         const timeoutId = setTimeout(() => controller.abort(), 2000);

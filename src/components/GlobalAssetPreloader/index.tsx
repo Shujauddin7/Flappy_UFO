@@ -3,6 +3,75 @@
 import { useGlobalAssetPreloader } from '@/hooks/useGlobalAssetPreloader';
 import { useEffect } from 'react';
 
+// Types for global data
+interface LeaderboardPlayer {
+    id: string;
+    user_id: string;
+    username: string | null;
+    wallet: string;
+    highest_score: number;
+    tournament_day: string;
+    created_at: string;
+    rank?: number;
+}
+
+interface GlobalLeaderboardData {
+    players: LeaderboardPlayer[];
+    tournament_day: string;
+    total_players: number;
+    cached?: boolean;
+    fetched_at?: string;
+}
+
+interface GlobalTournamentData {
+    tournament_day: string | null;
+    total_players: number;
+    total_tournament_players: number;
+    total_prize_pool: number;
+    has_active_tournament: boolean;
+    end_time?: string;
+}
+
+// Global leaderboard data preloader to prevent blur on navigation
+let globalLeaderboardData: GlobalLeaderboardData | null = null;
+let globalTournamentData: GlobalTournamentData | null = null;
+
+// Preload leaderboard and tournament data globally
+const preloadGameData = async () => {
+    try {
+        // Parallel fetch of both tournament stats and leaderboard data
+        const [tournamentRes, leaderboardRes] = await Promise.all([
+            fetch('/api/tournament/stats', { cache: 'no-store' }),
+            fetch('/api/tournament/leaderboard-data', { cache: 'no-store' })
+        ]);
+
+        if (tournamentRes.ok && leaderboardRes.ok) {
+            globalTournamentData = await tournamentRes.json();
+            globalLeaderboardData = await leaderboardRes.json();
+
+            // Store in sessionStorage for immediate access
+            sessionStorage.setItem('tournament_data', JSON.stringify({
+                data: globalTournamentData,
+                timestamp: Date.now()
+            }));
+
+            sessionStorage.setItem('leaderboard_data', JSON.stringify({
+                data: globalLeaderboardData,
+                timestamp: Date.now()
+            }));
+
+            console.log('🚀 GLOBAL PRELOAD: Game data preloaded successfully');
+            console.log(`   Tournament: ${globalTournamentData?.total_tournament_players || 0} players`);
+            console.log(`   Leaderboard: ${globalLeaderboardData?.players?.length || 0} entries`);
+        }
+    } catch (error) {
+        console.warn('⚠️ Global game data preload failed:', error);
+    }
+};
+
+// Export for use in other components
+export { globalLeaderboardData, globalTournamentData };
+
 interface GlobalAssetPreloaderProps {
     children: React.ReactNode;
     showLoadingScreen?: boolean;
@@ -14,6 +83,9 @@ export function GlobalAssetPreloader({ children, showLoadingScreen = false }: Gl
     // Start preloading immediately when component mounts
     useEffect(() => {
         startPreloading();
+
+        // CRITICAL: Also preload game data to prevent leaderboard blur
+        preloadGameData();
     }, [startPreloading]);
 
     // If we want to show a loading screen and assets aren't ready
