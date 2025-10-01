@@ -387,8 +387,8 @@ export default function LeaderboardPage() {
                 }));
 
                 console.log(`⚡ PARALLEL DATA LOADED: ${tournamentData.total_players} players, ${tournamentData.total_prize_pool
-                    
-                } WLD, ${leaderboard.players?.length || 0} entries`);
+
+                    } WLD, ${leaderboard.players?.length || 0} entries`);
 
             } catch (error) {
                 console.error('Essential data load failed:', error);
@@ -753,17 +753,17 @@ export default function LeaderboardPage() {
                             </div>
                         )}
 
-                        {/* Prize Pool Info */}
+                        {/* Prize Pool Info - IMPROVED: Only show blur when actually no data, not when cached */}
                         <div className="prize-pool-info">
                             <div className="prize-pool-text">
-                                Prize pool: <span className={`prize-pool-highlight ${!currentTournament ? 'loading-blur' : ''}`}>
+                                Prize pool: <span className={`prize-pool-highlight ${(!currentTournament && !preloadedLeaderboardData) ? 'loading-blur' : ''}`}>
                                     {currentTournament
                                         ? `${currentTournament.total_prize_pool.toFixed(2)} WLD`
                                         : 'Loading...'}
                                 </span>
                             </div>
                             <div className="players-text">
-                                <span className={`human-count-number ${!currentTournament ? 'loading-blur' : ''}`}>
+                                <span className={`human-count-number ${(!currentTournament && !preloadedLeaderboardData) ? 'loading-blur' : ''}`}>
                                     {currentTournament
                                         ? (currentTournament.total_tournament_players ?? currentTournament.total_players ?? 0) // Safe fallback to prevent crashes
                                         : '...'}

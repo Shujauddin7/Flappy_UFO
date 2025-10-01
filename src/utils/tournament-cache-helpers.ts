@@ -22,15 +22,18 @@ export async function invalidateTournamentStatsCache(options: TournamentStatsUpd
     console.log(`🔄 Invalidating tournament stats cache (${source})`);
 
     try {
-        // Step 1: Invalidate all tournament-related caches - MORE AGGRESSIVE
+        // Step 1: Invalidate all tournament-related caches - COMPREHENSIVE SYNC
         const cacheKeys = [
             'tournament_stats_instant',
             'tournament:current',
             'tournament:prizes:current',
             `tournament:stats:${tournamentDay}`,
             `tournament:prizes:${tournamentDay}`,
-            'tournament_leaderboard_response', // CRITICAL: Add this key!
-            `tournament_leaderboard_response:${tournamentDay}` // Date-specific too
+            'tournament_leaderboard_response', // CRITICAL: Also clear leaderboard cache
+            `tournament_leaderboard_response:${tournamentDay}`, // Date-specific too
+            `leaderboard_data:${tournamentDay}`, // CRITICAL: Clear WebSocket instant data
+            `tournament_stats_updates:${tournamentDay}`, // Clear previous SSE triggers
+            `leaderboard_updates:${tournamentDay}` // CRITICAL: Clear leaderboard SSE triggers too
         ];
 
         await Promise.all(cacheKeys.map(key => deleteCached(key)));
@@ -91,14 +94,17 @@ export async function invalidateLeaderboardCache(options: TournamentStatsUpdateO
     console.log(`🏆 Invalidating leaderboard cache (${source})`);
 
     try {
-        // Step 1: Invalidate leaderboard caches - MORE AGGRESSIVE
+        // Step 1: Invalidate ALL leaderboard caches - COMPREHENSIVE SYNC
         const cacheKeys = [
             'tournament:leaderboard:current',
             `tournament:leaderboard:${tournamentDay}`,
             'tournament_leaderboard_response', // CRITICAL: Main cache key
             `tournament_leaderboard_response:${tournamentDay}`, // Date-specific
             `leaderboard:${tournamentDay}`, // Redis sorted set
-            `leaderboard:${tournamentDay}:details` // Redis player details
+            `leaderboard:${tournamentDay}:details`, // Redis player details
+            `leaderboard_data:${tournamentDay}`, // CRITICAL: WebSocket instant data cache
+            `leaderboard_updates:${tournamentDay}`, // Clear previous update triggers
+            'tournament_stats_instant' // CRITICAL: Also clear tournament stats for sync
         ];
 
         await Promise.all(cacheKeys.map(key => deleteCached(key)));

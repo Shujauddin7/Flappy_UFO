@@ -38,7 +38,7 @@ export async function getLeaderboardData(
     const supabase = await getSupabaseClient();
 
     // Optimized query - only select the essential columns needed for leaderboard display
-    // Removed unused fields: total_games_played, verified_games_played, unverified_games_played, created_at
+    // CRITICAL FIX: Include ALL users, even those with NULL usernames (we'll handle fallback in frontend)
     let query = supabase
         .from('user_tournament_records')
         .select(`
@@ -51,8 +51,7 @@ export async function getLeaderboardData(
         `)
         .eq('tournament_day', tournamentDay)
         .or('verified_entry_paid.eq.true,standard_entry_paid.eq.true') // Only paid entries
-        .not('username', 'is', null) // Exclude NULL usernames (bad data)
-        .not('wallet', 'is', null) // Exclude NULL wallets (bad data)
+        .not('wallet', 'is', null) // Exclude NULL wallets (bad data) - but ALLOW NULL usernames
         .order('highest_score', { ascending: false })
         .order('first_game_at', { ascending: true }); // Tie-breaker: earlier submission wins
 

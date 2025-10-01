@@ -526,22 +526,40 @@ export async function POST(req: NextRequest) {
 
         // 🔥 INSTANT FIX: Update Redis leaderboard for ALL scores (not just high scores)
         console.log('⚡ Updating Redis leaderboard for ALL scores...');
-        await updateLeaderboardScore(tournamentDay, user.id, record.highest_score, {
+        const redisUpdateSuccess = await updateLeaderboardScore(tournamentDay, user.id, record.highest_score, {
             username: user.username,
             wallet: walletToCheck
         });
 
+        if (!redisUpdateSuccess) {
+            console.warn('⚠️ Redis leaderboard update failed, but continuing with cache invalidation');
+        }
+
         try {
+            // CRITICAL: Force immediate cache clearing and rewarming for instant updates
             const { invalidateAllTournamentCaches } = await import('@/utils/tournament-cache-helpers');
             await invalidateAllTournamentCaches({
                 tournamentDay,
                 triggerSSE: true,
                 rewarmCache: true,
-                source: 'regular_score_with_leaderboard_update'
+                source: 'score_submission_all_scores'
             });
-            console.log('✅ Both tournament stats AND leaderboard updated for regular score');
+            console.log('✅ Both tournament stats AND leaderboard updated for ALL score submissions');
+
+            // ADDITIONAL: Clear browser cache keys that might cause stale display
+            const additionalCacheKeys = [
+                'tournament_leaderboard_response',
+                `tournament_leaderboard_response:${tournamentDay}`,
+                'tournament_stats_instant'
+            ];
+
+            const { deleteCached } = await import('@/lib/redis');
+            await Promise.all(additionalCacheKeys.map(key => deleteCached(key)));
+            console.log('✅ Additional browser cache keys cleared for instant updates');
+
         } catch (cacheError) {
-            console.error('❌ Cache update failed for regular score:', cacheError);
+            console.error('❌ Cache update failed but score recorded:', cacheError);
+            // Don't fail the request if cache update fails
         }
 
         return NextResponse.json({

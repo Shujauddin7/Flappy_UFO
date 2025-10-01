@@ -51,6 +51,14 @@ export const PlayerRankCard: React.FC<PlayerRankCardProps> = ({
             }
             return player.username;
         }
+
+        // CRITICAL FIX: Use "Human" as fallback instead of wallet, then wallet as last resort
+        // This should RARELY occur now that database query includes all users
+        if (player.wallet && player.wallet.length > 8) {
+            return "Human"; // Plan.md specified fallback
+        }
+
+        // Last resort: show wallet if it's short enough
         return formatWallet(player.wallet);
     };
 

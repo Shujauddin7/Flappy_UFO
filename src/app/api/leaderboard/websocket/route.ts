@@ -144,9 +144,9 @@ export async function GET(request: NextRequest) {
                         console.error('❌ Error checking Redis updates:', error);
                     }
 
-                    // Continue ultra-fast checking for Redis updates (10ms = WebSocket-like)
+                    // Continue ultra-fast checking for Redis updates (25ms = real-time gaming performance)
                     if (isActive) {
-                        setTimeout(checkRedisUpdates, 10); // 10ms = 100 checks per second for instant updates
+                        setTimeout(checkRedisUpdates, 25); // 25ms = 40 checks per second for real-time feel
                     }
                 };
 

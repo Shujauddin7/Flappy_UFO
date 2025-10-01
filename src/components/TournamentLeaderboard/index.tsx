@@ -48,13 +48,19 @@ export const TournamentLeaderboard = ({
     const [topPlayers, setTopPlayers] = useState<LeaderboardPlayer[]>([]);
     const [allPlayers, setAllPlayers] = useState<LeaderboardPlayer[]>([]);
     const [loading, setLoading] = useState(() => {
-        // Only start with loading true if we don't have preloaded data immediately
-        const initialLoading = !preloadedData;
+        // CRITICAL FIX: Only show loading if we truly don't have any data immediately available
+        // Prevents unnecessary blur on every navigation when data exists
+        const hasImmediateData = preloadedData?.players && preloadedData.players.length > 0;
+        const initialLoading = !hasImmediateData;
+
         console.log('🏁 TournamentLeaderboard MOUNT:', {
             hasPreloadedData: !!preloadedData,
+            hasImmediateData,
             playersCount: preloadedData?.players?.length || 0,
-            initialLoadingState: initialLoading
+            initialLoadingState: initialLoading,
+            reason: hasImmediateData ? 'Has data - no blur needed' : 'No data - show loading'
         });
+
         return initialLoading;
     });
     const [currentUserData, setCurrentUserData] = useState<LeaderboardPlayer | null>(null);
