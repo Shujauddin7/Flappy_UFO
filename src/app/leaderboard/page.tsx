@@ -441,32 +441,109 @@ export default function LeaderboardPage() {
                     console.log('🔥 SUPABASE REALTIME UPDATE:', payload);
 
                     try {
-                        // Fetch fresh leaderboard data when database changes
-                        const response = await fetch(`/api/tournament/leaderboard-data?tournament_day=${currentTournament.tournament_day}&bust=${Date.now()}`);
-                        const freshData = await response.json();
+                        // 🚀 BULLETPROOF: Use payload for UPDATEs, always sync for INSERT/DELETE
+                        if (payload.eventType === 'UPDATE' && payload.new) {
+                            const updatedRecord = payload.new as {
+                                user_id: string;
+                                username: string;
+                                highest_score: number;
+                                total_games_played: number;
+                                tournament_id: string;
+                            };
 
-                        if (freshData && freshData.players) {
-                            console.log(`✅ CROSS-DEVICE UPDATE: ${freshData.players.length} players updated via Supabase Realtime`);
+                            console.log(`⚡ INSTANT UPDATE: ${updatedRecord.username} score: ${updatedRecord.highest_score}`);
 
-                            // Update leaderboard data immediately
-                            setPreloadedLeaderboardData({
-                                ...freshData,
-                                realtime_update_id: `realtime_${Date.now()}`, // Force React re-render
-                                source: 'supabase_realtime'
+                            // Update just this player's data in existing leaderboard
+                            setPreloadedLeaderboardData(prev => {
+                                if (!prev?.players) {
+                                    // If no cached data, fetch fresh instead of failing
+                                    console.log('🔄 No cached data, fetching fresh leaderboard');
+                                    fetch(`/api/tournament/leaderboard-data?tournament_day=${currentTournament.tournament_day}&bust=${Date.now()}`)
+                                        .then(res => res.json())
+                                        .then(freshData => {
+                                            if (freshData?.players) {
+                                                setPreloadedLeaderboardData({
+                                                    ...freshData,
+                                                    realtime_update_id: `fresh_sync_${Date.now()}`,
+                                                    source: 'fresh_sync'
+                                                });
+                                            }
+                                        });
+                                    return prev;
+                                }
+
+                                const updatedPlayers = prev.players.map(player => {
+                                    if (player.user_id === updatedRecord.user_id) {
+                                        return {
+                                            ...player,
+                                            highest_score: updatedRecord.highest_score,
+                                            total_games_played: updatedRecord.total_games_played,
+                                            username: updatedRecord.username || player.username
+                                        };
+                                    }
+                                    return player;
+                                });
+
+                                // Check if player exists in current leaderboard
+                                const playerExists = prev.players.some(p => p.user_id === updatedRecord.user_id);
+                                if (!playerExists) {
+                                    console.log('🔄 Player not in cached leaderboard, syncing fresh data');
+                                    // Player not in our cached data, sync fresh
+                                    fetch(`/api/tournament/leaderboard-data?tournament_day=${currentTournament.tournament_day}&bust=${Date.now()}`)
+                                        .then(res => res.json())
+                                        .then(freshData => {
+                                            if (freshData?.players) {
+                                                setPreloadedLeaderboardData({
+                                                    ...freshData,
+                                                    realtime_update_id: `player_sync_${Date.now()}`,
+                                                    source: 'player_sync'
+                                                });
+                                            }
+                                        });
+                                    return prev;
+                                }
+
+                                // Re-sort by score
+                                updatedPlayers.sort((a, b) => (b.highest_score || 0) - (a.highest_score || 0));
+
+                                return {
+                                    ...prev,
+                                    players: updatedPlayers,
+                                    realtime_update_id: `optimized_${Date.now()}`,
+                                    source: 'payload_direct'
+                                };
                             });
+                        } else {
+                            // For INSERT/DELETE or any other events, always fetch fresh data
+                            console.log('🔄 INSERT/DELETE event, fetching complete fresh leaderboard');
+                            const response = await fetch(`/api/tournament/leaderboard-data?tournament_day=${currentTournament.tournament_day}&bust=${Date.now()}`);
+                            const freshData = await response.json();
 
-                            // Update cache for consistency
-                            try {
-                                sessionStorage.setItem('leaderboard_data', JSON.stringify({
-                                    data: freshData,
-                                    timestamp: Date.now()
-                                }));
-                            } catch (e) {
-                                console.warn('Session storage update failed:', e);
+                            if (freshData && freshData.players) {
+                                console.log(`✅ COMPLETE SYNC: ${freshData.players.length} players via API`);
+                                setPreloadedLeaderboardData({
+                                    ...freshData,
+                                    realtime_update_id: `complete_sync_${Date.now()}`,
+                                    source: 'complete_sync'
+                                });
                             }
                         }
                     } catch (error) {
-                        console.error('❌ Supabase realtime data fetch failed:', error);
+                        console.error('❌ Realtime update failed:', error);
+                        // On any error, fetch fresh data to ensure consistency
+                        try {
+                            const response = await fetch(`/api/tournament/leaderboard-data?tournament_day=${currentTournament.tournament_day}&bust=${Date.now()}`);
+                            const freshData = await response.json();
+                            if (freshData?.players) {
+                                setPreloadedLeaderboardData({
+                                    ...freshData,
+                                    realtime_update_id: `error_recovery_${Date.now()}`,
+                                    source: 'error_recovery'
+                                });
+                            }
+                        } catch (recoveryError) {
+                            console.error('❌ Recovery fetch failed:', recoveryError);
+                        }
                     }
                 }
             )
