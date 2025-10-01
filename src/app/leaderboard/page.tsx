@@ -420,10 +420,10 @@ export default function LeaderboardPage() {
         // Create Supabase client
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
         const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-        
+
         console.log(`   Supabase URL: ${supabaseUrl}`);
         console.log(`   Anon Key: ${supabaseAnonKey ? 'Present' : 'Missing'}`);
-        
+
         const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
         // Subscribe to user_tournament_records changes for real-time leaderboard updates
