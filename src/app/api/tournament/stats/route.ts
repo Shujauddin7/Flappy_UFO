@@ -109,6 +109,7 @@ export async function GET() {
         }
 
         const responseData = {
+            id: currentTournament.id, // CRITICAL: Include tournament ID for Realtime filters
             tournament_day: tournamentDay,
             tournament_name: currentTournament.name || `Tournament ${tournamentDay}`,
             total_players: stats.total_players, // Keep for backward compatibility

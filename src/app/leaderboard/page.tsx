@@ -358,7 +358,7 @@ export default function LeaderboardPage() {
                 ]);
 
                 const newTournamentData: TournamentData = {
-                    id: 'current',
+                    id: tournamentData.id || 'current', // Use actual tournament ID from API
                     tournament_day: tournamentData.tournament_day || new Date().toISOString().split('T')[0],
                     is_active: true,
                     total_players: tournamentData.total_players || 0, // System users
