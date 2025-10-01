@@ -20,7 +20,7 @@ interface LeaderboardApiResponse {
     total_players: number;
     cached?: boolean;
     fetched_at?: string;
-    sse_update_id?: string; // For forcing React re-renders on SSE updates
+    realtime_update_id?: string; // For forcing React re-renders on realtime updates
 }
 
 interface TournamentLeaderboardProps {
@@ -77,11 +77,11 @@ export const TournamentLeaderboard = ({
             playersCount: preloadedData?.players?.length || 0,
             timestamp: Date.now(),
             currentLoadingState: loading,
-            sse_update_id: preloadedData?.sse_update_id
+            realtime_update_id: preloadedData?.realtime_update_id
         });
     }, [preloadedData, loading]);
 
-    // 🚀 CRITICAL FIX: Direct preloaded data processing for SSE updates
+    // 🚀 CRITICAL FIX: Direct preloaded data processing for realtime updates
     useEffect(() => {
         if (preloadedData?.players) {
             const players = preloadedData.players;

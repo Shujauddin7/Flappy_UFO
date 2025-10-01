@@ -38,7 +38,6 @@
     "eruda": "^3.4.3",
     "eslint": "^9",
     "eslint-config-next": "15.2.3",
-    "eventsource": "^4.0.0",
     "typescript": "^5"
   }
 }

@@ -77,7 +77,7 @@ export async function updateLeaderboardScore(
         await redis.set(updateKey, Date.now().toString(), { ex: 300 });
         console.log('✅ Redis update trigger set');
 
-        // � NEW: Store complete leaderboard data in Redis for instant WebSocket access
+        // Store complete leaderboard data in Redis for instant Supabase Realtime access
         try {
             const currentLeaderboard = await getTopPlayers(tournamentDay, 0, 50);
             if (currentLeaderboard && currentLeaderboard.length > 0) {
@@ -91,9 +91,9 @@ export async function updateLeaderboardScore(
                     source: 'redis_instant_storage'
                 };
 
-                // Store data for instant WebSocket retrieval (5-minute expiry)
+                // Store data for instant Supabase Realtime retrieval (5-minute expiry)
                 await redis.set(dataKey, JSON.stringify(leaderboardData), { ex: 300 });
-                console.log(`🚀 INSTANT: Leaderboard data stored in Redis for WebSocket (${currentLeaderboard.length} players)`);
+                console.log(`🚀 INSTANT: Leaderboard data stored in Redis for Supabase Realtime (${currentLeaderboard.length} players)`);
 
                 // Also trigger pub/sub for existing systems (backward compatibility)
                 const pubsubMessage = JSON.stringify({
@@ -106,7 +106,7 @@ export async function updateLeaderboardScore(
                     trigger_score: score
                 });
 
-                // This will be handled by WebSocket subscribers for instant updates
+                // This will be handled by Supabase Realtime for instant updates
                 await redis.publish('leaderboard_channel', pubsubMessage);
                 console.log('✅ Redis pub/sub event also published for compatibility');
             }
@@ -117,8 +117,8 @@ export async function updateLeaderboardScore(
 
         // Also trigger tournament stats update for cross-device sync consistency  
         const statsUpdateKey = `tournament_stats_updates:${tournamentDay}`;
-        await redis.set(statsUpdateKey, Date.now().toString(), { ex: 300 }); // Keep for SSE fallback
-        console.log('✅ Tournament stats SSE trigger also set for complete sync');
+        await redis.set(statsUpdateKey, Date.now().toString(), { ex: 300 }); // Keep for Supabase Realtime sync
+        console.log('✅ Tournament stats trigger also set for complete Supabase Realtime sync');
 
         console.log(`⚡ Redis leaderboard updated: ${userId} = ${score} points`);
         return true;

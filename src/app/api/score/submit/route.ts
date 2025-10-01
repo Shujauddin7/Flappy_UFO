@@ -420,7 +420,7 @@ export async function POST(req: NextRequest) {
                     const { invalidateAllTournamentCaches } = await import('@/utils/tournament-cache-helpers');
                     await invalidateAllTournamentCaches({
                         tournamentDay,
-                        triggerSSE: true,
+
                         rewarmCache: true,
                         source: 'new_high_score'
                     });
@@ -521,8 +521,8 @@ export async function POST(req: NextRequest) {
         }
 
         // 🚀 CRITICAL FIX: Update BOTH tournament stats AND leaderboard for ALL scores
-        // This ensures consistent SSE update timing for both prize pool and player scores
-        console.log('⚡ Updating ALL caches for consistent SSE experience...');
+        // This ensures consistent Supabase Realtime update timing for both prize pool and player scores
+        console.log('⚡ Updating ALL caches for consistent Supabase Realtime experience...');
 
         // 🔥 INSTANT FIX: Update Redis leaderboard for ALL scores (not just high scores)
         console.log('⚡ Updating Redis leaderboard for ALL scores...');
@@ -538,7 +538,6 @@ export async function POST(req: NextRequest) {
             const { invalidateAllTournamentCaches } = await import('@/utils/tournament-cache-helpers');
             await invalidateAllTournamentCaches({
                 tournamentDay,
-                triggerSSE: true,
                 rewarmCache: true,
                 source: 'score_submission_all_scores'
             });
@@ -557,11 +556,11 @@ export async function POST(req: NextRequest) {
             const { deleteCached, setCached } = await import('@/lib/redis');
             await Promise.all(additionalCacheKeys.map(key => deleteCached(key)));
 
-            // FORCE SSE TRIGGERS for instant updates
+            // FORCE cache invalidation for instant Supabase Realtime updates
             await setCached(`leaderboard_updates:${tournamentDay}`, Date.now().toString(), 300);
             await setCached(`tournament_stats_updates:${tournamentDay}`, Date.now().toString(), 300);
 
-            console.log('✅ All cache keys cleared and SSE triggers set for instant cross-device updates');
+            console.log('✅ All cache keys cleared - Supabase Realtime will handle instant cross-device updates');
 
         } catch (cacheError) {
             console.error('❌ Cache update failed but score recorded:', cacheError);

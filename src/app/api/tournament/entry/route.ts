@@ -472,18 +472,17 @@ export async function POST(req: NextRequest) {
         }
 
         // 🚨 INSTANT SSE BROADCAST: New tournament entry affects prize pool + total players
-        console.log('📡 Broadcasting tournament stats update via SSE (new player joined)...');
+        console.log('📡 Broadcasting tournament stats update via Supabase Realtime (new player joined)...');
         try {
             const { invalidateTournamentStatsCache } = await import('@/utils/tournament-cache-helpers');
             await invalidateTournamentStatsCache({
                 tournamentDay: finalTournament.tournament_day,
-                triggerSSE: true,
                 rewarmCache: true,
                 source: 'new_tournament_entry'
             });
             console.log('✅ Tournament stats update complete - all users will see updated prize pool & total players');
-        } catch (sseError) {
-            console.log('Tournament stats SSE trigger failed (non-critical):', sseError);
+        } catch (realtimeError) {
+            console.log('Tournament stats Supabase Realtime trigger failed (non-critical):', realtimeError);
         }
 
         return NextResponse.json({

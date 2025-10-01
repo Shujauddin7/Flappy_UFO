@@ -6,6 +6,7 @@ import { TournamentLeaderboard } from '@/components/TournamentLeaderboard';
 import { PlayerRankCard } from '@/components/PlayerRankCard';
 import { useSession } from 'next-auth/react';
 import { CACHE_TTL } from '@/utils/leaderboard-cache';
+import { createClient } from '@supabase/supabase-js';
 
 interface LeaderboardPlayer {
     id: string;
@@ -24,7 +25,7 @@ interface LeaderboardApiResponse {
     total_players: number;
     cached?: boolean;
     fetched_at?: string;
-    sse_update_id?: string; // For forcing React re-renders on SSE updates
+    realtime_update_id?: string; // For forcing React re-renders on realtime updates
 }
 
 interface TournamentData {
@@ -396,134 +397,103 @@ export default function LeaderboardPage() {
             }
         };
 
-        // Load once on mount - Redis cache + periodic refresh handles updates
+        // Load once on mount - Supabase Realtime handles updates
         loadEssentialData();
+    }, []);
 
-        // 🚀 REDIS WEBSOCKET CONNECTION: Instant 5-25ms updates via Redis pub/sub  
-        if (currentTournament?.tournament_day) {
-            console.log('🔥 Starting Redis WebSocket connection for instant updates...');
+    // 🚀 SUPABASE REALTIME: Fix cross-device updates and username issues
+    useEffect(() => {
+        if (!currentTournament?.tournament_day) return;
 
-            const eventSource = new EventSource(`/api/leaderboard/websocket?tournament_day=${encodeURIComponent(currentTournament.tournament_day)}`);
+        console.log('🚀 Setting up Supabase Realtime for cross-device sync...');
 
-            // Listen for Redis WebSocket connection confirmation with detailed logging
-            eventSource.addEventListener('connected', (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    console.log(`🚀 WEBSOCKET CONNECTED: ${data.protocol} - ${data.performance}`);
-                    console.log(`   Tournament: ${data.tournament_day}`);
-                    console.log(`   Timestamp: ${data.timestamp}`);
-                    console.log(`   ✅ Real-time updates active!`);
-                } catch (parseError) {
-                    console.error('❌ WebSocket connected event JSON parse error:', parseError);
-                }
-            });            // Add error and close event listeners for debugging
-            eventSource.addEventListener('error', (event) => {
-                console.error('❌ WEBSOCKET ERROR:', event);
-                console.log('   Connection state:', eventSource.readyState);
-            });
+        // Create Supabase client
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+        const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-            // EventSource doesn't have onopen/onclose, only onerror
-            // Connection status is handled by the 'connected' event above
+        // Subscribe to user_tournament_records changes for real-time leaderboard updates
+        const channel = supabase
+            .channel('leaderboard-realtime')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*', // Listen to INSERT, UPDATE, DELETE
+                    schema: 'public',
+                    table: 'user_tournament_records',
+                    filter: `tournament_day=eq.${currentTournament.tournament_day}`
+                },
+                async (payload) => {
+                    console.log('🔥 SUPABASE REALTIME UPDATE:', payload);
 
-            eventSource.addEventListener('tournament_stats_update', (event) => {
-                try {
-                    const data = JSON.parse(event.data);
+                    try {
+                        // Fetch fresh leaderboard data when database changes
+                        const response = await fetch(`/api/tournament/leaderboard-data?tournament_day=${currentTournament.tournament_day}&bust=${Date.now()}`);
+                        const freshData = await response.json();
 
-                    // Update tournament data instantly without cache clearing
-                    if (data && data.stats) {
-                        setCurrentTournament(prev => prev ? {
-                            ...prev,
-                            total_players: data.stats.total_players || prev.total_players,
-                            total_tournament_players: data.stats.total_tournament_players ?? data.stats.total_players ?? prev.total_tournament_players ?? prev.total_players,
-                            total_prize_pool: data.stats.total_prize_pool || prev.total_prize_pool,
-                            total_collected: data.stats.total_collected || prev.total_collected
-                        } : prev);
+                        if (freshData && freshData.players) {
+                            console.log(`✅ CROSS-DEVICE UPDATE: ${freshData.players.length} players updated via Supabase Realtime`);
 
-                        console.log(`⚡ REAL-TIME TOURNAMENT UPDATE: ${data.stats.total_tournament_players ?? data.stats.total_players ?? 0} players, $${data.stats.total_prize_pool ?? 0} prize pool`);
-                    } else {
-                        console.warn('⚠️ Tournament stats update missing data');
-                    }
-                } catch (parseError) {
-                    console.error('❌ Failed to parse tournament stats update:', parseError);
-                }
-            });
+                            // Update leaderboard data immediately
+                            setPreloadedLeaderboardData({
+                                ...freshData,
+                                realtime_update_id: `realtime_${Date.now()}`, // Force React re-render
+                                source: 'supabase_realtime'
+                            });
 
-            // Add leaderboard update listener with detailed logging
-            eventSource.addEventListener('leaderboard_update', (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-
-                    if (data && data.players && Array.isArray(data.players)) {
-                        const leaderboardData = {
-                            players: data.players,
-                            tournament_day: data.tournament_day || new Date().toISOString().split('T')[0],
-                            total_players: data.players.length,
-                            cached: true,
-                            fetched_at: data.timestamp || new Date().toISOString(),
-                            // Add unique identifier for change detection
-                            sse_update_id: `sse_${Date.now()}_${Math.random()}`
-                        };
-
-                        // CRITICAL: Validate each player has required structure
-                        const validPlayers = data.players.filter((player: unknown): player is LeaderboardPlayer => {
-                            const p = player as Record<string, unknown>;
-                            return p &&
-                                typeof p.user_id === 'string' &&
-                                typeof p.score === 'number' &&
-                                typeof p.rank === 'number';
-                        });
-
-                        if (validPlayers.length > 0) {
-                            leaderboardData.players = validPlayers;
-                            leaderboardData.total_players = validPlayers.length;
-
-                            // Update data directly without aggressive cache clearing
-                            setPreloadedLeaderboardData(leaderboardData);
-                            console.log(`🚀 REAL-TIME LEADERBOARD UPDATE! Source: ${data.source || 'websocket'}, Players: ${validPlayers.length}, Devices: ALL UPDATED`);
-
-                            // Force cache update for instant loading on next visit
+                            // Update cache for consistency
                             try {
                                 sessionStorage.setItem('leaderboard_data', JSON.stringify({
-                                    data: leaderboardData,
+                                    data: freshData,
                                     timestamp: Date.now()
                                 }));
-                            } catch {
-                                // Ignore cache storage errors
+                            } catch (e) {
+                                console.warn('Session storage update failed:', e);
                             }
-                        } else {
-                            console.warn('⚠️ Redis WebSocket leaderboard update has no valid players');
                         }
-                    } else {
-                        console.warn('⚠️ Redis WebSocket leaderboard update missing players data');
+                    } catch (error) {
+                        console.error('❌ Supabase realtime data fetch failed:', error);
                     }
-                } catch (parseError) {
-                    console.error('❌ WebSocket leaderboard JSON parse error:', parseError);
-                    // Don't crash the app - just log and continue
                 }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'tournaments',
+                    filter: `tournament_day=eq.${currentTournament.tournament_day}`
+                },
+                (payload) => {
+                    console.log('🔥 TOURNAMENT STATS REALTIME UPDATE:', payload);
+
+                    // Tournament data changed - update immediately from payload
+                    if (payload.new && typeof payload.new === 'object') {
+                        const newData = payload.new as Record<string, unknown>;
+                        console.log(`📊 TOURNAMENT STATS UPDATED: ${newData.total_tournament_players || 0} players, ${newData.total_prize_pool || 0} WLD`);
+
+                        setCurrentTournament(prev => prev ? {
+                            ...prev,
+                            total_players: (newData.total_players as number) || prev.total_players,
+                            total_tournament_players: (newData.total_tournament_players as number) || prev.total_tournament_players,
+                            total_prize_pool: (newData.total_prize_pool as number) || prev.total_prize_pool,
+                            total_collected: (newData.total_collected as number) || prev.total_collected,
+                            admin_fee: (newData.admin_fee as number) || prev.admin_fee
+                        } : prev);
+                    }
+                }
+            )
+            .subscribe((status) => {
+                console.log('🔌 Supabase Realtime status:', status);
             });
 
-            // Enhanced error handling for WebSocket
-            eventSource.onerror = (error) => {
-                console.error('❌ Redis WebSocket connection error:', error);
-                console.log('🔍 WebSocket state:', {
-                    readyState: eventSource.readyState,
-                    url: eventSource.url
-                });
-            };
+        // Cleanup subscription
+        return () => {
+            console.log('🛑 Cleaning up Supabase Realtime subscription');
+            supabase.removeChannel(channel);
+        };
+    }, [currentTournament?.tournament_day, setPreloadedLeaderboardData, setCurrentTournament]);
 
-            // Safe cleanup
-            return () => {
-                try {
-                    console.log('🛑 Closing Redis WebSocket connection');
-                    eventSource.close();
-                } catch (closeError) {
-                    console.warn('WebSocket close failed:', closeError);
-                }
-            };
-        }
-
-        // NO POLLING - Instant updates handled by SSE + Redis cache
-    }, [currentTournament?.tournament_day]); // Load once, rely on SSE + Redis cache updates
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
         setCurrentUserRank(userRank);
         // We'll handle visibility based on scroll position, not rank number
