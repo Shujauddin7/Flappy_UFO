@@ -421,7 +421,7 @@ export default function LeaderboardPage() {
                     event: '*', // Listen to INSERT, UPDATE, DELETE
                     schema: 'public',
                     table: 'user_tournament_records',
-                    filter: `tournament_day=eq.${currentTournament.tournament_day}`
+                    filter: `tournament_id=eq.${currentTournament.id}` // Fix: Use tournament_id, not tournament_day
                 },
                 async (payload) => {
                     console.log('🔥 SUPABASE REALTIME UPDATE:', payload);
@@ -462,7 +462,7 @@ export default function LeaderboardPage() {
                     event: '*',
                     schema: 'public',
                     table: 'tournaments',
-                    filter: `tournament_day=eq.${currentTournament.tournament_day}`
+                    filter: `id=eq.${currentTournament.id}` // Fix: Use id, not tournament_day
                 },
                 (payload) => {
                     console.log('🔥 TOURNAMENT STATS REALTIME UPDATE:', payload);
@@ -492,7 +492,7 @@ export default function LeaderboardPage() {
             console.log('🛑 Cleaning up Supabase Realtime subscription');
             supabase.removeChannel(channel);
         };
-    }, [currentTournament?.tournament_day, setPreloadedLeaderboardData, setCurrentTournament]);
+    }, [currentTournament?.id, currentTournament?.tournament_day, setPreloadedLeaderboardData, setCurrentTournament]);
 
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
         setCurrentUserRank(userRank);
