@@ -857,6 +857,7 @@ export default function LeaderboardPage() {
                         </div>
 
                         <TournamentLeaderboard
+                            key={preloadedLeaderboardData?.realtime_update_id || "initial"}
                             tournamentId={currentTournament?.id}
                             currentUserId={session?.user?.walletAddress || null}
                             currentUsername={session?.user?.username || null}
