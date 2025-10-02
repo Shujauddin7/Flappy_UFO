@@ -408,7 +408,7 @@ export default function LeaderboardPage() {
         console.log('🔍 currentTournament:', JSON.stringify(currentTournament));
         console.log('🔍 tournament_day:', currentTournament?.tournament_day);
         console.log('🔍 tournament id:', currentTournament?.id);
-        
+
         if (!currentTournament?.tournament_day) {
             console.log('❌ Socket.IO setup skipped: No tournament_day available');
             return;
@@ -425,7 +425,7 @@ export default function LeaderboardPage() {
 
         // Connect to Socket.IO server
         const socket = connectSocket();
-        
+
         // Update connection status
         socket.on('connect', () => {
             console.log('✅ Socket.IO connected');
