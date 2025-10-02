@@ -404,11 +404,6 @@ export default function LeaderboardPage() {
 
     // 🚀 SOCKET.IO REALTIME: Cross-device sync with unlimited connections
     useEffect(() => {
-        console.log('🔍 SOCKET.IO USEEFFECT TRIGGERED');
-        console.log('🔍 currentTournament:', JSON.stringify(currentTournament));
-        console.log('🔍 tournament_day:', currentTournament?.tournament_day);
-        console.log('🔍 tournament id:', currentTournament?.id);
-        
         if (!currentTournament?.tournament_day) {
             console.log('❌ Socket.IO setup skipped: No tournament_day available');
             return;
@@ -557,7 +552,7 @@ export default function LeaderboardPage() {
             socket.off('player_joined', handlePlayerJoined);
             disconnectSocket();
         };
-    }, [currentTournament, session?.user?.id, session?.user?.name, setPreloadedLeaderboardData, setCurrentTournament, setConnectionStatus]);
+    }, [currentTournament?.id, currentTournament?.tournament_day, session?.user?.id, session?.user?.name, setPreloadedLeaderboardData, setCurrentTournament, setConnectionStatus]);
 
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
         setCurrentUserRank(userRank);
