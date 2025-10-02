@@ -181,7 +181,7 @@ export async function publishRealtimeUpdate(channel: string, message: any): Prom
         const envChannel = getEnvironmentKey(channel);
 
         // Use RPUSH to add message to end of list (FIFO queue)
-        await redis.rpush(envChannel, JSON.stringify(formattedMessage));
+        await redis.publish(envChannel, JSON.stringify(formattedMessage));
 
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
         console.log(`📡 Queued to ${envChannel} (${isProduction ? 'PROD' : 'DEV'}):`, formattedMessage);
