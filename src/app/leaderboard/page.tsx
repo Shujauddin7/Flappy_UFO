@@ -426,10 +426,18 @@ export default function LeaderboardPage() {
         // Connect to Socket.IO server
         const socket = connectSocket();
 
-        // Update connection status
+        // User info for tournament join
+        const userId = session?.user?.id || 'anonymous';
+        const username = session?.user?.name || 'Anonymous';
+
+        // Update connection status and join tournament AFTER connected
         socket.on('connect', () => {
             console.log('✅ Socket.IO connected');
             setConnectionStatus('connected');
+
+            // 🔥 FIX: Join tournament AFTER socket connects
+            joinTournament(currentTournament.id, userId, username);
+            console.log(`   ✅ Joined tournament room: tournament_${currentTournament.id}`);
         });
 
         socket.on('disconnect', () => {
@@ -441,12 +449,6 @@ export default function LeaderboardPage() {
             console.error('❌ Socket.IO connection error:', error);
             setConnectionStatus('error');
         });
-
-        // Join tournament room with user info
-        const userId = session?.user?.id || 'anonymous';
-        const username = session?.user?.name || 'Anonymous';
-        joinTournament(currentTournament.id, userId, username);
-        console.log(`   Joined tournament room: tournament_${currentTournament.id}`);
 
         // Listen for score updates
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
