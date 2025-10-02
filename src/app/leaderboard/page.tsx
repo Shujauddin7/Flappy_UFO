@@ -6,7 +6,7 @@ import { TournamentLeaderboard } from '@/components/TournamentLeaderboard';
 import { PlayerRankCard } from '@/components/PlayerRankCard';
 import { useSession } from 'next-auth/react';
 import { CACHE_TTL } from '@/utils/leaderboard-cache';
-import { createClient } from '@supabase/supabase-js';
+import { connectSocket, disconnectSocket, joinTournament } from '@/lib/socketio';
 
 interface LeaderboardPlayer {
     id: string;
@@ -136,6 +136,7 @@ export default function LeaderboardPage() {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [shouldShowFixedCard, setShouldShowFixedCard] = useState(false);
     const [showPrizeBreakdown, setShowPrizeBreakdown] = useState(false);
+    const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'error'>('disconnected');
 
     // 🚨 ULTRA-AGGRESSIVE CACHE CLEARING: Immediate detection of database resets
     useEffect(() => {
@@ -397,201 +398,159 @@ export default function LeaderboardPage() {
             }
         };
 
-        // Load once on mount - Supabase Realtime handles updates
+        // Load once on mount - Socket.IO handles updates
         loadEssentialData();
     }, []);
 
-    // 🚀 SUPABASE REALTIME: Fix cross-device updates and username issues
+    // 🚀 SOCKET.IO REALTIME: Cross-device sync with unlimited connections
     useEffect(() => {
         if (!currentTournament?.tournament_day) {
-            console.log('❌ Realtime setup skipped: No tournament_day available');
+            console.log('❌ Socket.IO setup skipped: No tournament_day available');
             return;
         }
 
         if (!currentTournament?.id) {
-            console.log('❌ Realtime setup skipped: No tournament id available');
+            console.log('❌ Socket.IO setup skipped: No tournament id available');
             return;
         }
 
-        console.log('🚀 Setting up Supabase Realtime for cross-device sync...');
+        console.log('🚀 Setting up Socket.IO for cross-device sync...');
         console.log(`   Tournament ID: ${currentTournament.id}`);
         console.log(`   Tournament Day: ${currentTournament.tournament_day}`);
 
-        // Create Supabase client
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+        // Connect to Socket.IO server
+        const socket = connectSocket();
+        
+        // Update connection status
+        socket.on('connect', () => {
+            console.log('✅ Socket.IO connected');
+            setConnectionStatus('connected');
+        });
 
-        console.log(`   Supabase URL: ${supabaseUrl}`);
-        console.log(`   Anon Key: ${supabaseAnonKey ? 'Present' : 'Missing'}`);
+        socket.on('disconnect', () => {
+            console.log('❌ Socket.IO disconnected');
+            setConnectionStatus('disconnected');
+        });
 
-        const supabase = createClient(supabaseUrl, supabaseAnonKey);
+        socket.on('connect_error', (error) => {
+            console.error('❌ Socket.IO connection error:', error);
+            setConnectionStatus('error');
+        });
 
-        // Subscribe to user_tournament_records changes for real-time leaderboard updates
-        const channel = supabase
-            .channel('leaderboard-realtime')
-            .on(
-                'postgres_changes',
-                {
-                    event: '*', // Listen to INSERT, UPDATE, DELETE
-                    schema: 'public',
-                    table: 'user_tournament_records',
-                    filter: `tournament_id=eq.${currentTournament.id}` // Fix: Use tournament_id, not tournament_day
-                },
-                async (payload) => {
-                    console.log('🔥 SUPABASE REALTIME UPDATE:', payload);
+        // Join tournament room
+        joinTournament(currentTournament.id);
+        console.log(`   Joined tournament room: tournament:${currentTournament.id}`);
 
-                    try {
-                        // 🚀 BULLETPROOF: Use payload for UPDATEs, always sync for INSERT/DELETE
-                        if (payload.eventType === 'UPDATE' && payload.new) {
-                            const updatedRecord = payload.new as {
-                                user_id: string;
-                                username: string;
-                                highest_score: number;
-                                total_games_played: number;
-                                tournament_id: string;
-                            };
+        // Listen for score updates
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const handleScoreUpdate = (message: { tournament_id: string; data: any; }) => {
+            const { data } = message;
+            console.log('🔥 SOCKET.IO SCORE UPDATE:', message);
+            console.log(`⚡ INSTANT UPDATE: ${data.username} score: ${data.new_score}`);
 
-                            console.log(`⚡ INSTANT UPDATE: ${updatedRecord.username} score: ${updatedRecord.highest_score}`);
-
-                            // Update just this player's data in existing leaderboard
-                            setPreloadedLeaderboardData(prev => {
-                                if (!prev?.players) {
-                                    // If no cached data, fetch fresh instead of failing
-                                    console.log('🔄 No cached data, fetching fresh leaderboard');
-                                    fetch(`/api/tournament/leaderboard-data?tournament_day=${currentTournament.tournament_day}&bust=${Date.now()}`)
-                                        .then(res => res.json())
-                                        .then(freshData => {
-                                            if (freshData?.players) {
-                                                setPreloadedLeaderboardData({
-                                                    ...freshData,
-                                                    realtime_update_id: `fresh_sync_${Date.now()}`,
-                                                    source: 'fresh_sync'
-                                                });
-                                            }
-                                        });
-                                    return prev;
-                                }
-
-                                const updatedPlayers = prev.players.map(player => {
-                                    if (player.user_id === updatedRecord.user_id) {
-                                        return {
-                                            ...player,
-                                            highest_score: updatedRecord.highest_score,
-                                            total_games_played: updatedRecord.total_games_played,
-                                            username: updatedRecord.username || player.username
-                                        };
-                                    }
-                                    return player;
-                                });
-
-                                // Check if player exists in current leaderboard
-                                const playerExists = prev.players.some(p => p.user_id === updatedRecord.user_id);
-                                if (!playerExists) {
-                                    console.log('🔄 Player not in cached leaderboard, syncing fresh data');
-                                    // Player not in our cached data, sync fresh
-                                    fetch(`/api/tournament/leaderboard-data?tournament_day=${currentTournament.tournament_day}&bust=${Date.now()}`)
-                                        .then(res => res.json())
-                                        .then(freshData => {
-                                            if (freshData?.players) {
-                                                setPreloadedLeaderboardData({
-                                                    ...freshData,
-                                                    realtime_update_id: `player_sync_${Date.now()}`,
-                                                    source: 'player_sync'
-                                                });
-                                            }
-                                        });
-                                    return prev;
-                                }
-
-                                // Re-sort by score
-                                updatedPlayers.sort((a, b) => (b.highest_score || 0) - (a.highest_score || 0));
-
-                                return {
-                                    ...prev,
-                                    players: updatedPlayers,
-                                    realtime_update_id: `optimized_${Date.now()}`,
-                                    source: 'payload_direct'
-                                };
-                            });
-                        } else {
-                            // For INSERT/DELETE or any other events, always fetch fresh data
-                            console.log('🔄 INSERT/DELETE event, fetching complete fresh leaderboard');
-                            const response = await fetch(`/api/tournament/leaderboard-data?tournament_day=${currentTournament.tournament_day}&bust=${Date.now()}`);
-                            const freshData = await response.json();
-
-                            if (freshData && freshData.players) {
-                                console.log(`✅ COMPLETE SYNC: ${freshData.players.length} players via API`);
-                                setPreloadedLeaderboardData({
-                                    ...freshData,
-                                    realtime_update_id: `complete_sync_${Date.now()}`,
-                                    source: 'complete_sync'
-                                });
-                            }
-                        }
-                    } catch (error) {
-                        console.error('❌ Realtime update failed:', error);
-                        // On any error, fetch fresh data to ensure consistency
-                        try {
-                            const response = await fetch(`/api/tournament/leaderboard-data?tournament_day=${currentTournament.tournament_day}&bust=${Date.now()}`);
-                            const freshData = await response.json();
+            setPreloadedLeaderboardData(prev => {
+                if (!prev?.players) {
+                    console.log('🔄 No cached data, fetching fresh leaderboard');
+                    fetch(`/api/tournament/leaderboard-data?tournament_day=${currentTournament.tournament_day}&bust=${Date.now()}`)
+                        .then(res => res.json())
+                        .then(freshData => {
                             if (freshData?.players) {
                                 setPreloadedLeaderboardData({
                                     ...freshData,
-                                    realtime_update_id: `error_recovery_${Date.now()}`,
-                                    source: 'error_recovery'
+                                    realtime_update_id: `fresh_sync_${Date.now()}`,
+                                    source: 'fresh_sync'
                                 });
                             }
-                        } catch (recoveryError) {
-                            console.error('❌ Recovery fetch failed:', recoveryError);
-                        }
-                    }
+                        });
+                    return prev;
                 }
-            )
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'tournaments',
-                    filter: `id=eq.${currentTournament.id}` // Fix: Use id, not tournament_day
-                },
-                (payload) => {
-                    console.log('🔥 TOURNAMENT STATS REALTIME UPDATE:', payload);
 
-                    // Tournament data changed - update immediately from payload
-                    if (payload.new && typeof payload.new === 'object') {
-                        const newData = payload.new as Record<string, unknown>;
-                        console.log(`📊 TOURNAMENT STATS UPDATED: ${newData.total_tournament_players || 0} players, ${newData.total_prize_pool || 0} WLD`);
-
-                        setCurrentTournament(prev => prev ? {
-                            ...prev,
-                            total_players: (newData.total_players as number) || prev.total_players,
-                            total_tournament_players: (newData.total_tournament_players as number) || prev.total_tournament_players,
-                            total_prize_pool: (newData.total_prize_pool as number) || prev.total_prize_pool,
-                            total_collected: (newData.total_collected as number) || prev.total_collected,
-                            admin_fee: (newData.admin_fee as number) || prev.admin_fee
-                        } : prev);
+                const updatedPlayers = prev.players.map(player => {
+                    if (player.user_id === data.user_id) {
+                        return {
+                            ...player,
+                            highest_score: data.new_score,
+                            username: data.username || player.username
+                        };
                     }
+                    return player;
+                });
+
+                const playerExists = prev.players.some(p => p.user_id === data.user_id);
+                if (!playerExists) {
+                    console.log('🔄 Player not in cached leaderboard, syncing fresh data');
+                    fetch(`/api/tournament/leaderboard-data?tournament_day=${currentTournament.tournament_day}&bust=${Date.now()}`)
+                        .then(res => res.json())
+                        .then(freshData => {
+                            if (freshData?.players) {
+                                setPreloadedLeaderboardData({
+                                    ...freshData,
+                                    realtime_update_id: `player_sync_${Date.now()}`,
+                                    source: 'player_sync'
+                                });
+                            }
+                        });
+                    return prev;
                 }
-            )
-            .subscribe((status) => {
-                console.log('🔌 Supabase Realtime status:', status);
-                if (status === 'SUBSCRIBED') {
-                    console.log('✅ Realtime subscription active and ready!');
-                    console.log(`   Listening for changes to tournament_id: ${currentTournament.id}`);
-                } else if (status === 'CLOSED') {
-                    console.log('❌ Realtime subscription closed');
-                } else if (status === 'CHANNEL_ERROR') {
-                    console.log('❌ Realtime subscription error');
-                }
+
+                updatedPlayers.sort((a, b) => (b.highest_score || 0) - (a.highest_score || 0));
+
+                return {
+                    ...prev,
+                    players: updatedPlayers,
+                    realtime_update_id: `socketio_${Date.now()}`,
+                    source: 'socketio_update'
+                };
             });
-
-        // Cleanup subscription
-        return () => {
-            console.log('🛑 Cleaning up Supabase Realtime subscription');
-            supabase.removeChannel(channel);
         };
-    }, [currentTournament?.id, currentTournament?.tournament_day, setPreloadedLeaderboardData, setCurrentTournament]);
+
+        // Listen for prize pool updates
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const handlePrizePoolUpdate = (message: { tournament_id: string; data: any; }) => {
+            const { data } = message;
+            console.log('🔥 SOCKET.IO PRIZE POOL UPDATE:', message);
+            console.log(`📊 PRIZE POOL UPDATED: ${data.total_players} players, ${data.new_prize_pool} WLD`);
+
+            setCurrentTournament(prev => prev ? {
+                ...prev,
+                total_prize_pool: data.new_prize_pool,
+                total_tournament_players: data.total_players
+            } : prev);
+        };
+
+        // Listen for new player joins
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const handlePlayerJoined = (message: { tournament_id: string; data: any; }) => {
+            const { data } = message;
+            console.log('🔥 SOCKET.IO PLAYER JOINED:', message);
+            console.log(`🎮 NEW PLAYER: ${data.username} joined tournament`);
+
+            fetch(`/api/tournament/leaderboard-data?tournament_day=${currentTournament.tournament_day}&bust=${Date.now()}`)
+                .then(res => res.json())
+                .then(freshData => {
+                    if (freshData?.players) {
+                        setPreloadedLeaderboardData({
+                            ...freshData,
+                            realtime_update_id: `player_joined_${Date.now()}`,
+                            source: 'player_joined'
+                        });
+                    }
+                });
+        };
+
+        socket.on('score_update', handleScoreUpdate);
+        socket.on('prize_pool_update', handlePrizePoolUpdate);
+        socket.on('player_joined', handlePlayerJoined);
+
+        // Cleanup
+        return () => {
+            console.log('🛑 Cleaning up Socket.IO connection');
+            socket.off('score_update', handleScoreUpdate);
+            socket.off('prize_pool_update', handlePrizePoolUpdate);
+            socket.off('player_joined', handlePlayerJoined);
+            disconnectSocket();
+        };
+    }, [currentTournament?.id, currentTournament?.tournament_day, setPreloadedLeaderboardData, setCurrentTournament, setConnectionStatus]);
 
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
         setCurrentUserRank(userRank);
@@ -807,8 +766,15 @@ export default function LeaderboardPage() {
         <Page>
             <Page.Main className="leaderboard-container">
                 {/* Fixed Tournament Title at Very Top */}
-                <div className="tournament-main-title">
+                <div className="tournament-main-title" style={{ position: 'relative' }}>
                     <h1>🏆 TOURNAMENT</h1>
+                    {/* Connection Status Indicator */}
+                    <div className={`connection-status-indicator connection-${connectionStatus}`}>
+                        <div className="connection-dot"></div>
+                        <span className="connection-text">
+                            {connectionStatus === 'connected' ? 'Live' : connectionStatus === 'disconnected' ? 'Connecting...' : 'Error'}
+                        </span>
+                    </div>
                 </div>
 
                 {/* Scrollable Content Area */}
