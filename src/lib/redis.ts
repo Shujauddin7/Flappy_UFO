@@ -174,7 +174,7 @@ export async function publishRealtimeUpdate(channel: string, message: any): Prom
         // Format message according to LEADERBOARD.md specification
         const formattedMessage = {
             ...message,
-            timestamp: new Date().toISOString()
+            timestamp: Date.now() // Use numeric timestamp for easy comparison
         };
 
         // Use environment-specific channel names for lists
