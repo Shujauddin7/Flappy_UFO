@@ -437,9 +437,11 @@ export default function LeaderboardPage() {
             setConnectionStatus('error');
         });
 
-        // Join tournament room
-        joinTournament(currentTournament.id);
-        console.log(`   Joined tournament room: tournament:${currentTournament.id}`);
+        // Join tournament room with user info
+        const userId = session?.user?.id || 'anonymous';
+        const username = session?.user?.name || 'Anonymous';
+        joinTournament(currentTournament.id, userId, username);
+        console.log(`   Joined tournament room: tournament_${currentTournament.id}`);
 
         // Listen for score updates
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -550,7 +552,7 @@ export default function LeaderboardPage() {
             socket.off('player_joined', handlePlayerJoined);
             disconnectSocket();
         };
-    }, [currentTournament?.id, currentTournament?.tournament_day, setPreloadedLeaderboardData, setCurrentTournament, setConnectionStatus]);
+    }, [currentTournament?.id, currentTournament?.tournament_day, session?.user?.id, session?.user?.name, setPreloadedLeaderboardData, setCurrentTournament, setConnectionStatus]);
 
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
         setCurrentUserRank(userRank);

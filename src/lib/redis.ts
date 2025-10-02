@@ -162,7 +162,7 @@ export function shouldWarmCache(cachedData: any, maxAgeSeconds: number): boolean
     return cacheAge > warmThreshold;
 }
 
-// 🔄 Redis List Queue for Socket.IO Integration (RPUSH/LPOP pattern)
+// 🔄 Redis Pub/Sub for Socket.IO Integration (Real-time push notifications)
 export async function publishRealtimeUpdate(channel: string, message: any): Promise<boolean> {
     try {
         const redis = await getRedisClient();
@@ -177,18 +177,18 @@ export async function publishRealtimeUpdate(channel: string, message: any): Prom
             timestamp: Date.now() // Use numeric timestamp for easy comparison
         };
 
-        // Use environment-specific channel names for lists
+        // Use environment-specific channel names for pub/sub
         const envChannel = getEnvironmentKey(channel);
 
         // Use RPUSH to add message to end of list (FIFO queue)
         await redis.publish(envChannel, JSON.stringify(formattedMessage));
 
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
-        console.log(`📡 Queued to ${envChannel} (${isProduction ? 'PROD' : 'DEV'}):`, formattedMessage);
+        console.log(`📡 Published to ${envChannel} (${isProduction ? 'PROD' : 'DEV'}):`, formattedMessage);
 
         return true;
     } catch (error) {
-        console.error('❌ Redis queue error:', error);
+        console.error('❌ Redis publish error:', error);
         return false;
     }
 }

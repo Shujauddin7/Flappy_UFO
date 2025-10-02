@@ -57,10 +57,14 @@ export const disconnectSocket = (): void => {
  * Join a tournament room to receive updates
  * Room format: tournament_{tournamentId} as per LEADERBOARD.md
  */
-export const joinTournament = (tournamentId: string): void => {
+export const joinTournament = (tournamentId: string, userId?: string, username?: string): void => {
     if (socket && socket.connected) {
-        console.log(`🎮 Joining tournament room: tournament_${tournamentId}`);
-        socket.emit('join_tournament', { tournamentId });
+        console.log(`�� Joining tournament room: tournament_${tournamentId}`);
+        socket.emit('join_tournament', { 
+            tournament_id: tournamentId,
+            user_id: userId,
+            username: username
+        });
     } else {
         console.error('❌ Cannot join tournament: Socket not connected');
     }
@@ -78,6 +82,7 @@ export const leaveTournament = (tournamentId: string): void => {
 
 /**
  * Get the current socket instance
+ * Useful for direct access to socket events
  */
 export const getSocket = (): Socket | null => {
     return socket;
