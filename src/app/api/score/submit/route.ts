@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { createClient } from '@supabase/supabase-js';
 import { updateLeaderboardScore } from '@/lib/leaderboard-redis';
+import { publishScoreUpdate } from '@/lib/redis';
 
 // Helper function to update tournament analytics when continue payments are made
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -406,6 +407,15 @@ export async function POST(req: NextRequest) {
                 // 🚨 NEW HIGH SCORE: Update Redis leaderboard immediately
                 console.log('⚡ Updating Redis leaderboard with new high score...');
                 await updateLeaderboardScore(tournamentDay, user.id, score);
+
+                // 🔄 NEW: Publish realtime score update to Socket.IO server
+                console.log('📡 Publishing score update to Socket.IO server...');
+                await publishScoreUpdate(record.tournament_id, {
+                    user_id: user.id,
+                    username: user.username || `Player ${user.id.slice(0, 8)}`,
+                    old_score: record.highest_score || 0,
+                    new_score: score
+                });
 
                 // � CRITICAL FIX: Update tournament totals if continue payment was made (high score path)
                 if (finalContinuePayments > 0) {

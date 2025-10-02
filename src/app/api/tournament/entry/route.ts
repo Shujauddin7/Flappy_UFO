@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { createClient } from '@supabase/supabase-js';
+import { publishPlayerJoined, publishPrizePoolUpdate } from '@/lib/redis';
 
 // Helper function to update user's tournament participation count
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -417,6 +418,31 @@ export async function POST(req: NextRequest) {
 
         // Update tournament total players count and prize pool after payment update
         await updateTournamentPlayerCount(supabase, finalTournament.id);
+
+        // 🔄 NEW: Publish realtime updates to Socket.IO server
+        console.log('📡 Publishing player joined and prize pool updates to Socket.IO server...');
+
+        // Publish player joined event
+        await publishPlayerJoined(finalTournament.id, {
+            user_id: user.id,
+            username: user.username || `Player ${user.id.slice(0, 8)}`,
+            entry_type: isVerifiedEntryByAmount ? 'verified' : 'standard'
+        });
+
+        // Get updated tournament data for prize pool update
+        const updatedTournament = await supabase
+            .from('tournaments')
+            .select('total_prize_pool, total_tournament_players')
+            .eq('id', finalTournament.id)
+            .single();
+
+        if (updatedTournament.data) {
+            await publishPrizePoolUpdate(finalTournament.id, {
+                new_prize_pool: updatedTournament.data.total_prize_pool || 0,
+                total_players: updatedTournament.data.total_tournament_players || 0,
+                increment_amount: paid_amount
+            });
+        }
 
         // Update user's total tournament count
         await updateUserTournamentCount(supabase, user.id);

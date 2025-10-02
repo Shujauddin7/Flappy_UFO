@@ -161,3 +161,73 @@ export function shouldWarmCache(cachedData: any, maxAgeSeconds: number): boolean
 
     return cacheAge > warmThreshold;
 }
+
+// 🔄 Redis List Queue for Socket.IO Integration (RPUSH/LPOP pattern)
+export async function publishRealtimeUpdate(channel: string, message: any): Promise<boolean> {
+    try {
+        const redis = await getRedisClient();
+        if (!redis) {
+            console.warn('⚠️ Redis not available, skipping realtime update publish');
+            return false;
+        }
+
+        // Format message according to LEADERBOARD.md specification
+        const formattedMessage = {
+            ...message,
+            timestamp: new Date().toISOString()
+        };
+
+        // Use environment-specific channel names for lists
+        const envChannel = getEnvironmentKey(channel);
+
+        // Use RPUSH to add message to end of list (FIFO queue)
+        await redis.rpush(envChannel, JSON.stringify(formattedMessage));
+
+        const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
+        console.log(`📡 Queued to ${envChannel} (${isProduction ? 'PROD' : 'DEV'}):`, formattedMessage);
+
+        return true;
+    } catch (error) {
+        console.error('❌ Redis queue error:', error);
+        return false;
+    }
+}
+
+// 🎯 Specific realtime update functions for different event types
+export async function publishScoreUpdate(tournamentId: string, data: {
+    user_id: string;
+    username: string;
+    old_score: number;
+    new_score: number;
+    new_rank?: number;
+}): Promise<boolean> {
+    return publishRealtimeUpdate('tournament:updates', {
+        tournament_id: tournamentId,
+        type: 'score_update',
+        data
+    });
+}
+
+export async function publishPrizePoolUpdate(tournamentId: string, data: {
+    new_prize_pool: number;
+    total_players: number;
+    increment_amount?: number;
+}): Promise<boolean> {
+    return publishRealtimeUpdate('tournament:updates', {
+        tournament_id: tournamentId,
+        type: 'prize_pool_update',
+        data
+    });
+}
+
+export async function publishPlayerJoined(tournamentId: string, data: {
+    user_id: string;
+    username: string;
+    entry_type: 'verified' | 'standard';
+}): Promise<boolean> {
+    return publishRealtimeUpdate('tournament:updates', {
+        tournament_id: tournamentId,
+        type: 'player_joined',
+        data
+    });
+}
