@@ -454,7 +454,11 @@ export default function LeaderboardPage() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const handleScoreUpdate = (message: { tournament_id: string; data: any; }) => {
             const { data } = message;
-            console.log('🔥 SOCKET.IO SCORE UPDATE:', message);
+            console.log('🔥🔥🔥 SOCKET.IO SCORE UPDATE RECEIVED!!! 🔥🔥🔥');
+            console.log('🔥 Full message:', JSON.stringify(message, null, 2));
+            console.log('🔥 Tournament ID:', message.tournament_id);
+            console.log('🔥 Username:', data.username);
+            console.log('🔥 New Score:', data.new_score);
             console.log(`⚡ INSTANT UPDATE: ${data.username} score: ${data.new_score}`);
 
             setPreloadedLeaderboardData(prev => {
