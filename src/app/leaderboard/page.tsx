@@ -136,7 +136,6 @@ export default function LeaderboardPage() {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [shouldShowFixedCard, setShouldShowFixedCard] = useState(false);
     const [showPrizeBreakdown, setShowPrizeBreakdown] = useState(false);
-    const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'error'>('disconnected');
 
     // 🚨 ULTRA-AGGRESSIVE CACHE CLEARING: Immediate detection of database resets
     useEffect(() => {
@@ -404,13 +403,7 @@ export default function LeaderboardPage() {
 
     // 🚀 SOCKET.IO REALTIME: Cross-device sync with unlimited connections
     useEffect(() => {
-        console.log('🔍 SOCKET.IO USEEFFECT TRIGGERED');
-        console.log('🔍 currentTournament:', JSON.stringify(currentTournament));
-        console.log('🔍 tournament_day:', currentTournament?.tournament_day);
-        console.log('🔍 tournament id:', currentTournament?.id);
-
         if (!currentTournament?.tournament_day) {
-            console.log('❌ Socket.IO setup skipped: No tournament_day available');
             return;
         }
 
@@ -430,36 +423,27 @@ export default function LeaderboardPage() {
         const userId = session?.user?.id || 'anonymous';
         const username = session?.user?.name || 'Anonymous';
 
-        // Update connection status and join tournament AFTER connected
+        // Join tournament AFTER connected
         socket.on('connect', () => {
             console.log('✅ Socket.IO connected');
-            setConnectionStatus('connected');
 
             // 🔥 FIX: Join tournament AFTER socket connects
             joinTournament(currentTournament.id, userId, username);
-            console.log(`   ✅ Joined tournament room: tournament_${currentTournament.id}`);
         });
 
-        socket.on('disconnect', () => {
-            console.log('❌ Socket.IO disconnected');
-            setConnectionStatus('disconnected');
+        socket.on('disconnect', (reason) => {
+            console.log('🔌 Socket.IO disconnected:', reason);
         });
 
         socket.on('connect_error', (error) => {
-            console.error('❌ Socket.IO connection error:', error);
-            setConnectionStatus('error');
+            console.error('🔌 Socket.IO connection error:', error);
         });
 
         // Listen for score updates
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const handleScoreUpdate = (message: { tournament_id: string; data: any; }) => {
             const { data } = message;
-            console.log('🔥🔥🔥 SOCKET.IO SCORE UPDATE RECEIVED!!! 🔥🔥🔥');
-            console.log('🔥 Full message:', JSON.stringify(message, null, 2));
-            console.log('🔥 Tournament ID:', message.tournament_id);
-            console.log('🔥 Username:', data.username);
-            console.log('🔥 New Score:', data.new_score);
-            console.log(`⚡ INSTANT UPDATE: ${data.username} score: ${data.new_score}`);
+            console.log(`⚡ Score update: ${data.username} - ${data.new_score}`);
 
             setPreloadedLeaderboardData(prev => {
                 if (!prev?.players) {
@@ -563,7 +547,7 @@ export default function LeaderboardPage() {
             socket.off('player_joined', handlePlayerJoined);
             disconnectSocket();
         };
-    }, [currentTournament, session?.user?.id, session?.user?.name, setPreloadedLeaderboardData, setCurrentTournament, setConnectionStatus]);
+    }, [currentTournament, session?.user?.id, session?.user?.name, setPreloadedLeaderboardData, setCurrentTournament]);
 
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
         setCurrentUserRank(userRank);
@@ -779,15 +763,8 @@ export default function LeaderboardPage() {
         <Page>
             <Page.Main className="leaderboard-container">
                 {/* Fixed Tournament Title at Very Top */}
-                <div className="tournament-main-title" style={{ position: 'relative' }}>
+                <div className="tournament-main-title">
                     <h1>🏆 TOURNAMENT</h1>
-                    {/* Connection Status Indicator */}
-                    <div className={`connection-status-indicator connection-${connectionStatus}`}>
-                        <div className="connection-dot"></div>
-                        <span className="connection-text">
-                            {connectionStatus === 'connected' ? 'Live' : connectionStatus === 'disconnected' ? 'Connecting...' : 'Error'}
-                        </span>
-                    </div>
                 </div>
 
                 {/* Scrollable Content Area */}
