@@ -67,8 +67,14 @@ async function getRedisClient() {
 
 // Cache key with environment prefix
 function getEnvironmentKey(baseKey: string): string {
-    const environment = process.env.NODE_ENV === 'production' ? 'prod' : 'dev';
-    return `${environment}:${baseKey}`;
+    // CRITICAL: Vercel sets NODE_ENV=production for ALL deployments!
+    // Use VERCEL_ENV to detect dev vs production, fallback to NEXT_PUBLIC_ENV
+    const vercelEnv = process.env.VERCEL_ENV; // 'production', 'preview', or 'development'
+    const isProduction = vercelEnv === 'production' || process.env.NEXT_PUBLIC_ENV === 'prod';
+    const environment = isProduction ? 'prod' : 'dev';
+    const channel = `${environment}:${baseKey}`;
+    console.log('🔧 Redis channel:', channel, '(VERCEL_ENV:', vercelEnv, 'NEXT_PUBLIC_ENV:', process.env.NEXT_PUBLIC_ENV, ')');
+    return channel;
 }
 
 export async function getCached(key: string): Promise<any> {
