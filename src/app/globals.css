@@ -4140,5 +4140,5 @@ canvas,
 
 /* Make tournament title position relative for absolute positioning of status */
 .tournament-main-title {
-    position: relative;
+  position: relative;
 }
