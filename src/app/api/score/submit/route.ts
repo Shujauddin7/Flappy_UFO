@@ -524,6 +524,15 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        // 🔄 Publish realtime score update for regular scores
+        console.log('📡 Publishing regular score update to Socket.IO server...');
+        await publishScoreUpdate(record.tournament_id, {
+            user_id: user.id,
+            username: user.username || `Player ${user.id.slice(0, 8)}`,
+            old_score: record.highest_score || 0,
+            new_score: record.highest_score || 0
+        });
+
         // � CRITICAL FIX: Update tournament totals if continue payment was made
         if (finalContinuePayments > 0) {
             console.log('💰 Updating tournament prize pool after continue payment...');
