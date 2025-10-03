@@ -96,6 +96,8 @@ async function updateUserStatistics(userId: string, newScore: number, shouldUpda
 
 export async function POST(req: NextRequest) {
     try {
+        console.log('🔥🔥🔥 SCORE API - DEPLOYED VERSION: DEC-26-2024-23:05 🔥🔥🔥');
+
         // Environment-specific database configuration (following Plan.md specification)
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
 
