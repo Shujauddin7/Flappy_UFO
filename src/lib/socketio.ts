@@ -34,9 +34,12 @@ export const connectSocket = (): Socket => {
     socket = io(url, {
         transports: ['websocket', 'polling'], // Try WebSocket first, fallback to polling
         reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000,
-        timeout: 20000,
+        reconnectionAttempts: 10, // Increased from 5 for better reliability
+        reconnectionDelay: 500, // Reduced from 1000ms for faster reconnection
+        reconnectionDelayMax: 2000, // Cap max delay at 2 seconds
+        timeout: 10000, // Reduced from 20000ms for faster connection attempts
+        upgrade: true, // Allow transport upgrades
+        rememberUpgrade: true, // Remember successful upgrades
     });
 
     return socket;
