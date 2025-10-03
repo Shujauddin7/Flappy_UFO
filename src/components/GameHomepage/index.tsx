@@ -789,10 +789,10 @@ export default function GameHomepage() {
 
                 // 🚀 SMART CACHE: Only clear cache on NEW HIGH SCORES (matches server logic)
                 console.log('🏆 NEW HIGH SCORE! - invalidating leaderboard cache for immediate update');
-                const envPrefix = process.env.NODE_ENV === 'production' ? 'prod_' : 'dev_';
                 try {
-                    sessionStorage.removeItem(`${envPrefix}preloaded_leaderboard`);
-                    sessionStorage.removeItem(`${envPrefix}preloaded_tournament`);
+                    // Clear the correct cache keys that leaderboard page uses
+                    sessionStorage.removeItem('leaderboard_data');
+                    sessionStorage.removeItem('tournament_data');
                 } catch (cacheError) {
                     console.warn('Cache clear failed:', cacheError);
                 }
