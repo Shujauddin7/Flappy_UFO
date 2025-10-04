@@ -10,6 +10,7 @@ import { TournamentEntryModal } from '@/components/TournamentEntryModal';
 import InfoModal from '@/components/INFO';
 import { CACHE_TTL } from '@/utils/leaderboard-cache';
 import { canContinue, spendCoins, getCoins, addCoins } from '@/utils/coins';
+import { connectSocket, disconnectSocket, joinTournament } from '@/lib/socketio';
 
 // Dynamically import FlappyGame to avoid SSR issues
 const FlappyGame = dynamic(() => import('@/components/FlappyGame'), {
@@ -153,6 +154,10 @@ export default function GameHomepage() {
     const [tournamentContinueUsed, setTournamentContinueUsed] = useState<boolean>(false);
     const [tournamentEntryAmount, setTournamentEntryAmount] = useState<number>(1.0); // Track entry amount for continue payment
 
+    // 🚀 FIX: Track user's current highest score for real-time display
+    const [userHighestScore, setUserHighestScore] = useState<number | null>(null);
+    const [currentTournamentId, setCurrentTournamentId] = useState<string | null>(null);
+
     // Check user's verification status for today's tournament
     const checkVerificationStatus = useCallback(async () => {
         if (!session?.user?.walletAddress) return false;
@@ -241,6 +246,91 @@ export default function GameHomepage() {
             checkOrbVerificationCapability();
         }
     }, [session?.user?.walletAddress, checkVerificationStatus, checkOrbVerificationCapability]); // 🚀 FIX: Removed checkVerificationStatus from deps to prevent infinite loop
+
+    // 🚀 FIX: Fetch user's current highest score and setup Socket.IO real-time updates
+    useEffect(() => {
+        const fetchUserHighestScore = async () => {
+            if (!session?.user?.walletAddress) {
+                setUserHighestScore(null);
+                setCurrentTournamentId(null);
+                return;
+            }
+
+            try {
+                // Fetch current tournament to get tournament_id
+                const tournamentRes = await fetch('/api/tournament/current');
+                const tournamentData = await tournamentRes.json();
+
+                if (!tournamentData?.tournament?.id) {
+                    console.log('⚠️ No active tournament found');
+                    return;
+                }
+
+                const tournamentId = tournamentData.tournament.id;
+                setCurrentTournamentId(tournamentId);
+
+                // Fetch user's tournament record to get highest score
+                const userRes = await fetch('/api/tournament/leaderboard-data');
+                const leaderboardData = await userRes.json();
+
+                if (leaderboardData?.players) {
+                    const userRecord = leaderboardData.players.find(
+                        (player: { wallet: string; highest_score: number }) =>
+                            player.wallet?.toLowerCase() === session.user.walletAddress?.toLowerCase()
+                    );
+
+                    if (userRecord) {
+                        setUserHighestScore(userRecord.highest_score || 0);
+                        console.log('✅ User highest score loaded:', userRecord.highest_score);
+                    } else {
+                        setUserHighestScore(0);
+                        console.log('ℹ️ User has no score yet');
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Error fetching user highest score:', error);
+            }
+        };
+
+        fetchUserHighestScore();
+    }, [session?.user?.walletAddress, currentScreen]); // Re-fetch when returning to home
+
+    // 🚀 FIX: Setup Socket.IO connection for real-time score updates on the playing device
+    useEffect(() => {
+        if (!currentTournamentId || !session?.user?.id) {
+            return;
+        }
+
+        console.log('🔌 Setting up Socket.IO for real-time score updates on GameHomepage...');
+
+        const socket = connectSocket();
+        const userId = session.user.id;
+        const username = session.user.name || 'Anonymous';
+
+        socket.on('connect', () => {
+            console.log('✅ Socket.IO connected on GameHomepage');
+            joinTournament(currentTournamentId, userId, username);
+        });
+
+        // Listen for score updates
+        socket.on('score_update', (message: { tournament_id: string; data: { user_id: string; new_score: number } }) => {
+            const { data } = message;
+            console.log('⚡ Score update received on GameHomepage:', data);
+
+            // Only update if it's the current user's score
+            if (data.user_id === userId) {
+                console.log('🏆 Updating current user highest score:', data.new_score);
+                setUserHighestScore(data.new_score);
+            }
+        });
+
+        // Cleanup
+        return () => {
+            console.log('🛑 Cleaning up Socket.IO connection on GameHomepage');
+            socket.off('score_update');
+            disconnectSocket();
+        };
+    }, [currentTournamentId, session?.user?.id, session?.user?.name]);
 
     // 🚀 LIGHTNING FAST LEADERBOARD: Pre-load leaderboard data in background
     // This makes leaderboard tab load instantly when clicked (0ms perceived load time)
@@ -787,6 +877,9 @@ export default function GameHomepage() {
                     currentHigh: result.data.current_highest_score
                 }));
 
+                // 🚀 FIX: Immediately update local highest score state for instant display
+                setUserHighestScore(result.data.current_highest_score);
+
                 // 🚀 SMART CACHE: Only clear cache on NEW HIGH SCORES (matches server logic)
                 console.log('🏆 NEW HIGH SCORE! - invalidating leaderboard cache for immediate update');
                 try {
@@ -900,6 +993,9 @@ export default function GameHomepage() {
                             previousHigh: result.data.previous_highest_score,
                             currentHigh: result.data.current_highest_score
                         }));
+
+                        // 🚀 FIX: Immediately update local highest score state for instant display
+                        setUserHighestScore(result.data.current_highest_score);
 
                         // 🚀 CACHE INVALIDATION: Clear pre-loaded leaderboard data after new high score
                         // This ensures users see updated rankings immediately when they check the leaderboard
@@ -1497,6 +1593,12 @@ export default function GameHomepage() {
                             >
                                 Tap To Play
                             </button>
+                            {/* 🚀 FIX: Display user's current highest score on home screen */}
+                            {session?.user?.walletAddress && userHighestScore !== null && (
+                                <div className="user-high-score-display">
+                                    🏆 Your Highest Score: {userHighestScore.toLocaleString()}
+                                </div>
+                            )}
                             <DevSignOut />
                         </div>
                         <div className="bottom-nav-container">
