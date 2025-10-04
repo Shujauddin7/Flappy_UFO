@@ -10,7 +10,7 @@ import { TournamentEntryModal } from '@/components/TournamentEntryModal';
 import InfoModal from '@/components/INFO';
 import { CACHE_TTL } from '@/utils/leaderboard-cache';
 import { canContinue, spendCoins, getCoins, addCoins } from '@/utils/coins';
-import { connectSocket, disconnectSocket, joinTournament } from '@/lib/socketio';
+import { connectSocket, joinTournament } from '@/lib/socketio';
 
 // Dynamically import FlappyGame to avoid SSR issues
 const FlappyGame = dynamic(() => import('@/components/FlappyGame'), {
@@ -307,13 +307,8 @@ export default function GameHomepage() {
         const userId = session.user.id;
         const username = session.user.name || 'Anonymous';
 
-        socket.on('connect', () => {
-            console.log('✅ Socket.IO connected on GameHomepage');
-            joinTournament(currentTournamentId, userId, username);
-        });
-
-        // Listen for score updates
-        socket.on('score_update', (message: { tournament_id: string; data: { user_id: string; new_score: number } }) => {
+        // Handler for score updates
+        const handleScoreUpdate = (message: { tournament_id: string; data: { user_id: string; new_score: number } }) => {
             const { data } = message;
             console.log('⚡ Score update received on GameHomepage:', data);
 
@@ -321,14 +316,33 @@ export default function GameHomepage() {
             if (data.user_id === userId) {
                 console.log('🏆 Updating current user highest score:', data.new_score);
                 setUserHighestScore(data.new_score);
+                
+                // Also update the game result modal if it's showing
+                setGameResult(prev => {
+                    if (prev.show && !prev.isNewHighScore) {
+                        return {
+                            ...prev,
+                            currentHigh: data.new_score
+                        };
+                    }
+                    return prev;
+                });
             }
+        };
+
+        socket.on('connect', () => {
+            console.log('✅ Socket.IO connected on GameHomepage');
+            joinTournament(currentTournamentId, userId, username);
         });
 
-        // Cleanup
+        // Remove any existing listener first to prevent duplicates
+        socket.off('score_update', handleScoreUpdate);
+        socket.on('score_update', handleScoreUpdate);
+
+        // Only cleanup listener, don't disconnect socket (let it persist)
         return () => {
-            console.log('🛑 Cleaning up Socket.IO connection on GameHomepage');
-            socket.off('score_update');
-            disconnectSocket();
+            console.log('🧹 Removing Socket.IO score_update listener on GameHomepage');
+            socket.off('score_update', handleScoreUpdate);
         };
     }, [currentTournamentId, session?.user?.id, session?.user?.name]);
 
@@ -889,6 +903,20 @@ export default function GameHomepage() {
                 } catch (cacheError) {
                     console.warn('Cache clear failed:', cacheError);
                 }
+            } else if (result.success && !result.data.is_duplicate) {
+                // 🚀 FIX: Even if not a new high score, show the current highest score in modal
+                setGameResult(prev => ({
+                    ...prev,
+                    currentHigh: result.data.current_highest_score || userHighestScore || 0
+                }));
+                
+                // Update local state
+                if (result.data.current_highest_score) {
+                    setUserHighestScore(result.data.current_highest_score);
+                }
+                
+                // 🚀 PERFORMANCE: Keep cache for regular scores - no leaderboard position change
+                console.log('📊 Regular score submitted - keeping cache for faster navigation');
             } else if (result.success) {
                 // 🚀 PERFORMANCE: Keep cache for regular scores - no leaderboard position change
                 console.log('📊 Regular score submitted - keeping cache for faster navigation');
@@ -1003,6 +1031,17 @@ export default function GameHomepage() {
                         const envPrefix = process.env.NODE_ENV === 'production' ? 'prod_' : 'dev_';
                         sessionStorage.removeItem(`${envPrefix}preloaded_leaderboard`);
                         sessionStorage.removeItem(`${envPrefix}preloaded_tournament`);
+                    } else if (result.success && !result.data.is_duplicate) {
+                        // 🚀 FIX: Even if not a new high score, show the current highest score in modal
+                        setGameResult(prev => ({
+                            ...prev,
+                            currentHigh: result.data.current_highest_score || userHighestScore || 0
+                        }));
+                        
+                        // Update local state
+                        if (result.data.current_highest_score) {
+                            setUserHighestScore(result.data.current_highest_score);
+                        }
                     } else if (result.data?.is_duplicate) {
                         setGameResult(prev => ({
                             ...prev,
@@ -1593,12 +1632,6 @@ export default function GameHomepage() {
                             >
                                 Tap To Play
                             </button>
-                            {/* 🚀 FIX: Display user's current highest score on home screen */}
-                            {session?.user?.walletAddress && userHighestScore !== null && (
-                                <div className="user-high-score-display">
-                                    🏆 Your Highest Score: {userHighestScore.toLocaleString()}
-                                </div>
-                            )}
                             <DevSignOut />
                         </div>
                         <div className="bottom-nav-container">

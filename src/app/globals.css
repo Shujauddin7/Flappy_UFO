@@ -377,29 +377,6 @@ body {
   box-shadow: 0 0 26px rgba(0, 245, 255, 0.8), 0 8px 22px rgba(0, 245, 255, 0.3);
 }
 
-/* User High Score Display */
-.user-high-score-display {
-  margin-top: 1rem;
-  font-family: 'Orbitron', monospace;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #FFD700;
-  text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-
-@keyframes pulse-glow {
-
-  0%,
-  100% {
-    text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
-  }
-
-  50% {
-    text-shadow: 0 0 20px rgba(255, 215, 0, 0.9);
-  }
-}
-
 /* GAME SELECT SCREEN */
 
 .epic-title-section {
