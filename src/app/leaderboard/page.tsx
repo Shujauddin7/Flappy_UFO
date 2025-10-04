@@ -97,16 +97,6 @@ export default function LeaderboardPage() {
         // ENHANCED: Prioritize globally preloaded data with better cache handling
         if (typeof window !== 'undefined') {
             try {
-                // 🚀 CHECK FOR FORCE REFETCH FLAG (when user submits high score on same device)
-                const forceRefetch = sessionStorage.getItem('force_leaderboard_refetch');
-                if (forceRefetch) {
-                    console.log('🔄 FORCE REFETCH: High score submitted, clearing cache and fetching fresh data');
-                    sessionStorage.removeItem('force_leaderboard_refetch');
-                    sessionStorage.removeItem('leaderboard_data');
-                    sessionStorage.removeItem('tournament_data');
-                    return null; // Return null to trigger fresh fetch
-                }
-
                 const cached = sessionStorage.getItem('leaderboard_data');
                 if (cached) {
                     const parsed = JSON.parse(cached);

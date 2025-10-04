@@ -793,8 +793,6 @@ export default function GameHomepage() {
                     // Clear the correct cache keys that leaderboard page uses
                     sessionStorage.removeItem('leaderboard_data');
                     sessionStorage.removeItem('tournament_data');
-                    // Force leaderboard to refetch when it mounts
-                    sessionStorage.setItem('force_leaderboard_refetch', Date.now().toString());
                 } catch (cacheError) {
                     console.warn('Cache clear failed:', cacheError);
                 }

@@ -2708,7 +2708,7 @@ body {
   flex: 1;
   width: 100%;
   max-width: 500px;
-  margin-top: 45px;
+  margin-top: 50px;
   /* Further reduced space for fixed title */
   margin-bottom: 120px;
   /* Space for bottom navigation */
@@ -2792,7 +2792,7 @@ body {
 /* DEBUG: Add visual borders to identify spacing sources */
 .tournament-info-box {
   width: 100%;
-  margin: 0 auto 0.2rem;
+  margin: 0 auto 1rem;
   padding: 1rem 1rem 0.5rem 1rem;
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(0, 245, 255, 0.3);
