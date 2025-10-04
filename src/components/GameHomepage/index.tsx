@@ -316,7 +316,7 @@ export default function GameHomepage() {
             if (data.user_id === userId) {
                 console.log('🏆 Updating current user highest score:', data.new_score);
                 setUserHighestScore(data.new_score);
-                
+
                 // Also update the game result modal if it's showing
                 setGameResult(prev => {
                     if (prev.show && !prev.isNewHighScore) {
@@ -909,12 +909,12 @@ export default function GameHomepage() {
                     ...prev,
                     currentHigh: result.data.current_highest_score || userHighestScore || 0
                 }));
-                
+
                 // Update local state
                 if (result.data.current_highest_score) {
                     setUserHighestScore(result.data.current_highest_score);
                 }
-                
+
                 // 🚀 PERFORMANCE: Keep cache for regular scores - no leaderboard position change
                 console.log('📊 Regular score submitted - keeping cache for faster navigation');
             } else if (result.success) {
@@ -1037,7 +1037,7 @@ export default function GameHomepage() {
                             ...prev,
                             currentHigh: result.data.current_highest_score || userHighestScore || 0
                         }));
-                        
+
                         // Update local state
                         if (result.data.current_highest_score) {
                             setUserHighestScore(result.data.current_highest_score);
