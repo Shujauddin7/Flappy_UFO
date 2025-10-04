@@ -154,7 +154,8 @@ export default function GameHomepage() {
     const [tournamentContinueUsed, setTournamentContinueUsed] = useState<boolean>(false);
     const [tournamentEntryAmount, setTournamentEntryAmount] = useState<number>(1.0); // Track entry amount for continue payment
 
-    // 🚀 FIX: Track user's current highest score for real-time display
+    // 🚀 Track user's current highest score for Socket.IO real-time updates (background state, not displayed in modal)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [userHighestScore, setUserHighestScore] = useState<number | null>(null);
     const [currentTournamentId, setCurrentTournamentId] = useState<string | null>(null);
 
@@ -316,17 +317,7 @@ export default function GameHomepage() {
             if (data.user_id === userId) {
                 console.log('🏆 Updating current user highest score:', data.new_score);
                 setUserHighestScore(data.new_score);
-
-                // Also update the game result modal if it's showing
-                setGameResult(prev => {
-                    if (prev.show && !prev.isNewHighScore) {
-                        return {
-                            ...prev,
-                            currentHigh: data.new_score
-                        };
-                    }
-                    return prev;
-                });
+                // Note: Modal doesn't display currentHigh to avoid confusion with outdated data
             }
         };
 
@@ -904,19 +895,19 @@ export default function GameHomepage() {
                     console.warn('Cache clear failed:', cacheError);
                 }
             } else if (result.success && !result.data.is_duplicate) {
-                // 🚀 FIX: Even if not a new high score, show the current highest score in modal
-                setGameResult(prev => ({
-                    ...prev,
-                    currentHigh: result.data.current_highest_score || userHighestScore || 0
-                }));
-
-                // Update local state
+                // Update local state with current highest score for Socket.IO and future reference
                 if (result.data.current_highest_score) {
                     setUserHighestScore(result.data.current_highest_score);
                 }
 
-                // 🚀 PERFORMANCE: Keep cache for regular scores - no leaderboard position change
-                console.log('📊 Regular score submitted - keeping cache for faster navigation');
+                // 🚀 FIX: Clear cache for ALL score submissions to ensure leaderboard shows latest data
+                console.log('📊 Score submitted - clearing cache for immediate leaderboard update');
+                try {
+                    sessionStorage.removeItem('leaderboard_data');
+                    sessionStorage.removeItem('tournament_data');
+                } catch (cacheError) {
+                    console.warn('Cache clear failed:', cacheError);
+                }
             } else if (result.success) {
                 // 🚀 PERFORMANCE: Keep cache for regular scores - no leaderboard position change
                 console.log('📊 Regular score submitted - keeping cache for faster navigation');
@@ -982,13 +973,11 @@ export default function GameHomepage() {
         setContinueFromScore(0);
 
         // ALWAYS show the modal immediately for fast response
-        // 🚀 FIX: Include currentHigh from userHighestScore state for immediate display
         setGameResult({
             show: true,
             score,
             coins,
-            mode: modeText,
-            currentHigh: userHighestScore || undefined // Show current high score immediately
+            mode: modeText
         });
 
         // For tournament mode, only submit score if continue was already used (meaning this is the final game end)
@@ -1034,16 +1023,18 @@ export default function GameHomepage() {
                         sessionStorage.removeItem(`${envPrefix}preloaded_leaderboard`);
                         sessionStorage.removeItem(`${envPrefix}preloaded_tournament`);
                     } else if (result.success && !result.data.is_duplicate) {
-                        // 🚀 FIX: Even if not a new high score, show the current highest score in modal
-                        setGameResult(prev => ({
-                            ...prev,
-                            currentHigh: result.data.current_highest_score || userHighestScore || 0
-                        }));
-
-                        // Update local state
+                        // Update local state with current highest score for Socket.IO and future reference
                         if (result.data.current_highest_score) {
                             setUserHighestScore(result.data.current_highest_score);
                         }
+
+                        // 🚀 FIX: Clear cache for ALL score submissions to ensure leaderboard shows latest data
+                        console.log('🗑️ Score submitted - invalidating leaderboard cache for fresh data');
+                        const envPrefix = process.env.NODE_ENV === 'production' ? 'prod_' : 'dev_';
+                        sessionStorage.removeItem(`${envPrefix}preloaded_leaderboard`);
+                        sessionStorage.removeItem(`${envPrefix}preloaded_tournament`);
+                        sessionStorage.removeItem('leaderboard_data');
+                        sessionStorage.removeItem('tournament_data');
                     } else if (result.data?.is_duplicate) {
                         setGameResult(prev => ({
                             ...prev,
@@ -1231,12 +1222,6 @@ export default function GameHomepage() {
                                         🎉 NEW HIGH SCORE!
                                         <br />
                                         Previous: {gameResult.previousHigh}
-                                    </div>
-                                )}
-
-                                {!gameResult.isNewHighScore && gameResult.currentHigh !== undefined && (
-                                    <div className="current-high-score">
-                                        Your highest score: {gameResult.currentHigh}
                                     </div>
                                 )}
 
@@ -1777,12 +1762,6 @@ export default function GameHomepage() {
                                     🎉 NEW HIGH SCORE!
                                     <br />
                                     Previous: {gameResult.previousHigh}
-                                </div>
-                            )}
-
-                            {!gameResult.isNewHighScore && gameResult.currentHigh !== undefined && (
-                                <div className="current-high-score">
-                                    Your highest score: {gameResult.currentHigh}
                                 </div>
                             )}
 
