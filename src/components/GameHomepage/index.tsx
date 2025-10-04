@@ -982,11 +982,13 @@ export default function GameHomepage() {
         setContinueFromScore(0);
 
         // ALWAYS show the modal immediately for fast response
+        // 🚀 FIX: Include currentHigh from userHighestScore state for immediate display
         setGameResult({
             show: true,
             score,
             coins,
-            mode: modeText
+            mode: modeText,
+            currentHigh: userHighestScore || undefined // Show current high score immediately
         });
 
         // For tournament mode, only submit score if continue was already used (meaning this is the final game end)
