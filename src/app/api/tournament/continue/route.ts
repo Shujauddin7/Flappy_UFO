@@ -42,15 +42,6 @@ async function updateTournamentPrizePool(supabase: any, tournamentId: string) {
         const totalPrizePool = basePrizePool + guaranteeAmount; // 70% + guarantee (if needed)
         const adminNetResult = adminFeeAmount - guaranteeAmount; // Can be negative
 
-        console.log('💰 Tournament analytics recalculation after continue (NEW guarantee system):', {
-            totalRevenue,
-            basePrizePool,
-            guaranteeAmount,
-            totalPrizePool,
-            adminFeeAmount,
-            adminNetResult
-        });
-
         // Update tournament with NEW guarantee system
         const { error: updateError } = await supabase
             .from('tournaments')
@@ -66,15 +57,6 @@ async function updateTournamentPrizePool(supabase: any, tournamentId: string) {
 
         if (updateError) {
             console.error('❌ Error updating tournament analytics:', updateError);
-        } else {
-            console.log('✅ Tournament analytics updated with guarantee system:', {
-                total_collected: totalRevenue,
-                base_prize_pool: basePrizePool,
-                guarantee_amount: guaranteeAmount,
-                total_prize_pool: totalPrizePool,
-                admin_fee: adminFeeAmount,
-                admin_net_result: adminNetResult
-            });
         }
     } catch (error) {
         console.error('❌ Error in updateTournamentPrizePool:', error);
@@ -104,8 +86,6 @@ export async function POST(req: NextRequest) {
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
         const wallet = session.user.walletAddress;
 
-        console.log('🔵 Continue payment started:', { wallet, timestamp: new Date().toISOString() });
-
         // Calculate tournament day using weekly tournament boundary logic (Sunday 15:30 UTC)
         const now = new Date();
         const utcHour = now.getUTCHours();
@@ -125,12 +105,6 @@ export async function POST(req: NextRequest) {
 
         const today = tournamentSunday.toISOString().split('T')[0];
 
-        console.log('🔵 Tournament day calculated:', {
-            today,
-            currentUTC: now.toISOString(),
-            tournamentSunday: tournamentSunday.toISOString()
-        });
-
         // Get user
         const { data: user, error: userError } = await supabase
             .from('users')
@@ -139,11 +113,9 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (userError || !user) {
-            console.error('❌ Continue payment failed: User not found', { wallet, userError });
+            console.error('❌ Continue payment - User not found:', { wallet, userError });
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
-
-        console.log('✅ User found:', { user_id: user.id, wallet });
 
         // Get today's tournament
         const { data: tournament, error: tournamentError } = await supabase
@@ -154,11 +126,9 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (tournamentError || !tournament) {
-            console.error('❌ Continue payment failed: No active tournament', { today, tournamentError });
+            console.error('❌ Continue payment - No active tournament:', { today, tournamentError });
             return NextResponse.json({ error: 'No active tournament found' }, { status: 404 });
         }
-
-        console.log('✅ Tournament found:', { tournament_id: tournament.id, tournament_day: tournament.tournament_day });
 
         // Find the user's tournament record for the active tournament
         const { data: tournamentRecord, error: recordError } = await supabase
@@ -169,7 +139,7 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (recordError || !tournamentRecord) {
-            console.error('❌ Continue payment failed: Tournament entry not found', {
+            console.error('❌ Continue payment - Tournament entry not found:', {
                 user_id: user.id,
                 tournament_id: tournament.id,
                 recordError
@@ -179,8 +149,6 @@ export async function POST(req: NextRequest) {
                 details: recordError?.message
             }, { status: 404 });
         }
-
-        console.log('✅ Tournament record found:', { record_id: tournamentRecord.id });
 
         // Update the continue totals in user_tournament_records
         const { error: updateError } = await supabase
@@ -203,7 +171,6 @@ export async function POST(req: NextRequest) {
         await updateTournamentPrizePool(supabase, tournament.id);
 
         // 📡 Broadcast prize pool update via Socket.IO for instant cross-device updates
-        console.log('📡 Attempting to broadcast continue payment prize pool update...');
         try {
             const { data: updatedTournament, error: fetchError } = await supabase
                 .from('tournaments')
@@ -214,20 +181,11 @@ export async function POST(req: NextRequest) {
             if (fetchError) {
                 console.error('❌ Failed to fetch updated tournament data:', fetchError);
             } else if (updatedTournament) {
-                console.log('✅ Broadcasting prize pool update:', {
-                    tournament_id: tournament.id,
-                    new_prize_pool: updatedTournament.total_prize_pool,
-                    total_players: updatedTournament.total_tournament_players,
-                    increment_amount: continue_amount
-                });
-
                 await publishPrizePoolUpdate(tournament.id, {
                     new_prize_pool: updatedTournament.total_prize_pool,
                     total_players: updatedTournament.total_tournament_players,
                     increment_amount: continue_amount
                 });
-
-                console.log('✅ Prize pool update broadcast successful');
             }
         } catch (socketError) {
             console.error('❌ Socket.IO broadcast failed:', socketError);
