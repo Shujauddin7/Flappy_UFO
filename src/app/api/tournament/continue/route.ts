@@ -131,8 +131,11 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (userError || !user) {
+            console.error('❌ Continue payment failed: User not found', { wallet, userError });
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
+
+        console.log('✅ User found:', { user_id: user.id, wallet });
 
         // Get today's tournament
         const { data: tournament, error: tournamentError } = await supabase
@@ -143,8 +146,11 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (tournamentError || !tournament) {
+            console.error('❌ Continue payment failed: No active tournament', { today, tournamentError });
             return NextResponse.json({ error: 'No active tournament found' }, { status: 404 });
         }
+
+        console.log('✅ Tournament found:', { tournament_id: tournament.id, tournament_day: tournament.tournament_day });
 
         // Find the user's tournament record for the active tournament
         const { data: tournamentRecord, error: recordError } = await supabase
@@ -155,11 +161,18 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (recordError || !tournamentRecord) {
+            console.error('❌ Continue payment failed: Tournament entry not found', {
+                user_id: user.id,
+                tournament_id: tournament.id,
+                recordError
+            });
             return NextResponse.json({
                 error: 'Tournament entry not found. Please pay entry fee first.',
                 details: recordError?.message
             }, { status: 404 });
         }
+
+        console.log('✅ Tournament record found:', { record_id: tournamentRecord.id });
 
         // Update the continue totals in user_tournament_records
         const { error: updateError } = await supabase
