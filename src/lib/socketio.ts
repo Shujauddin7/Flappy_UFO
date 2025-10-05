@@ -9,7 +9,6 @@ let socket: Socket | null = null;
 
 // Get Socket.IO server URL based on environment
 const getSocketUrl = (): string => {
-    // Match redis.ts environment detection logic
     const vercelEnv = process.env.VERCEL_ENV;
     const isProduction = vercelEnv === 'production' || process.env.NEXT_PUBLIC_ENV === 'prod';
 
@@ -18,7 +17,8 @@ const getSocketUrl = (): string => {
     } else {
         return process.env.NEXT_PUBLIC_SOCKETIO_DEV_URL || 'https://flappy-ufo-socketio-server-dev.up.railway.app';
     }
-};/**
+};
+/**
  * Connect to Socket.IO server
  * Returns the socket instance for event listening
  */
