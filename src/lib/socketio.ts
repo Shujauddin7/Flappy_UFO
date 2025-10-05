@@ -11,7 +11,8 @@ let socket: Socket | null = null;
 const getSocketUrl = (): string => {
     const env = process.env.NEXT_PUBLIC_ENV || 'dev';
     
-    if (env === 'production') {
+    // Match Vercel environment variable: 'prod' for production, 'dev' for development
+    if (env === 'prod') {
         return process.env.NEXT_PUBLIC_SOCKETIO_PROD_URL || 'https://flappy-ufo-socketio-server-production.up.railway.app';
     } else {
         return process.env.NEXT_PUBLIC_SOCKETIO_DEV_URL || 'https://flappy-ufo-socketio-server-dev.up.railway.app';

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { createClient } from '@supabase/supabase-js';
+import { publishPrizePoolUpdate } from '@/lib/redis';
 
 // Helper function to update tournament analytics (includes entry + continue payments)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -179,7 +180,26 @@ export async function POST(req: NextRequest) {
         // Update tournament prize pool to include this continue payment (70% rule)
         await updateTournamentPrizePool(supabase, tournament.id);
 
-        // 🔄 SYNC: Update tournament_sign_ins aggregates (amount and games count best-effort)
+        // � Broadcast prize pool update via Socket.IO for instant cross-device updates
+        try {
+            const { data: updatedTournament } = await supabase
+                .from('tournaments')
+                .select('total_prize_pool, total_tournament_players')
+                .eq('id', tournament.id)
+                .single();
+
+            if (updatedTournament) {
+                await publishPrizePoolUpdate(tournament.id, {
+                    new_prize_pool: updatedTournament.total_prize_pool,
+                    total_players: updatedTournament.total_tournament_players,
+                    increment_amount: continue_amount
+                });
+            }
+        } catch (socketError) {
+            console.error('Socket.IO broadcast failed (non-critical):', socketError);
+        }
+
+        // �🔄 SYNC: Update tournament_sign_ins aggregates (amount and games count best-effort)
         try {
             // Ensure row exists and accumulate continue amount
             await supabase
