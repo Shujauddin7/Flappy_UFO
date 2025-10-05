@@ -9,16 +9,16 @@ let socket: Socket | null = null;
 
 // Get Socket.IO server URL based on environment
 const getSocketUrl = (): string => {
-    const env = process.env.NEXT_PUBLIC_ENV || 'dev';
-    
-    if (env === 'production') {
+    // Match redis.ts environment detection logic
+    const vercelEnv = process.env.VERCEL_ENV;
+    const isProduction = vercelEnv === 'production' || process.env.NEXT_PUBLIC_ENV === 'prod';
+
+    if (isProduction) {
         return process.env.NEXT_PUBLIC_SOCKETIO_PROD_URL || 'https://flappy-ufo-socketio-server-production.up.railway.app';
     } else {
         return process.env.NEXT_PUBLIC_SOCKETIO_DEV_URL || 'https://flappy-ufo-socketio-server-dev.up.railway.app';
     }
-};
-
-/**
+};/**
  * Connect to Socket.IO server
  * Returns the socket instance for event listening
  */
@@ -60,7 +60,7 @@ export const disconnectSocket = (): void => {
 export const joinTournament = (tournamentId: string, userId?: string, username?: string): void => {
     if (socket && socket.connected) {
         console.log(`�� Joining tournament room: tournament_${tournamentId}`);
-        socket.emit('join_tournament', { 
+        socket.emit('join_tournament', {
             tournament_id: tournamentId,
             user_id: userId,
             username: username
