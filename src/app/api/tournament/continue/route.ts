@@ -57,6 +57,7 @@ async function updateTournamentPrizePool(supabase: any, tournamentId: string) {
             .update({
                 total_prize_pool: totalPrizePool,
                 total_collected: totalRevenue,
+                total_tournament_players: totalPlayers,
                 admin_fee: adminFeeAmount,
                 guarantee_amount: guaranteeAmount,
                 admin_net_result: adminNetResult
@@ -180,23 +181,35 @@ export async function POST(req: NextRequest) {
         // Update tournament prize pool to include this continue payment (70% rule)
         await updateTournamentPrizePool(supabase, tournament.id);
 
-        // � Broadcast prize pool update via Socket.IO for instant cross-device updates
+        // 📡 Broadcast prize pool update via Socket.IO for instant cross-device updates
+        console.log('📡 Attempting to broadcast continue payment prize pool update...');
         try {
-            const { data: updatedTournament } = await supabase
+            const { data: updatedTournament, error: fetchError } = await supabase
                 .from('tournaments')
                 .select('total_prize_pool, total_tournament_players')
                 .eq('id', tournament.id)
                 .single();
 
-            if (updatedTournament) {
+            if (fetchError) {
+                console.error('❌ Failed to fetch updated tournament data:', fetchError);
+            } else if (updatedTournament) {
+                console.log('✅ Broadcasting prize pool update:', {
+                    tournament_id: tournament.id,
+                    new_prize_pool: updatedTournament.total_prize_pool,
+                    total_players: updatedTournament.total_tournament_players,
+                    increment_amount: continue_amount
+                });
+
                 await publishPrizePoolUpdate(tournament.id, {
                     new_prize_pool: updatedTournament.total_prize_pool,
                     total_players: updatedTournament.total_tournament_players,
                     increment_amount: continue_amount
                 });
+
+                console.log('✅ Prize pool update broadcast successful');
             }
         } catch (socketError) {
-            console.error('Socket.IO broadcast failed (non-critical):', socketError);
+            console.error('❌ Socket.IO broadcast failed:', socketError);
         }
 
         // �🔄 SYNC: Update tournament_sign_ins aggregates (amount and games count best-effort)
