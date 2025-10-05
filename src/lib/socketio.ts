@@ -9,10 +9,18 @@ let socket: Socket | null = null;
 
 // Get Socket.IO server URL based on environment
 const getSocketUrl = (): string => {
-    const env = process.env.NEXT_PUBLIC_ENV || 'dev';
-    
-    // Match Vercel environment variable: 'prod' for production, 'dev' for development
-    if (env === 'prod') {
+    // CRITICAL: This runs in the browser, so only NEXT_PUBLIC_* env vars are available
+    // VERCEL_ENV is server-side only, so we rely on NEXT_PUBLIC_ENV
+    const nextPublicEnv = process.env.NEXT_PUBLIC_ENV;
+    const isProduction = nextPublicEnv === 'prod' || nextPublicEnv === 'production';
+
+    console.log('🔌 Socket.IO environment detection:', {
+        NEXT_PUBLIC_ENV: nextPublicEnv,
+        isProduction,
+        willConnectTo: isProduction ? 'PRODUCTION' : 'DEV'
+    });
+
+    if (isProduction) {
         return process.env.NEXT_PUBLIC_SOCKETIO_PROD_URL || 'https://flappy-ufo-socketio-server-production.up.railway.app';
     } else {
         return process.env.NEXT_PUBLIC_SOCKETIO_DEV_URL || 'https://flappy-ufo-socketio-server-dev.up.railway.app';
@@ -61,7 +69,7 @@ export const disconnectSocket = (): void => {
 export const joinTournament = (tournamentId: string, userId?: string, username?: string): void => {
     if (socket && socket.connected) {
         console.log(`�� Joining tournament room: tournament_${tournamentId}`);
-        socket.emit('join_tournament', { 
+        socket.emit('join_tournament', {
             tournament_id: tournamentId,
             user_id: userId,
             username: username
