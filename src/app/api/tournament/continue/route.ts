@@ -64,6 +64,7 @@ async function updateTournamentPrizePool(supabase: any, tournamentId: string) {
 }
 
 export async function POST(req: NextRequest) {
+    console.error('🚨 CONTINUE ROUTE HIT - Function is executing!');
     try {
         const session = await auth();
         if (!session?.user?.walletAddress) {
