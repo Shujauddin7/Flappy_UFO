@@ -97,7 +97,7 @@ export async function getOptimizedTournamentStats(tournamentDay: string) {
             .from('tournaments')
             .select(`
                 id,
-                                tournament_day,
+                tournament_day,
                 total_tournament_players,
                 total_prize_pool,
                 total_collected,
@@ -110,10 +110,15 @@ export async function getOptimizedTournamentStats(tournamentDay: string) {
             `)
             .eq('tournament_day', tournamentDay)
             .eq('is_active', true)
-            .single();
+            .maybeSingle(); // Use maybeSingle() instead of single() to avoid errors when no tournament exists
 
         if (error) {
             console.error('❌ Optimized tournament stats query error:', error);
+            return null;
+        }
+
+        if (!data) {
+            console.log('ℹ️ No active tournament found for:', tournamentDay);
             return null;
         }
 
