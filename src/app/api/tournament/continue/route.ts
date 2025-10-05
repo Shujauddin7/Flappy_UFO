@@ -104,6 +104,8 @@ export async function POST(req: NextRequest) {
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
         const wallet = session.user.walletAddress;
 
+        console.log('🔵 Continue payment started:', { wallet, timestamp: new Date().toISOString() });
+
         // Calculate tournament day using weekly tournament boundary logic (Sunday 15:30 UTC)
         const now = new Date();
         const utcHour = now.getUTCHours();
@@ -122,6 +124,12 @@ export async function POST(req: NextRequest) {
         tournamentSunday.setUTCDate(tournamentDate.getUTCDate() - daysToSubtract);
 
         const today = tournamentSunday.toISOString().split('T')[0];
+
+        console.log('🔵 Tournament day calculated:', {
+            today,
+            currentUTC: now.toISOString(),
+            tournamentSunday: tournamentSunday.toISOString()
+        });
 
         // Get user
         const { data: user, error: userError } = await supabase
