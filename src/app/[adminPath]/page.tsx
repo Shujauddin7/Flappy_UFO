@@ -47,9 +47,14 @@ export default function AdminDashboard() {
     const router = useRouter();
     const params = useParams();
     const [activeTab, setActiveTab] = useState<'overview' | 'payouts' | 'history'>('overview');
+    const [tournamentView, setTournamentView] = useState<'current' | 'previous'>('current');
     const [currentTournament, setCurrentTournament] = useState<TournamentData | null>(null);
+    const [previousTournament, setPreviousTournament] = useState<TournamentData | null>(null);
     const [winners, setWinners] = useState<Winner[]>([]);
+    const [previousWinners, setPreviousWinners] = useState<Winner[]>([]); // Used for previous tournament view
+    const displayedWinners = tournamentView === 'current' ? winners : previousWinners;
     const [prizePool, setPrizePool] = useState<PrizePoolData | null>(null);
+    const [previousPrizePool, setPreviousPrizePool] = useState<PrizePoolData | null>(null);
     const [loading, setLoading] = useState(false);
     const [isValidAdminPath, setIsValidAdminPath] = useState(false);
     const [selectedAdminWallet, setSelectedAdminWallet] = useState<string>('');
@@ -339,6 +344,113 @@ export default function AdminDashboard() {
         );
     };
 
+    // Load previous tournament data
+    const handleLoadPreviousTournament = async () => {
+        setLoading(true);
+        try {
+            const response = await fetch('/api/tournament/previous');
+            if (response.ok) {
+                const data = await response.json();
+                const tournament = data.tournament;
+
+                const mappedTournament = {
+                    tournament_id: tournament.id,
+                    tournament_day: tournament.tournament_day,
+                    total_collected: tournament.total_collected,
+                    participant_count: tournament.total_players,
+                    status: 'ended',
+                    created_at: tournament.created_at
+                };
+
+                setPreviousTournament(mappedTournament);
+
+                // Calculate base prize percentages
+                const calculateBasePrize = (rank: number): number => {
+                    const prizeDistribution = [0.40, 0.22, 0.14, 0.06, 0.05, 0.04, 0.03, 0.02, 0.02, 0.02];
+                    return prizeDistribution[rank - 1] || 0;
+                };
+
+                if (tournament?.id) {
+                    const leaderboardResponse = await fetch(`/api/tournament/leaderboard-data?tournament_id=${tournament.id}`);
+                    if (leaderboardResponse.ok) {
+                        const leaderboardData = await leaderboardResponse.json();
+                        const leaderboard = leaderboardData.players || leaderboardData;
+
+                        const paidResponse = await fetch(`/api/admin/paid-winners?tournament_id=${tournament.id}`);
+                        const paidWinners = paidResponse.ok ? await paidResponse.json() : { winners: [] };
+
+                        const paidWalletsMap = new Map<string, string>(
+                            paidWinners.winners?.map((w: { wallet: string; transaction_hash: string }) =>
+                                [w.wallet, w.transaction_hash || '']
+                            ) || []
+                        );
+
+                        const winnersData = leaderboard.slice(0, 10).map((player: { wallet?: string; wallet_address?: string; username?: string; highest_score?: number; score?: number }, index: number) => {
+                            const walletAddress = player.wallet || player.wallet_address || '';
+                            const transactionHash = paidWalletsMap.get(walletAddress);
+                            const isPaid = Boolean(transactionHash);
+
+                            return {
+                                rank: index + 1,
+                                wallet_address: walletAddress,
+                                username: player.username || `Player ${index + 1}`,
+                                score: player.highest_score || player.score,
+                                base_amount: calculateBasePrize(index + 1),
+                                guarantee_bonus: 0,
+                                final_amount: 0,
+                                payment_status: isPaid ? ('sent' as const) : ('pending' as const),
+                                transaction_id: transactionHash || undefined
+                            };
+                        });
+
+                        setPreviousWinners(winnersData);
+
+                        const analyticsResponse = await fetch(`/api/admin/tournament-analytics?tournament_day=${tournament.tournament_day}`);
+                        if (analyticsResponse.ok) {
+                            const result = await analyticsResponse.json();
+                            const analytics = result.data;
+
+                            const totalCollected = analytics.total_collected || 0;
+                            const adminFee = analytics.admin_fee || 0;
+                            const guaranteeAmount = analytics.guarantee_amount || 0;
+                            const baseAmount = analytics.total_prize_pool || 0;
+
+                            setPreviousPrizePool({
+                                base_amount: baseAmount,
+                                guarantee_amount: guaranteeAmount,
+                                admin_fee: adminFee,
+                                total_collected: totalCollected,
+                                guarantee_needed: guaranteeAmount > 0
+                            });
+
+                            setPreviousWinners(prev =>
+                                prev.map(winner => {
+                                    const basePrize = winner.base_amount * baseAmount;
+                                    const guaranteeBonus = guaranteeAmount > 0 ? 1.0 : 0.0;
+                                    const finalAmount = basePrize + guaranteeBonus;
+
+                                    return {
+                                        ...winner,
+                                        guarantee_bonus: guaranteeBonus,
+                                        final_amount: finalAmount
+                                    };
+                                })
+                            );
+                        }
+                    }
+                }
+            } else {
+                console.warn('No previous tournament found');
+                setPreviousTournament(null);
+                setPreviousWinners([]);
+            }
+        } catch (error) {
+            console.error('Error loading previous tournament:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // Force refresh payment status from database (for troubleshooting)
     const forceRefreshPaymentStatus = async () => {
         if (!currentTournament?.tournament_id) return;
@@ -562,6 +674,52 @@ export default function AdminDashboard() {
                     ))}
                 </div>
 
+                {/* Tournament View Toggle */}
+                {(activeTab === 'overview' || activeTab === 'payouts') && (
+                    <div className="bg-cyan-500/20 border border-cyan-500/50 rounded-lg p-4 mb-6">
+                        <div className="flex items-center justify-between flex-wrap gap-4">
+                            <div>
+                                <h3 className="text-lg font-semibold text-white mb-1">📅 Tournament Period</h3>
+                                <p className="text-sm text-gray-300">
+                                    {tournamentView === 'current' ? 'Viewing current active tournament' : 'Viewing previous tournament for payments'}
+                                </p>
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setTournamentView('current')}
+                                    className={`px-6 py-2 rounded-lg font-semibold transition-all ${tournamentView === 'current'
+                                        ? 'bg-green-600 text-white shadow-lg scale-105'
+                                        : 'bg-white/20 text-gray-300 hover:bg-white/30'
+                                        }`}
+                                >
+                                    🟢 Current
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setTournamentView('previous');
+                                        if (!previousTournament) {
+                                            handleLoadPreviousTournament();
+                                        }
+                                    }}
+                                    className={`px-6 py-2 rounded-lg font-semibold transition-all ${tournamentView === 'previous'
+                                        ? 'bg-orange-600 text-white shadow-lg scale-105'
+                                        : 'bg-white/20 text-gray-300 hover:bg-white/30'
+                                        }`}
+                                >
+                                    🔴 Previous
+                                </button>
+                            </div>
+                        </div>
+                        {tournamentView === 'previous' && (
+                            <div className="mt-3 bg-yellow-500/20 border border-yellow-500/50 rounded p-3">
+                                <p className="text-sm text-yellow-200">
+                                    ⚠️ <strong>Remember to pay winners!</strong> Previous tournament ended. Check if all winners have been paid below.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {loading && (
                     <div className="text-center text-white text-xl mb-8">
                         Loading tournament data...
@@ -569,52 +727,85 @@ export default function AdminDashboard() {
                 )}
 
                 {/* Overview Tab */}
-                {activeTab === 'overview' && currentTournament && (
+                {activeTab === 'overview' && (
                     <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 mb-8">
                         <h2 className="text-2xl font-bold text-white mb-6">Tournament Overview</h2>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="bg-white/20 rounded-lg p-4">
-                                <h3 className="text-lg font-semibold text-white mb-2">Tournament Status</h3>
-                                <p className="text-2xl font-bold text-green-400">{currentTournament.status}</p>
-                                <p className="text-sm text-gray-300">Day: {currentTournament.tournament_day}</p>
-                            </div>
+                        {tournamentView === 'current' && currentTournament && (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="bg-white/20 rounded-lg p-4">
+                                    <h3 className="text-lg font-semibold text-white mb-2">Tournament Status</h3>
+                                    <p className="text-2xl font-bold text-green-400">{currentTournament.status}</p>
+                                    <p className="text-sm text-gray-300">Day: {currentTournament.tournament_day}</p>
+                                </div>
 
-                            <div className="bg-white/20 rounded-lg p-4">
-                                <h3 className="text-lg font-semibold text-white mb-2">Participants</h3>
-                                <p className="text-2xl font-bold text-blue-400">{currentTournament.participant_count}</p>
-                                <p className="text-sm text-gray-300">Total players</p>
-                            </div>
+                                <div className="bg-white/20 rounded-lg p-4">
+                                    <h3 className="text-lg font-semibold text-white mb-2">Participants</h3>
+                                    <p className="text-2xl font-bold text-blue-400">{currentTournament.participant_count}</p>
+                                    <p className="text-sm text-gray-300">Total players</p>
+                                </div>
 
-                            <div className="bg-white/20 rounded-lg p-4">
-                                <h3 className="text-lg font-semibold text-white mb-2">Revenue</h3>
-                                <p className="text-2xl font-bold text-yellow-400">{currentTournament.total_collected.toFixed(2)} WLD</p>
-                                <p className="text-sm text-gray-300">Total collected</p>
+                                <div className="bg-white/20 rounded-lg p-4">
+                                    <h3 className="text-lg font-semibold text-white mb-2">Revenue</h3>
+                                    <p className="text-2xl font-bold text-yellow-400">{currentTournament.total_collected.toFixed(2)} WLD</p>
+                                    <p className="text-sm text-gray-300">Total collected</p>
+                                </div>
                             </div>
-                        </div>
+                        )}
 
-                        {prizePool && (
+                        {tournamentView === 'previous' && previousTournament && (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="bg-white/20 rounded-lg p-4">
+                                    <h3 className="text-lg font-semibold text-white mb-2">Tournament Status</h3>
+                                    <p className="text-2xl font-bold text-gray-400">{previousTournament.status}</p>
+                                    <p className="text-sm text-gray-300">Day: {previousTournament.tournament_day}</p>
+                                </div>
+
+                                <div className="bg-white/20 rounded-lg p-4">
+                                    <h3 className="text-lg font-semibold text-white mb-2">Participants</h3>
+                                    <p className="text-2xl font-bold text-blue-400">{previousTournament.participant_count}</p>
+                                    <p className="text-sm text-gray-300">Total players</p>
+                                </div>
+
+                                <div className="bg-white/20 rounded-lg p-4">
+                                    <h3 className="text-lg font-semibold text-white mb-2">Revenue</h3>
+                                    <p className="text-2xl font-bold text-yellow-400">{previousTournament.total_collected.toFixed(2)} WLD</p>
+                                    <p className="text-sm text-gray-300">Total collected</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {(tournamentView === 'current' ? prizePool : previousPrizePool) && (
                             <div className="mt-6 bg-white/20 rounded-lg p-4">
                                 <h3 className="text-lg font-semibold text-white mb-4">Prize Pool Breakdown</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
                                     <div>
                                         <p className="text-gray-300">Base Prize Pool</p>
-                                        <p className="text-xl font-bold text-green-400">{prizePool.base_amount.toFixed(2)} WLD</p>
+                                        <p className="text-xl font-bold text-green-400">
+                                            {(tournamentView === 'current' ? prizePool : previousPrizePool)?.base_amount.toFixed(2)} WLD
+                                        </p>
                                     </div>
                                     <div>
-                                        <p className="text-gray-300">Admin Fee (10%)</p>
-                                        <p className="text-xl font-bold text-orange-400">{prizePool.admin_fee.toFixed(2)} WLD</p>
+                                        <p className="text-gray-300">Admin Fee (30%)</p>
+                                        <p className="text-xl font-bold text-orange-400">
+                                            {(tournamentView === 'current' ? prizePool : previousPrizePool)?.admin_fee.toFixed(2)} WLD
+                                        </p>
                                     </div>
                                     <div>
                                         <p className="text-gray-300">Guarantee Bonus</p>
-                                        <p className="text-xl font-bold text-purple-400">{prizePool.guarantee_amount.toFixed(2)} WLD</p>
+                                        <p className="text-xl font-bold text-purple-400">
+                                            {(tournamentView === 'current' ? prizePool : previousPrizePool)?.guarantee_amount.toFixed(2)} WLD
+                                        </p>
                                     </div>
                                     <div>
                                         <p className="text-gray-300">Total Payout</p>
-                                        <p className="text-xl font-bold text-yellow-400">{(prizePool.base_amount + prizePool.guarantee_amount).toFixed(2)} WLD</p>
+                                        <p className="text-xl font-bold text-yellow-400">
+                                            {((tournamentView === 'current' ? prizePool : previousPrizePool)!.base_amount + 
+                                              (tournamentView === 'current' ? prizePool : previousPrizePool)!.guarantee_amount).toFixed(2)} WLD
+                                        </p>
                                     </div>
                                 </div>
-                                {prizePool.guarantee_needed && (
+                                {(tournamentView === 'current' ? prizePool : previousPrizePool)?.guarantee_needed && (
                                     <div className="mt-4 p-3 bg-yellow-500/20 border border-yellow-500/50 rounded-lg">
                                         <p className="text-yellow-300 font-semibold">⚠️ Guarantee Bonus Active</p>
                                         <p className="text-sm text-yellow-200">Revenue below 72 WLD threshold. Adding 1 WLD guarantee per top 10 winner.</p>
@@ -728,7 +919,9 @@ export default function AdminDashboard() {
                                 <li>• <strong>Possible causes:</strong> Insufficient balance, daily limits, unverified wallets, or World App restrictions</li>
                                 <li>• <strong>Workaround:</strong> Ask winners to share a different wallet address if payments fail</li>
                             </ul>
-                        </div>                        {winners.length > 0 ? (
+                        </div>
+
+                        {displayedWinners.length > 0 ? (
                             <div className="overflow-x-auto">
                                 <table className="w-full text-white">
                                     <thead>
@@ -744,7 +937,7 @@ export default function AdminDashboard() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {winners.map((winner) => {
+                                        {displayedWinners.map((winner) => {
                                             // Safety checks for each winner data
                                             if (!winner || typeof winner.rank !== 'number') {
                                                 return null;
@@ -786,7 +979,7 @@ export default function AdminDashboard() {
                                                                 rank={winner.rank}
                                                                 username={winner.username || `Player ${winner.rank}`}
                                                                 selectedAdminWallet={selectedAdminWallet || ''}
-                                                                tournamentId={currentTournament?.tournament_id || ''}
+                                                                tournamentId={(tournamentView === 'current' ? currentTournament?.tournament_id : previousTournament?.tournament_id) || ''}
                                                                 finalScore={winner.score || 0}
                                                                 onPaymentSuccess={handlePaymentSuccess}
                                                                 onPaymentError={handlePaymentError}
