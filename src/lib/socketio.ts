@@ -7,16 +7,15 @@ import { io, Socket } from 'socket.io-client';
 
 let socket: Socket | null = null;
 
-// Get Socket.IO server URL based on environment (Railway removed .up from domains)
+// Get Socket.IO server URL based on environment
 const getSocketUrl = (): string => {
     const vercelEnv = process.env.VERCEL_ENV;
     const isProduction = vercelEnv === 'production' || process.env.NEXT_PUBLIC_ENV === 'prod';
 
-    // Railway URLs (without .up - updated Oct 2025)
     if (isProduction) {
-        return process.env.NEXT_PUBLIC_SOCKETIO_PROD_URL || 'https://flappy-ufo-socketio-server-production.railway.app';
+        return process.env.NEXT_PUBLIC_SOCKETIO_PROD_URL || 'https://flappy-ufo-socketio-server-production.up.railway.app';
     } else {
-        return process.env.NEXT_PUBLIC_SOCKETIO_DEV_URL || 'https://flappy-ufo-socketio-server-dev.railway.app';
+        return process.env.NEXT_PUBLIC_SOCKETIO_DEV_URL || 'https://flappy-ufo-socketio-server-dev.up.railway.app';
     }
 };
 /**
