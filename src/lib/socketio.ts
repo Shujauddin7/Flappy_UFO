@@ -7,11 +7,12 @@ import { io, Socket } from 'socket.io-client';
 
 let socket: Socket | null = null;
 
-// Get Socket.IO server URL based on environment
+// Get Socket.IO server URL based on environment (Railway removed .up from domains)
 const getSocketUrl = (): string => {
     const vercelEnv = process.env.VERCEL_ENV;
     const isProduction = vercelEnv === 'production' || process.env.NEXT_PUBLIC_ENV === 'prod';
 
+    // Railway URLs (without .up - updated Oct 2025)
     if (isProduction) {
         return process.env.NEXT_PUBLIC_SOCKETIO_PROD_URL || 'https://flappy-ufo-socketio-server-production.railway.app';
     } else {
