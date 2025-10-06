@@ -8,6 +8,7 @@ import { walletAuth } from '@/auth/wallet';
 import dynamic from 'next/dynamic';
 import { TournamentEntryModal } from '@/components/TournamentEntryModal';
 import InfoModal from '@/components/INFO';
+import GracePeriodModal from '@/components/GracePeriodModal';
 import { CACHE_TTL } from '@/utils/leaderboard-cache';
 import { canContinue, spendCoins, getCoins, addCoins } from '@/utils/coins';
 import { connectSocket, joinTournament } from '@/lib/socketio';
@@ -41,6 +42,8 @@ export default function GameHomepage() {
     const [currentScreen, setCurrentScreen] = useState<'home' | 'gameSelect' | 'tournamentEntry' | 'playing'>('home');
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
     const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+    const [isGracePeriodModalOpen, setIsGracePeriodModalOpen] = useState(false);
+    const [gracePeriodEndTime, setGracePeriodEndTime] = useState<string | undefined>();
 
     // Cleanup on unmount to prevent state updates
     useEffect(() => {
@@ -424,17 +427,27 @@ export default function GameHomepage() {
             const data = await response.json();
 
             if (data.tournament && data.status) {
-                // Use the new API response structure
+                // Check if tournament has ended
                 if (data.status.has_ended) {
                     alert('❌ Tournament has ended! You can no longer participate.');
                     return false;
                 }
 
+                // Check if tournament hasn't started
                 if (data.status.has_not_started) {
                     alert('❌ Tournament has not started yet! Please wait.');
                     return false;
                 }
 
+                // Check if we're in grace period (last 30 minutes)
+                if (data.status.is_grace_period) {
+                    // Show grace period modal instead of alert
+                    setGracePeriodEndTime(data.status.end_time);
+                    setIsGracePeriodModalOpen(true);
+                    return false;
+                }
+
+                // Check if entries are allowed (covers other edge cases)
                 if (!data.status.entries_allowed) {
                     alert('❌ Tournament entries are not allowed at this time.');
                     return false;
@@ -703,6 +716,13 @@ export default function GameHomepage() {
 
     // Handle payment
     const handlePayment = async (amount: number, isVerified: boolean) => {
+        // 🔥 CRITICAL: Check tournament status BEFORE accepting payment
+        const tournamentActive = await checkTournamentActive();
+        if (!tournamentActive) {
+            // checkTournamentActive already shows appropriate modal/alert
+            return;
+        }
+
         try {
             const { MiniKit, Tokens, tokenToDecimals } = await import('@worldcoin/minikit-js');
 
@@ -757,10 +777,11 @@ export default function GameHomepage() {
 
     // Handle tournament continue payment
     const handleTournamentContinue = async (score: number) => {
-        // Check if tournament is still active BEFORE payment
+        // 🔥 CRITICAL: Check if tournament is still active BEFORE payment (blocks grace period)
         const tournamentActive = await checkTournamentActive();
         if (!tournamentActive) {
-            return; // Stop here if tournament ended
+            // checkTournamentActive already shows grace period modal or alert
+            return;
         }
 
         try {
@@ -1651,6 +1672,13 @@ export default function GameHomepage() {
                         onClose={() => setIsInfoModalOpen(false)}
                     />
                 )}
+
+                {/* Grace Period Modal */}
+                <GracePeriodModal
+                    isOpen={isGracePeriodModalOpen}
+                    onClose={() => setIsGracePeriodModalOpen(false)}
+                    tournamentEndTime={gracePeriodEndTime}
+                />
             </>
         );
     }

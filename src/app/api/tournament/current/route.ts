@@ -118,7 +118,7 @@ export async function GET() {
             start_time: tournament.start_time,
             end_time: tournament.end_time,
             tournament_day: tournament.tournament_day,
-            entries_allowed: isActive  // Simple: allow entries when tournament is active
+            entries_allowed: isActive && !isGracePeriod  // Block entries during grace period
         };
 
         console.log('✅ Tournament status calculated:', {

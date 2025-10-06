@@ -101,13 +101,32 @@ export async function POST(req: NextRequest) {
         // Get active tournament (same logic as entry route)
         const { data: tournament, error: tournamentError } = await supabase
             .from('tournaments')
-            .select('id, tournament_day')
+            .select('id, tournament_day, end_time')
             .eq('is_active', true)
             .single();
 
         if (tournamentError || !tournament) {
             console.error('❌ Continue payment - No active tournament:', { tournamentError });
             return NextResponse.json({ error: 'No active tournament found' }, { status: 404 });
+        }
+
+        // 🔥 CRITICAL: Grace Period Validation - Block continue payments during grace period
+        const currentTime = new Date();
+        const tournamentEndTime = new Date(tournament.end_time);
+        const gracePeriodStart = new Date(tournamentEndTime.getTime() - 30 * 60 * 1000); // 30 minutes before end
+        const isGracePeriod = currentTime >= gracePeriodStart && currentTime < tournamentEndTime;
+
+        if (isGracePeriod) {
+            console.log('⏰ Grace period detected - rejecting continue payment:', {
+                current_time: currentTime.toISOString(),
+                grace_period_start: gracePeriodStart.toISOString(),
+                tournament_end: tournamentEndTime.toISOString()
+            });
+
+            return NextResponse.json({
+                error: 'Tournament is in grace period. Continue payments are not allowed.',
+                details: 'Tournament ends soon. Please wait for the next tournament.'
+            }, { status: 403 });
         }
 
         // Find the user's tournament record for the active tournament
