@@ -800,8 +800,8 @@ export default function AdminDashboard() {
                                     <div>
                                         <p className="text-gray-300">Total Payout</p>
                                         <p className="text-xl font-bold text-yellow-400">
-                                            {((tournamentView === 'current' ? prizePool : previousPrizePool)!.base_amount + 
-                                              (tournamentView === 'current' ? prizePool : previousPrizePool)!.guarantee_amount).toFixed(2)} WLD
+                                            {((tournamentView === 'current' ? prizePool : previousPrizePool)!.base_amount +
+                                                (tournamentView === 'current' ? prizePool : previousPrizePool)!.guarantee_amount).toFixed(2)} WLD
                                         </p>
                                     </div>
                                 </div>
