@@ -13,9 +13,9 @@ const getSocketUrl = (): string => {
     const isProduction = vercelEnv === 'production' || process.env.NEXT_PUBLIC_ENV === 'prod';
 
     if (isProduction) {
-        return process.env.NEXT_PUBLIC_SOCKETIO_PROD_URL || 'https://flappy-ufo-socketio-server-production.up.railway.app';
+        return process.env.NEXT_PUBLIC_SOCKETIO_PROD_URL || 'https://flappy-ufo-socketio-server-production.railway.app';
     } else {
-        return process.env.NEXT_PUBLIC_SOCKETIO_DEV_URL || 'https://flappy-ufo-socketio-server-dev.up.railway.app';
+        return process.env.NEXT_PUBLIC_SOCKETIO_DEV_URL || 'https://flappy-ufo-socketio-server-dev.railway.app';
     }
 };
 /**
