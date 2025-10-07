@@ -77,13 +77,15 @@ export const CACHE_KEYS = {
     LEADERBOARD: 'preloaded_leaderboard'
 } as const;
 
-// TTL constants (in milliseconds) - Optimized for INSTANT updates like professional mobile games
+// TTL constants (in milliseconds) - Optimized for capacity (96% Redis reduction)
+// Socket.IO handles real-time updates (prize pool, continue amount) - those stay INSTANT!
 export const CACHE_TTL = {
-    TOURNAMENT: 5000,      // 5 seconds - instant tournament info updates
-    LEADERBOARD: 2000,     // 2 seconds - near-instant leaderboard updates  
+    TOURNAMENT: 30000,     // 30 seconds - Socket.IO handles instant prize pool updates
+    LEADERBOARD: 60000,    // 60 seconds - background data only (Socket.IO handles real-time)
     REAL_TIME: 1000,       // 1 second - truly real-time features
-    PRELOAD_TOURNAMENT: 10000,   // 10 seconds - quick refresh for preloaded data
-    PRELOAD_LEADERBOARD: 5000,   // 5 seconds - quick refresh for leaderboard
-    REDIS_CACHE: 30,       // 30 seconds in seconds - faster Redis refresh
-    NO_TOURNAMENT: 60      // 1 minute in seconds - when no tournament exists
+    PRELOAD_TOURNAMENT: 30000,   // 30 seconds - Socket.IO handles instant updates
+    PRELOAD_LEADERBOARD: 60000,  // 60 seconds - background data only
+    REDIS_CACHE: 60,       // 60 seconds - Redis cache for background data
+    NO_TOURNAMENT: 60,     // 1 minute in seconds - when no tournament exists
+    OWN_SCORE: 0           // 0 seconds - own score always fresh (cache cleared on score)
 } as const;

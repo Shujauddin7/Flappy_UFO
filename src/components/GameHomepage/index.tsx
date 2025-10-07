@@ -907,11 +907,17 @@ export default function GameHomepage() {
                 setUserHighestScore(result.data.current_highest_score);
 
                 // 🚀 SMART CACHE: Only clear cache on NEW HIGH SCORES (matches server logic)
-                console.log('🏆 NEW HIGH SCORE! - invalidating leaderboard cache for immediate update');
+                console.log('🏆 NEW HIGH SCORE! - invalidating ALL leaderboard cache for INSTANT update');
                 try {
-                    // Clear the correct cache keys that leaderboard page uses
+                    // Clear ALL possible cache keys for instant own score update
                     sessionStorage.removeItem('leaderboard_data');
                     sessionStorage.removeItem('tournament_data');
+                    sessionStorage.removeItem('preloaded_leaderboard');
+                    sessionStorage.removeItem('preloaded_tournament');
+                    sessionStorage.removeItem('prod_preloaded_leaderboard');
+                    sessionStorage.removeItem('prod_preloaded_tournament');
+                    sessionStorage.removeItem('dev_preloaded_leaderboard');
+                    sessionStorage.removeItem('dev_preloaded_tournament');
                 } catch (cacheError) {
                     console.warn('Cache clear failed:', cacheError);
                 }
