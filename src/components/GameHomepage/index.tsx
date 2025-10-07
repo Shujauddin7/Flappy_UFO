@@ -157,8 +157,7 @@ export default function GameHomepage() {
     const [tournamentContinueUsed, setTournamentContinueUsed] = useState<boolean>(false);
     const [tournamentEntryAmount, setTournamentEntryAmount] = useState<number>(1.0); // Track entry amount for continue payment
 
-    // 🚀 Track user's current highest score for Socket.IO real-time updates (background state, not displayed in modal)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // 🚀 Track user's current highest score for Socket.IO real-time updates and modal display
     const [userHighestScore, setUserHighestScore] = useState<number | null>(null);
     const [currentTournamentId, setCurrentTournamentId] = useState<string | null>(null);
 
@@ -929,6 +928,12 @@ export default function GameHomepage() {
                 // Update local state with current highest score for Socket.IO and future reference
                 if (result.data.current_highest_score) {
                     setUserHighestScore(result.data.current_highest_score);
+
+                    // 🎯 INSTANT HIGH SCORE DISPLAY: Update modal with current high score
+                    setGameResult(prev => ({
+                        ...prev,
+                        currentHigh: result.data.current_highest_score
+                    }));
                 }
 
                 // 🚀 INSTANT UPDATE: Clear cache for immediate leaderboard refresh
@@ -1063,6 +1068,12 @@ export default function GameHomepage() {
                         // Update local state with current highest score for Socket.IO and future reference
                         if (result.data.current_highest_score) {
                             setUserHighestScore(result.data.current_highest_score);
+
+                            // 🎯 INSTANT HIGH SCORE DISPLAY: Update modal with current high score
+                            setGameResult(prev => ({
+                                ...prev,
+                                currentHigh: result.data.current_highest_score
+                            }));
                         }
 
                         // 🚀 FIX: Clear cache for ALL score submissions to ensure leaderboard shows latest data
@@ -1072,6 +1083,9 @@ export default function GameHomepage() {
                         sessionStorage.removeItem(`${envPrefix}preloaded_tournament`);
                         sessionStorage.removeItem('leaderboard_data');
                         sessionStorage.removeItem('tournament_data');
+
+                        // 🎯 Set cache invalidation timestamp for instant leaderboard refresh
+                        sessionStorage.setItem('cache_invalidated_at', Date.now().toString());
                     } else if (result.data?.is_duplicate) {
                         setGameResult(prev => ({
                             ...prev,
@@ -1259,6 +1273,21 @@ export default function GameHomepage() {
                                         🎉 NEW HIGH SCORE!
                                         <br />
                                         Previous: {gameResult.previousHigh}
+                                        <br />
+                                        Current Best: {gameResult.currentHigh || userHighestScore}
+                                    </div>
+                                )}
+
+                                {/* 🎯 INSTANT HIGH SCORE DISPLAY: Show current high score in tournament mode */}
+                                {gameMode === 'tournament' && !gameResult.isNewHighScore && gameResult.currentHigh !== undefined && (
+                                    <div className="current-high-info" style={{
+                                        marginTop: '15px',
+                                        padding: '12px',
+                                        background: 'rgba(255, 255, 255, 0.1)',
+                                        borderRadius: '8px',
+                                        fontSize: '14px'
+                                    }}>
+                                        📊 Your Tournament Best: {gameResult.currentHigh}
                                     </div>
                                 )}
 
