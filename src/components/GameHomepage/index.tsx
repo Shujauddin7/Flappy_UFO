@@ -906,7 +906,7 @@ export default function GameHomepage() {
                 // 🚀 FIX: Immediately update local highest score state for instant display
                 setUserHighestScore(result.data.current_highest_score);
 
-                // 🚀 SMART CACHE: Only clear cache on NEW HIGH SCORES (matches server logic)
+                // 🚀 INSTANT OWN SCORE UPDATE: Clear cache + set invalidation flag
                 console.log('🏆 NEW HIGH SCORE! - invalidating ALL leaderboard cache for INSTANT update');
                 try {
                     // Clear ALL possible cache keys for instant own score update
@@ -918,6 +918,10 @@ export default function GameHomepage() {
                     sessionStorage.removeItem('prod_preloaded_tournament');
                     sessionStorage.removeItem('dev_preloaded_leaderboard');
                     sessionStorage.removeItem('dev_preloaded_tournament');
+
+                    // 🎯 CRITICAL: Set cache invalidation timestamp for instant leaderboard refresh
+                    sessionStorage.setItem('cache_invalidated_at', Date.now().toString());
+                    console.log('✅ Cache invalidated at:', Date.now());
                 } catch (cacheError) {
                     console.warn('Cache clear failed:', cacheError);
                 }
@@ -927,11 +931,17 @@ export default function GameHomepage() {
                     setUserHighestScore(result.data.current_highest_score);
                 }
 
-                // 🚀 FIX: Clear cache for ALL score submissions to ensure leaderboard shows latest data
+                // 🚀 INSTANT UPDATE: Clear cache for immediate leaderboard refresh
                 console.log('📊 Score submitted - clearing cache for immediate leaderboard update');
                 try {
                     sessionStorage.removeItem('leaderboard_data');
                     sessionStorage.removeItem('tournament_data');
+                    sessionStorage.removeItem('preloaded_leaderboard');
+                    sessionStorage.removeItem('preloaded_tournament');
+
+                    // 🎯 Set cache invalidation timestamp for instant leaderboard refresh
+                    sessionStorage.setItem('cache_invalidated_at', Date.now().toString());
+                    console.log('✅ Cache invalidated for score update at:', Date.now());
                 } catch (cacheError) {
                     console.warn('Cache clear failed:', cacheError);
                 }

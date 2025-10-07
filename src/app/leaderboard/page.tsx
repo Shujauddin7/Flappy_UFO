@@ -322,6 +322,60 @@ export default function LeaderboardPage() {
     useEffect(() => {
         const loadEssentialData = async () => {
             try {
+                // 🎯 INSTANT OWN SCORE UPDATE: Check if cache was just invalidated
+                const cacheInvalidatedAt = sessionStorage.getItem('cache_invalidated_at');
+                if (cacheInvalidatedAt) {
+                    const invalidatedTime = parseInt(cacheInvalidatedAt);
+                    const timeSinceInvalidation = Date.now() - invalidatedTime;
+
+                    // If cache was invalidated within last 5 seconds, skip cache and force fresh data
+                    if (timeSinceInvalidation < 5000) {
+                        console.log('🚀 INSTANT UPDATE: Cache was invalidated', timeSinceInvalidation, 'ms ago - forcing fresh data');
+                        sessionStorage.removeItem('cache_invalidated_at'); // Clear flag after use
+
+                        // Skip cache completely and fetch fresh data
+                        const [tournamentResponse, leaderboardResponse] = await Promise.all([
+                            fetch('/api/tournament/stats?bust=' + Date.now()),
+                            fetch('/api/tournament/leaderboard-data?bust=' + Date.now())
+                        ]);
+
+                        const [tournamentData, leaderboard] = await Promise.all([
+                            tournamentResponse.json(),
+                            leaderboardResponse.json()
+                        ]);
+
+                        const newTournamentData: TournamentData = {
+                            id: tournamentData.id || 'current',
+                            tournament_day: tournamentData.tournament_day || new Date().toISOString().split('T')[0],
+                            is_active: true,
+                            total_players: tournamentData.total_players || 0,
+                            total_tournament_players: tournamentData.total_tournament_players ?? tournamentData.total_players ?? 0,
+                            total_prize_pool: Number(tournamentData.total_prize_pool) || 0,
+                            total_collected: Number(tournamentData.total_collected) || 0,
+                            admin_fee: Number(tournamentData.admin_fee) || 0,
+                            guarantee_amount: Number(tournamentData.guarantee_amount) || 0,
+                            admin_net_result: Number(tournamentData.admin_net_result) || 0,
+                            start_time: new Date().toISOString(),
+                            end_time: tournamentData.end_time || null
+                        };
+
+                        setCurrentTournament(newTournamentData);
+                        setPreloadedLeaderboardData(leaderboard);
+
+                        // Update cache with fresh data
+                        sessionStorage.setItem('tournament_data', JSON.stringify({
+                            data: newTournamentData,
+                            timestamp: Date.now()
+                        }));
+                        sessionStorage.setItem('leaderboard_data', JSON.stringify({
+                            data: leaderboard,
+                            timestamp: Date.now()
+                        }));
+
+                        console.log('✅ INSTANT UPDATE: Fresh data loaded with your new score!');
+                        return; // Exit early, data is loaded
+                    }
+                }
 
                 // Try cached data first for instant display
                 if (typeof window !== 'undefined') {
