@@ -324,13 +324,16 @@ export default function LeaderboardPage() {
             try {
                 // 🎯 INSTANT OWN SCORE UPDATE: Check if cache was just invalidated
                 const cacheInvalidatedAt = sessionStorage.getItem('cache_invalidated_at');
+                console.log('🔍 CACHE CHECK: cache_invalidated_at =', cacheInvalidatedAt);
+
                 if (cacheInvalidatedAt) {
                     const invalidatedTime = parseInt(cacheInvalidatedAt);
                     const timeSinceInvalidation = Date.now() - invalidatedTime;
+                    console.log('⏱️ TIMING: Cache invalidated', timeSinceInvalidation, 'ms ago (threshold: 5000ms)');
 
                     // If cache was invalidated within last 5 seconds, skip cache and force fresh data
                     if (timeSinceInvalidation < 5000) {
-                        console.log('🚀 INSTANT UPDATE: Cache was invalidated', timeSinceInvalidation, 'ms ago - forcing fresh data');
+                        console.log('🚀 INSTANT UPDATE: Cache was invalidated', timeSinceInvalidation, 'ms ago - FORCING FRESH DATA!');
                         sessionStorage.removeItem('cache_invalidated_at'); // Clear flag after use
 
                         // Skip cache completely and fetch fresh data
@@ -374,7 +377,12 @@ export default function LeaderboardPage() {
 
                         console.log('✅ INSTANT UPDATE: Fresh data loaded with your new score!');
                         return; // Exit early, data is loaded
+                    } else {
+                        console.log('⏰ Cache invalidation expired (', timeSinceInvalidation, 'ms ago) - will use normal cache flow');
+                        sessionStorage.removeItem('cache_invalidated_at'); // Clean up old timestamp
                     }
+                } else {
+                    console.log('📦 NO CACHE INVALIDATION: Using normal cache flow');
                 }
 
                 // Try cached data first for instant display
@@ -382,10 +390,23 @@ export default function LeaderboardPage() {
                     const cachedTournament = sessionStorage.getItem('tournament_data');
                     const cachedLeaderboard = sessionStorage.getItem('leaderboard_data');
 
+                    console.log('📦 CACHE STATUS:', {
+                        hasTournamentCache: !!cachedTournament,
+                        hasLeaderboardCache: !!cachedLeaderboard
+                    });
+
                     if (cachedTournament && cachedLeaderboard) {
                         try {
                             const parsedTournament = JSON.parse(cachedTournament);
                             const parsedLeaderboard = JSON.parse(cachedLeaderboard);
+
+                            const tournamentAge = Date.now() - parsedTournament.timestamp;
+                            const leaderboardAge = Date.now() - parsedLeaderboard.timestamp;
+
+                            console.log('📊 CACHE AGE:', {
+                                tournament: tournamentAge + 'ms (max: ' + CACHE_TTL.TOURNAMENT + 'ms)',
+                                leaderboard: leaderboardAge + 'ms (max: ' + CACHE_TTL.LEADERBOARD + 'ms)'
+                            });
 
                             if (Date.now() - parsedTournament.timestamp < CACHE_TTL.TOURNAMENT &&
                                 Date.now() - parsedLeaderboard.timestamp < CACHE_TTL.LEADERBOARD) {
@@ -393,6 +414,8 @@ export default function LeaderboardPage() {
                                 setCurrentTournament(parsedTournament.data);
                                 setPreloadedLeaderboardData(parsedLeaderboard.data);
                                 console.log('⚡ INSTANT DISPLAY: Using cached data');
+                            } else {
+                                console.log('❌ CACHE EXPIRED: Will fetch fresh data');
                             }
                         } catch (e) {
                             console.warn('Cache parse error:', e);

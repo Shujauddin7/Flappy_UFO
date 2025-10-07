@@ -924,7 +924,7 @@ export default function GameHomepage() {
                 } catch (cacheError) {
                     console.warn('Cache clear failed:', cacheError);
                 }
-            } else if (result.success && !result.data.is_duplicate) {
+            } else if (result.success) {
                 // Update local state with current highest score for Socket.IO and future reference
                 if (result.data.current_highest_score) {
                     setUserHighestScore(result.data.current_highest_score);
@@ -936,23 +936,26 @@ export default function GameHomepage() {
                     }));
                 }
 
-                // 🚀 INSTANT UPDATE: Clear cache for immediate leaderboard refresh
-                console.log('📊 Score submitted - clearing cache for immediate leaderboard update');
+                // 🚀 INSTANT UPDATE: ALWAYS clear cache for ANY score submission (even duplicates)
+                // This ensures leaderboard shows current data when user navigates
+                console.log('📊 Score submitted (success=' + result.success + ', duplicate=' + (result.data.is_duplicate || false) + ') - clearing cache for instant leaderboard update');
                 try {
                     sessionStorage.removeItem('leaderboard_data');
                     sessionStorage.removeItem('tournament_data');
                     sessionStorage.removeItem('preloaded_leaderboard');
                     sessionStorage.removeItem('preloaded_tournament');
+                    sessionStorage.removeItem('prod_preloaded_leaderboard');
+                    sessionStorage.removeItem('prod_preloaded_tournament');
+                    sessionStorage.removeItem('dev_preloaded_leaderboard');
+                    sessionStorage.removeItem('dev_preloaded_tournament');
 
-                    // 🎯 Set cache invalidation timestamp for instant leaderboard refresh
-                    sessionStorage.setItem('cache_invalidated_at', Date.now().toString());
-                    console.log('✅ Cache invalidated for score update at:', Date.now());
+                    // 🎯 CRITICAL: Set cache invalidation timestamp for instant leaderboard refresh
+                    const invalidationTime = Date.now();
+                    sessionStorage.setItem('cache_invalidated_at', invalidationTime.toString());
+                    console.log('✅ INSTANT UPDATE: Cache invalidated at:', invalidationTime, '- Leaderboard will load fresh data!');
                 } catch (cacheError) {
                     console.warn('Cache clear failed:', cacheError);
                 }
-            } else if (result.success) {
-                // 🚀 PERFORMANCE: Keep cache for regular scores - no leaderboard position change
-                console.log('📊 Regular score submitted - keeping cache for faster navigation');
             } else if (!result.success) {
                 console.error('Score submission failed:', result.error);
                 if (isMountedRef.current) {
