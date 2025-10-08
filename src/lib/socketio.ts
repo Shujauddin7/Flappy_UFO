@@ -32,13 +32,11 @@ export const connectSocket = (): Socket => {
     console.log(`🔌 Connecting to Socket.IO server: ${url}`);
 
     socket = io(url, {
-        transports: ['websocket', 'polling'], // Try WebSocket first, fallback to polling if it fails
-        upgrade: true, // Allow upgrading from polling to WebSocket
+        transports: ['websocket'], // Phase 2: WebSocket-only (no polling)
         reconnection: true,
         reconnectionAttempts: 10,
         reconnectionDelay: 1000,
         timeout: 20000,
-        withCredentials: true, // CORS credentials
         autoConnect: true,
     });
 

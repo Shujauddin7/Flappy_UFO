@@ -38,6 +38,7 @@ export function SocketIOProvider({ children }: { children: React.ReactNode }) {
         // Track connection state
         const handleConnect = () => {
             console.log('✅ [GLOBAL] Socket.IO connected!');
+            console.log('   Transport:', socketInstance?.io?.engine?.transport?.name);
             setIsConnected(true);
         };
 
@@ -46,12 +47,20 @@ export function SocketIOProvider({ children }: { children: React.ReactNode }) {
             setIsConnected(false);
         };
 
+        const handleConnectError = (error: Error) => {
+            console.error('❌ [GLOBAL] Socket.IO connection error:', error.message);
+        };
+
         socketInstance.on('connect', handleConnect);
         socketInstance.on('disconnect', handleDisconnect);
+        socketInstance.on('connect_error', handleConnectError);
 
-        // Set initial state
+        // IMPORTANT: Check if already connected (might connect before listeners added)
         if (socketInstance.connected) {
+            console.log('✅ [GLOBAL] Socket already connected on init!');
             setIsConnected(true);
+        } else {
+            console.log('⏳ [GLOBAL] Waiting for socket to connect...');
         }
 
         // Cleanup on app unmount (rarely happens in SPA)
@@ -59,17 +68,29 @@ export function SocketIOProvider({ children }: { children: React.ReactNode }) {
             console.log('🛑 [GLOBAL] Cleaning up Socket.IO connection');
             socketInstance.off('connect', handleConnect);
             socketInstance.off('disconnect', handleDisconnect);
+            socketInstance.off('connect_error', handleConnectError);
             disconnectSocket();
         };
     }, []);
 
     const joinTournamentRoom = useCallback((tournamentId: string, userId?: string, username?: string) => {
-        if (socket && isConnected) {
-            joinTournament(tournamentId, userId, username);
+        if (socket) {
+            // Check actual socket connection, not just state
+            if (socket.connected) {
+                console.log('🎮 [GLOBAL] Joining tournament room:', tournamentId);
+                joinTournament(tournamentId, userId, username);
+            } else {
+                console.warn('⚠️ [GLOBAL] Socket exists but not connected. Will join when connected.');
+                // Try to join when it connects
+                socket.once('connect', () => {
+                    console.log('🎮 [GLOBAL] Socket connected! Joining tournament:', tournamentId);
+                    joinTournament(tournamentId, userId, username);
+                });
+            }
         } else {
-            console.warn('⚠️ Cannot join tournament: Socket not connected yet');
+            console.error('❌ [GLOBAL] No socket instance available');
         }
-    }, [socket, isConnected]);
+    }, [socket]);
 
     return (
         <SocketIOContext.Provider value={{ socket, isConnected, joinTournamentRoom }}>
