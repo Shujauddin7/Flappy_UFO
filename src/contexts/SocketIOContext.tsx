@@ -19,7 +19,7 @@ interface SocketIOContextValue {
 const SocketIOContext = createContext<SocketIOContextValue>({
     socket: null,
     isConnected: false,
-    joinTournamentRoom: () => {},
+    joinTournamentRoom: () => { },
 });
 
 export const useSocketIO = () => useContext(SocketIOContext);
@@ -30,7 +30,7 @@ export function SocketIOProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         console.log('🌐 [GLOBAL] Initializing Socket.IO connection...');
-        
+
         // Connect to Socket.IO server (persists for entire app lifecycle)
         const socketInstance = connectSocket();
         setSocket(socketInstance);
