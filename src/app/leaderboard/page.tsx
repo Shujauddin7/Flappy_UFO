@@ -531,7 +531,7 @@ export default function LeaderboardPage() {
                 console.log('📊 Current leaderboard state:', {
                     hasPlayers: !!prev?.players,
                     playerCount: prev?.players?.length || 0,
-                    source: prev?.source || 'unknown'
+                    source: (prev as any)?.source || 'unknown'
                 });
 
                 if (!prev?.players) {
