@@ -520,14 +520,28 @@ export default function LeaderboardPage() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const handleScoreUpdate = (message: { tournament_id: string; data: any; }) => {
             const { data } = message;
-            console.log(`⚡ Score update: ${data.username} - ${data.new_score}`);
+            console.log('🎯 ========== SCORE UPDATE EVENT RECEIVED ==========');
+            console.log('⚡ Score update:', data);
+            console.log(`   User: ${data.username} (${data.user_id})`);
+            console.log(`   Old Score: ${data.old_score} → New Score: ${data.new_score}`);
+            console.log(`   Tournament: ${message.tournament_id}`);
+            console.log(`   Timestamp: ${new Date().toISOString()}`);
 
             setPreloadedLeaderboardData(prev => {
+                console.log('📊 Current leaderboard state:', {
+                    hasPlayers: !!prev?.players,
+                    playerCount: prev?.players?.length || 0,
+                    source: prev?.source || 'unknown'
+                });
+
                 if (!prev?.players) {
                     console.log('🔄 No cached data, fetching fresh leaderboard');
                     fetch(`/api/tournament/leaderboard-data?tournament_day=${currentTournament.tournament_day}&bust=${Date.now()}`)
                         .then(res => res.json())
                         .then(freshData => {
+                            console.log('✅ Fresh leaderboard data fetched:', {
+                                playerCount: freshData?.players?.length || 0
+                            });
                             if (freshData?.players) {
                                 setPreloadedLeaderboardData({
                                     ...freshData,
@@ -539,23 +553,17 @@ export default function LeaderboardPage() {
                     return prev;
                 }
 
-                const updatedPlayers = prev.players.map(player => {
-                    if (player.user_id === data.user_id) {
-                        return {
-                            ...player,
-                            highest_score: data.new_score,
-                            username: data.username || player.username
-                        };
-                    }
-                    return player;
-                });
-
                 const playerExists = prev.players.some(p => p.user_id === data.user_id);
+                console.log(`🔍 Player ${data.username} exists in leaderboard: ${playerExists}`);
+
                 if (!playerExists) {
                     console.log('🔄 Player not in cached leaderboard, syncing fresh data');
                     fetch(`/api/tournament/leaderboard-data?tournament_day=${currentTournament.tournament_day}&bust=${Date.now()}`)
                         .then(res => res.json())
                         .then(freshData => {
+                            console.log('✅ Fresh data after new player:', {
+                                playerCount: freshData?.players?.length || 0
+                            });
                             if (freshData?.players) {
                                 setPreloadedLeaderboardData({
                                     ...freshData,
@@ -567,7 +575,25 @@ export default function LeaderboardPage() {
                     return prev;
                 }
 
+                const updatedPlayers = prev.players.map(player => {
+                    if (player.user_id === data.user_id) {
+                        console.log(`✏️ Updating player ${player.username}:`, {
+                            oldScore: player.highest_score,
+                            newScore: data.new_score
+                        });
+                        return {
+                            ...player,
+                            highest_score: data.new_score,
+                            username: data.username || player.username
+                        };
+                    }
+                    return player;
+                });
+
                 updatedPlayers.sort((a, b) => (b.highest_score || 0) - (a.highest_score || 0));
+
+                console.log('✅ Leaderboard state updated via Socket.IO!');
+                console.log('🎯 ============================================');
 
                 return {
                     ...prev,
@@ -616,9 +642,20 @@ export default function LeaderboardPage() {
         socket.on('prize_pool_update', handlePrizePoolUpdate);
         socket.on('player_joined', handlePlayerJoined);
 
+        console.log('🎧 Socket.IO listeners registered:');
+        console.log('   ✅ score_update');
+        console.log('   ✅ prize_pool_update');
+        console.log('   ✅ player_joined');
+        console.log('   Socket connected:', socket.connected);
+        console.log('   User:', username, '(' + userId + ')');
+        console.log('   Tournament:', currentTournament.id);
+
         // Cleanup
         return () => {
-            console.log('🛑 Cleaning up Socket.IO connection');
+            console.log('🛑 Cleaning up Socket.IO listeners (component unmounting)');
+            console.log('   Removing score_update listener');
+            console.log('   Removing prize_pool_update listener');
+            console.log('   Removing player_joined listener');
             socket.off('score_update', handleScoreUpdate);
             socket.off('prize_pool_update', handlePrizePoolUpdate);
             socket.off('player_joined', handlePlayerJoined);
