@@ -32,11 +32,33 @@ export const connectSocket = (): Socket => {
     console.log(`🔌 Connecting to Socket.IO server: ${url}`);
 
     socket = io(url, {
-        transports: ['websocket', 'polling'], // Try WebSocket first, fallback to polling
+        transports: ['polling', 'websocket'], // Polling first for mobile reliability
         reconnection: true,
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
         timeout: 20000,
+        withCredentials: false, // Important for CORS
+        autoConnect: true,
+    });
+
+    // Enhanced connection logging
+    socket.on('connect', () => {
+        console.log('✅ Socket.IO connected!', {
+            id: socket?.id,
+            transport: socket?.io?.engine?.transport?.name
+        });
+    });
+
+    socket.on('connect_error', (error) => {
+        console.error('❌ Socket.IO connection error:', {
+            message: error.message,
+            type: error.constructor.name,
+            transport: socket?.io?.engine?.transport?.name || 'unknown'
+        });
+    });
+
+    socket.on('disconnect', (reason) => {
+        console.log('🔌 Socket.IO disconnected:', reason);
     });
 
     return socket;
