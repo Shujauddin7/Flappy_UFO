@@ -6,7 +6,7 @@ import { TournamentLeaderboard } from '@/components/TournamentLeaderboard';
 import { PlayerRankCard } from '@/components/PlayerRankCard';
 import { useSession } from 'next-auth/react';
 import { CACHE_TTL } from '@/utils/leaderboard-cache';
-import { connectSocket, disconnectSocket, joinTournament } from '@/lib/socketio';
+import { useSocketIO } from '@/contexts/SocketIOContext';
 
 interface LeaderboardPlayer {
     id: string;
@@ -479,42 +479,42 @@ export default function LeaderboardPage() {
     }, []);
 
     // 🚀 SOCKET.IO REALTIME: Cross-device sync with unlimited connections
+    // Use global Socket.IO context (Phase 2)
+    const { socket, isConnected, joinTournamentRoom } = useSocketIO();
+
     useEffect(() => {
-        if (!currentTournament?.tournament_day) {
+        if (!currentTournament?.tournament_day || !currentTournament?.id) {
+            console.log('❌ Socket.IO setup skipped: No tournament data available');
             return;
         }
 
-        if (!currentTournament?.id) {
-            console.log('❌ Socket.IO setup skipped: No tournament id available');
+        if (!socket) {
+            console.log('⏳ Socket.IO not ready yet...');
             return;
         }
 
-        console.log('🚀 Setting up Socket.IO for cross-device sync...');
+        console.log('🚀 Setting up Socket.IO listeners for cross-device sync...');
         console.log(`   Tournament ID: ${currentTournament.id}`);
         console.log(`   Tournament Day: ${currentTournament.tournament_day}`);
-
-        // Connect to Socket.IO server
-        const socket = connectSocket();
+        console.log(`   Socket connected: ${isConnected}`);
 
         // User info for tournament join
         const userId = session?.user?.id || 'anonymous';
         const username = session?.user?.name || 'Anonymous';
 
-        // Join tournament AFTER connected
-        socket.on('connect', () => {
-            console.log('✅ Socket.IO connected');
+        // Join tournament room when socket connects
+        if (isConnected) {
+            console.log('✅ Socket already connected, joining tournament room');
+            joinTournamentRoom(currentTournament.id, userId, username);
+        }
 
-            // 🔥 FIX: Join tournament AFTER socket connects
-            joinTournament(currentTournament.id, userId, username);
-        });
+        // Also join when socket connects (if not connected yet)
+        const handleConnect = () => {
+            console.log('✅ Socket.IO connected, joining tournament');
+            joinTournamentRoom(currentTournament.id, userId, username);
+        };
 
-        socket.on('disconnect', (reason) => {
-            console.log('🔌 Socket.IO disconnected:', reason);
-        });
-
-        socket.on('connect_error', (error) => {
-            console.error('🔌 Socket.IO connection error:', error);
-        });
+        socket.on('connect', handleConnect);
 
         // Listen for score updates
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -657,12 +657,14 @@ export default function LeaderboardPage() {
             console.log('   Removing score_update listener');
             console.log('   Removing prize_pool_update listener');
             console.log('   Removing player_joined listener');
+            console.log('   Removing connect listener');
+            socket.off('connect', handleConnect);
             socket.off('score_update', handleScoreUpdate);
             socket.off('prize_pool_update', handlePrizePoolUpdate);
             socket.off('player_joined', handlePlayerJoined);
-            disconnectSocket();
+            // DON'T disconnect - global socket stays connected!
         };
-    }, [currentTournament, session?.user?.id, session?.user?.name, setPreloadedLeaderboardData, setCurrentTournament]);
+    }, [currentTournament, session?.user?.id, session?.user?.name, socket, isConnected, joinTournamentRoom, setPreloadedLeaderboardData, setCurrentTournament]);
 
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
         setCurrentUserRank(userRank);
