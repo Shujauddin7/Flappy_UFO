@@ -531,6 +531,7 @@ export default function LeaderboardPage() {
                 console.log('📊 Current leaderboard state:', {
                     hasPlayers: !!prev?.players,
                     playerCount: prev?.players?.length || 0,
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     source: (prev as any)?.source || 'unknown'
                 });
 
