@@ -11,7 +11,7 @@ import InfoModal from '@/components/INFO';
 import GracePeriodModal from '@/components/GracePeriodModal';
 import { CACHE_TTL } from '@/utils/leaderboard-cache';
 import { canContinue, spendCoins, getCoins, addCoins } from '@/utils/coins';
-import { connectSocket, joinTournament } from '@/lib/socketio';
+import { useSocketIO } from '@/contexts/SocketIOContext'; // ✅ Use global socket context
 
 // Dynamically import FlappyGame to avoid SSR issues
 const FlappyGame = dynamic(() => import('@/components/FlappyGame'), {
@@ -38,6 +38,7 @@ type GameMode = 'practice' | 'tournament';
 export default function GameHomepage() {
     // CRITICAL: Track if component is mounted to prevent state updates after unmount
     const isMountedRef = useRef(true);
+    const { socket, joinTournamentRoom } = useSocketIO(); // ✅ Use global socket context
 
     const [currentScreen, setCurrentScreen] = useState<'home' | 'gameSelect' | 'tournamentEntry' | 'playing'>('home');
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
@@ -300,13 +301,12 @@ export default function GameHomepage() {
 
     // 🚀 FIX: Setup Socket.IO connection for real-time score updates on the playing device
     useEffect(() => {
-        if (!currentTournamentId || !session?.user?.id) {
+        if (!currentTournamentId || !session?.user?.id || !socket) {
             return;
         }
 
         console.log('🔌 Setting up Socket.IO for real-time score updates on GameHomepage...');
 
-        const socket = connectSocket();
         const userId = session.user.id;
         const username = session.user.name || 'Anonymous';
 
@@ -325,7 +325,7 @@ export default function GameHomepage() {
 
         socket.on('connect', () => {
             console.log('✅ Socket.IO connected on GameHomepage');
-            joinTournament(currentTournamentId, userId, username);
+            joinTournamentRoom(currentTournamentId, userId, username);
         });
 
         // Remove any existing listener first to prevent duplicates
@@ -337,7 +337,7 @@ export default function GameHomepage() {
             console.log('🧹 Removing Socket.IO score_update listener on GameHomepage');
             socket.off('score_update', handleScoreUpdate);
         };
-    }, [currentTournamentId, session?.user?.id, session?.user?.name]);
+    }, [currentTournamentId, session?.user?.id, session?.user?.name, socket, joinTournamentRoom]);
 
     // 🚀 LIGHTNING FAST LEADERBOARD: Pre-load leaderboard data in background
     // This makes leaderboard tab load instantly when clicked (0ms perceived load time)
