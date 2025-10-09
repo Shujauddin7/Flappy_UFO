@@ -32,8 +32,8 @@ export const connectSocket = (): Socket => {
     console.log(`🔌 Connecting to Socket.IO server: ${url}`);
 
     socket = io(url, {
-        transports: ['websocket', 'polling'], // Match server: both transports
-        withCredentials: true, // Match server CORS config
+        transports: ['websocket'], // ✅ WEBSOCKET ONLY - per Redis.md specification
+        withCredentials: true,
         reconnection: true,
         reconnectionAttempts: 10,
         reconnectionDelay: 1000,
