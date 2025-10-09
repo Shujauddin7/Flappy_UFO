@@ -32,12 +32,15 @@ export const connectSocket = (): Socket => {
     console.log(`🔌 Connecting to Socket.IO server: ${url}`);
 
     socket = io(url, {
-        transports: ['websocket'], // ✅ WEBSOCKET ONLY - per Redis.md specification
+        transports: ['websocket', 'polling'], // Try websocket first, fallback to polling
+        upgrade: true, // Allow transport upgrades
+        rememberUpgrade: true, // Remember successful upgrade to websocket
         withCredentials: true,
         reconnection: true,
         reconnectionAttempts: 10,
         reconnectionDelay: 1000,
-        timeout: 20000,
+        reconnectionDelayMax: 5000, // Faster max reconnection delay
+        timeout: 10000, // Faster connection timeout
         autoConnect: true,
     });
 
