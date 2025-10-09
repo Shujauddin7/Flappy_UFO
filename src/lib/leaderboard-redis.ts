@@ -40,6 +40,7 @@ async function getRedisClient(): Promise<Redis | null> {
 }
 
 // Add or update a player's score and details in the leaderboard
+// 🚀 PHASE 2: LIGHTWEIGHT PUB/SUB ONLY - No caching, just instant broadcasts
 export async function updateLeaderboardScore(
     tournamentDay: string,
     userId: string,
@@ -50,80 +51,24 @@ export async function updateLeaderboardScore(
     if (!redis) return false;
 
     try {
-        const scoreKey = `leaderboard:${tournamentDay}`;
-        const detailsKey = `leaderboard:${tournamentDay}:details`;
+        // 🚀 PHASE 2: ONLY publish message to Socket.IO server (1 command total!)
+        const pubsubMessage = JSON.stringify({
+            type: 'leaderboard_update',
+            tournament_day: tournamentDay,
+            user_id: userId,
+            username: playerDetails?.username,
+            wallet: playerDetails?.wallet,
+            score: score,
+            timestamp: new Date().toISOString(),
+            source: 'phase2_lightweight'
+        });
 
-        // Add/update score in Redis Sorted Set (ZADD handles both insert and update)
-        await redis.zadd(scoreKey, { score, member: userId });
+        await redis.publish('leaderboard_channel', pubsubMessage);
+        console.log(`🚀 PHASE 2: Published leaderboard update for ${userId} = ${score} points`);
 
-        // Store player details in Redis Hash if provided
-        if (playerDetails) {
-            const playerData = JSON.stringify({
-                username: playerDetails.username,
-                wallet: playerDetails.wallet
-            });
-            await redis.hset(detailsKey, { [userId]: playerData });
-        }
-
-        // Set expiration for 48 hours (tournament lifecycle)
-        await redis.expire(scoreKey, 48 * 60 * 60);
-        await redis.expire(detailsKey, 48 * 60 * 60);
-
-        // 🚨 CRITICAL: Immediately trigger real-time updates via Redis pub/sub + data storage
-        const updateKey = `leaderboard_updates:${tournamentDay}`;
-        const dataKey = `leaderboard_data:${tournamentDay}`;
-
-        // Set update trigger timestamp
-        await redis.set(updateKey, Date.now().toString(), { ex: 300 });
-        console.log('✅ Redis update trigger set');
-
-        // Store complete leaderboard data in Redis for instant Supabase Realtime access
-        try {
-            const currentLeaderboard = await getTopPlayers(tournamentDay, 0, 50);
-            if (currentLeaderboard && currentLeaderboard.length > 0) {
-
-                // Store full leaderboard data in Redis for instant access
-                const leaderboardData = {
-                    players: currentLeaderboard,
-                    tournament_day: tournamentDay,
-                    timestamp: new Date().toISOString(),
-                    total_players: currentLeaderboard.length,
-                    source: 'redis_instant_storage'
-                };
-
-                // Store data for instant Supabase Realtime retrieval (5-minute expiry)
-                await redis.set(dataKey, JSON.stringify(leaderboardData), { ex: 300 });
-                console.log(`🚀 INSTANT: Leaderboard data stored in Redis for Supabase Realtime (${currentLeaderboard.length} players)`);
-
-                // Also trigger pub/sub for existing systems (backward compatibility)
-                const pubsubMessage = JSON.stringify({
-                    type: 'leaderboard_update',
-                    tournament_day: tournamentDay,
-                    players: currentLeaderboard,
-                    timestamp: new Date().toISOString(),
-                    source: 'redis_pubsub_instant',
-                    trigger_user: userId,
-                    trigger_score: score
-                });
-
-                // This will be handled by Supabase Realtime for instant updates
-                await redis.publish('leaderboard_channel', pubsubMessage);
-                console.log('✅ Redis pub/sub event also published for compatibility');
-            }
-        } catch (dataError) {
-            console.error('❌ Redis data storage failed (non-critical):', dataError);
-            // Continue execution even if data storage fails
-        }
-
-        // Also trigger tournament stats update for cross-device sync consistency  
-        const statsUpdateKey = `tournament_stats_updates:${tournamentDay}`;
-        await redis.set(statsUpdateKey, Date.now().toString(), { ex: 300 }); // Keep for Supabase Realtime sync
-        console.log('✅ Tournament stats trigger also set for complete Supabase Realtime sync');
-
-        console.log(`⚡ Redis leaderboard updated: ${userId} = ${score} points`);
         return true;
     } catch (error) {
-        console.error('❌ Redis leaderboard update failed:', error);
+        console.error('❌ Redis publish failed:', error);
         return false;
     }
 }
