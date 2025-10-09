@@ -45,7 +45,8 @@ export const connectSocket = (): Socket => {
     socket.on('connect', () => {
         console.log('✅ Socket.IO connected!', {
             id: socket?.id,
-            transport: socket?.io?.engine?.transport?.name
+            transport: socket?.io?.engine?.transport?.name,
+            url: url
         });
     });
 
@@ -53,8 +54,14 @@ export const connectSocket = (): Socket => {
         console.error('❌ Socket.IO connection error:', {
             message: error.message,
             type: error.constructor.name,
-            transport: socket?.io?.engine?.transport?.name || 'unknown'
+            transport: socket?.io?.engine?.transport?.name || 'unknown',
+            url: url
         });
+    });
+
+    // 🔍 DEBUG: Log all incoming events
+    socket.onAny((eventName, ...args) => {
+        console.log(`📥 [SOCKET EVENT] ${eventName}:`, args);
     });
 
     socket.on('disconnect', (reason) => {
