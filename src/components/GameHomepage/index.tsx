@@ -896,13 +896,6 @@ export default function GameHomepage() {
 
             // Update modal with high score info
             if (result.success && !result.data.is_duplicate && result.data.is_new_high_score) {
-                setGameResult(prev => ({
-                    ...prev,
-                    isNewHighScore: result.data.is_new_high_score,
-                    previousHigh: result.data.previous_highest_score,
-                    currentHigh: result.data.current_highest_score
-                }));
-
                 // 🚀 FIX: Immediately update local highest score state for instant display
                 setUserHighestScore(result.data.current_highest_score);
                 setScoreUpdateTrigger(Date.now()); // Trigger refresh
@@ -1075,7 +1068,7 @@ export default function GameHomepage() {
                             ...prev,
                             isNewHighScore: result.data.is_new_high_score,
                             previousHigh: result.data.previous_highest_score,
-                            currentHigh: result.data.current_highest_score
+                            currentHigh: Math.max(prev.currentHigh || 0, result.data.current_highest_score)
                         }));
 
                         // 🚀 FIX: Immediately update local highest score state for instant display
@@ -1095,7 +1088,7 @@ export default function GameHomepage() {
                             // 🎯 INSTANT HIGH SCORE DISPLAY: Update modal with current high score
                             setGameResult(prev => ({
                                 ...prev,
-                                currentHigh: result.data.current_highest_score
+                                currentHigh: Math.max(prev.currentHigh || 0, result.data.current_highest_score)
                             }));
                         }
 
