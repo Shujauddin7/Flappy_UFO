@@ -158,10 +158,14 @@ export default function GameHomepage() {
     const [tournamentContinueUsed, setTournamentContinueUsed] = useState<boolean>(false);
     const [tournamentEntryAmount, setTournamentEntryAmount] = useState<number>(1.0); // Track entry amount for continue payment
 
+    // Payment processing state - prevents navigation during payment flow
+    const [isProcessingPayment, setIsProcessingPayment] = useState<boolean>(false);
+
     // 🚀 Track user's current highest score for Socket.IO real-time updates and modal display
     const [userHighestScore, setUserHighestScore] = useState<number | null>(null);
     const [currentTournamentId, setCurrentTournamentId] = useState<string | null>(null);
     const [scoreUpdateTrigger, setScoreUpdateTrigger] = useState<number>(0); // Force refresh trigger
+
 
     // Check user's verification status for today's tournament
     const checkVerificationStatus = useCallback(async () => {
@@ -555,6 +559,7 @@ export default function GameHomepage() {
 
         try {
             setIsProcessingEntry(true);
+            setIsProcessingPayment(true); // Disable navigation during payment
 
             if (entryType === 'verify') {
                 // Verify identity first, then pay 0.9 WLD
@@ -570,6 +575,7 @@ export default function GameHomepage() {
         } catch (error) {
             console.error('Error during tournament entry:', error);
             alert('Tournament entry failed. Please try again.');
+            setIsProcessingPayment(false); // Re-enable navigation on error
         } finally {
             setIsProcessingEntry(false);
         }
@@ -759,19 +765,25 @@ export default function GameHomepage() {
                     // Start the game directly (only if entry creation succeeds)
                     setGameMode('tournament');
                     setCurrentScreen('playing');
+
+                    // Re-enable navigation after game starts
+                    setIsProcessingPayment(false);
                 } catch (entryError) {
                     // Payment succeeded but entry creation failed
                     // Don't throw error here to avoid double alert
                     console.error('❌ Tournament entry creation failed after successful payment:', entryError);
                     // The error message is already shown in createTournamentEntry function
+                    setIsProcessingPayment(false); // Re-enable navigation on error
                     return;
                 }
             } else {
+                setIsProcessingPayment(false); // Re-enable navigation if payment cancelled
                 throw new Error('Payment failed or was cancelled');
             }
         } catch (error) {
             console.error('❌ Payment error:', error);
             alert('Payment failed. Please try again.');
+            setIsProcessingPayment(false); // Re-enable navigation on error
         }
     };
 
@@ -831,11 +843,16 @@ export default function GameHomepage() {
                 setContinueFromScore(score);
                 setGameResult({ show: false, score: 0, coins: 0, mode: '' });
 
+                // Re-enable navigation after game restarts
+                setIsProcessingPayment(false);
+
             } else {
+                setIsProcessingPayment(false); // Re-enable navigation if payment cancelled
                 throw new Error('Continue payment failed or was cancelled');
             }
         } catch {
             // Handle continue payment errors silently or with user-friendly message
+            setIsProcessingPayment(false); // Re-enable navigation on error
         }
     };
 
@@ -1374,7 +1391,10 @@ export default function GameHomepage() {
                                 {gameMode === 'tournament' && !tournamentContinueUsed && (
                                     <button
                                         className="modal-button continue"
-                                        onClick={() => handleTournamentContinue(gameResult.score)}
+                                        onClick={() => {
+                                            setIsProcessingPayment(true); // Disable navigation during payment
+                                            handleTournamentContinue(gameResult.score);
+                                        }}
                                     >
                                         Continue ({tournamentEntryAmount} WLD) - One continue per game
                                     </button>
@@ -1383,7 +1403,7 @@ export default function GameHomepage() {
                                 {/* Tournament Mode: Show message if continue already used */}
                                 {gameMode === 'tournament' && tournamentContinueUsed && (
                                     <div className="tournament-continue-info">
-                                        ⚠️ Continue used. Create new entry to play again.
+                                        ⚠️ Continue used. Play again to create new entry.
                                     </div>
                                 )}
 
@@ -1415,13 +1435,18 @@ export default function GameHomepage() {
                                             }
                                         }}
                                     >
-                                        {gameMode === 'tournament' && tournamentContinueUsed ? 'New Entry' : 'Play Again'}
+                                        Play Again
                                     </button>
-                                )}
-
-                                <button
+                                )}                                <button
                                     className="modal-button primary"
+                                    disabled={isProcessingPayment}
+                                    style={{
+                                        opacity: isProcessingPayment ? 0.5 : 1,
+                                        cursor: isProcessingPayment ? 'not-allowed' : 'pointer'
+                                    }}
                                     onClick={async () => {
+                                        if (isProcessingPayment) return; // Prevent click during payment
+
                                         try {
                                             // If tournament mode and continue not used, submit final score
                                             if (gameMode === 'tournament' && !tournamentContinueUsed) {
