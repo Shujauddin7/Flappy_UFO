@@ -237,3 +237,53 @@ export async function publishPlayerJoined(tournamentId: string, data: {
         data
     });
 }
+
+// 🚀 OPTIMIZATION: Combined score update (1 Redis command instead of 2)
+// Replaces: updateLeaderboardScore + publishScoreUpdate
+export async function publishCombinedScoreUpdate(
+    tournamentDay: string,
+    tournamentId: string,
+    userId: string,
+    score: number,
+    playerDetails: { 
+        username?: string | null; 
+        wallet?: string; 
+        old_score: number 
+    }
+): Promise<boolean> {
+    const redis = await getRedisClient();
+    if (!redis) {
+        console.warn('⚠️ Redis not available, skipping score update publish');
+        return false;
+    }
+
+    try {
+        // Combine leaderboard update + score update into ONE message
+        const combinedMessage = {
+            type: 'score_update_combined',
+            tournament_day: tournamentDay,
+            tournament_id: tournamentId,
+            user_id: userId,
+            username: playerDetails.username,
+            wallet: playerDetails.wallet,
+            old_score: playerDetails.old_score,
+            new_score: score,
+            timestamp: Date.now(),
+            source: 'optimized_batch'
+        };
+
+        // Use environment-specific channel
+        const envChannel = getEnvironmentKey('tournament:all_updates');
+
+        // Only 1 PUBLISH instead of 2! (50% Redis reduction)
+        await redis.publish(envChannel, JSON.stringify(combinedMessage));
+        
+        const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
+        console.log(`🚀 OPTIMIZED: Published combined score update (${isProduction ? 'PROD' : 'DEV'}) - 1 command instead of 2`);
+        
+        return true;
+    } catch (error) {
+        console.error('❌ Redis combined publish failed:', error);
+        return false;
+    }
+}
