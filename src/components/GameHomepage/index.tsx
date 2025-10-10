@@ -38,6 +38,7 @@ type GameMode = 'practice' | 'tournament';
 export default function GameHomepage() {
     // CRITICAL: Track if component is mounted to prevent state updates after unmount
     const isMountedRef = useRef(true);
+    const modalOpenRef = useRef(false); // Track modal state to prevent race conditions
     const { socket, joinTournamentRoom } = useSocketIO(); // ✅ Use global socket context
 
     const [currentScreen, setCurrentScreen] = useState<'home' | 'gameSelect' | 'tournamentEntry' | 'playing'>('home');
@@ -790,7 +791,7 @@ export default function GameHomepage() {
     // Handle tournament continue payment
     const handleTournamentContinue = async (score: number) => {
         // � CRITICAL: Check if modal is still open (prevent race condition with Go Home button)
-        if (!gameResult.show) {
+        if (!modalOpenRef.current) {
             console.log('⚠️ Modal closed, cancelling continue payment');
             setIsProcessingPayment(false);
             return;
@@ -1065,94 +1066,89 @@ export default function GameHomepage() {
             isNewHighScore: isNewHigh,  // Mark as new high if beat previous
             previousHigh: isNewHigh ? currentHigh : undefined
         });
+        modalOpenRef.current = true; // Track modal is open
 
-        // For tournament mode, only submit score if continue was already used (meaning this is the final game end)
+        // For tournament mode, ALWAYS submit score to get rank (even if not final score yet)
         if (gameMode === 'tournament' && session?.user?.walletAddress) {
-            // If continue was used, this is the final score - submit it
-            // If continue wasn't used, this is the first crash - DON'T submit yet (user might continue)
-            const shouldSubmitScore = tournamentContinueUsed;
+            // ALWAYS submit to get rank (duplicate handling on backend will prevent issues)
+            setIsSubmittingScore(true);
 
-            if (shouldSubmitScore) {
-                setIsSubmittingScore(true);
+            try {
+                const response = await fetch('/api/score/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        wallet: session.user.walletAddress,
+                        score: score,
+                        game_duration: Math.max(score * 2000, 5000),
+                        used_continue: tournamentContinueUsed,
+                        continue_amount: tournamentContinueUsed ? tournamentEntryAmount : 0
+                    }),
+                });
 
-                try {
-                    const response = await fetch('/api/score/submit', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            wallet: session.user.walletAddress,
-                            score: score,
-                            game_duration: Math.max(score * 2000, 5000),
-                            used_continue: true,
-                            continue_amount: tournamentEntryAmount
-                        }),
-                    });
+                const result = await response.json();
 
-                    const result = await response.json();
+                // Update modal with high score info if it's a new high score
+                if (result.success && !result.data.is_duplicate && result.data.is_new_high_score) {
+                    setGameResult(prev => ({
+                        ...prev,
+                        isNewHighScore: result.data.is_new_high_score,
+                        previousHigh: result.data.previous_highest_score,
+                        currentHigh: Math.max(prev.currentHigh || 0, result.data.current_highest_score),
+                        currentRank: result.data.current_rank // 🎯 INSTANT RANK display
+                    }));
 
-                    // Update modal with high score info if it's a new high score
-                    if (result.success && !result.data.is_duplicate && result.data.is_new_high_score) {
+                    // 🚀 FIX: Immediately update local highest score state for instant display
+                    setUserHighestScore(result.data.current_highest_score);
+
+                    // 🚀 CACHE INVALIDATION: Clear pre-loaded leaderboard data after new high score
+                    // This ensures users see updated rankings immediately when they check the leaderboard
+                    console.log('🗑️ New high score achieved - invalidating leaderboard cache for fresh data');
+                    const envPrefix = process.env.NODE_ENV === 'production' ? 'prod_' : 'dev_';
+                    sessionStorage.removeItem(`${envPrefix}preloaded_leaderboard`);
+                    sessionStorage.removeItem(`${envPrefix}preloaded_tournament`);
+                } else if (result.success && !result.data.is_duplicate) {
+                    // Update local state with current highest score for Socket.IO and future reference
+                    if (result.data.current_highest_score) {
+                        setUserHighestScore(result.data.current_highest_score);
+
+                        // 🎯 INSTANT HIGH SCORE DISPLAY: Update modal with current high score
                         setGameResult(prev => ({
                             ...prev,
-                            isNewHighScore: result.data.is_new_high_score,
-                            previousHigh: result.data.previous_highest_score,
                             currentHigh: Math.max(prev.currentHigh || 0, result.data.current_highest_score),
                             currentRank: result.data.current_rank // 🎯 INSTANT RANK display
                         }));
-
-                        // 🚀 FIX: Immediately update local highest score state for instant display
-                        setUserHighestScore(result.data.current_highest_score);
-
-                        // 🚀 CACHE INVALIDATION: Clear pre-loaded leaderboard data after new high score
-                        // This ensures users see updated rankings immediately when they check the leaderboard
-                        console.log('🗑️ New high score achieved - invalidating leaderboard cache for fresh data');
-                        const envPrefix = process.env.NODE_ENV === 'production' ? 'prod_' : 'dev_';
-                        sessionStorage.removeItem(`${envPrefix}preloaded_leaderboard`);
-                        sessionStorage.removeItem(`${envPrefix}preloaded_tournament`);
-                    } else if (result.success && !result.data.is_duplicate) {
-                        // Update local state with current highest score for Socket.IO and future reference
-                        if (result.data.current_highest_score) {
-                            setUserHighestScore(result.data.current_highest_score);
-
-                            // 🎯 INSTANT HIGH SCORE DISPLAY: Update modal with current high score
-                            setGameResult(prev => ({
-                                ...prev,
-                                currentHigh: Math.max(prev.currentHigh || 0, result.data.current_highest_score),
-                                currentRank: result.data.current_rank // 🎯 INSTANT RANK display
-                            }));
-                        }
-
-                        // 🚀 FIX: Clear cache for ALL score submissions to ensure leaderboard shows latest data
-                        console.log('🗑️ Score submitted - invalidating leaderboard cache for fresh data');
-                        const envPrefix = process.env.NODE_ENV === 'production' ? 'prod_' : 'dev_';
-                        sessionStorage.removeItem(`${envPrefix}preloaded_leaderboard`);
-                        sessionStorage.removeItem(`${envPrefix}preloaded_tournament`);
-                        sessionStorage.removeItem('leaderboard_data');
-                        sessionStorage.removeItem('tournament_data');
-
-                        // 🎯 Set cache invalidation timestamp for instant leaderboard refresh
-                        sessionStorage.setItem('cache_invalidated_at', Date.now().toString());
-                    } else if (result.data?.is_duplicate) {
-                        setGameResult(prev => ({
-                            ...prev,
-                            error: 'Score already submitted'
-                        }));
-                    } else if (!result.success) {
-                        setGameResult(prev => ({
-                            ...prev,
-                            error: `Score submission failed: ${result.error}`
-                        }));
                     }
-                } catch {
+
+                    // 🚀 FIX: Clear cache for ALL score submissions to ensure leaderboard shows latest data
+                    console.log('🗑️ Score submitted - invalidating leaderboard cache for fresh data');
+                    const envPrefix = process.env.NODE_ENV === 'production' ? 'prod_' : 'dev_';
+                    sessionStorage.removeItem(`${envPrefix}preloaded_leaderboard`);
+                    sessionStorage.removeItem(`${envPrefix}preloaded_tournament`);
+                    sessionStorage.removeItem('leaderboard_data');
+                    sessionStorage.removeItem('tournament_data');
+
+                    // 🎯 Set cache invalidation timestamp for instant leaderboard refresh
+                    sessionStorage.setItem('cache_invalidated_at', Date.now().toString());
+                } else if (result.data?.is_duplicate) {
                     setGameResult(prev => ({
                         ...prev,
-                        error: 'Unable to submit score. Please check your connection.'
+                        error: 'Score already submitted'
                     }));
-                } finally {
-                    setIsSubmittingScore(false);
+                } else if (!result.success) {
+                    setGameResult(prev => ({
+                        ...prev,
+                        error: `Score submission failed: ${result.error}`
+                    }));
                 }
+            } catch {
+                setGameResult(prev => ({
+                    ...prev,
+                    error: 'Unable to submit score. Please check your connection.'
+                }));
+            } finally {
+                setIsSubmittingScore(false);
             }
-            // If continue not used yet, don't submit score - wait for user decision
         }
         // Practice mode - update coins immediately  
         else if (gameMode === 'practice') {
@@ -1477,7 +1473,7 @@ export default function GameHomepage() {
                                         className="modal-button continue"
                                         disabled={isProcessingPayment}
                                         onClick={async () => {
-                                            if (isProcessingPayment || !gameResult.show) return; // Prevent if already processing or modal closed
+                                            if (isProcessingPayment || !modalOpenRef.current) return; // Check ref, not state
                                             setIsProcessingPayment(true); // Disable navigation during payment
                                             await handleTournamentContinue(gameResult.score);
                                         }}
@@ -1533,6 +1529,10 @@ export default function GameHomepage() {
                                     onClick={async () => {
                                         if (isProcessingPayment) return; // Prevent click during payment
 
+                                        // Close modal immediately to prevent race conditions
+                                        modalOpenRef.current = false;
+                                        setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+
                                         try {
                                             // If tournament mode and continue not used, submit final score
                                             if (gameMode === 'tournament' && !tournamentContinueUsed) {
@@ -1541,7 +1541,6 @@ export default function GameHomepage() {
                                             }
                                             // Reset all game state
                                             setContinueFromScore(0); // Reset continue score
-                                            setGameResult({ show: false, score: 0, coins: 0, mode: '' });
                                             setIsSubmittingScore(false); // Ensure submission state is cleared
                                             setCurrentScreen('home');
                                             setGameMode(null);
