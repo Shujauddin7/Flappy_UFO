@@ -1051,26 +1051,13 @@ export default function GameHomepage() {
         // Reset continue score since the game has ended
         setContinueFromScore(0);
 
-        // ALWAYS show the modal immediately for fast response
-        // 🚀 FIX: Calculate new high score immediately (no API needed)
+        // Calculate current high score
         const currentHigh = userHighestScore || 0;
         const newHighScore = Math.max(score, currentHigh);
         const isNewHigh = score > currentHigh;
 
-        setGameResult({
-            show: true,
-            score,
-            coins,
-            mode: modeText,
-            currentHigh: newHighScore,  // Show NEW score if higher
-            isNewHighScore: isNewHigh,  // Mark as new high if beat previous
-            previousHigh: isNewHigh ? currentHigh : undefined
-        });
-        modalOpenRef.current = true; // Track modal is open
-
-        // For tournament mode, ALWAYS submit score to get rank (even if not final score yet)
+        // For tournament mode, WAIT for API before showing modal (ensures rank is always loaded)
         if (gameMode === 'tournament' && session?.user?.walletAddress) {
-            // ALWAYS submit to get rank (duplicate handling on backend will prevent issues)
             setIsSubmittingScore(true);
 
             try {
@@ -1088,70 +1075,101 @@ export default function GameHomepage() {
 
                 const result = await response.json();
 
-                // Update modal with high score info if it's a new high score
+                // Show modal AFTER API completes (with rank already loaded)
                 if (result.success && !result.data.is_duplicate && result.data.is_new_high_score) {
-                    setGameResult(prev => ({
-                        ...prev,
+                    setGameResult({
+                        show: true,
+                        score,
+                        coins,
+                        mode: modeText,
                         isNewHighScore: result.data.is_new_high_score,
                         previousHigh: result.data.previous_highest_score,
-                        currentHigh: Math.max(prev.currentHigh || 0, result.data.current_highest_score),
-                        currentRank: result.data.current_rank // 🎯 INSTANT RANK display
-                    }));
+                        currentHigh: Math.max(newHighScore, result.data.current_highest_score),
+                        currentRank: result.data.current_rank // 🎯 Rank loaded BEFORE modal shows
+                    });
+                    modalOpenRef.current = true;
 
-                    // 🚀 FIX: Immediately update local highest score state for instant display
+                    // Update local highest score state
                     setUserHighestScore(result.data.current_highest_score);
 
-                    // 🚀 CACHE INVALIDATION: Clear pre-loaded leaderboard data after new high score
-                    // This ensures users see updated rankings immediately when they check the leaderboard
+                    // Clear leaderboard cache after new high score
                     console.log('🗑️ New high score achieved - invalidating leaderboard cache for fresh data');
                     const envPrefix = process.env.NODE_ENV === 'production' ? 'prod_' : 'dev_';
                     sessionStorage.removeItem(`${envPrefix}preloaded_leaderboard`);
                     sessionStorage.removeItem(`${envPrefix}preloaded_tournament`);
                 } else if (result.success && !result.data.is_duplicate) {
-                    // Update local state with current highest score for Socket.IO and future reference
+                    // Show modal with rank for regular score
+                    setGameResult({
+                        show: true,
+                        score,
+                        coins,
+                        mode: modeText,
+                        currentHigh: Math.max(newHighScore, result.data.current_highest_score || 0),
+                        isNewHighScore: isNewHigh,
+                        previousHigh: isNewHigh ? currentHigh : undefined,
+                        currentRank: result.data.current_rank // 🎯 Rank loaded BEFORE modal shows
+                    });
+                    modalOpenRef.current = true;
+
+                    // Update local state with current highest score
                     if (result.data.current_highest_score) {
                         setUserHighestScore(result.data.current_highest_score);
-
-                        // 🎯 INSTANT HIGH SCORE DISPLAY: Update modal with current high score
-                        setGameResult(prev => ({
-                            ...prev,
-                            currentHigh: Math.max(prev.currentHigh || 0, result.data.current_highest_score),
-                            currentRank: result.data.current_rank // 🎯 INSTANT RANK display
-                        }));
                     }
 
-                    // 🚀 FIX: Clear cache for ALL score submissions to ensure leaderboard shows latest data
+                    // Clear cache for score submissions
                     console.log('🗑️ Score submitted - invalidating leaderboard cache for fresh data');
                     const envPrefix = process.env.NODE_ENV === 'production' ? 'prod_' : 'dev_';
                     sessionStorage.removeItem(`${envPrefix}preloaded_leaderboard`);
                     sessionStorage.removeItem(`${envPrefix}preloaded_tournament`);
                     sessionStorage.removeItem('leaderboard_data');
                     sessionStorage.removeItem('tournament_data');
-
-                    // 🎯 Set cache invalidation timestamp for instant leaderboard refresh
                     sessionStorage.setItem('cache_invalidated_at', Date.now().toString());
-                } else if (result.data?.is_duplicate) {
-                    setGameResult(prev => ({
-                        ...prev,
-                        error: 'Score already submitted'
-                    }));
-                } else if (!result.success) {
-                    setGameResult(prev => ({
-                        ...prev,
-                        error: `Score submission failed: ${result.error}`
-                    }));
+                } else {
+                    // Show modal even if API failed (fallback)
+                    setGameResult({
+                        show: true,
+                        score,
+                        coins,
+                        mode: modeText,
+                        currentHigh: newHighScore,
+                        isNewHighScore: isNewHigh,
+                        previousHigh: isNewHigh ? currentHigh : undefined,
+                        error: result.data?.is_duplicate ? 'Score already submitted' : `Score submission failed: ${result.error}`
+                    });
+                    modalOpenRef.current = true;
                 }
             } catch {
-                setGameResult(prev => ({
-                    ...prev,
+                // Show modal even if API failed (fallback)
+                setGameResult({
+                    show: true,
+                    score,
+                    coins,
+                    mode: modeText,
+                    currentHigh: newHighScore,
+                    isNewHighScore: isNewHigh,
+                    previousHigh: isNewHigh ? currentHigh : undefined,
                     error: 'Unable to submit score. Please check your connection.'
-                }));
+                });
+                modalOpenRef.current = true;
             } finally {
                 setIsSubmittingScore(false);
             }
+        } else {
+            // Practice mode - show modal immediately
+            setGameResult({
+                show: true,
+                score,
+                coins,
+                mode: modeText,
+                currentHigh: newHighScore,
+                isNewHighScore: isNewHigh,
+                previousHigh: isNewHigh ? currentHigh : undefined
+            });
+            modalOpenRef.current = true;
         }
-        // Practice mode - update coins immediately  
-        else if (gameMode === 'practice') {
+
+        // Update coins for practice mode
+        if (gameMode === 'practice') {
             addCoins(coins);
         }
     };
@@ -1323,20 +1341,20 @@ export default function GameHomepage() {
                                     </div>
                                 )}
 
-                                {/* 🎯 SMART RANK DISPLAY - Show only to Top 100 (avoid demotivation) */}
+                                {/* 🎯 SMART RANK DISPLAY - Show only to Top 100 (space-themed colors) */}
                                 {gameMode === 'tournament' && gameResult.currentRank && gameResult.currentRank <= 100 && (
                                     <div className="rank-display" style={{
                                         marginTop: '15px',
                                         padding: '12px',
                                         background: gameResult.currentRank <= 10
-                                            ? 'rgba(255, 215, 0, 0.15)'  // Gold for Top 10
+                                            ? 'rgba(0, 217, 255, 0.15)'  // Cyan for Top 10 (supernova blue)
                                             : gameResult.currentRank <= 50
-                                                ? 'rgba(16, 185, 129, 0.15)'  // Green for Top 50
-                                                : 'rgba(59, 130, 246, 0.15)',  // Blue for Top 100
+                                                ? 'rgba(168, 85, 247, 0.15)'  // Purple for Top 50 (nebula)
+                                                : 'rgba(59, 130, 246, 0.15)',  // Blue for Top 100 (deep space)
                                         border: gameResult.currentRank <= 10
-                                            ? '2px solid rgba(255, 215, 0, 0.5)'
+                                            ? '2px solid rgba(0, 217, 255, 0.6)'
                                             : gameResult.currentRank <= 50
-                                                ? '2px solid rgba(16, 185, 129, 0.4)'
+                                                ? '2px solid rgba(168, 85, 247, 0.5)'
                                                 : '2px solid rgba(59, 130, 246, 0.4)',
                                         borderRadius: '8px',
                                         fontSize: '16px',
@@ -1344,10 +1362,10 @@ export default function GameHomepage() {
                                         textAlign: 'center',
                                         animation: 'fadeIn 0.3s ease-in, pulse 2s ease-in-out infinite',
                                         color: gameResult.currentRank <= 10
-                                            ? '#FFD700'
+                                            ? '#00D9FF'  // Bright cyan
                                             : gameResult.currentRank <= 50
-                                                ? '#10B981'
-                                                : '#3B82F6'
+                                                ? '#A855F7'  // Bright purple
+                                                : '#3B82F6'  // Bright blue
                                     }}>
                                         {gameResult.currentRank <= 10 ? (
                                             <>🥇 Rank #{gameResult.currentRank} - TOP 10!</>
@@ -1356,25 +1374,9 @@ export default function GameHomepage() {
                                         ) : (
                                             <>🎯 Rank #{gameResult.currentRank} - TOP 100!</>
                                         )}
-                                        {gameResult.isNewHighScore && <span style={{ fontSize: '14px', marginLeft: '8px', color: '#FFA500' }}>⬆️ NEW!</span>}
+                                        {gameResult.isNewHighScore && <span style={{ fontSize: '14px', marginLeft: '8px', color: '#00D9FF' }}>⬆️ NEW!</span>}
                                     </div>
                                 )}
-
-                                {/* DEBUG: Show if rank is missing */}
-                                {gameMode === 'tournament' && !gameResult.currentRank && (
-                                    <div style={{
-                                        marginTop: '15px',
-                                        padding: '8px',
-                                        background: 'rgba(255, 0, 0, 0.1)',
-                                        border: '1px solid rgba(255, 0, 0, 0.3)',
-                                        borderRadius: '4px',
-                                        fontSize: '12px',
-                                        color: '#ff6b6b'
-                                    }}>
-                                        ⚠️ DEBUG: Rank not loaded yet...
-                                    </div>
-                                )}
-
 
                                 {/* Show encouraging message for players below Top 100 */}
                                 {gameMode === 'tournament' && gameResult.currentRank && gameResult.currentRank > 100 && !gameResult.isNewHighScore && (
