@@ -245,10 +245,10 @@ export async function publishCombinedScoreUpdate(
     tournamentId: string,
     userId: string,
     score: number,
-    playerDetails: { 
-        username?: string | null; 
-        wallet?: string; 
-        old_score: number 
+    playerDetails: {
+        username?: string | null;
+        wallet?: string;
+        old_score: number
     }
 ): Promise<boolean> {
     const redis = await getRedisClient();
@@ -277,10 +277,10 @@ export async function publishCombinedScoreUpdate(
 
         // Only 1 PUBLISH instead of 2! (50% Redis reduction)
         await redis.publish(envChannel, JSON.stringify(combinedMessage));
-        
+
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
         console.log(`🚀 OPTIMIZED: Published combined score update (${isProduction ? 'PROD' : 'DEV'}) - 1 command instead of 2`);
-        
+
         return true;
     } catch (error) {
         console.error('❌ Redis combined publish failed:', error);
