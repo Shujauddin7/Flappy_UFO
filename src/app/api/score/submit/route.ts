@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { createClient } from '@supabase/supabase-js';
-import { updateLeaderboardScore } from '@/lib/leaderboard-redis';
-import { publishScoreUpdate, publishCombinedScoreUpdate } from '@/lib/redis';
+import { publishCombinedScoreUpdate } from '@/lib/redis';
 
 // Helper function to update tournament analytics when continue payments are made
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -528,14 +527,19 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // 🔄 Publish realtime score update for regular scores
-        console.log('📡 Publishing regular score update to Socket.IO server (regular score, not new high)...');
-        await publishScoreUpdate(record.tournament_id, {
-            user_id: user.id,
-            username: user.username || `Player ${user.id.slice(0, 8)}`,
-            old_score: record.highest_score || 0,
-            new_score: score // ✅ FIX: Use the actual submitted score, not the old highest_score
-        });
+        // 🔄 Publish realtime score update for regular scores (OPTIMIZED: 1 Redis call instead of 2)
+        console.log('📡 Publishing optimized combined score update to Socket.IO server (regular score)...');
+        await publishCombinedScoreUpdate(
+            tournamentDay,
+            record.tournament_id,
+            user.id,
+            score > record.highest_score ? score : record.highest_score, // Use higher score for leaderboard
+            {
+                username: user.username,
+                wallet: walletToCheck,
+                old_score: record.highest_score || 0
+            }
+        );
 
         // � CRITICAL FIX: Update tournament totals if continue payment was made
         if (finalContinuePayments > 0) {
@@ -547,16 +551,7 @@ export async function POST(req: NextRequest) {
         // This ensures consistent Supabase Realtime update timing for both prize pool and player scores
         console.log('⚡ Updating ALL caches for consistent Supabase Realtime experience...');
 
-        // 🔥 INSTANT FIX: Update Redis leaderboard for ALL scores (not just high scores)
-        console.log('⚡ Updating Redis leaderboard for ALL scores...');
-        const redisUpdateSuccess = await updateLeaderboardScore(tournamentDay, user.id, score > record.highest_score ? score : record.highest_score, {
-            username: user.username,
-            wallet: walletToCheck
-        });
-
-        if (!redisUpdateSuccess) {
-            console.warn('⚠️ Redis leaderboard update failed, but continuing with cache invalidation');
-        } try {
+        try {
             // CRITICAL: Force immediate cache clearing and rewarming for instant updates
             const { invalidateAllTournamentCaches } = await import('@/utils/tournament-cache-helpers');
             await invalidateAllTournamentCaches({
