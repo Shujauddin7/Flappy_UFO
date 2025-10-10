@@ -1056,7 +1056,19 @@ export default function GameHomepage() {
         const newHighScore = Math.max(score, currentHigh);
         const isNewHigh = score > currentHigh;
 
-        // For tournament mode, WAIT for API before showing modal (ensures rank is instant and accurate)
+        // Show modal IMMEDIATELY for instant feedback (best UX)
+        setGameResult({
+            show: true,
+            score,
+            coins,
+            mode: modeText,
+            currentHigh: newHighScore,
+            isNewHighScore: isNewHigh,
+            previousHigh: isNewHigh ? currentHigh : undefined
+        });
+        modalOpenRef.current = true;
+
+        // For tournament mode, fetch rank in background and update when ready
         if (gameMode === 'tournament' && session?.user?.walletAddress) {
             setIsSubmittingScore(true);
 
@@ -1075,19 +1087,15 @@ export default function GameHomepage() {
 
                 const result = await response.json();
 
-                // Show modal AFTER API completes (rank is instant and accurate)
+                // Update modal with rank when API responds (usually < 1 second)
                 if (result.success && !result.data.is_duplicate && result.data.is_new_high_score) {
-                    setGameResult({
-                        show: true,
-                        score,
-                        coins,
-                        mode: modeText,
+                    setGameResult(prev => ({
+                        ...prev,
                         isNewHighScore: result.data.is_new_high_score,
                         previousHigh: result.data.previous_highest_score,
-                        currentHigh: Math.max(newHighScore, result.data.current_highest_score),
+                        currentHigh: Math.max(prev.currentHigh || 0, result.data.current_highest_score),
                         currentRank: result.data.current_rank
-                    });
-                    modalOpenRef.current = true;
+                    }));
 
                     // Update local highest score state
                     setUserHighestScore(result.data.current_highest_score);
@@ -1098,18 +1106,12 @@ export default function GameHomepage() {
                     sessionStorage.removeItem(`${envPrefix}preloaded_leaderboard`);
                     sessionStorage.removeItem(`${envPrefix}preloaded_tournament`);
                 } else if (result.success && !result.data.is_duplicate) {
-                    // Show modal with rank for regular score
-                    setGameResult({
-                        show: true,
-                        score,
-                        coins,
-                        mode: modeText,
-                        currentHigh: Math.max(newHighScore, result.data.current_highest_score || 0),
-                        isNewHighScore: isNewHigh,
-                        previousHigh: isNewHigh ? currentHigh : undefined,
+                    // Update modal with rank for regular score
+                    setGameResult(prev => ({
+                        ...prev,
+                        currentHigh: Math.max(prev.currentHigh || 0, result.data.current_highest_score || 0),
                         currentRank: result.data.current_rank
-                    });
-                    modalOpenRef.current = true;
+                    }));
 
                     // Update local state with current highest score
                     if (result.data.current_highest_score) {
@@ -1124,49 +1126,21 @@ export default function GameHomepage() {
                     sessionStorage.removeItem('leaderboard_data');
                     sessionStorage.removeItem('tournament_data');
                     sessionStorage.setItem('cache_invalidated_at', Date.now().toString());
-                } else {
-                    // Show modal even if API failed (fallback without rank)
-                    setGameResult({
-                        show: true,
-                        score,
-                        coins,
-                        mode: modeText,
-                        currentHigh: newHighScore,
-                        isNewHighScore: isNewHigh,
-                        previousHigh: isNewHigh ? currentHigh : undefined,
-                        error: result.data?.is_duplicate ? 'Score already submitted' : `Score submission failed: ${result.error || 'Unknown error'}`
-                    });
-                    modalOpenRef.current = true;
+                } else if (result.data?.is_duplicate) {
+                    // Duplicate score, update rank if available
+                    if (result.data.current_rank) {
+                        setGameResult(prev => ({
+                            ...prev,
+                            currentRank: result.data.current_rank
+                        }));
+                    }
                 }
             } catch (error) {
                 console.error('Score submission failed:', error);
-                // Show modal even on error (fallback without rank)
-                setGameResult({
-                    show: true,
-                    score,
-                    coins,
-                    mode: modeText,
-                    currentHigh: newHighScore,
-                    isNewHighScore: isNewHigh,
-                    previousHigh: isNewHigh ? currentHigh : undefined,
-                    error: 'Unable to submit score. Please check your connection.'
-                });
-                modalOpenRef.current = true;
+                // Modal already showing, just log the error
             } finally {
                 setIsSubmittingScore(false);
             }
-        } else {
-            // Practice mode - show modal immediately (no API call needed)
-            setGameResult({
-                show: true,
-                score,
-                coins,
-                mode: modeText,
-                currentHigh: newHighScore,
-                isNewHighScore: isNewHigh,
-                previousHigh: isNewHigh ? currentHigh : undefined
-            });
-            modalOpenRef.current = true;
         }
 
         // Update coins for practice mode
@@ -1375,6 +1349,23 @@ export default function GameHomepage() {
                                         ) : (
                                             <>🎯 Rank {gameResult.currentRank} - TOP 100!</>
                                         )}
+                                    </div>
+                                )}
+
+                                {/* Subtle loading state for rank - only shown while fetching */}
+                                {gameMode === 'tournament' && !gameResult.currentRank && !gameResult.error && (
+                                    <div style={{
+                                        marginTop: '15px',
+                                        padding: '10px',
+                                        background: 'rgba(100, 100, 100, 0.05)',
+                                        border: '1px dashed rgba(100, 100, 100, 0.2)',
+                                        borderRadius: '8px',
+                                        fontSize: '13px',
+                                        textAlign: 'center',
+                                        color: '#666',
+                                        animation: 'shimmer 1.5s infinite'
+                                    }}>
+                                        Loading rank...
                                     </div>
                                 )}
 
