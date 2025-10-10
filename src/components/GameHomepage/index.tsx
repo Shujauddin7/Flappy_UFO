@@ -161,6 +161,7 @@ export default function GameHomepage() {
     // 🚀 Track user's current highest score for Socket.IO real-time updates and modal display
     const [userHighestScore, setUserHighestScore] = useState<number | null>(null);
     const [currentTournamentId, setCurrentTournamentId] = useState<string | null>(null);
+    const [scoreUpdateTrigger, setScoreUpdateTrigger] = useState<number>(0); // Force refresh trigger
 
     // Check user's verification status for today's tournament
     const checkVerificationStatus = useCallback(async () => {
@@ -297,7 +298,7 @@ export default function GameHomepage() {
         };
 
         fetchUserHighestScore();
-    }, [session?.user?.walletAddress, currentScreen]); // Re-fetch when returning to home
+    }, [session?.user?.walletAddress, currentScreen, scoreUpdateTrigger]); // Re-fetch when score updates
 
     // 🚀 FIX: Setup Socket.IO connection for real-time score updates on the playing device
     useEffect(() => {
@@ -904,6 +905,15 @@ export default function GameHomepage() {
 
                 // 🚀 FIX: Immediately update local highest score state for instant display
                 setUserHighestScore(result.data.current_highest_score);
+                setScoreUpdateTrigger(Date.now()); // Trigger refresh
+
+                // 🎯 CRITICAL FIX: Force re-render of game result modal with NEW high score
+                setGameResult(prev => ({
+                    ...prev,
+                    currentHigh: result.data.current_highest_score,
+                    isNewHighScore: result.data.is_new_high_score,
+                    previousHigh: result.data.previous_highest_score
+                }));
 
                 // 🚀 INSTANT OWN SCORE UPDATE: Clear cache + set invalidation flag
                 console.log('🏆 NEW HIGH SCORE! - invalidating ALL leaderboard cache for INSTANT update');
@@ -926,10 +936,11 @@ export default function GameHomepage() {
                 }
             } else if (result.success) {
                 // Update local state with current highest score for Socket.IO and future reference
-                if (result.data.current_highest_score) {
+                if (result.data.current_highest_score !== undefined) {
                     setUserHighestScore(result.data.current_highest_score);
+                    setScoreUpdateTrigger(Date.now()); // Trigger refresh
 
-                    // 🎯 INSTANT HIGH SCORE DISPLAY: Update modal with current high score
+                    // 🎯 CRITICAL FIX: ALWAYS update modal with current high score for instant display
                     setGameResult(prev => ({
                         ...prev,
                         currentHigh: result.data.current_highest_score
@@ -1286,11 +1297,18 @@ export default function GameHomepage() {
                                     <div className="current-high-info" style={{
                                         marginTop: '15px',
                                         padding: '12px',
-                                        background: 'rgba(255, 255, 255, 0.1)',
+                                        background: 'rgba(0, 245, 255, 0.1)',
+                                        border: '1px solid rgba(0, 245, 255, 0.3)',
                                         borderRadius: '8px',
-                                        fontSize: '14px'
+                                        fontSize: '14px',
+                                        animation: 'fadeIn 0.3s ease-in'
                                     }}>
-                                        📊 Your Tournament Best: {gameResult.currentHigh}
+                                        🏆 Your Tournament Best: <strong style={{ color: '#00F5FF' }}>{gameResult.currentHigh}</strong>
+                                        {gameResult.score >= gameResult.currentHigh && (
+                                            <div style={{ fontSize: '12px', marginTop: '4px', color: '#10B981' }}>
+                                                ✅ Score submitted successfully!
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
