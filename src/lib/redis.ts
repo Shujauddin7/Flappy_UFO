@@ -259,17 +259,19 @@ export async function publishCombinedScoreUpdate(
 
     try {
         // Combine leaderboard update + score update into ONE message
+        // IMPORTANT: Match the exact format that frontend expects!
         const combinedMessage = {
-            type: 'score_update', // Keep same type for frontend compatibility
-            tournament_day: tournamentDay,
             tournament_id: tournamentId,
-            user_id: userId,
-            username: playerDetails.username,
-            wallet: playerDetails.wallet,
-            old_score: playerDetails.old_score,
-            new_score: score,
-            timestamp: Date.now(),
-            source: 'optimized_batch'
+            type: 'score_update',
+            data: {
+                user_id: userId,
+                username: playerDetails.username || `Player ${userId.slice(0, 8)}`,
+                wallet: playerDetails.wallet,
+                old_score: playerDetails.old_score,
+                new_score: score,
+                new_rank: undefined, // Frontend doesn't use this
+                timestamp: Date.now()
+            }
         };
 
         // Use environment-specific channel (same as Socket.IO server listens to)
