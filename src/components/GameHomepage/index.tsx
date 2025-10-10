@@ -1033,7 +1033,8 @@ export default function GameHomepage() {
             show: true,
             score,
             coins,
-            mode: modeText
+            mode: modeText,
+            currentHigh: userHighestScore || 0  // 🚀 FIX: Show current high score immediately
         });
 
         // For tournament mode, only submit score if continue was already used (meaning this is the final game end)
