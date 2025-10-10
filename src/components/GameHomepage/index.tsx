@@ -1029,12 +1029,19 @@ export default function GameHomepage() {
         setContinueFromScore(0);
 
         // ALWAYS show the modal immediately for fast response
+        // 🚀 FIX: Calculate new high score immediately (no API needed)
+        const currentHigh = userHighestScore || 0;
+        const newHighScore = Math.max(score, currentHigh);
+        const isNewHigh = score > currentHigh;
+
         setGameResult({
             show: true,
             score,
             coins,
             mode: modeText,
-            currentHigh: userHighestScore || 0  // 🚀 FIX: Show current high score immediately
+            currentHigh: newHighScore,  // Show NEW score if higher
+            isNewHighScore: isNewHigh,  // Mark as new high if beat previous
+            previousHigh: isNewHigh ? currentHigh : undefined
         });
 
         // For tournament mode, only submit score if continue was already used (meaning this is the final game end)
@@ -1285,16 +1292,16 @@ export default function GameHomepage() {
 
                                 {gameResult.isNewHighScore && (
                                     <div className="new-high-score">
-                                        🎉 NEW HIGH SCORE!
+                                        🎉 NEW RECORD!
                                         <br />
                                         Previous: {gameResult.previousHigh}
                                         <br />
-                                        Current Best: {gameResult.currentHigh || userHighestScore}
+                                        New Best: {gameResult.currentHigh || userHighestScore}
                                     </div>
                                 )}
 
-                                {/* 🎯 INSTANT HIGH SCORE DISPLAY: Show current high score in tournament mode */}
-                                {gameMode === 'tournament' && !gameResult.isNewHighScore && gameResult.currentHigh !== undefined && (
+                                {/* 🎯 Show motivational message for tournament mode */}
+                                {gameMode === 'tournament' && !gameResult.isNewHighScore && (
                                     <div className="current-high-info" style={{
                                         marginTop: '15px',
                                         padding: '12px',
@@ -1304,12 +1311,12 @@ export default function GameHomepage() {
                                         fontSize: '14px',
                                         animation: 'fadeIn 0.3s ease-in'
                                     }}>
-                                        🏆 Your Tournament Best: <strong style={{ color: '#00F5FF' }}>{gameResult.currentHigh}</strong>
-                                        {gameResult.score >= gameResult.currentHigh && (
-                                            <div style={{ fontSize: '12px', marginTop: '4px', color: '#10B981' }}>
-                                                ✅ Score submitted successfully!
-                                            </div>
-                                        )}
+                                        🏆 Your Best: <strong style={{ color: '#00F5FF' }}>{gameResult.currentHigh}</strong>
+                                        <div style={{ fontSize: '13px', marginTop: '6px', color: '#10B981' }}>
+                                            {gameResult.score >= (gameResult.currentHigh || 0) * 0.8
+                                                ? "Great job! 🚀"
+                                                : "So close! �"}
+                                        </div>
                                     </div>
                                 )}
 
@@ -1366,49 +1373,41 @@ export default function GameHomepage() {
                                 {/* Tournament Mode: Show message if continue already used */}
                                 {gameMode === 'tournament' && tournamentContinueUsed && (
                                     <div className="tournament-continue-info">
-                                        ❌ Continue already used. Create new entry to play again.
+                                        ⚠️ Continue used. Create new entry to play again.
                                     </div>
                                 )}
 
-                                {/* Play Again button */}
-                                <button
-                                    className="modal-button secondary"
-                                    onClick={async () => {
-                                        try {
-                                            if (gameMode === 'tournament' && tournamentContinueUsed) {
-                                                // For tournament mode after continue used: redirect to new entry
-                                                setContinueFromScore(0);
-                                                setGameResult({ show: false, score: 0, coins: 0, mode: '' });
-                                                setTournamentContinueUsed(false); // Reset for new entry
-                                                setCurrentScreen('tournamentEntry');
-                                            } else if (gameMode === 'tournament' && !tournamentContinueUsed) {
-                                                // For tournament mode first crash: submit final score without continue
-                                                console.log('🎯 Submitting final score before play again...');
-                                                await handleFinalGameOver(gameResult.score);
-                                                // Reset all game state and go back to mode selection
-                                                setContinueFromScore(0);
-                                                setGameResult({ show: false, score: 0, coins: 0, mode: '' });
-                                                setTournamentContinueUsed(false);
-                                                setGameMode(null); // Clear game mode so user must choose again
-                                                setCurrentScreen('gameSelect'); // Go back to mode selection
-                                            } else {
-                                                // Practice mode: Reset all game state and go back to mode selection
-                                                setContinueFromScore(0);
-                                                setGameResult({ show: false, score: 0, coins: 0, mode: '' });
-                                                setTournamentContinueUsed(false);
-                                                setGameMode(null); // Clear game mode so user must choose again
-                                                setCurrentScreen('gameSelect'); // Go back to mode selection
+                                {/* Play Again button - ONLY show when continue is NOT available */}
+                                {(gameMode !== 'tournament' || tournamentContinueUsed) && (
+                                    <button
+                                        className="modal-button secondary"
+                                        onClick={async () => {
+                                            try {
+                                                if (gameMode === 'tournament' && tournamentContinueUsed) {
+                                                    // For tournament mode after continue used: redirect to new entry
+                                                    setContinueFromScore(0);
+                                                    setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+                                                    setTournamentContinueUsed(false); // Reset for new entry
+                                                    setCurrentScreen('tournamentEntry');
+                                                } else {
+                                                    // Practice mode: Reset all game state and go back to mode selection
+                                                    setContinueFromScore(0);
+                                                    setGameResult({ show: false, score: 0, coins: 0, mode: '' });
+                                                    setTournamentContinueUsed(false);
+                                                    setGameMode(null); // Clear game mode so user must choose again
+                                                    setCurrentScreen('gameSelect'); // Go back to mode selection
+                                                }
+                                            } catch (error) {
+                                                console.error('❌ Play Again navigation error:', error);
+                                                // Fallback navigation - always try to recover
+                                                setCurrentScreen('gameSelect');
+                                                setGameMode(null);
                                             }
-                                        } catch (error) {
-                                            console.error('❌ Play Again navigation error:', error);
-                                            // Fallback navigation - always try to recover
-                                            setCurrentScreen('gameSelect');
-                                            setGameMode(null);
-                                        }
-                                    }}
-                                >
-                                    {gameMode === 'tournament' && tournamentContinueUsed ? 'New Entry' : 'Play Again'}
-                                </button>
+                                        }}
+                                    >
+                                        {gameMode === 'tournament' && tournamentContinueUsed ? 'New Entry' : 'Play Again'}
+                                    </button>
+                                )}
 
                                 <button
                                     className="modal-button primary"
