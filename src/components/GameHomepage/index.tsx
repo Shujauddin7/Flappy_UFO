@@ -789,10 +789,18 @@ export default function GameHomepage() {
 
     // Handle tournament continue payment
     const handleTournamentContinue = async (score: number) => {
-        // 🔥 CRITICAL: Check if tournament is still active BEFORE payment (blocks grace period)
+        // � CRITICAL: Check if modal is still open (prevent race condition with Go Home button)
+        if (!gameResult.show) {
+            console.log('⚠️ Modal closed, cancelling continue payment');
+            setIsProcessingPayment(false);
+            return;
+        }
+
+        // �🔥 CRITICAL: Check if tournament is still active BEFORE payment (blocks grace period)
         const tournamentActive = await checkTournamentActive();
         if (!tournamentActive) {
             // checkTournamentActive already shows grace period modal or alert
+            setIsProcessingPayment(false);
             return;
         }
 
@@ -1356,6 +1364,22 @@ export default function GameHomepage() {
                                     </div>
                                 )}
 
+                                {/* DEBUG: Show if rank is missing */}
+                                {gameMode === 'tournament' && !gameResult.currentRank && (
+                                    <div style={{
+                                        marginTop: '15px',
+                                        padding: '8px',
+                                        background: 'rgba(255, 0, 0, 0.1)',
+                                        border: '1px solid rgba(255, 0, 0, 0.3)',
+                                        borderRadius: '4px',
+                                        fontSize: '12px',
+                                        color: '#ff6b6b'
+                                    }}>
+                                        ⚠️ DEBUG: Rank not loaded yet...
+                                    </div>
+                                )}
+
+
                                 {/* Show encouraging message for players below Top 100 */}
                                 {gameMode === 'tournament' && gameResult.currentRank && gameResult.currentRank > 100 && !gameResult.isNewHighScore && (
                                     <div className="current-high-info" style={{
@@ -1451,9 +1475,11 @@ export default function GameHomepage() {
                                 {gameMode === 'tournament' && !tournamentContinueUsed && (
                                     <button
                                         className="modal-button continue"
-                                        onClick={() => {
+                                        disabled={isProcessingPayment}
+                                        onClick={async () => {
+                                            if (isProcessingPayment || !gameResult.show) return; // Prevent if already processing or modal closed
                                             setIsProcessingPayment(true); // Disable navigation during payment
-                                            handleTournamentContinue(gameResult.score);
+                                            await handleTournamentContinue(gameResult.score);
                                         }}
                                     >
                                         Continue ({tournamentEntryAmount} WLD) - One continue per game
