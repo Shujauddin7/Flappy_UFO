@@ -1351,6 +1351,23 @@ export default function GameHomepage() {
                                     </div>
                                 )}
 
+                                {/* Loading state for rank - Show shimmer while fetching */}
+                                {gameMode === 'tournament' && !gameResult.currentRank && !gameResult.error && (
+                                    <div style={{
+                                        marginTop: '15px',
+                                        padding: '12px',
+                                        background: 'rgba(100, 100, 100, 0.1)',
+                                        border: '1px solid rgba(100, 100, 100, 0.3)',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        textAlign: 'center',
+                                        color: '#888',
+                                        animation: 'shimmer 1.5s infinite'
+                                    }}>
+                                        ⏳ Loading rank...
+                                    </div>
+                                )}
+
                                 {/* Show encouraging message for players below Top 100 */}
                                 {gameMode === 'tournament' && gameResult.currentRank && gameResult.currentRank > 100 && !gameResult.isNewHighScore && (
                                     <div className="current-high-info" style={{
@@ -1504,7 +1521,11 @@ export default function GameHomepage() {
                                     onClick={async () => {
                                         if (isProcessingPayment) return; // Prevent click during payment
 
-                                        // Close modal immediately to prevent race conditions
+                                        // Navigate FIRST to prevent showing crash screen
+                                        setCurrentScreen('home');
+                                        setGameMode(null);
+
+                                        // Then close modal and cleanup
                                         modalOpenRef.current = false;
                                         setGameResult({ show: false, score: 0, coins: 0, mode: '' });
 
@@ -1517,13 +1538,8 @@ export default function GameHomepage() {
                                             // Reset all game state
                                             setContinueFromScore(0); // Reset continue score
                                             setIsSubmittingScore(false); // Ensure submission state is cleared
-                                            setCurrentScreen('home');
-                                            setGameMode(null);
                                         } catch (error) {
                                             console.error('❌ Go Home navigation error:', error);
-                                            // Fallback navigation - always try to recover
-                                            setCurrentScreen('home');
-                                            setGameMode(null);
                                         }
                                     }}
                                 >
@@ -2284,6 +2300,12 @@ export default function GameHomepage() {
                 @keyframes pulse {
                     0%, 100% { opacity: 1; transform: scale(1); }
                     50% { opacity: 0.8; transform: scale(1.05); }
+                }
+
+                @keyframes shimmer {
+                    0% { opacity: 0.5; }
+                    50% { opacity: 1; }
+                    100% { opacity: 0.5; }
                 }
             ` }} />
         </>
