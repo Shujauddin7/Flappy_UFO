@@ -260,7 +260,7 @@ export async function publishCombinedScoreUpdate(
     try {
         // Combine leaderboard update + score update into ONE message
         const combinedMessage = {
-            type: 'score_update_combined',
+            type: 'score_update', // Keep same type for frontend compatibility
             tournament_day: tournamentDay,
             tournament_id: tournamentId,
             user_id: userId,
@@ -272,8 +272,8 @@ export async function publishCombinedScoreUpdate(
             source: 'optimized_batch'
         };
 
-        // Use environment-specific channel
-        const envChannel = getEnvironmentKey('tournament:all_updates');
+        // Use environment-specific channel (same as Socket.IO server listens to)
+        const envChannel = getEnvironmentKey('tournament:updates');
 
         // Only 1 PUBLISH instead of 2! (50% Redis reduction)
         await redis.publish(envChannel, JSON.stringify(combinedMessage));
