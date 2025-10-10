@@ -6,9 +6,6 @@ import { populateLeaderboard } from '@/lib/leaderboard-redis';
 
 export async function POST() {
     try {
-        console.log('🔥 PROFESSIONAL CACHE WARMING STARTED...');
-        console.log('🎮 Pre-loading all data for instant gaming performance');
-
         const startTime = Date.now();
 
         // Warm all critical caches in parallel for maximum speed
@@ -30,9 +27,6 @@ export async function POST() {
                 console.error(`   ${index + 1}. ${failure.reason}`);
             });
         }
-
-        console.log(`✅ CACHE WARMING COMPLETE: ${successful}/3 operations successful in ${totalTime}ms`);
-        console.log('🚀 Ready for INSTANT loads like Candy Crush/PUBG!');
 
         return NextResponse.json({
             success: true,
@@ -60,7 +54,6 @@ export async function POST() {
 }
 
 async function warmLeaderboardCache() {
-    console.log('🏆 Warming leaderboard cache...');
     const supabase = getSupabaseClient();
 
     // Get current tournament
@@ -80,7 +73,6 @@ async function warmLeaderboardCache() {
             fetched_at: new Date().toISOString()
         };
         await setCached('tournament:leaderboard:current', emptyData, CACHE_TTL.REAL_TIME / 1000); // Use standardized real-time TTL (convert to seconds)
-        console.log('🏆 Leaderboard cache warmed: No active tournament');
         return;
     }
 
@@ -120,11 +112,9 @@ async function warmLeaderboardCache() {
     // CRITICAL FIX: Also populate the Redis sorted sets that getTopPlayers() actually reads from
     await populateLeaderboard(tournament.tournament_day, players || []);
 
-    console.log(`🏆 Leaderboard cache warmed: ${playersWithRank.length} players ready for ${CACHE_TTL.REDIS_CACHE / 60} minutes`);
-}
+    }
 
 async function warmPrizePoolCache() {
-    console.log('💰 Warming prize pool cache...');
     const supabase = getSupabaseClient();
 
     // Get current tournament
@@ -135,7 +125,6 @@ async function warmPrizePoolCache() {
         .limit(1);
 
     if (!tournaments || tournaments.length === 0) {
-        console.log('💰 Prize pool cache: No active tournament');
         return;
     }
 
@@ -188,11 +177,9 @@ async function warmPrizePoolCache() {
     };
 
     await setCached('tournament:prizes:current', prizeData, CACHE_TTL.LEADERBOARD / 1000); // Use standardized leaderboard TTL (convert to seconds)
-    console.log(`💰 Prize pool cache warmed: ${prizePoolAmount} WLD pool ready`);
-}
+    }
 
 async function warmTournamentCache() {
-    console.log('🎯 Warming tournament cache...');
     const supabase = getSupabaseClient();
 
     const { data: tournaments } = await supabase
@@ -203,7 +190,6 @@ async function warmTournamentCache() {
         .limit(1);
 
     if (!tournaments || tournaments.length === 0) {
-        console.log('🎯 Tournament cache: No active tournament');
         return;
     }
 
@@ -241,8 +227,7 @@ async function warmTournamentCache() {
     };
 
     await setCached('tournament:current', tournamentData, CACHE_TTL.TOURNAMENT / 1000); // Use standardized tournament TTL (convert to seconds)
-    console.log(`🎯 Tournament cache warmed: ${tournament.tournament_day} ready for ${CACHE_TTL.TOURNAMENT / 60000} minutes`);
-}
+    }
 
 function getSupabaseClient() {
     const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';

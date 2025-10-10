@@ -54,7 +54,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const expectedSignedNonce = hashNonce({ nonce });
 
         if (signedNonce !== expectedSignedNonce) {
-          console.log('Invalid signed nonce');
           return null;
         }
 
@@ -63,13 +62,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const result = await verifySiweMessage(finalPayload, nonce);
 
         if (!result.isValid || !result.siweMessageData.address) {
-          console.log('Invalid final payload');
           return null;
         }
         // Optionally, fetch the user info from your own database
         const userInfo = await MiniKit.getUserInfo(finalPayload.address);
-
-        console.log('✅ User authenticated:', finalPayload.address, userInfo.username || 'No username');
 
         // Note: Database integration will be handled via API route to avoid build issues
 

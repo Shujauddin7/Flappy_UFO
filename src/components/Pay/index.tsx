@@ -35,7 +35,6 @@ export const Pay = () => {
       description: 'Test example payment for minikit',
     });
 
-    console.log(result.finalPayload);
     if (result.finalPayload.status === 'success') {
       setButtonState('success');
       // It's important to actually check the transaction result on-chain

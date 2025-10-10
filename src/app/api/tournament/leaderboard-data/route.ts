@@ -4,23 +4,18 @@ import { getCurrentActiveTournament } from '@/utils/database';
 import { getLeaderboardData } from '@/utils/leaderboard-queries';
 
 export async function GET() {
-    console.log('🚀 LEADERBOARD DATA API START - Simplified for Maximum Speed');
-
     try {
         // 🎯 STEP 1: Check for cached response first (INSTANT if available)
         const cacheKey = 'tournament_leaderboard_response';
         const cachedResponse = await getCached(cacheKey);
 
         if (cachedResponse) {
-            console.log('⚡ CACHE HIT: Returning instant cached leaderboard data');
             return NextResponse.json({
                 ...cachedResponse,
                 cached: true,
                 fetched_at: new Date().toISOString()
             });
         }
-
-        console.log('🔴 CACHE MISS: Building fresh leaderboard data from database');
 
         // 🎯 STEP 2: Get current tournament
         const currentTournament = await getCurrentActiveTournament();
@@ -40,17 +35,12 @@ export async function GET() {
         }
 
         const tournamentDay = currentTournament.tournament_day;
-        console.log(`� Building leaderboard for tournament: ${tournamentDay}`);
-
         // 🎯 STEP 3: Get leaderboard data from database
-        const queryStartTime = Date.now();
         const dbPlayers = await getLeaderboardData(tournamentDay, {
             limit: 1000,
             includeZeroScores: false
         });
-        const queryTime = Date.now() - queryStartTime;
-        console.log(`📊 Database query completed in ${queryTime}ms for ${dbPlayers.length} players`);
-
+//         const queryTime = Date.now() - queryStartTime;
         // 🎯 STEP 4: Build the response
         const playersWithRank = dbPlayers.map((player, index) => ({
             ...player,
@@ -68,7 +58,6 @@ export async function GET() {
         };
 
         // 🎯 STEP 5: Cache the complete response for 2 minutes (fast refresh for active tournaments)
-        console.log('💾 Caching complete leaderboard response for instant future requests');
         await setCached(cacheKey, responseData, 120); // 2 minutes
 
         return NextResponse.json(responseData);

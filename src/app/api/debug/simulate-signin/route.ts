@@ -2,21 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase'
 
 export async function POST(req: NextRequest) {
-    console.log('🔍 Debug sign-in simulation - checking what happens during MiniKit sign-in');
-
     try {
         const { wallet, username, worldId } = await req.json();
-
-        console.log('Simulating sign-in for:', { wallet, username, worldId });
 
         const supabase = createServerSupabaseClient();
 
         // Step 1: Get current tournament
-        console.log('Step 1: Getting current tournament...');
         const tournamentResponse = await fetch('https://flappyufo-git-dev-shujauddin.vercel.app/api/tournament/current');
         const tournamentData = await tournamentResponse.json();
-        console.log('Tournament data:', tournamentData);
-
         if (!tournamentData.tournament?.id) {
             return NextResponse.json({
                 success: false,
@@ -26,7 +19,6 @@ export async function POST(req: NextRequest) {
         }
 
         // Step 2: Call sign-in API
-        console.log('Step 2: Calling sign-in API...');
         const signInResponse = await fetch('https://flappyufo-git-dev-shujauddin.vercel.app/api/tournament/sign-in', {
             method: 'POST',
             headers: {
@@ -41,11 +33,7 @@ export async function POST(req: NextRequest) {
         });
 
         const signInResult = await signInResponse.json();
-        console.log('Sign-in result:', signInResult);
-
         // Step 3: Check what was created
-        console.log('Step 3: Checking what was created...');
-
         const { data: signInsData } = await supabase
             .from('tournament_sign_ins')
             .select('*')

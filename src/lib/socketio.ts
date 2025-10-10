@@ -24,13 +24,10 @@ const getSocketUrl = (): string => {
  */
 export const connectSocket = (): Socket => {
     if (socket && socket.connected) {
-        console.log('✅ Socket.IO already connected');
         return socket;
     }
 
     const url = getSocketUrl();
-    console.log(`🔌 Connecting to Socket.IO server: ${url}`);
-
     socket = io(url, {
         transports: ['websocket', 'polling'], // Try websocket first, fallback to polling
         upgrade: true, // Allow transport upgrades
@@ -46,12 +43,7 @@ export const connectSocket = (): Socket => {
 
     // Enhanced connection logging
     socket.on('connect', () => {
-        console.log('✅ Socket.IO connected!', {
-            id: socket?.id,
-            transport: socket?.io?.engine?.transport?.name,
-            url: url
         });
-    });
 
     socket.on('connect_error', (error) => {
         console.error('❌ Socket.IO connection error:', {
@@ -62,13 +54,13 @@ export const connectSocket = (): Socket => {
         });
     });
 
-    // 🔍 DEBUG: Log all incoming events
-    socket.onAny((eventName, ...args) => {
-        console.log(`📥 [SOCKET EVENT] ${eventName}:`, args);
+    // Event listeners removed - console logs cleaned up
+    socket.onAny(() => {
+        // Intentionally empty - for future debugging if needed
     });
 
-    socket.on('disconnect', (reason) => {
-        console.log('🔌 Socket.IO disconnected:', reason);
+    socket.on('disconnect', () => {
+        // Intentionally empty - for future debugging if needed
     });
 
     return socket;
@@ -79,7 +71,6 @@ export const connectSocket = (): Socket => {
  */
 export const disconnectSocket = (): void => {
     if (socket) {
-        console.log('🛑 Disconnecting from Socket.IO server');
         socket.disconnect();
         socket = null;
     }
@@ -91,7 +82,6 @@ export const disconnectSocket = (): void => {
  */
 export const joinTournament = (tournamentId: string, userId?: string, username?: string): void => {
     if (socket && socket.connected) {
-        console.log(`�� Joining tournament room: tournament_${tournamentId}`);
         socket.emit('join_tournament', {
             tournament_id: tournamentId,
             user_id: userId,
@@ -107,7 +97,6 @@ export const joinTournament = (tournamentId: string, userId?: string, username?:
  */
 export const leaveTournament = (tournamentId: string): void => {
     if (socket && socket.connected) {
-        console.log(`👋 Leaving tournament room: tournament_${tournamentId}`);
         socket.emit('leave_tournament', { tournamentId });
     }
 };

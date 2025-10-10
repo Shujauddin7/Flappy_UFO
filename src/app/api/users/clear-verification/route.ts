@@ -54,8 +54,6 @@ export async function POST(req: NextRequest) {
             }, { status: 500 });
         }
 
-        console.log('✅ Verification status cleared for wallet:', wallet);
-
         return NextResponse.json({
             success: true,
             data: { cleared: true, wallet: wallet }

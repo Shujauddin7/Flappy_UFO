@@ -65,22 +65,15 @@ export default function LeaderboardPage() {
 
                         // Use cached data if it's less than 30 seconds old (increased from 5)
                         if (cacheAge < 30000) {
-                            console.log('⚡ INSTANT CACHE: Using globally preloaded tournament data');
-                            console.log(`   Players: ${parsed.data.total_tournament_players || parsed.data.total_players || 'N/A'}`);
-                            console.log(`   Prize: ${parsed.data.total_prize_pool || 'N/A'} WLD`);
-                            console.log(`   Cache age: ${cacheAge}ms`);
                             return parsed.data;
                         } else {
-                            console.log('🗑️ STALE CACHE: Tournament data too old, clearing...');
                             sessionStorage.removeItem('tournament_data');
                         }
                     } else {
-                        console.log('🗑️ INVALID CACHE: Tournament data structure invalid, clearing...');
                         sessionStorage.removeItem('tournament_data');
                     }
                 }
-            } catch (e) {
-                console.warn('Cache error, clearing all cache:', e);
+            } catch {
                 try {
                     sessionStorage.removeItem('tournament_data');
                     sessionStorage.removeItem('leaderboard_data');
@@ -107,21 +100,15 @@ export default function LeaderboardPage() {
 
                         // Use cached data if it's less than 30 seconds old (increased from 5)
                         if (cacheAge < 30000) {
-                            console.log('⚡ INSTANT CACHE: Using globally preloaded leaderboard data');
-                            console.log(`   Players: ${parsed.data?.players?.length || 0}`);
-                            console.log(`   Cache age: ${cacheAge}ms`);
                             return parsed.data;
                         } else {
-                            console.log('🗑️ STALE CACHE: Leaderboard data too old, clearing...');
                             sessionStorage.removeItem('leaderboard_data');
                         }
                     } else {
-                        console.log('🗑️ INVALID CACHE: Leaderboard data structure invalid, clearing...');
                         sessionStorage.removeItem('leaderboard_data');
                     }
                 }
-            } catch (e) {
-                console.warn('Leaderboard cache error, clearing:', e);
+            } catch {
                 try {
                     sessionStorage.removeItem('leaderboard_data');
                 } catch {
@@ -154,20 +141,6 @@ export default function LeaderboardPage() {
                 // Check cached data
                 const cachedLeaderboard = sessionStorage.getItem('leaderboard_data');
                 const cachedTournament = sessionStorage.getItem('tournament_data');
-
-                console.log('🔍 CACHE CHECK:', {
-                    currentPlayers: leaderboardData?.players?.length || 0,
-                    currentTotalPlayers: statsData?.total_players || 0,
-                    currentTournamentPlayers: statsData?.total_tournament_players || 0,
-                    cachedPlayers: (() => {
-                        try {
-                            return cachedLeaderboard ? JSON.parse(cachedLeaderboard)?.data?.players?.length || 0 : 0;
-                        } catch {
-                            return 0;
-                        }
-                    })(),
-                    isEmpty: (leaderboardData?.players?.length || 0) === 0 && (statsData?.total_tournament_players || 0) === 0
-                });
 
                 if (cachedLeaderboard || cachedTournament) {
                     let parsedLeaderboard = null;
@@ -206,37 +179,24 @@ export default function LeaderboardPage() {
                     );
 
                     if (shouldClearCache) {
-                        console.log('🚨 CACHE CLEAR TRIGGERED - DATABASE RESET OR EMPTY STATE!');
-                        console.log(`   Cached players: ${cachedPlayerCount}`);
-                        console.log(`   Current players: ${currentPlayerCount}`);
-                        console.log(`   Empty DB detection: ${currentPlayerCount === 0 ? 'YES' : 'NO'}`);
-                        console.log(`   Cached tournament: ${cachedTournamentDay}`);
-                        console.log(`   Current tournament: ${currentTournamentDay}`);
-                        console.log('   🧹 CLEARING CACHE WITHOUT RELOAD...');
-
                         // Clear cache but don't reload (prevents crash loops)
                         try {
                             sessionStorage.clear();
                             localStorage.clear();
-                            console.log('✅ Cache cleared successfully');
-                        } catch (clearError) {
-                            console.warn('Cache clear failed:', clearError);
-                        }
+                            } catch {
+                            }
 
                         // Let the component re-render with fresh data instead of reloading
                         return;
                     }
                 }
-            } catch (error) {
-                console.warn('Database reset check failed, clearing potentially corrupted cache:', error);
+            } catch {
                 // Safe cache clearing without auto-reload to prevent crash loops
                 try {
                     sessionStorage.clear();
                     localStorage.clear();
-                    console.log('🧹 Cache cleared due to error, page will load fresh data');
-                } catch (clearError) {
-                    console.warn('Cache clearing also failed:', clearError);
-                }
+                    } catch {
+                    }
             }
         };
 
@@ -275,11 +235,6 @@ export default function LeaderboardPage() {
                         if (cachedTournamentDay && currentTournamentDay &&
                             cachedTournamentDay !== currentTournamentDay) {
 
-                            console.log('🧹 TOURNAMENT RESET DETECTED!');
-                            console.log(`   Old tournament: ${cachedTournamentDay}`);
-                            console.log(`   New tournament: ${currentTournamentDay}`);
-                            console.log('   Clearing all cached data...');
-
                             // Clear all tournament-related cache
                             sessionStorage.removeItem('tournament_data');
                             sessionStorage.removeItem('leaderboard_data');
@@ -291,18 +246,16 @@ export default function LeaderboardPage() {
                             sessionStorage.removeItem(`${envPrefix}preloaded_tournament`);
                             sessionStorage.removeItem(`${envPrefix}preloaded_leaderboard`);
 
-                            console.log('✅ All stale tournament cache cleared');
-
                             // Force refresh the page data
                             window.location.reload();
                         }
                     })
-                    .catch(err => {
-                        console.warn('Tournament day check failed:', err);
+                    .catch(() => {
+                        // Intentionally ignore cache warming errors
                     });
 
-            } catch (error) {
-                console.warn('Cache check failed:', error);
+            } catch {
+                // Intentionally ignore errors
             }
         };
 
@@ -324,16 +277,11 @@ export default function LeaderboardPage() {
             try {
                 // 🎯 INSTANT OWN SCORE UPDATE: Check if cache was just invalidated
                 const cacheInvalidatedAt = sessionStorage.getItem('cache_invalidated_at');
-                console.log('🔍 CACHE CHECK: cache_invalidated_at =', cacheInvalidatedAt);
-
                 if (cacheInvalidatedAt) {
                     const invalidatedTime = parseInt(cacheInvalidatedAt);
                     const timeSinceInvalidation = Date.now() - invalidatedTime;
-                    console.log('⏱️ TIMING: Cache invalidated', timeSinceInvalidation, 'ms ago (threshold: 5000ms)');
-
                     // If cache was invalidated within last 5 seconds, skip cache and force fresh data
                     if (timeSinceInvalidation < 5000) {
-                        console.log('🚀 INSTANT UPDATE: Cache was invalidated', timeSinceInvalidation, 'ms ago - FORCING FRESH DATA!');
                         sessionStorage.removeItem('cache_invalidated_at'); // Clear flag after use
 
                         // Skip cache completely and fetch fresh data
@@ -375,51 +323,35 @@ export default function LeaderboardPage() {
                             timestamp: Date.now()
                         }));
 
-                        console.log('✅ INSTANT UPDATE: Fresh data loaded with your new score!');
                         return; // Exit early, data is loaded
                     } else {
-                        console.log('⏰ Cache invalidation expired (', timeSinceInvalidation, 'ms ago) - will use normal cache flow');
                         sessionStorage.removeItem('cache_invalidated_at'); // Clean up old timestamp
                     }
                 } else {
-                    console.log('📦 NO CACHE INVALIDATION: Using normal cache flow');
-                }
+                    }
 
                 // Try cached data first for instant display
                 if (typeof window !== 'undefined') {
                     const cachedTournament = sessionStorage.getItem('tournament_data');
                     const cachedLeaderboard = sessionStorage.getItem('leaderboard_data');
 
-                    console.log('📦 CACHE STATUS:', {
-                        hasTournamentCache: !!cachedTournament,
-                        hasLeaderboardCache: !!cachedLeaderboard
-                    });
-
                     if (cachedTournament && cachedLeaderboard) {
                         try {
                             const parsedTournament = JSON.parse(cachedTournament);
                             const parsedLeaderboard = JSON.parse(cachedLeaderboard);
 
-                            const tournamentAge = Date.now() - parsedTournament.timestamp;
-                            const leaderboardAge = Date.now() - parsedLeaderboard.timestamp;
-
-                            console.log('📊 CACHE AGE:', {
-                                tournament: tournamentAge + 'ms (max: ' + CACHE_TTL.TOURNAMENT + 'ms)',
-                                leaderboard: leaderboardAge + 'ms (max: ' + CACHE_TTL.LEADERBOARD + 'ms)'
-                            });
+//                             const tournamentAge = Date.now() - parsedTournament.timestamp;
+//                             const leaderboardAge = Date.now() - parsedLeaderboard.timestamp;
 
                             if (Date.now() - parsedTournament.timestamp < CACHE_TTL.TOURNAMENT &&
                                 Date.now() - parsedLeaderboard.timestamp < CACHE_TTL.LEADERBOARD) {
 
                                 setCurrentTournament(parsedTournament.data);
                                 setPreloadedLeaderboardData(parsedLeaderboard.data);
-                                console.log('⚡ INSTANT DISPLAY: Using cached data');
-                            } else {
-                                console.log('❌ CACHE EXPIRED: Will fetch fresh data');
+                                } else {
+                                }
+                        } catch {
                             }
-                        } catch (e) {
-                            console.warn('Cache parse error:', e);
-                        }
                     }
                 }
 
@@ -464,11 +396,7 @@ export default function LeaderboardPage() {
                     timestamp: Date.now()
                 }));
 
-                console.log(`⚡ PARALLEL DATA LOADED: ${tournamentData.total_players} players, ${tournamentData.total_prize_pool
-
-                    } WLD, ${leaderboard.players?.length || 0} entries`);
-
-            } catch (error) {
+                } catch (error) {
                 console.error('Essential data load failed:', error);
                 setError('Failed to load tournament data');
             }
@@ -484,19 +412,12 @@ export default function LeaderboardPage() {
 
     useEffect(() => {
         if (!currentTournament?.tournament_day || !currentTournament?.id) {
-            console.log('❌ Socket.IO setup skipped: No tournament data available');
             return;
         }
 
         if (!socket) {
-            console.log('⏳ Socket.IO not ready yet...');
             return;
         }
-
-        console.log('🚀 Setting up Socket.IO listeners for cross-device sync...');
-        console.log(`   Tournament ID: ${currentTournament.id}`);
-        console.log(`   Tournament Day: ${currentTournament.tournament_day}`);
-        console.log(`   Socket connected: ${isConnected}`);
 
         // User info for tournament join
         const userId = session?.user?.id || 'anonymous';
@@ -504,13 +425,11 @@ export default function LeaderboardPage() {
 
         // Join tournament room when socket connects
         if (isConnected) {
-            console.log('✅ Socket already connected, joining tournament room');
             joinTournamentRoom(currentTournament.id, userId, username);
         }
 
         // Also join when socket connects (if not connected yet)
         const handleConnect = () => {
-            console.log('✅ Socket.IO connected, joining tournament');
             joinTournamentRoom(currentTournament.id, userId, username);
         };
 
@@ -520,29 +439,11 @@ export default function LeaderboardPage() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const handleScoreUpdate = (message: { tournament_id: string; data: any; }) => {
             const { data } = message;
-            console.log('🎯 ========== SCORE UPDATE EVENT RECEIVED ==========');
-            console.log('⚡ Score update:', data);
-            console.log(`   User: ${data.username} (${data.user_id})`);
-            console.log(`   Old Score: ${data.old_score} → New Score: ${data.new_score}`);
-            console.log(`   Tournament: ${message.tournament_id}`);
-            console.log(`   Timestamp: ${new Date().toISOString()}`);
-
             setPreloadedLeaderboardData(prev => {
-                console.log('📊 Current leaderboard state:', {
-                    hasPlayers: !!prev?.players,
-                    playerCount: prev?.players?.length || 0,
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    source: (prev as any)?.source || 'unknown'
-                });
-
                 if (!prev?.players) {
-                    console.log('🔄 No cached data, fetching fresh leaderboard');
                     fetch(`/api/tournament/leaderboard-data?tournament_day=${currentTournament.tournament_day}&bust=${Date.now()}`)
                         .then(res => res.json())
                         .then(freshData => {
-                            console.log('✅ Fresh leaderboard data fetched:', {
-                                playerCount: freshData?.players?.length || 0
-                            });
                             if (freshData?.players) {
                                 setPreloadedLeaderboardData({
                                     ...freshData,
@@ -555,16 +456,10 @@ export default function LeaderboardPage() {
                 }
 
                 const playerExists = prev.players.some(p => p.user_id === data.user_id);
-                console.log(`🔍 Player ${data.username} exists in leaderboard: ${playerExists}`);
-
                 if (!playerExists) {
-                    console.log('🔄 Player not in cached leaderboard, syncing fresh data');
                     fetch(`/api/tournament/leaderboard-data?tournament_day=${currentTournament.tournament_day}&bust=${Date.now()}`)
                         .then(res => res.json())
                         .then(freshData => {
-                            console.log('✅ Fresh data after new player:', {
-                                playerCount: freshData?.players?.length || 0
-                            });
                             if (freshData?.players) {
                                 setPreloadedLeaderboardData({
                                     ...freshData,
@@ -578,10 +473,6 @@ export default function LeaderboardPage() {
 
                 const updatedPlayers = prev.players.map(player => {
                     if (player.user_id === data.user_id) {
-                        console.log(`✏️ Updating player ${player.username}:`, {
-                            oldScore: player.highest_score,
-                            newScore: data.new_score
-                        });
                         return {
                             ...player,
                             highest_score: data.new_score,
@@ -592,9 +483,6 @@ export default function LeaderboardPage() {
                 });
 
                 updatedPlayers.sort((a, b) => (b.highest_score || 0) - (a.highest_score || 0));
-
-                console.log('✅ Leaderboard state updated via Socket.IO!');
-                console.log('🎯 ============================================');
 
                 return {
                     ...prev,
@@ -609,9 +497,6 @@ export default function LeaderboardPage() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const handlePrizePoolUpdate = (message: { tournament_id: string; data: any; }) => {
             const { data } = message;
-            console.log('🔥 SOCKET.IO PRIZE POOL UPDATE:', message);
-            console.log(`📊 PRIZE POOL UPDATED: ${data.total_players} players, ${data.new_prize_pool} WLD`);
-
             setCurrentTournament(prev => prev ? {
                 ...prev,
                 total_prize_pool: data.new_prize_pool,
@@ -620,12 +505,7 @@ export default function LeaderboardPage() {
         };
 
         // Listen for new player joins
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const handlePlayerJoined = (message: { tournament_id: string; data: any; }) => {
-            const { data } = message;
-            console.log('🔥 SOCKET.IO PLAYER JOINED:', message);
-            console.log(`🎮 NEW PLAYER: ${data.username} joined tournament`);
-
+        const handlePlayerJoined = () => {
             fetch(`/api/tournament/leaderboard-data?tournament_day=${currentTournament.tournament_day}&bust=${Date.now()}`)
                 .then(res => res.json())
                 .then(freshData => {
@@ -643,21 +523,8 @@ export default function LeaderboardPage() {
         socket.on('prize_pool_update', handlePrizePoolUpdate);
         socket.on('player_joined', handlePlayerJoined);
 
-        console.log('🎧 Socket.IO listeners registered:');
-        console.log('   ✅ score_update');
-        console.log('   ✅ prize_pool_update');
-        console.log('   ✅ player_joined');
-        console.log('   Socket connected:', socket.connected);
-        console.log('   User:', username, '(' + userId + ')');
-        console.log('   Tournament:', currentTournament.id);
-
         // Cleanup
         return () => {
-            console.log('🛑 Cleaning up Socket.IO listeners (component unmounting)');
-            console.log('   Removing score_update listener');
-            console.log('   Removing prize_pool_update listener');
-            console.log('   Removing player_joined listener');
-            console.log('   Removing connect listener');
             socket.off('connect', handleConnect);
             socket.off('score_update', handleScoreUpdate);
             socket.off('prize_pool_update', handlePrizePoolUpdate);
@@ -783,12 +650,6 @@ export default function LeaderboardPage() {
 
     // Calculate time remaining
     const getTimeRemaining = () => {
-        console.log('🔍 Timer Debug:', {
-            currentTournament: currentTournament,
-            end_time: currentTournament?.end_time,
-            currentTime: currentTime
-        });
-
         if (!currentTournament || !currentTournament.end_time) return null;
 
         const now = currentTime.getTime();

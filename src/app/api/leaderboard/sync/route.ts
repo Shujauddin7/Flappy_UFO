@@ -4,8 +4,6 @@ import { populateLeaderboard } from '@/lib/leaderboard-redis';
 
 export async function POST(req: NextRequest) {
     const startTime = Date.now();
-    console.log('🔄 Syncing leaderboard to Redis...');
-
     try {
         const { searchParams } = req.nextUrl;
         const tournamentDay = searchParams.get('tournament_day');
@@ -74,8 +72,6 @@ export async function POST(req: NextRequest) {
         }
 
         const syncTime = Date.now() - startTime;
-
-        console.log(`⚡ Leaderboard synced: ${players.length} players for ${targetTournamentDay} in ${syncTime}ms`);
 
         return NextResponse.json({
             success: true,

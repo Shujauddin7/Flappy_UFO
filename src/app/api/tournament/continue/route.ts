@@ -117,12 +117,6 @@ export async function POST(req: NextRequest) {
         const isGracePeriod = currentTime >= gracePeriodStart && currentTime < tournamentEndTime;
 
         if (isGracePeriod) {
-            console.log('⏰ Grace period detected - rejecting continue payment:', {
-                current_time: currentTime.toISOString(),
-                grace_period_start: gracePeriodStart.toISOString(),
-                tournament_end: tournamentEndTime.toISOString()
-            });
-
             return NextResponse.json({
                 error: 'Tournament is in grace period. Continue payments are not allowed.',
                 details: 'Tournament ends soon. Please wait for the next tournament.'
@@ -188,7 +182,7 @@ export async function POST(req: NextRequest) {
             }
         } catch (socketError) {
             console.error('❌ Socket.IO broadcast failed:', socketError);
-        }
+    }
 
         // �🔄 SYNC: Update tournament_sign_ins aggregates (amount and games count best-effort)
         try {
@@ -209,11 +203,9 @@ export async function POST(req: NextRequest) {
                 p_amount: continue_amount
             });
             if (rpcError) {
-                console.log('increment_signin_payment RPC not available or failed (non-critical)');
+                }
+        } catch {
             }
-        } catch (e) {
-            console.log('Sign-in aggregates update skipped (non-critical):', e);
-        }
 
         return NextResponse.json({
             success: true,

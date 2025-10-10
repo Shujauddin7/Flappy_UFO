@@ -3,9 +3,6 @@ import { createClient } from '@supabase/supabase-js';
 import { getCached, setCached, shouldWarmCache } from '@/lib/redis';
 
 export async function GET(req: NextRequest) {
-    const startTime = Date.now();
-    console.log('💰 Dynamic Prize Pool Calculation API called');
-
     try {
         const searchParams = req.nextUrl.searchParams;
         let tournamentDay = searchParams.get('tournament_day');
@@ -18,18 +15,11 @@ export async function GET(req: NextRequest) {
             cacheKey = 'tournament:prizes:current';
         }
 
-        console.log('🔑 Cache key:', cacheKey);
         const cachedData = await getCached(cacheKey);
-        console.log('📦 Redis cache result:', cachedData ? 'HIT' : 'MISS');
-
         if (cachedData) {
-            const responseTime = Date.now() - startTime;
-            console.log('⚡ Prize Pool Cache Status: 🟢 CACHE HIT');
-            console.log(`🚀 Response time: ${responseTime}ms (Redis cache)`);
-
+//             const responseTime = Date.now() - startTime;
             // 🔥 PROFESSIONAL GAMING TRICK: Background cache warming for instant loads
             if (shouldWarmCache(cachedData, 30)) {
-                console.log('🔄 Prize pool cache aging - triggering background refresh...');
                 // Background warming handled by client-side and cron jobs - no server-side fetch needed
             }
 
@@ -39,8 +29,6 @@ export async function GET(req: NextRequest) {
                 cached_at: new Date().toISOString()
             });
         }
-
-        console.log('📊 Prize Pool Cache Status: 🔴 DATABASE QUERY');
 
         // Same environment configuration as your existing APIs
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
@@ -145,8 +133,6 @@ export async function GET(req: NextRequest) {
             { rank: 10, percentage: 2, amount: (userFacingPrizePool * 0.02) + guaranteeBonusPerWinner }
         ];
 
-        console.log(`💰 Prize calculation: ${totalRevenue} WLD → ${prizePoolPercentage}% pool + ${guaranteeAmount} WLD guarantee`);
-
         const responseData = {
             success: true,
             tournament_day: tournamentDay,
@@ -173,13 +159,8 @@ export async function GET(req: NextRequest) {
         };
 
         // 💾 STEP 3: Cache the prize data for 15 seconds (ultra-fast updates)
-        console.log('💾 Caching prize pool data for 15 seconds...');
         await setCached(cacheKey, responseData, 15);
-        console.log('✅ Prize pool data cached successfully');
-
-        const responseTime = Date.now() - startTime;
-        console.log(`🚀 Total response time: ${responseTime}ms (Database + Redis cache)`);
-
+//         const responseTime = Date.now() - startTime;
         return NextResponse.json(responseData);
 
     } catch (error) {

@@ -18,8 +18,8 @@ export function cacheData(key: string, data: unknown, ttlMs: number): void {
             ttl: ttlMs
         };
         sessionStorage.setItem(key, JSON.stringify(cached));
-    } catch (error) {
-        console.warn(`Failed to cache data for key: ${key}`, error);
+    } catch {
+        // Intentionally ignore cache errors
     }
 }
 
@@ -40,8 +40,7 @@ export function getCachedData(key: string): unknown | null {
         }
 
         return parsedCache.data;
-    } catch (error) {
-        console.warn(`Failed to get cached data for key: ${key}`, error);
+    } catch {
         sessionStorage.removeItem(key); // Clear corrupted cache
         return null;
     }
@@ -59,8 +58,8 @@ export function clearLeaderboardCache(key?: string): void {
             sessionStorage.removeItem('preloaded_tournament');
             sessionStorage.removeItem('preloaded_leaderboard');
         }
-    } catch (error) {
-        console.warn('Failed to clear cache:', error);
+    } catch {
+        // Intentionally ignore cache errors
     }
 }
 

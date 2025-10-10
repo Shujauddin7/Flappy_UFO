@@ -33,9 +33,6 @@ export async function getOptimizedLeaderboard(
     offset: number = 0,
     limit: number = 20
 ) {
-    const startTime = Date.now();
-    console.log(`🔍 Optimized database leaderboard query: ${tournamentDay}, offset: ${offset}, limit: ${limit}`);
-
     try {
         const supabase = getSupabaseClient();
 
@@ -70,9 +67,6 @@ export async function getOptimizedLeaderboard(
             rank: offset + index + 1
         })) || [];
 
-        const queryTime = Date.now() - startTime;
-        console.log(`✅ Optimized database query completed: ${formattedPlayers.length} players in ${queryTime}ms`);
-
         return formattedPlayers;
 
     } catch (error) {
@@ -86,9 +80,6 @@ export async function getOptimizedLeaderboard(
  * Matches Redis cache format for seamless fallback
  */
 export async function getOptimizedTournamentStats(tournamentDay: string) {
-    const startTime = Date.now();
-    console.log(`🔍 Optimized tournament stats query: ${tournamentDay}`);
-
     try {
         const supabase = getSupabaseClient();
 
@@ -118,7 +109,6 @@ export async function getOptimizedTournamentStats(tournamentDay: string) {
         }
 
         if (!data) {
-            console.log('ℹ️ No active tournament found for:', tournamentDay);
             return null;
         }
 
@@ -142,9 +132,6 @@ export async function getOptimizedTournamentStats(tournamentDay: string) {
                 admin_net_result: data.admin_net_result || 0
             }
         };
-
-        const queryTime = Date.now() - startTime;
-        console.log(`✅ Optimized tournament stats query completed in ${queryTime}ms`);
 
         return formattedStats;
 
@@ -173,7 +160,6 @@ export async function checkDatabaseHealth(): Promise<boolean> {
             return false;
         }
 
-        console.log('✅ Database health check passed');
         return true;
 
     } catch (error) {

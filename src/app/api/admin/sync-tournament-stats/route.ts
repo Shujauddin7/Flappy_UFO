@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 export async function POST() {
-    console.log('🔄 Tournament stats sync called');
-
     try {
         // Get environment config
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
@@ -31,8 +29,6 @@ export async function POST() {
             }, { status: 404 });
         }
 
-        console.log('🏆 Active tournament found:', tournament.id);
-
         // Get user tournament records for this tournament
         const { data: userData, error: userError } = await supabase
             .from('user_tournament_records')
@@ -46,15 +42,11 @@ export async function POST() {
             }, { status: 500 });
         }
 
-        console.log('👥 User records found:', userData?.length || 0);
-
         const totalPlayers = userData?.length || 0;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const totalPrizePool = userData?.reduce((sum: number, record: any) =>
             sum + (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0), 0
         ) * 0.7 || 0;
-
-        console.log('📊 Calculated stats:', { players: totalPlayers, prize_pool: totalPrizePool });
 
         // Update tournament table
         const { error: updateError } = await supabase
@@ -71,8 +63,6 @@ export async function POST() {
                 error: `Update error: ${updateError.message}`
             }, { status: 500 });
         }
-
-        console.log('✅ Tournament stats synced successfully');
 
         return NextResponse.json({
             success: true,

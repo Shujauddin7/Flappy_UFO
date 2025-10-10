@@ -48,7 +48,6 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (tournamentError || !tournament) {
-            console.log('ℹ️ No active tournament found');
             // Return not verified if no tournament exists
             return NextResponse.json({
                 success: true,
@@ -95,11 +94,6 @@ export async function POST(req: NextRequest) {
             pricing: isVerifiedToday ? '0.9 WLD' : '1.0 WLD',
             worldId: data?.world_id || null,
         };
-
-        console.log('✅ Verification status checked:', {
-            wallet: wallet,
-            status: verificationStatus
-        });
 
         return NextResponse.json({
             success: true,

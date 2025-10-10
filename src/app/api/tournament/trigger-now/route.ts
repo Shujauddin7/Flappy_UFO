@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 
 export async function POST() {
-    console.log('🔧 Manual trigger for cron job - FOR TESTING ONLY');
-
     try {
         // Call the actual cron job endpoint internally
         const baseUrl = process.env.NEXTAUTH_URL;
@@ -19,8 +17,6 @@ export async function POST() {
                 error: 'CRON_SECRET not configured'
             }, { status: 500 });
         }
-
-        console.log('🚀 Triggering weekly cron job with proper authorization...');
 
         // Call the real cron job with proper authorization
         const response = await fetch(`${baseUrl}/api/tournament/weekly-cron`, {
@@ -40,8 +36,6 @@ export async function POST() {
                 details: result
             }, { status: response.status });
         }
-
-        console.log('✅ Cron job triggered successfully:', result);
 
         return NextResponse.json({
             success: true,

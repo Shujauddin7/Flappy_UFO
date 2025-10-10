@@ -13,8 +13,6 @@ const preloadLeaderboardData = async () => {
   if (typeof window === 'undefined') return;
 
   try {
-    console.log('🚀 APP STARTUP: Preloading leaderboard data to prevent navigation blur...');
-
     const [tournamentRes, leaderboardRes] = await Promise.all([
       fetch('/api/tournament/stats', { cache: 'no-store' }),
       fetch('/api/tournament/leaderboard-data', { cache: 'no-store' })
@@ -37,13 +35,9 @@ const preloadLeaderboardData = async () => {
         timestamp: Date.now()
       }));
 
-      console.log('✅ APP STARTUP: Leaderboard data preloaded - blur prevention ready!');
-      console.log(`   Tournament: ${tournamentData.total_tournament_players || 0} players`);
-      console.log(`   Leaderboard: ${leaderboardData.players?.length || 0} entries`);
+      }
+  } catch {
     }
-  } catch (error) {
-    console.warn('⚠️ APP STARTUP: Leaderboard preload failed (non-critical):', error);
-  }
 };
 
 // Component for app-level data preloading

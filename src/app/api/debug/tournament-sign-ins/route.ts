@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase'
 
 export async function GET() {
-    console.log('🔍 Debug tournament sign-ins');
-
     try {
         const supabase = createServerSupabaseClient();
 

@@ -28,8 +28,7 @@ async function getRedisClient(): Promise<Redis | null> {
 
             // Test the connection with a simple ping
             await redisClient.ping();
-            console.log('✅ Redis connection established successfully');
-        } catch (error) {
+            } catch (error) {
             console.error('❌ Failed to initialize Redis connection:', error);
             redisClient = null;
             return null;
@@ -64,8 +63,6 @@ export async function updateLeaderboardScore(
         });
 
         await redis.publish('leaderboard_channel', pubsubMessage);
-        console.log(`🚀 PHASE 2: Published leaderboard update for ${userId} = ${score} points`);
-
         return true;
     } catch (error) {
         console.error('❌ Redis publish failed:', error);
@@ -139,8 +136,7 @@ export async function populateLeaderboard(
             await redis.expire(scoreKey, 48 * 60 * 60);
             await redis.expire(detailsKey, 48 * 60 * 60);
 
-            console.log(`⚡ Redis leaderboard populated: ${players.length} players for ${tournamentDay}`);
-        }
+            }
 
         return true;
     } catch (error) {
@@ -196,8 +192,7 @@ export async function getTopPlayers(
                 try {
                     playerDetails = JSON.parse(rawDetails);
                 } catch {
-                    console.warn(`Failed to parse player details for ${userId}`);
-                }
+                    }
             }
 
             players.push({
@@ -264,7 +259,6 @@ export async function removeFromLeaderboard(
         const key = `leaderboard:${tournamentDay}`;
         await redis.zrem(key, userId);
 
-        console.log(`⚡ Player removed from leaderboard: ${userId}`);
         return true;
     } catch (error) {
         console.error('❌ Redis remove from leaderboard failed:', error);
@@ -285,7 +279,6 @@ export async function clearLeaderboard(tournamentDay: string): Promise<boolean> 
         // Clear all leaderboard-related keys
         await redis.del(scoreKey, detailsKey, dataKey);
 
-        console.log(`⚡ Leaderboard cleared for ${tournamentDay} (all cache keys)`);
         return true;
     } catch (error) {
         console.error('❌ Redis clear leaderboard failed:', error);

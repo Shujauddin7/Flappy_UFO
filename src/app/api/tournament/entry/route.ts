@@ -31,8 +31,7 @@ async function updateUserTournamentCount(supabase: any, userId: string) {
         if (updateError) {
             console.error('❌ Error updating user tournament count:', updateError);
         } else {
-            console.log('✅ User tournament count updated:', tournamentCount);
-        }
+            }
     } catch (error) {
         console.error('❌ Error in updateUserTournamentCount:', error);
     }
@@ -75,16 +74,6 @@ async function updateTournamentPlayerCount(supabase: any, tournamentId: string) 
         const totalPrizePool = basePrizePool; // Store only base 70% in database (guarantee applied only at payout time per Plan.md)
         const adminNetResult = adminFeeAmount - guaranteeAmount; // Can be negative
 
-        console.log('💰 NEW Guarantee system calculation:', {
-            totalRevenue,
-            basePrizePool: basePrizePool,
-            guaranteeAmount,
-            totalPrizePoolStored: totalPrizePool, // What gets stored in DB (base 70% only)
-            finalPrizePoolWithGuarantee: basePrizePool + guaranteeAmount, // What admin pays (base + guarantee)
-            adminFeeAmount,
-            adminNetResult
-        });
-
         // Update tournament with NEW guarantee system
         const { error: updateError } = await supabase
             .from('tournaments')
@@ -101,24 +90,13 @@ async function updateTournamentPlayerCount(supabase: any, tournamentId: string) 
         if (updateError) {
             console.error('❌ Error updating tournament analytics:', updateError);
         } else {
-            console.log('✅ Tournament analytics updated with guarantee system:', {
-                players: uniquePlayerCount,
-                total_collected: totalRevenue,
-                base_prize_pool: basePrizePool,
-                guarantee_amount: guaranteeAmount,
-                total_prize_pool: totalPrizePool,
-                admin_fee: adminFeeAmount,
-                admin_net_result: adminNetResult
-            });
-        }
+            }
     } catch (error) {
         console.error('❌ Error in updateTournamentPlayerCount:', error);
     }
 }
 
 export async function POST(req: NextRequest) {
-    console.log('🚀 Tournament entry API called');
-
     try {
         // Environment-specific database configuration (following Plan.md specification)
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
@@ -130,12 +108,6 @@ export async function POST(req: NextRequest) {
         const supabaseServiceKey = isProduction
             ? process.env.SUPABASE_PROD_SERVICE_KEY
             : process.env.SUPABASE_DEV_SERVICE_KEY;
-
-        console.log('🔧 Environment check:', {
-            environment: isProduction ? 'PRODUCTION' : 'DEVELOPMENT',
-            supabaseUrl: supabaseUrl ? '✅ Set (' + supabaseUrl.substring(0, 30) + '...)' : '❌ Missing',
-            serviceKey: supabaseServiceKey ? '✅ Set (length: ' + supabaseServiceKey.length + ')' : '❌ Missing'
-        });
 
         if (!supabaseUrl || !supabaseServiceKey) {
             console.error('❌ Missing environment variables for', isProduction ? 'PRODUCTION' : 'DEVELOPMENT');
@@ -174,8 +146,6 @@ export async function POST(req: NextRequest) {
             .eq('is_active', true)
             .single();
 
-        console.log('🔍 Tournament fetch result:', { tournament, error: tournamentFetchError });
-
         if (tournamentFetchError || !tournament) {
             console.error('❌ No active tournament found:', tournamentFetchError);
             return NextResponse.json({
@@ -192,13 +162,6 @@ export async function POST(req: NextRequest) {
         const isGracePeriod = currentTime >= gracePeriodStart && currentTime < tournamentEndTime;
 
         if (isGracePeriod) {
-            console.log('⏰ Grace period detected - rejecting new tournament entry:', {
-                current_time: currentTime.toISOString(),
-                grace_period_start: gracePeriodStart.toISOString(),
-                tournament_end: tournamentEndTime.toISOString(),
-                is_grace_period: isGracePeriod
-            });
-
             return NextResponse.json({
                 error: 'Tournament is in grace period. No new entries allowed.',
                 details: 'Tournament ends soon. Existing players can finish their games, but new entries are not permitted.'
@@ -208,7 +171,6 @@ export async function POST(req: NextRequest) {
         const finalTournament = tournament;
 
         // Get user ID and current verification status from users table, create if doesn't exist
-        console.log('👤 Looking for user with wallet:', wallet);
         let user;
 
         const userFetchResult = await supabase
@@ -220,12 +182,8 @@ export async function POST(req: NextRequest) {
         user = userFetchResult.data;
         const userError = userFetchResult.error;
 
-        console.log('👤 User fetch result:', { user, error: userError });
-
         // If user doesn't exist, create them
         if (userError && userError.code === 'PGRST116') {
-            console.log('👤 User not found, creating new user...');
-
             // Get username from session if available
             const usernameFromSession = session?.user?.username || null;
 
@@ -250,8 +208,7 @@ export async function POST(req: NextRequest) {
             }
 
             user = newUser;
-            console.log('✅ New user created:', user);
-        } else if (userError) {
+            } else if (userError) {
             console.error('❌ Error fetching user:', userError);
             return NextResponse.json({
                 error: `User database error: ${userError.message}`
@@ -267,7 +224,6 @@ export async function POST(req: NextRequest) {
 
         // Update username if user exists but has no username and session has one
         if (!user.username && session?.user?.username) {
-            console.log('👤 Updating user username from session...');
             const { data: updatedUser, error: updateError } = await supabase
                 .from('users')
                 .update({ username: session.user.username })
@@ -277,8 +233,7 @@ export async function POST(req: NextRequest) {
 
             if (!updateError && updatedUser) {
                 user = updatedUser;
-                console.log('✅ User username updated:', user.username);
-            }
+                }
         }
 
         // Check verification status - user must be verified for today's tournament
@@ -286,25 +241,7 @@ export async function POST(req: NextRequest) {
         const actuallyVerified = !!(user.last_verified_date === finalTournament.tournament_day &&
             user.last_verified_tournament_id === finalTournament.id);
 
-        console.log('🔍 Verification check:', {
-            frontend_says_verified: is_verified_entry,
-            user_last_verified_date: user.last_verified_date,
-            user_last_verified_tournament: user.last_verified_tournament_id,
-            current_tournament_id: finalTournament.id,
-            tournament_day: finalTournament.tournament_day,
-            final_verification_status: actuallyVerified
-        });
-
         // Create or get user tournament record (single row per user per tournament)
-        console.log('🎮 Getting or creating user tournament record:', {
-            user_id: user.id,
-            tournament_id: finalTournament.id,
-            tournament_day: finalTournament.tournament_day,
-            is_verified_entry: actuallyVerified,
-            paid_amount,
-            payment_reference
-        });
-
         // Create or get user tournament record using UPSERT to prevent duplicate key issues
         // Don't use the database function as it uses CURRENT_DATE instead of tournament boundary logic
         const { data: tournamentRecord, error: recordError } = await supabase
@@ -331,8 +268,6 @@ export async function POST(req: NextRequest) {
         }
 
         const recordId = tournamentRecord.id;
-        console.log('✅ Tournament record created/updated:', recordId, 'with username:', user.username);
-
         // Now update the payment information (preserve existing payments)
         // First get current payment status to avoid overwriting existing payments
         const { data: currentRecord, error: fetchError } = await supabase
@@ -420,8 +355,6 @@ export async function POST(req: NextRequest) {
         await updateTournamentPlayerCount(supabase, finalTournament.id);
 
         // 🔄 NEW: Publish realtime updates to Socket.IO server
-        console.log('📡 Publishing player joined and prize pool updates to Socket.IO server...');
-
         // Publish player joined event
         await publishPlayerJoined(finalTournament.id, {
             user_id: user.id,
@@ -446,20 +379,6 @@ export async function POST(req: NextRequest) {
 
         // Update user's total tournament count
         await updateUserTournamentCount(supabase, user.id);
-
-        console.log('✅ Tournament record created/updated successfully:', {
-            record_id: recordId,
-            tournament_id: finalTournament.id,
-            user_id: user.id,
-            paid_amount,
-            is_verified_entry: actuallyVerified,
-            verification_details: {
-                frontend_claimed: is_verified_entry,
-                database_verified: actuallyVerified,
-                user_last_verified_date: user.last_verified_date,
-                tournament_date: finalTournament.tournament_day
-            }
-        });
 
         // 🔄 SYNC: Update tournament_sign_ins aggregates (no fake data; real user-only)
         try {
@@ -493,12 +412,10 @@ export async function POST(req: NextRequest) {
                     })
                     .eq('wallet', wallet);
             }
-        } catch (e) {
-            console.log('Sign-in aggregates update skipped (non-critical):', e);
-        }
+        } catch {
+            }
 
         // 🚨 INSTANT SSE BROADCAST: New tournament entry affects prize pool + total players
-        console.log('📡 Broadcasting tournament stats update via Supabase Realtime (new player joined)...');
         try {
             const { invalidateTournamentStatsCache } = await import('@/utils/tournament-cache-helpers');
             await invalidateTournamentStatsCache({
@@ -506,10 +423,8 @@ export async function POST(req: NextRequest) {
                 rewarmCache: true,
                 source: 'new_tournament_entry'
             });
-            console.log('✅ Tournament stats update complete - all users will see updated prize pool & total players');
-        } catch (realtimeError) {
-            console.log('Tournament stats Supabase Realtime trigger failed (non-critical):', realtimeError);
-        }
+            } catch {
+            }
 
         return NextResponse.json({
             success: true,

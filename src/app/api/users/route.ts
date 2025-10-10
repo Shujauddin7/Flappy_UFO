@@ -5,8 +5,6 @@ export async function POST(request: NextRequest) {
     try {
         const { wallet, username, world_id } = await request.json();
 
-        console.log('📊 Creating/updating user:', { wallet, username, world_id });
-
         if (!wallet) {
             return NextResponse.json({ error: 'Wallet address is required' }, { status: 400 });
         }
@@ -22,16 +20,6 @@ export async function POST(request: NextRequest) {
         const supabaseServiceKey = isProduction
             ? process.env.SUPABASE_PROD_SERVICE_KEY
             : process.env.SUPABASE_DEV_SERVICE_KEY;
-
-        console.log('🔧 Environment check:', {
-            NEXT_PUBLIC_ENV: process.env.NEXT_PUBLIC_ENV,
-            NODE_ENV: process.env.NODE_ENV,
-            VERCEL_ENV: process.env.VERCEL_ENV,
-            VERCEL_URL: process.env.VERCEL_URL,
-            detectedEnvironment: isProduction ? 'PRODUCTION' : 'DEVELOPMENT',
-            supabaseUrl: supabaseUrl ? '✅ Set' : '❌ Missing',
-            serviceKey: supabaseServiceKey ? '✅ Set' : '❌ Missing'
-        });
 
         if (!supabaseUrl || !supabaseServiceKey) {
             console.error('❌ Missing environment variables for', isProduction ? 'PRODUCTION' : 'DEVELOPMENT');
@@ -75,8 +63,7 @@ export async function POST(request: NextRequest) {
 
             data = result.data;
             error = result.error;
-            console.log('✅ Updated existing user (preserved stats)');
-        } else {
+            } else {
             // User doesn't exist - create new user with initial stats
             const result = await supabase
                 .from('users')
@@ -93,8 +80,7 @@ export async function POST(request: NextRequest) {
 
             data = result.data;
             error = result.error;
-            console.log('✅ Created new user with initial stats');
-        }
+            }
 
         if (error) {
             console.error('❌ Database error:', error);
@@ -103,7 +89,6 @@ export async function POST(request: NextRequest) {
             }, { status: 500 });
         }
 
-        console.log('✅ User operation completed successfully:', data);
         return NextResponse.json({ success: true, user: data?.[0] || null });
 
     } catch (error) {

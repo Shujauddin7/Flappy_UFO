@@ -29,21 +29,16 @@ export function SocketIOProvider({ children }: { children: React.ReactNode }) {
     const [isConnected, setIsConnected] = useState(false);
 
     useEffect(() => {
-        console.log('🌐 [GLOBAL] Initializing Socket.IO connection...');
-
         // Connect to Socket.IO server (persists for entire app lifecycle)
         const socketInstance = connectSocket();
         setSocket(socketInstance);
 
         // Track connection state
         const handleConnect = () => {
-            console.log('✅ [GLOBAL] Socket.IO connected!');
-            console.log('   Transport:', socketInstance?.io?.engine?.transport?.name);
             setIsConnected(true);
         };
 
-        const handleDisconnect = (reason: string) => {
-            console.log('🔌 [GLOBAL] Socket.IO disconnected:', reason);
+        const handleDisconnect = () => {
             setIsConnected(false);
         };
 
@@ -57,15 +52,12 @@ export function SocketIOProvider({ children }: { children: React.ReactNode }) {
 
         // IMPORTANT: Check if already connected (might connect before listeners added)
         if (socketInstance.connected) {
-            console.log('✅ [GLOBAL] Socket already connected on init!');
             setIsConnected(true);
         } else {
-            console.log('⏳ [GLOBAL] Waiting for socket to connect...');
-        }
+            }
 
         // Cleanup on app unmount (rarely happens in SPA)
         return () => {
-            console.log('🛑 [GLOBAL] Cleaning up Socket.IO connection');
             socketInstance.off('connect', handleConnect);
             socketInstance.off('disconnect', handleDisconnect);
             socketInstance.off('connect_error', handleConnectError);
@@ -77,13 +69,10 @@ export function SocketIOProvider({ children }: { children: React.ReactNode }) {
         if (socket) {
             // Check actual socket connection, not just state
             if (socket.connected) {
-                console.log('🎮 [GLOBAL] Joining tournament room:', tournamentId);
                 joinTournament(tournamentId, userId, username);
             } else {
-                console.warn('⚠️ [GLOBAL] Socket exists but not connected. Will join when connected.');
                 // Try to join when it connects
                 socket.once('connect', () => {
-                    console.log('🎮 [GLOBAL] Socket connected! Joining tournament:', tournamentId);
                     joinTournament(tournamentId, userId, username);
                 });
             }

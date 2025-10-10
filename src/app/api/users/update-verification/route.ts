@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
 
         // IMPORTANT: Safely get or create user tournament record using ON CONFLICT
         // Don't use the database function as it uses CURRENT_DATE instead of tournament boundary logic
-        const { data: tournamentRecord, error: recordError } = await supabase
+        const { error: recordError } = await supabase
             .from('user_tournament_records')
             .upsert({
                 user_id: user.id,
@@ -151,8 +151,6 @@ export async function POST(req: NextRequest) {
             }, { status: 500 });
         }
 
-        console.log('✅ Tournament record created/updated with verification data:', tournamentRecord.id);
-
         // Update tournament table with player count and prize pool
         try {
             // Count unique users in user_tournament_records for this tournament
@@ -180,19 +178,11 @@ export async function POST(req: NextRequest) {
                 if (updateError) {
                     console.error('❌ Error updating tournament stats:', updateError);
                 } else {
-                    console.log('✅ Tournament stats updated:', { players: uniquePlayerCount, prize_pool: totalPrizePool });
-                }
+                    }
             }
         } catch (error) {
             console.error('❌ Error updating tournament stats:', error);
         }
-
-        console.log('✅ User verification status updated:', {
-            wallet: wallet,
-            verified_date: verification_date,
-            tournament_id: tournament.id,
-            updated_user: user
-        });
 
         return NextResponse.json({
             success: true,

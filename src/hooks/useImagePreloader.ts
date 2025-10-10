@@ -175,8 +175,7 @@ export function useImagePreloader(): UseImagePreloaderReturn {
 
                 // Load all uncached images concurrently with individual error handling
                 const loadPromises = uncachedImages.map(src =>
-                    loadSingleImage(src, options).catch(error => {
-                        console.warn(`Failed to preload image: ${src}`, error);
+                    loadSingleImage(src, options).catch(() => {
                         return null; // Continue with other images even if one fails
                     })
                 );

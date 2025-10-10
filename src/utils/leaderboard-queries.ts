@@ -124,7 +124,6 @@ export async function getTournamentStats(tournamentDay: string) {
         });
 
     if (statsError) {
-        console.warn('RPC function not available, using fallback method');
         return getTournamentStatsFallback(tournamentDay);
     }
 
@@ -204,7 +203,6 @@ export async function getUserTournamentRank(
 
     if (error) {
         // Fallback to original method if RPC function doesn't exist
-        console.warn('RPC function not available, using fallback method');
         return getUserTournamentRankFallback(tournamentDay, userWallet);
     }
 

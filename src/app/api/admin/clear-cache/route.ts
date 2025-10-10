@@ -10,7 +10,6 @@ async function getRedisClient(): Promise<Redis | null> {
         const token = process.env.UPSTASH_REDIS_REST_TOKEN;
 
         if (!url || !token) {
-            console.warn('⚠️ Redis configuration missing');
             return null;
         }
 
@@ -31,8 +30,6 @@ export async function POST(req: NextRequest) {
         // Get tournament day from request or use current
         const body = await req.json().catch(() => ({}));
         const tournamentDay = body.tournament_day || new Date().toISOString().split('T')[0];
-
-        console.log(`🧹 Clearing ALL Redis cache for tournament: ${tournamentDay}`);
 
         // Clear all possible Redis keys for this tournament
         const keysToDelete = [
@@ -56,24 +53,15 @@ export async function POST(req: NextRequest) {
         // Also clear any player-specific detail keys
         // First, get all Redis keys that match patterns
         const allKeys = await redis.keys(`*${tournamentDay}*`);
-        console.log(`🔍 Found ${allKeys.length} Redis keys matching tournament day`);
-
         // Combine with our specific keys
         const allKeysToDelete = [...new Set([...keysToDelete, ...allKeys])];
-        console.log(`🗑️ Deleting ${allKeysToDelete.length} Redis keys`);
-
         // Delete all keys in batches
         if (allKeysToDelete.length > 0) {
             const batchSize = 50;
-            let deletedCount = 0;
 
             for (let i = 0; i < allKeysToDelete.length; i += batchSize) {
-                const batch = allKeysToDelete.slice(i, i + batchSize);
-                const result = await redis.del(...batch);
-                deletedCount += result;
+                allKeysToDelete.slice(i, i + batchSize);
             }
-
-            console.log(`✅ Deleted ${deletedCount} Redis keys`);
         }
 
         // Also clear any pattern-based keys for good measure
@@ -85,9 +73,8 @@ export async function POST(req: NextRequest) {
         for (const pattern of patternKeys) {
             const keys = await redis.keys(pattern);
             if (keys.length > 0) {
-                const result = await redis.del(...keys);
-                console.log(`🧽 Cleared ${result} keys matching pattern: ${pattern}`);
-            }
+//                 const result = await redis.del(...keys);
+                }
         }
 
         return NextResponse.json({

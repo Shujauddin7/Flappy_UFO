@@ -52,7 +52,6 @@ export const Transaction = () => {
   useEffect(() => {
     if (transactionId && !isConfirming) {
       if (isConfirmed) {
-        console.log('Transaction confirmed!');
         setButtonState('success');
         setTimeout(() => {
           setButtonState(undefined);
@@ -86,10 +85,6 @@ export const Transaction = () => {
       });
 
       if (finalPayload.status === 'success') {
-        console.log(
-          'Transaction submitted, waiting for confirmation:',
-          finalPayload.transaction_id,
-        );
         setTransactionId(finalPayload.transaction_id);
       } else {
         console.error('Transaction submission failed:', finalPayload);
@@ -160,10 +155,6 @@ export const Transaction = () => {
       });
 
       if (finalPayload.status === 'success') {
-        console.log(
-          'Transaction submitted, waiting for confirmation:',
-          finalPayload.transaction_id,
-        );
         setTransactionId(finalPayload.transaction_id);
       } else {
         console.error('Transaction submission failed:', finalPayload);

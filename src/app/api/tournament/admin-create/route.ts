@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
-    console.log('🧪 Manual tournament trigger called');
-
     try {
         // Get the base URL for the current request
         const baseUrl = `${req.nextUrl.protocol}//${req.nextUrl.host}`;

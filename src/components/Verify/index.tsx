@@ -25,7 +25,6 @@ export const Verify = () => {
       action: 'test-action', // Make sure to create this in the developer portal -> incognito actions
       verification_level: verificationLevel,
     });
-    console.log(result.finalPayload);
     // Verify the proof
     const response = await fetch('/api/verify-proof', {
       method: 'POST',

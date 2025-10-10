@@ -55,13 +55,10 @@ export const AdminPayout = ({
                 });
 
                 if (pendingResponse.ok) {
-                    console.log('✅ Pending prize record created');
-                } else {
-                    console.warn('⚠️ Failed to create pending prize record, continuing with payment...');
+                    } else {
+                    }
+            } catch {
                 }
-            } catch (pendingError) {
-                console.warn('⚠️ Pending prize creation failed, continuing with payment...', pendingError);
-            }
 
             // Step 2: Get payment reference from backend
             const res = await fetch('/api/initiate-payment', {
@@ -69,16 +66,8 @@ export const AdminPayout = ({
             });
             const { id } = await res.json();
 
-            console.log('🚀 Starting payout to:', username, winnerAddress);
-            console.log('💰 Amount:', amount, 'WLD');
-            console.log('🔐 Selected admin wallet:', selectedAdminWallet);
-            console.log('👤 Target wallet:', winnerAddress);
-            console.log('⚡ MiniKit available:', !!MiniKit);
-
             // Check if trying to pay to self vs other wallet
             const isSelfPayment = winnerAddress.toLowerCase() === selectedAdminWallet.toLowerCase();
-            console.log('🤔 Is self-payment?', isSelfPayment);
-
             setDebugInfo(isSelfPayment ? 'Paying to your own wallet...' : `Paying to ${username} (${winnerAddress.slice(0, 6)}...${winnerAddress.slice(-4)})`);
 
             // Step 3: Use MiniKit payment flow - this opens World App payment interface
@@ -95,14 +84,8 @@ export const AdminPayout = ({
                 description: `Flappy UFO Tournament Prize - Rank ${rank} (${amount} WLD)`,
             });
 
-            console.log('🔄 Payment result:', result);
-            console.log('🔍 Final payload:', result.finalPayload);
-            console.log('🔍 Status:', result.finalPayload?.status);
-            console.log('🔍 Reference available:', 'reference' in result.finalPayload ? result.finalPayload.reference : 'No reference');
-
             // Step 4: Handle payment result - Fixed validation (reference is optional)
             if (result.finalPayload && result.finalPayload.status === 'success') {
-                console.log('✅ Payment successful!', result.finalPayload);
                 setButtonState('success');
                 setDebugInfo('✅ Payment successful! Saving to database...');
 
@@ -124,24 +107,18 @@ export const AdminPayout = ({
 
                     const saveData = await saveResponse.json();
                     if (!saveData.success) {
-                        console.warn('⚠️ Payment successful but recording failed:', saveData.error);
                         throw new Error(`Database recording failed: ${saveData.error}`);
                     } else {
-                        console.log('✅ Payment recorded in prizes table');
-
                         // Step 5b: Remove from pending_prizes table (success)
                         try {
                             await fetch(`/api/admin/pending-prizes?tournament_id=${tournamentId}&rank=${rank}&wallet=${winnerAddress}`, {
                                 method: 'DELETE'
                             });
-                            console.log('✅ Removed from pending prizes');
-                        } catch (deleteError) {
-                            console.warn('⚠️ Failed to remove from pending prizes:', deleteError);
-                        }
+                            } catch {
+                            }
                     }
 
                     // Wait for database operations to complete before calling success callback
-                    console.log('⏳ Waiting for database operations to complete...');
                     await new Promise(resolve => setTimeout(resolve, 1000));
 
                     // Call success callback - this updates the UI
@@ -183,9 +160,7 @@ export const AdminPayout = ({
             console.error('❌ Payout error:', error);
             console.error('❌ Error details:', JSON.stringify(error, null, 2));
 
-            const isSelfPayment = winnerAddress.toLowerCase() === selectedAdminWallet.toLowerCase();
-            console.log('🤔 Was this a self-payment?', isSelfPayment);
-
+//             const isSelfPayment = winnerAddress.toLowerCase() === selectedAdminWallet.toLowerCase();
             setButtonState('failed');
 
             const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';

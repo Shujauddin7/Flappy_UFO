@@ -11,7 +11,6 @@ export default async function TabsLayout({
 
   // If the user is not authenticated, redirect to the login page
   if (!session) {
-    console.log('Not authenticated');
     // redirect('/');
   }
 

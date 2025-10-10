@@ -38,7 +38,6 @@ export const Navigation = () => {
         break;
       case 'info':
         // TODO: Open info modal
-        console.log('Info clicked - TODO: Open info modal');
         break;
       default:
         break;

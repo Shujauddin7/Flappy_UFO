@@ -16,8 +16,6 @@ async function getLeaderboardFromRedis(tournamentDay: string, offset: number = 0
 
 export async function GET(req: NextRequest) {
     const startTime = Date.now();
-    console.log('🏁 Optimized Leaderboard API called');
-
     try {
         const { searchParams } = req.nextUrl;
         const offset = parseInt(searchParams.get('offset') || '0');
@@ -55,15 +53,11 @@ export async function GET(req: NextRequest) {
                         total_players: (statsObj.total_players as number) || 0,
                         total_prize_pool: (statsObj.total_prize_pool as number) || 0
                     };
-                    console.log('🎯 Got essential tournament stats from cache - optimized instant response!');
-                }
+                    }
             } catch {
-                console.log('⚠️ Could not get cached tournament stats, continuing without');
-            }
+                }
         } else {
             // Optimized database fallback with consistent Redis-like performance
-            console.log('📊 Redis miss - using optimized database fallback');
-
             const { getOptimizedLeaderboard } = await import('@/utils/optimized-database');
             const optimizedPlayers = await getOptimizedLeaderboard(currentTournamentDay, offset, limit);
 
@@ -72,7 +66,6 @@ export async function GET(req: NextRequest) {
                 source = 'database_optimized';
             } else {
                 // Final fallback to existing query system
-                console.log('⚠️ Optimized query failed, using legacy fallback');
                 players = await getLeaderboardData(currentTournamentDay, {
                     limit,
                     offset,
@@ -108,14 +101,11 @@ export async function GET(req: NextRequest) {
                         total_prize_pool: Number(stats.total_prize_pool.toFixed(2))
                     };
                 }
-            } catch (error) {
-                console.warn('⚠️ Could not get tournament stats:', error);
-            }
+            } catch {
+                }
         }
 
         const responseTime = Date.now() - startTime;
-
-        console.log(`🚀 Leaderboard loaded: ${players.length} players from ${source} in ${responseTime}ms`);
 
         // 🎯 OPTIMIZED RESPONSE - Only UI-essential data for maximum speed
         // UI displays: Rank, Player Name, Score, Prize

@@ -34,8 +34,7 @@ export class ImageCacheService {
      */
     async preloadImages(urls: string[]): Promise<HTMLImageElement[]> {
         const promises = urls.map((url) =>
-            this.preloadImage(url).catch((error) => {
-                console.warn(`Failed to preload image ${url}:`, error);
+            this.preloadImage(url).catch(() => {
                 return null;
             })
         );

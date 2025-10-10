@@ -199,8 +199,7 @@ export default function AdminDashboard() {
 
                     setWinners(winnersData);
                 } else {
-                    console.warn('Failed to load winners:', response.status);
-                }
+                    }
             } catch (error) {
                 console.error('Error loading winners:', error);
             }
@@ -229,8 +228,7 @@ export default function AdminDashboard() {
                     // Update winners with final amounts
                     updateWinnersWithPrizePool(baseAmount, guaranteeAmount);
                 } else {
-                    console.warn('Failed to load prize pool:', response.status);
-                }
+                    }
             } catch (error) {
                 console.error('Error loading prize pool:', error);
             }
@@ -261,8 +259,7 @@ export default function AdminDashboard() {
                         await loadPrizePool(tournament.id, tournament.tournament_day);
                     }
                 } else {
-                    console.warn('Failed to load tournament:', response.status);
-                }
+                    }
             } catch (error) {
                 console.error('Error loading tournament:', error);
             } finally {
@@ -280,8 +277,6 @@ export default function AdminDashboard() {
 
     // Simple callback handlers for the AdminPayout component
     const handlePaymentSuccess = async (winnerAddress: string, transactionId: string) => {
-        console.log('✅ Payment successful for:', winnerAddress);
-
         // Update winner status to sent immediately for UI feedback
         setWinners(prevWinners =>
             prevWinners.map(winner =>
@@ -294,17 +289,14 @@ export default function AdminDashboard() {
         // Wait a moment for the database transaction to complete
         // The AdminPayout component saves to database before calling this callback,
         // but we need to ensure the transaction is committed before we reload
-        console.log('⏳ Waiting for database transaction to complete...');
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         // Reload paid winners from database to ensure persistence
         if (currentTournament?.tournament_id) {
-            console.log('🔄 Reloading payment status from database...');
             try {
                 const paidResponse = await fetch(`/api/admin/paid-winners?tournament_id=${currentTournament.tournament_id}`);
                 if (paidResponse.ok) {
                     const paidWinners = await paidResponse.json();
-                    console.log('📊 Database reload result:', paidWinners);
                     const paidWalletsMap = new Map<string, string>(
                         paidWinners.winners?.map((w: { wallet: string; transaction_hash: string }) =>
                             [w.wallet, w.transaction_hash || '']
@@ -316,24 +308,20 @@ export default function AdminDashboard() {
                         prevWinners.map((winner): Winner => {
                             const transactionHash = paidWalletsMap.get(winner.wallet_address);
                             if (transactionHash) {
-                                console.log(`✅ Confirmed payment for ${winner.username}: ${transactionHash}`);
                                 return { ...winner, payment_status: 'sent' as const, transaction_id: transactionHash };
                             }
                             return winner;
                         })
                     );
                 } else {
-                    console.warn('Failed to reload payment status:', paidResponse.status);
-                }
+                    }
             } catch (error) {
                 console.error('Failed to reload payment status from database:', error);
             }
         }
     };
 
-    const handlePaymentError = (winnerAddress: string, error: string) => {
-        console.log('❌ Payment failed for:', winnerAddress, error);
-
+    const handlePaymentError = (winnerAddress: string) => {
         // Update winner status to failed
         setWinners(prevWinners =>
             prevWinners.map(winner =>
@@ -440,7 +428,6 @@ export default function AdminDashboard() {
                     }
                 }
             } else {
-                console.warn('No previous tournament found');
                 setPreviousTournament(null);
                 setPreviousWinners([]);
             }
@@ -455,15 +442,12 @@ export default function AdminDashboard() {
     const forceRefreshPaymentStatus = async () => {
         if (!currentTournament?.tournament_id) return;
 
-        console.log('🔄 Force refreshing payment status from database...');
         setLoading(true);
 
         try {
             const paidResponse = await fetch(`/api/admin/paid-winners?tournament_id=${currentTournament.tournament_id}`);
             if (paidResponse.ok) {
                 const paidWinners = await paidResponse.json();
-                console.log('📊 Database payment status:', paidWinners);
-
                 const paidWalletsMap = new Map<string, string>(
                     paidWinners.winners?.map((w: { wallet: string; transaction_hash: string }) =>
                         [w.wallet, w.transaction_hash || '']
@@ -475,10 +459,8 @@ export default function AdminDashboard() {
                     prevWinners.map((winner): Winner => {
                         const transactionHash = paidWalletsMap.get(winner.wallet_address);
                         if (transactionHash) {
-                            console.log(`✅ ${winner.username} (${winner.wallet_address}) - PAID in database`);
                             return { ...winner, payment_status: 'sent' as const, transaction_id: transactionHash };
                         } else {
-                            console.log(`⏳ ${winner.username} (${winner.wallet_address}) - PENDING in database`);
                             return { ...winner, payment_status: 'pending' as const, transaction_id: undefined };
                         }
                     })

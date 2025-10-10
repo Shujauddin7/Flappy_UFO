@@ -161,8 +161,7 @@ export default function FlappyGame({
                     setIsGracePeriod(false);
                     setGracePeriodMessage('');
                 }
-            } catch (error) {
-                console.warn('Failed to check tournament status for grace period:', error);
+            } catch {
                 // Fallback to the old hardcoded logic if API fails
                 const now = new Date();
                 const utcDay = now.getUTCDay(); // 0 = Sunday
@@ -694,16 +693,9 @@ export default function FlappyGame({
                 if (!state.gameEndCalled) {
                     state.gameEndCalled = true;
 
-                    console.log('🎮 GAME OVER - Calling onGameEnd with:', {
-                        score: state.score,
-                        coins: state.coinsCollectedThisGame,
-                        timestamp: new Date().toISOString()
-                    });
-
                     try {
                         onGameEnd(state.score, state.coinsCollectedThisGame); // Pass only newly collected coins
-                        console.log('✅ onGameEnd called successfully');
-                    } catch (gameEndError) {
+                        } catch (gameEndError) {
                         console.error('❌ CRASH in onGameEnd callback:', gameEndError);
                         // Continue game loop but log the error
                         const error = gameEndError as Error;
@@ -712,7 +704,7 @@ export default function FlappyGame({
                             stack: error.stack || 'No stack trace',
                             score: state.score,
                             coins: state.coinsCollectedThisGame
-                        });
+    });
                     }
                 }
 

@@ -12,8 +12,7 @@ async function initializeRedis() {
         try {
             const { Redis: RedisClient } = await import('@upstash/redis');
             Redis = RedisClient;
-        } catch (error) {
-            console.warn('⚠️ Redis package not available, caching disabled:', error);
+        } catch {
             return null;
         }
     }
@@ -26,41 +25,27 @@ async function getRedisClient() {
     if (!RedisClass) return null;
 
     const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
-    console.log('🔧 Redis client request - Environment:', isProduction ? 'PROD' : 'DEV');
-
     if (isProduction) {
         if (!prodClient) {
-            console.log('🔑 Checking PROD Redis credentials...');
-            console.log('- UPSTASH_REDIS_PROD_URL:', process.env.UPSTASH_REDIS_PROD_URL ? 'Present' : 'MISSING');
-            console.log('- UPSTASH_REDIS_PROD_TOKEN:', process.env.UPSTASH_REDIS_PROD_TOKEN ? 'Present' : 'MISSING');
-
             if (!process.env.UPSTASH_REDIS_PROD_URL || !process.env.UPSTASH_REDIS_PROD_TOKEN) {
-                console.warn('⚠️ Production Redis credentials missing');
                 return null;
             }
             prodClient = new RedisClass({
                 url: process.env.UPSTASH_REDIS_PROD_URL,
                 token: process.env.UPSTASH_REDIS_PROD_TOKEN,
             });
-            console.log('🚀 Connected to PRODUCTION Redis');
-        }
+            }
         return prodClient;
     } else {
         if (!devClient) {
-            console.log('🔑 Checking DEV Redis credentials...');
-            console.log('- UPSTASH_REDIS_DEV_URL:', process.env.UPSTASH_REDIS_DEV_URL ? 'Present' : 'MISSING');
-            console.log('- UPSTASH_REDIS_DEV_TOKEN:', process.env.UPSTASH_REDIS_DEV_TOKEN ? 'Present' : 'MISSING');
-
             if (!process.env.UPSTASH_REDIS_DEV_URL || !process.env.UPSTASH_REDIS_DEV_TOKEN) {
-                console.warn('⚠️ Development Redis credentials missing');
                 return null;
             }
             devClient = new RedisClass({
                 url: process.env.UPSTASH_REDIS_DEV_URL,
                 token: process.env.UPSTASH_REDIS_DEV_TOKEN,
             });
-            console.log('🧪 Connected to DEVELOPMENT Redis');
-        }
+            }
         return devClient;
     }
 }
@@ -73,7 +58,6 @@ function getEnvironmentKey(baseKey: string): string {
     const isProduction = vercelEnv === 'production' || process.env.NEXT_PUBLIC_ENV === 'prod';
     const environment = isProduction ? 'prod' : 'dev';
     const channel = `${environment}:${baseKey}`;
-    console.log('🔧 Redis channel:', channel, '(VERCEL_ENV:', vercelEnv, 'NEXT_PUBLIC_ENV:', process.env.NEXT_PUBLIC_ENV, ')');
     return channel;
 }
 
@@ -109,7 +93,6 @@ export async function setCached(key: string, data: any, ttlSeconds: number = 15)
     try {
         const redis = await getRedisClient();
         if (!redis) {
-            console.log('No Redis client available for caching');
             return false;
         }
 
@@ -128,15 +111,11 @@ export async function deleteCached(key: string): Promise<void> {
     try {
         const redis = await getRedisClient();
         if (!redis) {
-            console.warn(`⚠️ Redis not available, skipping cache delete for: ${key}`);
             return;
         }
 
         const envKey = getEnvironmentKey(key);
         await redis.del(envKey);
-
-        const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
-        console.log(`🗑️ Deleted cache for ${envKey} (${isProduction ? 'PROD' : 'DEV'})`);
     } catch (error) {
         console.error('❌ Redis deleteCached error:', error);
         // Gracefully fail - app continues to work
@@ -149,8 +128,6 @@ export async function testRedisConnection(): Promise<boolean> {
         if (!redis) return false;
 
         await redis.ping();
-        const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
-        console.log(`✅ Redis connection test successful (${isProduction ? 'PROD' : 'DEV'})`);
         return true;
     } catch (error) {
         console.error('❌ Redis connection test failed:', error);
@@ -173,7 +150,6 @@ export async function publishRealtimeUpdate(channel: string, message: any): Prom
     try {
         const redis = await getRedisClient();
         if (!redis) {
-            console.warn('⚠️ Redis not available, skipping realtime update publish');
             return false;
         }
 
@@ -188,9 +164,6 @@ export async function publishRealtimeUpdate(channel: string, message: any): Prom
 
         // Use RPUSH to add message to end of list (FIFO queue)
         await redis.publish(envChannel, JSON.stringify(formattedMessage));
-
-        const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
-        console.log(`📡 Published to ${envChannel} (${isProduction ? 'PROD' : 'DEV'}):`, formattedMessage);
 
         return true;
     } catch (error) {

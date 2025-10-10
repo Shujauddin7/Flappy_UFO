@@ -50,17 +50,14 @@ export default function GameHomepage() {
     // Cleanup on unmount to prevent state updates
     useEffect(() => {
         return () => {
-            console.log('🗑️ GameHomepage unmounting - preventing future state updates');
             isMountedRef.current = false;
         };
     }, []);    // Debug state changes
     useEffect(() => {
-        console.log('Screen changed to:', currentScreen);
-    }, [currentScreen]);
+        }, [currentScreen]);
 
     useEffect(() => {
-        console.log('Info modal state changed to:', isInfoModalOpen);
-    }, [isInfoModalOpen]);
+        }, [isInfoModalOpen]);
 
     // Close info modal when navigating away from home screen
     useEffect(() => {
@@ -76,12 +73,9 @@ export default function GameHomepage() {
 
     // 🚀 GAMING INDUSTRY PERFORMANCE: Pre-warm cache on app startup for instant loading
     useEffect(() => {
-        console.log('🎮 GAME STARTUP: Beginning professional cache warming...');
-
         // 🚀 OPTIMIZATION: Check if cache is already warm to prevent redundant calls
         const isAlreadyWarming = sessionStorage.getItem('cache_warming_in_progress');
         if (isAlreadyWarming) {
-            console.log('⚡ SKIP: Cache warming already in progress');
             return;
         }
 
@@ -93,14 +87,10 @@ export default function GameHomepage() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    console.log('🚀 CACHE PRE-WARMED: Tournament will load instantly!');
-                    console.log(`⏱️ Warming took ${data.performance?.total_time_ms || 'unknown'}ms`);
-                } else {
-                    console.warn('⚠️ Cache warming had issues (non-critical)');
                 }
             })
-            .catch(err => {
-                console.warn('⚠️ Cache warming failed (non-critical):', err);
+            .catch(() => {
+                // Intentionally ignore cache warming errors
             })
             .finally(() => {
                 // Clear the warming flag after completion
@@ -113,10 +103,7 @@ export default function GameHomepage() {
 
     // Local authentication function to replace useGameAuth hook
     const authenticate = useCallback(async (): Promise<boolean> => {
-        console.log('🔄 IMPORTANT: Running authentication WITH database operations');
-
         if (session?.user?.walletAddress) {
-            console.log('✅ Already authenticated, triggering database operations...');
             // Still run database operations even if already authenticated
             return await authenticateWithDB();
         }
@@ -126,7 +113,6 @@ export default function GameHomepage() {
             const result = await walletAuth();
             if (result && !result.error) {
                 // Authentication successful - now trigger database operations
-                console.log('✅ MiniKit auth successful, now triggering database operations...');
                 setIsAuthenticating(false);
                 return await authenticateWithDB();
             } else {
@@ -186,7 +172,6 @@ export default function GameHomepage() {
             const data = await response.json();
 
             if (data.success) {
-                console.log('✅ Verification status:', data.data);
                 setIsVerifiedToday(data.data.isVerified);
                 return data.data.isVerified;
             } else {
@@ -232,7 +217,6 @@ export default function GameHomepage() {
             const data = await response.json();
 
             if (data.success) {
-                console.log('🔮 Orb capability check:', data.data);
                 setCanUseOrbVerification(data.data.canUseOrbDiscount);
                 return data.data.canUseOrbDiscount;
             } else {
@@ -272,7 +256,6 @@ export default function GameHomepage() {
                 const tournamentData = await tournamentRes.json();
 
                 if (!tournamentData?.tournament?.id) {
-                    console.log('⚠️ No active tournament found');
                     return;
                 }
 
@@ -291,11 +274,9 @@ export default function GameHomepage() {
 
                     if (userRecord) {
                         setUserHighestScore(userRecord.highest_score || 0);
-                        console.log('✅ User highest score loaded:', userRecord.highest_score);
-                    } else {
+                        } else {
                         setUserHighestScore(0);
-                        console.log('ℹ️ User has no score yet');
-                    }
+                        }
                 }
             } catch (error) {
                 console.error('❌ Error fetching user highest score:', error);
@@ -311,26 +292,20 @@ export default function GameHomepage() {
             return;
         }
 
-        console.log('🔌 Setting up Socket.IO for real-time score updates on GameHomepage...');
-
         const userId = session.user.id;
         const username = session.user.name || 'Anonymous';
 
         // Handler for score updates
         const handleScoreUpdate = (message: { tournament_id: string; data: { user_id: string; new_score: number } }) => {
             const { data } = message;
-            console.log('⚡ Score update received on GameHomepage:', data);
-
             // Only update if it's the current user's score
             if (data.user_id === userId) {
-                console.log('🏆 Updating current user highest score:', data.new_score);
                 setUserHighestScore(data.new_score);
                 // Note: Modal doesn't display currentHigh to avoid confusion with outdated data
             }
         };
 
         socket.on('connect', () => {
-            console.log('✅ Socket.IO connected on GameHomepage');
             joinTournamentRoom(currentTournamentId, userId, username);
         });
 
@@ -340,7 +315,6 @@ export default function GameHomepage() {
 
         // Only cleanup listener, don't disconnect socket (let it persist)
         return () => {
-            console.log('🧹 Removing Socket.IO score_update listener on GameHomepage');
             socket.off('score_update', handleScoreUpdate);
         };
     }, [currentTournamentId, session?.user?.id, session?.user?.name, socket, joinTournamentRoom]);
@@ -370,7 +344,6 @@ export default function GameHomepage() {
                         const leaderboardFresh = (now - leaderboardCache.timestamp) < leaderboardCache.ttl;
 
                         if (tournamentFresh && leaderboardFresh) {
-                            console.log('✅ Fresh pre-loaded data already exists - skipping duplicate pre-load');
                             return;
                         }
                     } catch {
@@ -378,16 +351,11 @@ export default function GameHomepage() {
                     }
                 }
 
-                console.log('🚀 Pre-loading leaderboard data in background for instant access...');
-                const startTime = Date.now();
-
                 // Pre-load both tournament info and leaderboard data
                 const [tournamentResponse, leaderboardResponse] = await Promise.all([
                     fetch('/api/tournament/current'),
                     fetch('/api/tournament/leaderboard-data')
                 ]);
-
-                const preloadTime = Date.now() - startTime;
 
                 if (tournamentResponse.ok && leaderboardResponse.ok) {
                     const tournamentData = await tournamentResponse.json();
@@ -406,26 +374,23 @@ export default function GameHomepage() {
                         ttl: CACHE_TTL.PRELOAD_LEADERBOARD // Use standardized preload leaderboard cache TTL
                     }));
 
-                    console.log(`✅ Leaderboard pre-loaded successfully in ${preloadTime}ms - leaderboard will now load instantly!`);
-                } else {
-                    console.log('⚠️ Leaderboard pre-load failed, will use regular loading');
-                }
-            } catch (error) {
-                console.log('⚠️ Leaderboard pre-load failed silently:', error);
+                    } else {
+                    }
+            } catch {
                 // Silent failure - regular loading will work as fallback
             }
         };
 
         // 🚀 AGGRESSIVE PRE-LOADING: Start immediately when homepage loads 
         // Zero delay so cache is ready before user can even click leaderboard
-        console.log('🚀 Starting IMMEDIATE leaderboard pre-load (zero delay for fastest experience)...');
-        console.log('⏰ Pre-load started at:', new Date().toISOString());
         preloadLeaderboard().then(() => {
-            console.log('✅ Pre-loading completed at:', new Date().toISOString());
+            // Pre-load success
         }).catch((error) => {
             console.error('❌ Pre-loading failed:', error);
         });
-    }, []); // Only run once when component mounts    // Check if tournament is still active before allowing payments
+    }, []); // Only run once when component mounts
+    
+    // Check if tournament is still active before allowing payments
     const checkTournamentActive = useCallback(async () => {
         try {
             const response = await fetch('/api/tournament/current');
@@ -474,14 +439,12 @@ export default function GameHomepage() {
     const handleInfoClick = useCallback((e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log('Info button clicked - opening modal');
         setIsInfoModalOpen(true);
     }, []);
 
     const handlePlayClick = useCallback((e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log('Play button clicked - going to game select');
         setCurrentScreen('gameSelect');
     }, []);
 
@@ -548,7 +511,6 @@ export default function GameHomepage() {
     const handleTournamentEntrySelect = async (entryType: 'verify' | 'standard' | 'verified') => {
         // Prevent duplicate operations
         if (isProcessingEntry) {
-            console.log('⚠️ Tournament entry operation already in progress, ignoring...');
             return;
         }
 
@@ -593,8 +555,6 @@ export default function GameHomepage() {
                 verification_level: VerificationLevel.Orb, // Require Orb verification for discount
             });
 
-            console.log('World ID verification result:', result.finalPayload);
-
             // Send proof to backend for verification
             const response = await fetch('/api/verify-proof', {
                 method: 'POST',
@@ -608,7 +568,6 @@ export default function GameHomepage() {
             const verificationData = await response.json();
 
             if (verificationData.success) {
-                console.log('✅ World ID verification successful');
                 // Update user's verification status in database
                 await updateUserVerificationStatus(
                     verificationData.nullifier_hash,
@@ -645,8 +604,6 @@ export default function GameHomepage() {
                 throw new Error('No wallet address found in session');
             }
 
-            console.log('🔄 Updating verification status for wallet:', session.user.walletAddress);
-
             const response = await fetch('/api/users/update-verification', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -660,14 +617,10 @@ export default function GameHomepage() {
 
             const responseData = await response.json();
 
-            console.log('📝 Update verification response:', responseData);
-
             if (!response.ok) {
                 console.error('❌ Verification update failed:', responseData);
                 throw new Error(responseData.error || `HTTP ${response.status}: Failed to update verification status`);
             }
-
-            console.log('✅ User verification status updated:', responseData.data);
 
             // Refresh verification status after successful update
             await checkVerificationStatus();
@@ -708,7 +661,6 @@ export default function GameHomepage() {
                 throw new Error(responseData.error || 'Failed to create tournament entry');
             }
 
-            console.log('✅ Tournament entry created:', responseData.data);
             return responseData.data;
 
         } catch (error) {
@@ -753,8 +705,6 @@ export default function GameHomepage() {
             });
 
             if (result.finalPayload.status === 'success') {
-                console.log('✅ Payment successful:', result.finalPayload);
-
                 try {
                     // Create tournament entry after successful payment
                     await createTournamentEntry(result.finalPayload.reference, amount, isVerified);
@@ -792,7 +742,6 @@ export default function GameHomepage() {
     const handleTournamentContinue = async (score: number) => {
         // � CRITICAL: Check if modal is still open (prevent race condition with Go Home button)
         if (!modalOpenRef.current) {
-            console.log('⚠️ Modal closed, cancelling continue payment');
             setIsProcessingPayment(false);
             return;
         }
@@ -869,21 +818,17 @@ export default function GameHomepage() {
     const handleFinalGameOver = async (score: number) => {
         // CRITICAL: Check if component is still mounted
         if (!isMountedRef.current) {
-            console.log('⚠️ Component unmounted, skipping score submission');
             return;
         }
 
         // CRITICAL: Prevent duplicate submissions and race conditions
         if (gameMode !== 'tournament' || !session?.user?.walletAddress || isSubmittingScore) {
-            console.log('⚠️ Skipping score submission:', { gameMode, hasWallet: !!session?.user?.walletAddress, isSubmitting: isSubmittingScore });
             return;
         }
 
         setIsSubmittingScore(true);
 
         try {
-            console.log('🎯 Starting final score submission:', { score, wallet: session.user.walletAddress });
-
             const response = await fetch('/api/score/submit', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -898,7 +843,6 @@ export default function GameHomepage() {
 
             // Check if component is still mounted before continuing
             if (!isMountedRef.current) {
-                console.log('⚠️ Component unmounted during API call, skipping result processing');
                 return;
             }
 
@@ -907,16 +851,12 @@ export default function GameHomepage() {
             }
 
             const result = await response.json();
-            console.log('✅ Score submission result:', result);
-
             // CRITICAL: Only update state if component is still mounted and in tournament mode
             if (!isMountedRef.current) {
-                console.log('⚠️ Component unmounted after API response, skipping state updates');
                 return;
             }
 
             if (gameMode !== 'tournament') {
-                console.log('⚠️ Game mode changed during submission, skipping result update');
                 return;
             }
 
@@ -937,7 +877,6 @@ export default function GameHomepage() {
                 }));
 
                 // 🚀 INSTANT OWN SCORE UPDATE: Clear cache + set invalidation flag
-                console.log('🏆 NEW HIGH SCORE! - invalidating ALL leaderboard cache for INSTANT update');
                 try {
                     // Clear ALL possible cache keys for instant own score update
                     sessionStorage.removeItem('leaderboard_data');
@@ -951,10 +890,8 @@ export default function GameHomepage() {
 
                     // 🎯 CRITICAL: Set cache invalidation timestamp for instant leaderboard refresh
                     sessionStorage.setItem('cache_invalidated_at', Date.now().toString());
-                    console.log('✅ Cache invalidated at:', Date.now());
-                } catch (cacheError) {
-                    console.warn('Cache clear failed:', cacheError);
-                }
+                    } catch {
+                    }
             } else if (result.success) {
                 // Update local state with current highest score for Socket.IO and future reference
                 if (result.data.current_highest_score !== undefined) {
@@ -971,7 +908,6 @@ export default function GameHomepage() {
 
                 // 🚀 INSTANT UPDATE: ALWAYS clear cache for ANY score submission (even duplicates)
                 // This ensures leaderboard shows current data when user navigates
-                console.log('📊 Score submitted (success=' + result.success + ', duplicate=' + (result.data.is_duplicate || false) + ') - clearing cache for instant leaderboard update');
                 try {
                     sessionStorage.removeItem('leaderboard_data');
                     sessionStorage.removeItem('tournament_data');
@@ -985,10 +921,8 @@ export default function GameHomepage() {
                     // 🎯 CRITICAL: Set cache invalidation timestamp for instant leaderboard refresh
                     const invalidationTime = Date.now();
                     sessionStorage.setItem('cache_invalidated_at', invalidationTime.toString());
-                    console.log('✅ INSTANT UPDATE: Cache invalidated at:', invalidationTime, '- Leaderboard will load fresh data!');
-                } catch (cacheError) {
-                    console.warn('Cache clear failed:', cacheError);
-                }
+                    } catch {
+                    }
             } else if (!result.success) {
                 console.error('Score submission failed:', result.error);
                 if (isMountedRef.current) {
@@ -1428,7 +1362,6 @@ export default function GameHomepage() {
                                         try {
                                             // If tournament mode and continue not used, submit final score
                                             if (gameMode === 'tournament' && !tournamentContinueUsed) {
-                                                console.log('🎯 Submitting final score before going home...');
                                                 await handleFinalGameOver(gameResult.score);
                                             }
                                             // Reset all game state

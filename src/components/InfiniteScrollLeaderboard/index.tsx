@@ -216,7 +216,6 @@ export default function InfiniteScrollLeaderboard({
     // Memory cleanup: Remove old players when we have too many
     useEffect(() => {
         if (players.length > VIRTUAL_SCROLL_CONFIG.maxMemoryItems) {
-            console.log(`🧹 Memory cleanup: removing ${players.length - VIRTUAL_SCROLL_CONFIG.maxMemoryItems} old players`);
             setPlayers(prev => prev.slice(-VIRTUAL_SCROLL_CONFIG.maxMemoryItems));
             // Adjust offset to maintain pagination consistency
             setOffset(prev => prev - (players.length - VIRTUAL_SCROLL_CONFIG.maxMemoryItems));
@@ -255,8 +254,7 @@ export default function InfiniteScrollLeaderboard({
                 setHasMore(data.pagination.hasMore);
                 setPerformance(data.performance);
 
-                console.log(`⚡ Loaded ${data.players.length} more players from ${data.performance.source} in ${data.performance.responseTime}ms`);
-            } else {
+                } else {
                 setHasMore(false);
             }
         } catch (err) {

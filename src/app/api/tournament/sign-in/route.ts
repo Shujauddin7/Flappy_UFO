@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase'
 
 export async function POST(req: NextRequest) {
-    console.log('🔍 Tournament sign-in tracking API called');
-
     try {
         const { wallet, username, worldId, tournamentId } = await req.json();
 
@@ -54,8 +52,7 @@ export async function POST(req: NextRequest) {
             }
 
             isNewUser = true;
-            console.log('✅ New user signed in:', { wallet, username, tournamentId });
-        } else {
+            } else {
             // Existing user - update tournaments visited
             const { error: updateError } = await supabase
                 .from('tournament_sign_ins')
@@ -72,8 +69,7 @@ export async function POST(req: NextRequest) {
                 );
             }
 
-            console.log('✅ Existing user visited new tournament:', { wallet, tournamentId });
-        }
+            }
 
         // Update tournament total_players count (sign-ins for THIS tournament)
         await updateTournamentSignInCount(supabase, tournamentId);
@@ -148,13 +144,11 @@ async function ensureUserTournamentRecord(supabase: any, wallet: string, usernam
             if (createRecordError) {
                 console.error('❌ Error creating user tournament record:', createRecordError);
             } else {
-                console.log('✅ User tournament record created:', { wallet, tournamentId });
-            }
+                }
         } else if (recordCheckError) {
             console.error('❌ Error checking user tournament record:', recordCheckError);
         } else {
-            console.log('✅ User tournament record already exists:', { wallet, tournamentId });
-        }
+            }
 
     } catch (error) {
         console.error('❌ Error in ensureUserTournamentRecord:', error);
@@ -190,8 +184,7 @@ async function updateTournamentSignInCount(supabase: any, tournamentId: string) 
         if (updateError) {
             console.error('❌ Error updating tournament sign-in count:', updateError);
         } else {
-            console.log('✅ Tournament sign-in count updated:', { tournamentId, signInCount });
-        }
+            }
 
     } catch (error) {
         console.error('❌ Error in updateTournamentSignInCount:', error);

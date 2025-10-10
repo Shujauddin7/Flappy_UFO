@@ -60,13 +60,9 @@ const preloadGameData = async () => {
                 timestamp: Date.now()
             }));
 
-            console.log('🚀 GLOBAL PRELOAD: Game data preloaded successfully');
-            console.log(`   Tournament: ${globalTournamentData?.total_tournament_players || 0} players`);
-            console.log(`   Leaderboard: ${globalLeaderboardData?.players?.length || 0} entries`);
+            }
+    } catch {
         }
-    } catch (error) {
-        console.warn('⚠️ Global game data preload failed:', error);
-    }
 };
 
 // Export for use in other components

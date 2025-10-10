@@ -6,14 +6,11 @@ import { NextResponse } from 'next/server';
  */
 export async function POST(request: Request) {
     const startTime = Date.now();
-    console.log('🔥 SIMPLIFIED CACHE WARMING STARTED');
-
     try {
         // Get the origin from the request
         const url = new URL(request.url);
         const baseUrl = url.origin;
 
-        console.log('🏆 Warming leaderboard cache directly...');
         const leaderboardResponse = await fetch(`${baseUrl}/api/tournament/leaderboard-data`, {
             method: 'GET',
             headers: {
@@ -25,9 +22,6 @@ export async function POST(request: Request) {
         const totalTime = Date.now() - startTime;
 
         if (leaderboardResponse.ok) {
-            console.log(`✅ Cache warming completed successfully in ${totalTime}ms`);
-            console.log(`📊 Cached ${leaderboardData.total_players || 0} players`);
-
             return NextResponse.json({
                 success: true,
                 message: 'Leaderboard cache warmed successfully',
@@ -53,7 +47,7 @@ export async function POST(request: Request) {
             performance: {
                 total_time_ms: totalTime,
                 ready_for_instant_loading: false
-            },
+    },
             timestamp: new Date().toISOString()
         }, { status: 500 });
     }
@@ -63,8 +57,6 @@ export async function POST(request: Request) {
  * GET endpoint to check cache status
  */
 export async function GET() {
-    console.log('📊 CACHE STATUS CHECK - API Endpoint');
-
     try {
         // You could implement cache status checking here
         // For now, just return a simple status

@@ -47,7 +47,6 @@ class CircuitBreaker {
         // Check circuit breaker state
         if (state.state === 'OPEN') {
             if (now < state.nextAttemptTime) {
-                console.log(`🔴 Circuit breaker OPEN for ${key}, using fallback`);
                 if (fallback) {
                     return await fallback();
                 }
@@ -55,8 +54,7 @@ class CircuitBreaker {
             } else {
                 // Try to recover
                 state.state = 'HALF_OPEN';
-                console.log(`🟡 Circuit breaker HALF_OPEN for ${key}, attempting recovery`);
-            }
+                }
         }
 
         try {
@@ -65,7 +63,6 @@ class CircuitBreaker {
             // Success - reset failures
             if (state.state === 'HALF_OPEN') {
                 state.state = 'CLOSED';
-                console.log(`🟢 Circuit breaker CLOSED for ${key}, recovery successful`);
             }
             state.failures = 0;
 
@@ -78,11 +75,9 @@ class CircuitBreaker {
             if (state.failures >= this.FAILURE_THRESHOLD) {
                 state.state = 'OPEN';
                 state.nextAttemptTime = now + this.RECOVERY_TIMEOUT;
-                console.log(`🔴 Circuit breaker OPEN for ${key} after ${state.failures} failures`);
             }
 
             if (fallback && state.state === 'OPEN') {
-                console.log(`🔄 Using fallback for ${key}`);
                 return await fallback();
             }
 
@@ -108,8 +103,6 @@ export async function warmTournamentStatsCache(): Promise<boolean> {
     return CircuitBreaker.execute(
         'tournament-stats-cache',
         async () => {
-            console.log('🔥 WARMING TOURNAMENT STATS CACHE...');
-
             const cacheKey = 'tournament_stats_instant';
 
             // Use timeout wrapper for non-blocking operation
@@ -129,7 +122,6 @@ export async function warmTournamentStatsCache(): Promise<boolean> {
                     };
 
                     await setCached(cacheKey, noTournamentResponse, CACHE_TTL.NO_TOURNAMENT);
-                    console.log('✅ Warmed cache with "no tournament" data');
                     return true;
                 }
 
@@ -152,11 +144,6 @@ export async function warmTournamentStatsCache(): Promise<boolean> {
                 // Cache using standardized TTL (convert milliseconds to seconds for Redis)
                 await setCached(cacheKey, responseData, CACHE_TTL.PRELOAD_LEADERBOARD / 1000);
 
-                console.log('✅ Tournament stats cache warmed successfully');
-                console.log(`   📊 Players: ${stats.total_players}`);
-                console.log(`   💰 Prize Pool: $${stats.total_prize_pool.toFixed(2)}`);
-                console.log(`   🎮 Games Played: ${stats.total_games_played}`);
-
                 return true;
             })(), 8000); // 8 second timeout for database operations
 
@@ -164,7 +151,6 @@ export async function warmTournamentStatsCache(): Promise<boolean> {
         },
         // Fallback: Return false but don't crash the system
         async () => {
-            console.log('🔄 Using fallback for tournament stats cache warming');
             return false;
         }
     ).catch(error => {
@@ -181,8 +167,6 @@ export async function warmLeaderboardCache(): Promise<boolean> {
     return CircuitBreaker.execute(
         'leaderboard-cache',
         async () => {
-            console.log('🔥 WARMING LEADERBOARD CACHE...');
-
             const cacheKey = 'tournament_leaderboard_data';
 
             // Use timeout wrapper for API calls
@@ -191,7 +175,6 @@ export async function warmLeaderboardCache(): Promise<boolean> {
                 const existing = await getCached(cacheKey);
 
                 if (existing) {
-                    console.log('✅ Leaderboard cache already warm');
                     return true;
                 }
 
@@ -208,7 +191,6 @@ export async function warmLeaderboardCache(): Promise<boolean> {
                 });
 
                 if (response.ok) {
-                    console.log('✅ Leaderboard cache warmed via API call');
                     return true;
                 } else {
                     throw new Error(`API call failed with status: ${response.status}`);
@@ -219,7 +201,6 @@ export async function warmLeaderboardCache(): Promise<boolean> {
         },
         // Fallback: Return false but continue operation
         async () => {
-            console.log('🔄 Using fallback for leaderboard cache warming');
             return false;
         }
     ).catch(error => {
@@ -249,8 +230,6 @@ interface CacheWarmingDetails {
  */
 export async function warmAllCaches(): Promise<{ success: boolean; details: CacheWarmingDetails }> {
     const startTime = Date.now();
-    console.log('🚀 WARMING ALL CACHES FOR INSTANT MOBILE GAME PERFORMANCE...');
-
     const results = {
         tournament_stats: false,
         leaderboard_data: false
@@ -283,13 +262,8 @@ export async function warmAllCaches(): Promise<{ success: boolean; details: Cach
         const totalTime = Date.now() - startTime;
 
         if (allWarmed) {
-            console.log('🎉 ALL CACHES WARMED SUCCESSFULLY!');
-            console.log(`   ⚡ Total warming time: ${totalTime}ms`);
-            console.log('   🎮 Ready for professional mobile game performance!');
-        } else {
-            console.log('⚠️ Some caches failed to warm:', results);
-            console.log('   🛡️ Circuit breakers protecting system stability');
-        }
+            } else {
+            }
 
         return {
             success: allWarmed,
@@ -326,23 +300,16 @@ export async function warmAllCaches(): Promise<{ success: boolean; details: Cach
  * Keeps cache warm with background updates and circuit breaker monitoring
  */
 export function scheduleRegularCacheWarming() {
-    console.log('📅 SCHEDULING REGULAR CACHE WARMING...');
-
     // Warm immediately on startup
     warmAllCaches();
 
     // Warm every 90 seconds to ensure cache never expires while respecting circuit breakers
     const intervalId = setInterval(() => {
-        console.log('🔄 SCHEDULED CACHE WARMING...');
         warmAllCaches().then(result => {
             if (!result.success) {
-                console.log('⚠️ Scheduled cache warming had failures, but system remains stable');
-            }
+                }
         });
     }, 90 * 1000); // 90 seconds - more frequent to handle circuit breaker recovery
-
-    console.log('✅ Cache warming scheduled every 90 seconds with circuit breaker protection');
-    console.log('🎮 Professional mobile game performance enabled with enhanced reliability!');
 
     return intervalId;
 }

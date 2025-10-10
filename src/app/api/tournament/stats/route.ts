@@ -9,8 +9,6 @@ import { getCurrentActiveTournament } from '@/utils/database';
  */
 export async function GET() {
     const startTime = Date.now();
-    console.log('⚡ INSTANT TOURNAMENT STATS API - Mobile Game Performance');
-
     try {
         // 🎯 STEP 1: ALWAYS try cache first - This API prioritizes speed over freshness
         const cacheKey = 'tournament_stats_instant';
@@ -18,12 +16,8 @@ export async function GET() {
 
         if (cachedStats && typeof cachedStats === 'object') {
             const responseTime = Date.now() - startTime;
-            console.log(`🚀 INSTANT RESPONSE: ${responseTime}ms (Cached tournament stats)`);
-            console.log('⚡ Performance: Like professional mobile games - instant loading!');
-
             // 🔧 ENSURE end_time IS ALWAYS PRESENT - Critical for countdown timer
             if (!cachedStats.end_time && cachedStats.has_active_tournament) {
-                console.log('⚠️ Cached data missing end_time - fetching fresh data for countdown timer');
                 // Don't return cached data if it's missing critical end_time field
                 // Fall through to fresh database query
             } else {
@@ -35,8 +29,6 @@ export async function GET() {
                 });
             }
         }
-
-        console.log('🔄 Cache miss - fetching with optimized database query');
 
         // 🚀 STEP 2: Try optimized database query first
         try {
@@ -50,8 +42,6 @@ export async function GET() {
                 await setCached(cacheKey, optimizedStats, 30); // 30 seconds cache
 
                 const responseTime = Date.now() - startTime;
-                console.log(`✅ Optimized tournament stats query completed in ${responseTime}ms`);
-
                 return NextResponse.json({
                     ...optimizedStats,
                     cached: false,
@@ -59,9 +49,8 @@ export async function GET() {
                     fetched_at: new Date().toISOString()
                 });
             }
-        } catch (optimizedError) {
-            console.warn('⚠️ Optimized query failed, falling back to legacy method:', optimizedError);
-        }
+        } catch {
+            }
 
         // 🔄 STEP 3: Fallback to legacy method if optimized query fails
         const currentTournament = await getCurrentActiveTournament();
@@ -101,12 +90,10 @@ export async function GET() {
             // Fallback: Calculate end_time as start_time + 24 hours
             const startTime = new Date(currentTournament.start_time);
             endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000).toISOString();
-            console.log('⚠️ Using calculated end_time (database missing end_time):', endTime);
-        } else if (!endTime) {
+            } else if (!endTime) {
             // Last resort: Use current time + 24 hours
             endTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-            console.log('⚠️ Using emergency fallback end_time:', endTime);
-        }
+            }
 
         const responseData = {
             id: currentTournament.id, // CRITICAL: Include tournament ID for Realtime filters
@@ -122,13 +109,9 @@ export async function GET() {
             tournament_status: 'active'
         };
 
-        // Cache for 30 seconds (balance between freshness and performance)\n        console.log('💾 Warming cache for instant future responses...');\n        await setCached(cacheKey, responseData, 30); // 30 seconds cache for better real-time feel
+        // Cache for 30 seconds (balance between freshness and performance)\n        \n        await setCached(cacheKey, responseData, 30); // 30 seconds cache for better real-time feel
 
         const responseTime = Date.now() - startTime;
-        console.log(`✅ Tournament stats cached successfully for instant loading`);
-        console.log(`📊 Response time: ${responseTime}ms (will be <50ms on next request)`);
-        console.log(`👥 Players: ${stats.total_players}, Prize Pool: $${stats.total_prize_pool.toFixed(2)}`);
-
         return NextResponse.json({
             ...responseData,
             cached: false,
@@ -160,8 +143,6 @@ export async function GET() {
  */
 export async function POST() {
     try {
-        console.log('🔥 WARMING TOURNAMENT STATS CACHE - Background job');
-
         // Trigger a GET request to warm the cache
         const response = await GET();
         const data = await response.json();

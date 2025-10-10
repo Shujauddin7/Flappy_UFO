@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 export async function GET(req: NextRequest) {
-    console.log('📊 Leaderboard API called');
-
     try {
         // Environment-specific database configuration (following Plan.md specification)
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
@@ -62,12 +60,6 @@ export async function GET(req: NextRequest) {
 
             tournamentDay = tournaments[0].tournament_day;
         }
-
-        console.log('🔍 Fetching leaderboard:', {
-            tournament_day: tournamentDay,
-            limit,
-            offset
-        });
 
         // Fetch leaderboard data using the new user_tournament_records table
         // Include players who have paid entry fees even if they haven't played yet (highest_score = 0)
@@ -136,12 +128,6 @@ export async function GET(req: NextRequest) {
                 )
             };
         }
-
-        console.log('✅ Leaderboard fetched successfully:', {
-            records_count: leaderboardData?.length || 0,
-            total_eligible: count,
-            tournament_stats: tournamentStats
-        });
 
         return NextResponse.json({
             success: true,

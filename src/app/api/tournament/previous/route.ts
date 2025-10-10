@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 export async function GET() {
-    console.log('🔍 Previous Tournament API called');
-
     try {
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
 
@@ -47,12 +45,6 @@ export async function GET() {
         }
 
         const tournament = tournaments[0];
-
-        console.log('✅ Previous tournament found:', {
-            tournament_id: tournament.id,
-            tournament_day: tournament.tournament_day,
-            total_collected: tournament.total_collected
-        });
 
         return NextResponse.json({
             tournament,

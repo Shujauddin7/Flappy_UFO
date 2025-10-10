@@ -51,10 +51,8 @@ export class ErrorBoundary extends Component<Props, State> {
                 userAgent: navigator.userAgent
             };
             sessionStorage.setItem('last_crash_data', JSON.stringify(crashData));
-            console.log('💾 Crash data saved to sessionStorage for debugging');
-        } catch (storageError) {
-            console.warn('Failed to save crash data:', storageError);
-        }
+            } catch {
+            }
     }
 
     render() {

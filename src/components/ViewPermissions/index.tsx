@@ -23,14 +23,12 @@ export const ViewPermissions = () => {
           const permissions = await MiniKit.commandsAsync.getPermissions();
           if (permissions?.finalPayload.status === 'success') {
             setPermissions(permissions?.finalPayload.permissions || {});
-            console.log('permissions', permissions);
-          }
+            }
         } catch (error) {
           console.error('Failed to fetch permissions:', error);
         }
       } else {
-        console.log('MiniKit is not installed');
-      }
+        }
     };
     fetchPermissions();
   }, [isInstalled]);

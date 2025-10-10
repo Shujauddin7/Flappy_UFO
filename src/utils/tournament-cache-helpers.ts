@@ -17,9 +17,7 @@ export interface TournamentStatsUpdateOptions {
  * This ensures consistency across all tournament-related data
  */
 export async function invalidateTournamentStatsCache(options: TournamentStatsUpdateOptions): Promise<boolean> {
-    const { tournamentDay, rewarmCache = true, source = 'unknown' } = options;
-
-    console.log(`🔄 Invalidating tournament stats cache (${source}) - Supabase Realtime will handle updates`);
+    const { tournamentDay, rewarmCache = true } = options;
 
     try {
         // Step 1: Invalidate all tournament-related caches - COMPREHENSIVE SYNC
@@ -35,21 +33,17 @@ export async function invalidateTournamentStatsCache(options: TournamentStatsUpd
         ];
 
         await Promise.all(cacheKeys.map(key => deleteCached(key)));
-        console.log('✅ Tournament stats caches invalidated - Supabase Realtime will notify clients');
-
         // Supabase Realtime handles broadcasting automatically when database changes
 
         // Step 2: Rewarm cache if requested (for better UX)
         if (rewarmCache) {
-            console.log('🔥 Starting background cache rewarm with Supabase Realtime...');
-
             // Trigger background refresh via API (async, non-blocking)
             fetch('/api/leaderboard', {
                 method: 'GET',
                 headers: { 'X-Cache-Refresh': 'true' }
-            }).catch(e => console.warn('Background rewarming failed:', e));
-
-            console.log('✅ Background rewarm initiated');
+            }).catch(() => {
+                // Intentionally ignore errors
+            });
         }
 
         return true;
@@ -64,9 +58,7 @@ export async function invalidateTournamentStatsCache(options: TournamentStatsUpd
  * Used when high scores are submitted
  */
 export async function invalidateLeaderboardCache(options: TournamentStatsUpdateOptions): Promise<boolean> {
-    const { tournamentDay, rewarmCache = true, source = 'unknown' } = options;
-
-    console.log(`🏆 Invalidating leaderboard cache (${source}) - Supabase Realtime will handle updates`);
+    const { tournamentDay, rewarmCache = true } = options;
 
     try {
         // Step 1: Invalidate ALL leaderboard caches - COMPREHENSIVE SYNC
@@ -82,21 +74,17 @@ export async function invalidateLeaderboardCache(options: TournamentStatsUpdateO
         ];
 
         await Promise.all(cacheKeys.map(key => deleteCached(key)));
-        console.log('✅ Leaderboard caches invalidated - Supabase Realtime will notify clients');
-
         // Supabase Realtime handles broadcasting automatically when database changes
 
         // Step 2: Rewarm cache if requested (for better UX)
         if (rewarmCache) {
-            console.log('🔥 Starting background cache rewarm with Supabase Realtime...');
-
             // Trigger background refresh via API (async, non-blocking)
             fetch('/api/leaderboard', {
                 method: 'GET',
                 headers: { 'X-Cache-Refresh': 'true' }
-            }).catch(e => console.warn('Background rewarming failed:', e));
-
-            console.log('✅ Background rewarm initiated');
+            }).catch(() => {
+                // Intentionally ignore errors
+            });
         }
 
         return true;

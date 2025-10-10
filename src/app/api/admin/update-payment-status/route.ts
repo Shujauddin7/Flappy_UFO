@@ -52,18 +52,6 @@ export async function POST(req: NextRequest) {
         const userId = userRecord.user_id;
         const tournamentDay = userRecord.tournament_day;
 
-        console.log('💾 Saving payment to prizes table:', {
-            user_id: userId,
-            tournament_id: tournamentId,
-            username: username,
-            wallet: winnerWallet,
-            tournament_day: tournamentDay,
-            final_rank: rank,
-            final_score: finalScore || 0,
-            prize_amount: prizeAmount,
-            transaction_hash: transactionId
-        });
-
         // Insert into prizes table to mark as sent
         const { error } = await supabase
             .from('prizes')
@@ -88,8 +76,6 @@ export async function POST(req: NextRequest) {
                 details: error.message
             }, { status: 500 });
         }
-
-        console.log('✅ Payment successfully saved to prizes table');
 
         return NextResponse.json({
             success: true,

@@ -13,9 +13,8 @@ export function saveCoins(amount: number): void {
         const hash = btoa(`${amount}_${SALT}`);
         localStorage.setItem(COINS_KEY, amount.toString());
         localStorage.setItem(COINS_HASH_KEY, hash);
-    } catch (error) {
-        console.warn('Failed to save coins to localStorage:', error);
-    }
+    } catch {
+        }
 }
 
 /**
@@ -29,14 +28,12 @@ export function loadCoins(): number {
 
         // If hash doesn't match, coins were tampered - reset to 0
         if (storedHash !== expectedHash) {
-            console.warn('Coin data tampered, resetting to 0');
             saveCoins(0);
             return 0;
         }
 
         return Math.max(0, parseInt(coins, 10) || 0);
-    } catch (error) {
-        console.warn('Failed to load coins from localStorage:', error);
+    } catch {
         return 0;
     }
 }

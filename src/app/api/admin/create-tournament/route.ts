@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
-    console.log('🧪 Manual tournament trigger called');
-
     try {
         // Get the base URL for the current request
         const baseUrl = `${req.nextUrl.protocol}//${req.nextUrl.host}`;
@@ -57,8 +55,7 @@ export async function POST(req: NextRequest) {
                             })
                             .eq('id', cronData.tournament.id);
 
-                        console.log('✅ Tournament stats synced:', { players: totalPlayers, prize_pool: totalPrizePool });
-                    }
+                        }
                 }
             } catch (syncError) {
                 console.error('❌ Error syncing tournament stats:', syncError);

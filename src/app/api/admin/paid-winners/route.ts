@@ -10,8 +10,6 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: 'Tournament ID required' }, { status: 400 });
         }
 
-        console.log('🔍 Fetching paid winners for tournament:', tournamentId);
-
         // Use service role client to bypass RLS
         const supabase = createServerSupabaseClient();
 
@@ -21,8 +19,6 @@ export async function GET(req: NextRequest) {
             .select('wallet, final_rank, transaction_hash, sent_at')
             .eq('tournament_id', tournamentId)
             .order('final_rank', { ascending: true });
-
-        console.log('📊 Paid winners query result:', { paidWinners, error });
 
         if (error) {
             console.error('Error fetching paid winners:', error);

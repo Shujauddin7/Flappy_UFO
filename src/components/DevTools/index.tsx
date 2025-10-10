@@ -104,13 +104,11 @@ function DevToolsContent() {
                     <button
                         onClick={async () => {
                             const { supabase } = await import('@/lib/supabase');
-                            console.log('🔍 Testing user insert...');
                             try {
-                                const testWallet = '0x1234567890123456789012345678901234567890';
-                                const { data, error } = await supabase
+                                const { error } = await supabase
                                     .from('users')
                                     .upsert({
-                                        wallet: testWallet,
+                                        wallet: '0x1234567890123456789012345678901234567890',
                                         username: 'test_user_' + Date.now()
                                     }, {
                                         onConflict: 'wallet'
@@ -121,7 +119,6 @@ function DevToolsContent() {
                                     console.error('❌ Insert test failed:', error);
                                     alert('❌ Insert failed: ' + error.message);
                                 } else {
-                                    console.log('✅ Insert test successful:', data);
                                     alert('✅ Test user created! Check Supabase table.');
                                 }
                             } catch (err) {

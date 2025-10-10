@@ -3,9 +3,6 @@ import { createClient } from '@supabase/supabase-js';
 import { deleteCached } from '@/lib/redis';
 
 export async function GET(req: NextRequest) {
-    console.log('🕐 MANUAL Tournament Creation Backup Triggered at:', new Date().toISOString());
-    console.log('📝 NOTE: Primary automation now runs via Supabase pg_cron - this is backup/manual trigger only');
-
     try {
         // Enhanced authentication for manual triggers (no longer used by Vercel cron)
         const userAgent = req.headers.get('user-agent');
@@ -22,15 +19,6 @@ export async function GET(req: NextRequest) {
         const isManualTrigger = authHeader === `Bearer ${cronSecret}` && cronSecret;
 
         // Log authentication details for debugging
-        console.log('🔐 Authentication check:', {
-            userAgent,
-            vercelCronHeader,
-            hasAuthHeader: !!authHeader,
-            isVercelCron,
-            isManualTrigger,
-            cronSecretExists: !!cronSecret
-        });
-
         if (!isVercelCron && !isManualTrigger) {
             console.error('❌ Unauthorized cron job access attempt', {
                 userAgent,
@@ -42,8 +30,6 @@ export async function GET(req: NextRequest) {
                 debug: process.env.NODE_ENV === 'development' ? { userAgent, vercelCronHeader } : undefined
             }, { status: 401 });
         }
-
-        console.log('✅ Authentication successful:', isVercelCron ? 'Vercel Cron' : 'Manual Trigger');
 
         // Environment-specific database configuration (following Plan.md specification)
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
@@ -102,36 +88,17 @@ export async function GET(req: NextRequest) {
         tournamentSunday.setUTCHours(0, 0, 0, 0);
         const tournamentDay = tournamentSunday.toISOString().split('T')[0];
 
-        console.log('📅 Tournament date calculation:', {
-            currentTime: now.toISOString(),
-            utcDay: `${utcDay} (${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][utcDay]})`,
-            utcTime: `${utcHour.toString().padStart(2, '0')}:${utcMinute.toString().padStart(2, '0')} UTC`,
-            calculatedTournamentSunday: tournamentSunday.toISOString(),
-            tournamentDay
-        });
         // Remove the custom tournamentId - let the database generate the UUID
 
-        console.log('📅 Processing tournament for day:', tournamentDay);
-
         // Step 1: Check if tournament already exists for this day
-        console.log('🔍 Checking for existing tournament...');
-        const { data: existingTournament, error: checkError } = await supabase
+        const { data: existingTournament } = await supabase
             .from('tournaments')
             .select('id, is_active, tournament_day, start_time, end_time')
             .eq('tournament_day', tournamentDay)
             .single();
 
-        console.log('🔍 Tournament check result:', {
-            found: !!existingTournament,
-            tournamentId: existingTournament?.id,
-            isActive: existingTournament?.is_active,
-            error: checkError?.message
-        });
-
         if (existingTournament) {
             // Tournament exists, just reactivate it and deactivate others
-            console.log('♻️ Tournament exists, reactivating...');
-
             // Deactivate all other tournaments first
             const { error: deactivateOthersError } = await supabase
                 .from('tournaments')
@@ -158,8 +125,6 @@ export async function GET(req: NextRequest) {
                 }, { status: 500 });
             }
 
-            console.log('✅ Tournament reactivated successfully:', reactivatedTournament);
-
             return NextResponse.json({
                 success: true,
                 message: 'Tournament reactivated successfully',
@@ -176,8 +141,6 @@ export async function GET(req: NextRequest) {
         }
 
         // Step 2: No existing tournament, create new one
-        console.log('🆕 No tournament exists, creating new one...');
-
         // Deactivate all current tournaments
         const { error: deactivateError } = await supabase
             .from('tournaments')
@@ -193,7 +156,6 @@ export async function GET(req: NextRequest) {
         }
 
         // Reset ALL users' verification status (as per Plan.md - verification resets weekly)
-        console.log('🔄 Resetting user verification status...');
         const { error: resetVerificationError } = await supabase
             .from('users')
             .update({ last_verified_date: null })
@@ -202,22 +164,13 @@ export async function GET(req: NextRequest) {
         if (resetVerificationError) {
             console.error('❌ Error resetting user verification:', resetVerificationError);
             // Don't fail the entire process for this, just log it
-            console.log('⚠️ Continuing despite verification reset error...');
-        }
+            }
 
         // Create tournament start and end times
         const tournamentStartTime = new Date(tournamentDay + 'T15:30:00.000Z');
         const tournamentEndTime = new Date(tournamentStartTime);
         tournamentEndTime.setUTCDate(tournamentEndTime.getUTCDate() + 7);
 
-        console.log('🕐 Tournament timing details:', {
-            tournamentDay,
-            startTime: tournamentStartTime.toISOString(),
-            endTime: tournamentEndTime.toISOString(),
-            durationDays: 7
-        });
-
-        console.log('🎯 Creating new weekly tournament...');
         const { data: newTournament, error: createError } = await supabase
             .from('tournaments')
             .insert([
@@ -262,10 +215,7 @@ export async function GET(req: NextRequest) {
             }, { status: 500 });
         }
 
-        console.log('✅ Tournament created successfully:', newTournament);
-
         // Step 4: Clear all tournament and leaderboard caches for instant update
-        console.log('🧹 Clearing all tournament caches for fresh start...');
         try {
             // Clear Redis caches
             await deleteCached('tournament:current');
@@ -275,14 +225,11 @@ export async function GET(req: NextRequest) {
 
             // Clear any existing leaderboard cache for the old tournament
             // This will force a fresh load when clients access the new tournament
-            console.log('✅ All tournament caches cleared successfully');
-        } catch (cacheError) {
-            console.warn('⚠️ Cache clearing failed (non-critical):', cacheError);
+            } catch {
             // Don't fail the tournament creation for cache issues
         }
 
         // Step 5: Warm caches immediately for new tournament
-        console.log('🔥 Warming caches for new tournament...');
         try {
             // Trigger cache warming in background (don't wait for it)
             fetch(`${req.nextUrl.origin}/api/admin/warm-cache`, {
@@ -290,11 +237,11 @@ export async function GET(req: NextRequest) {
                 headers: {
                     'Authorization': `Bearer ${process.env.CRON_SECRET || 'no-secret'}`
                 }
-            }).catch(warmError => {
-                console.warn('Cache warming failed (non-critical):', warmError);
+            }).catch(() => {
+                // Intentionally ignore cache warming errors
             });
-        } catch (warmError) {
-            console.warn('⚠️ Cache warming trigger failed (non-critical):', warmError);
+        } catch {
+            // Intentionally ignore warm cache errors
         }
 
         // Step 6: Verify the new tournament is active
@@ -310,8 +257,6 @@ export async function GET(req: NextRequest) {
                 error: 'Tournament creation verification failed'
             }, { status: 500 });
         }
-
-        console.log('🎉 Weekly tournament automation completed successfully!');
 
         return NextResponse.json({
             success: true,
@@ -338,6 +283,5 @@ export async function GET(req: NextRequest) {
 
 // Also allow POST for manual testing
 export async function POST(req: NextRequest) {
-    console.log('🧪 Manual weekly tournament creation triggered');
     return GET(req);
 }

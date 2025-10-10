@@ -30,12 +30,6 @@ async function updateTournamentPrizePool(supabase: any, tournamentId: string) {
         const adminFeeAmount = totalRevenue * 0.30; // Always 30%
         const totalPrizePool = totalRevenue * 0.70; // Always 70% - no guarantee added
 
-        console.log('💰 Tournament totals updated after continue payment:', {
-            totalRevenue,
-            totalPrizePool,
-            adminFeeAmount
-        });
-
         // Update tournament with simple 70/30 split
         const { error: updateError } = await supabase
             .from('tournaments')
@@ -48,12 +42,6 @@ async function updateTournamentPrizePool(supabase: any, tournamentId: string) {
 
         if (updateError) {
             console.error('❌ Error updating tournament analytics:', updateError);
-        } else {
-            console.log('✅ Tournament analytics updated with continue payment:', {
-                total_collected: totalRevenue,
-                total_prize_pool: totalPrizePool,
-                admin_fee: adminFeeAmount
-            });
         }
     } catch (error) {
         console.error('❌ Error in updateTournamentPrizePool:', error);
@@ -95,8 +83,6 @@ async function updateUserStatistics(userId: string, newScore: number, shouldUpda
 
 export async function POST(req: NextRequest) {
     try {
-        console.log('🔥🔥🔥 SCORE API - DEPLOYED VERSION: DEC-26-2024-23:05 🔥🔥🔥');
-
         // Environment-specific database configuration (following Plan.md specification)
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
 
@@ -266,8 +252,6 @@ export async function POST(req: NextRequest) {
 
         // 💰 CRITICAL FIX: Update user's continue payment total when payment is made
         if (finalContinuePayments > 0) {
-            console.log('💳 Continue payment detected:', finalContinuePayments, 'WLD');
-
             // Update the user_tournament_records with new continue payment total
             const newContinueTotal = (record.total_continue_payments || 0) + finalContinuePayments;
             const { error: continueUpdateError } = await supabase
@@ -286,23 +270,9 @@ export async function POST(req: NextRequest) {
                 }, { status: 500 });
             }
 
-            console.log('✅ Continue payment total updated:', newContinueTotal, 'WLD');
-        }
+            }
 
         // First, always insert the individual score into game_scores table
-        console.log('📊 Inserting game score:', {
-            user_tournament_record_id: record.id,
-            user_id: user.id,
-            tournament_id: record.tournament_id,
-            username: user.username,
-            wallet: walletToCheck,
-            tournament_day: tournamentDay,
-            score: score,
-            game_duration_ms: game_duration,
-            was_verified_game: isVerifiedGame,
-            entry_type: isVerifiedGame ? 'verified' : 'standard'
-        });
-
         const { error: gameScoreError } = await supabase
             .from('game_scores')
             .insert({
@@ -335,8 +305,6 @@ export async function POST(req: NextRequest) {
                 debug: 'Game score insertion failed'
             }, { status: 500 });
         }
-
-        console.log('✅ Game score inserted successfully into game_scores table');
 
         // Check if this is a new high score
         if (score > (record.highest_score || 0)) {
@@ -407,7 +375,6 @@ export async function POST(req: NextRequest) {
                 }
 
                 // 🚨 NEW HIGH SCORE: Update Redis leaderboard + publish realtime update (OPTIMIZED: 1 Redis call instead of 2)
-                console.log('⚡ Updating Redis leaderboard and publishing score update...');
                 await publishCombinedScoreUpdate(
                     tournamentDay,
                     record.tournament_id,
@@ -422,13 +389,10 @@ export async function POST(req: NextRequest) {
 
                 // � CRITICAL FIX: Update tournament totals if continue payment was made (high score path)
                 if (finalContinuePayments > 0) {
-                    console.log('💰 Updating tournament prize pool after continue payment (high score)...');
                     await updateTournamentPrizePool(supabase, record.tournament_id);
                 }
 
                 // �🚨 NEW HIGH SCORE: Update all caches systematically
-                console.log('🏆 New high score! Updating all caches systematically...');
-
                 try {
                     const { invalidateAllTournamentCaches } = await import('@/utils/tournament-cache-helpers');
                     await invalidateAllTournamentCaches({
@@ -437,7 +401,6 @@ export async function POST(req: NextRequest) {
                         rewarmCache: true,
                         source: 'new_high_score'
                     });
-                    console.log('✅ All caches updated for new high score');
                 } catch (cacheError) {
                     console.error('❌ Cache update failed for new high score:', cacheError);
                     // Continue with the request even if caching fails
@@ -460,11 +423,9 @@ export async function POST(req: NextRequest) {
                         p_games: 1
                     });
                     if (rpcError) {
-                        console.log('increment_signin_games RPC not available or failed (non-critical)');
+                        }
+                } catch {
                     }
-                } catch (e) {
-                    console.log('Sign-in score aggregate update skipped (non-critical):', e);
-                }
 
                 // 🎯 INSTANT RANK: Get user's new rank for immediate display
                 let userRank: number | undefined;
@@ -472,10 +433,8 @@ export async function POST(req: NextRequest) {
                     const { getUserTournamentRank } = await import('@/utils/leaderboard-queries');
                     const rankData = await getUserTournamentRank(tournamentDay, walletToCheck);
                     userRank = rankData?.rank;
-                    console.log('✅ User rank fetched:', userRank);
-                } catch (rankError) {
-                    console.warn('⚠️ Could not fetch user rank (non-critical):', rankError);
-                }
+                    } catch {
+                    }
 
                 return NextResponse.json({
                     success: true,
@@ -540,7 +499,6 @@ export async function POST(req: NextRequest) {
         }
 
         // 🔄 Publish realtime score update for regular scores (OPTIMIZED: 1 Redis call instead of 2)
-        console.log('📡 Publishing optimized combined score update to Socket.IO server (regular score)...');
         await publishCombinedScoreUpdate(
             tournamentDay,
             record.tournament_id,
@@ -555,14 +513,11 @@ export async function POST(req: NextRequest) {
 
         // � CRITICAL FIX: Update tournament totals if continue payment was made
         if (finalContinuePayments > 0) {
-            console.log('💰 Updating tournament prize pool after continue payment...');
             await updateTournamentPrizePool(supabase, record.tournament_id);
         }
 
         // 🚀 CRITICAL FIX: Update BOTH tournament stats AND leaderboard for ALL scores
         // This ensures consistent Supabase Realtime update timing for both prize pool and player scores
-        console.log('⚡ Updating ALL caches for consistent Supabase Realtime experience...');
-
         try {
             // CRITICAL: Force immediate cache clearing and rewarming for instant updates
             const { invalidateAllTournamentCaches } = await import('@/utils/tournament-cache-helpers');
@@ -571,8 +526,6 @@ export async function POST(req: NextRequest) {
                 rewarmCache: true,
                 source: 'score_submission_all_scores'
             });
-            console.log('✅ Both tournament stats AND leaderboard updated for ALL score submissions');
-
             // CRITICAL: Clear ALL cache keys that could cause stale display
             const additionalCacheKeys = [
                 'tournament_leaderboard_response',
@@ -590,8 +543,6 @@ export async function POST(req: NextRequest) {
             await setCached(`leaderboard_updates:${tournamentDay}`, Date.now().toString(), 300);
             await setCached(`tournament_stats_updates:${tournamentDay}`, Date.now().toString(), 300);
 
-            console.log('✅ All cache keys cleared - Supabase Realtime will handle instant cross-device updates');
-
         } catch (cacheError) {
             console.error('❌ Cache update failed but score recorded:', cacheError);
             // Don't fail the request if cache update fails
@@ -603,10 +554,8 @@ export async function POST(req: NextRequest) {
             const { getUserTournamentRank } = await import('@/utils/leaderboard-queries');
             const rankData = await getUserTournamentRank(tournamentDay, walletToCheck);
             userRank = rankData?.rank;
-            console.log('✅ User rank fetched:', userRank);
-        } catch (rankError) {
-            console.warn('⚠️ Could not fetch user rank (non-critical):', rankError);
-        }
+            } catch {
+            }
 
         return NextResponse.json({
             success: true,

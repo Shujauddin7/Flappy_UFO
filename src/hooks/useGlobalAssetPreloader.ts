@@ -45,7 +45,6 @@ class GlobalAssetCache {
             this.cache.set(src, image);
             return image;
         } catch (error) {
-            console.warn(`Failed to preload asset after ${retries} retries: ${src}`);
             throw error;
         } finally {
             this.loadPromises.delete(src);
@@ -93,19 +92,12 @@ class GlobalAssetCache {
         }
 
         this.preloadStarted = true;
-        console.log('🚀 Starting global asset preloading...');
-
         const allAssets = [...GAME_ASSETS.planets];
 
         // Load assets in parallel but handle failures gracefully
-        const results = await Promise.allSettled(
+        await Promise.allSettled(
             allAssets.map(asset => this.preloadAsset(asset))
         );
-
-        const successful = results.filter(result => result.status === 'fulfilled').length;
-        const failed = results.filter(result => result.status === 'rejected').length;
-
-        console.log(`✅ Asset preloading complete: ${successful} loaded, ${failed} failed`);
     }
 
     getAsset(src: string): HTMLImageElement | null {
@@ -171,8 +163,7 @@ export function useGlobalAssetPreloader() {
                     }
                     loadedCount++;
                     setLoadingProgress(Math.round((loadedCount / allAssets.length) * 100));
-                } catch (error) {
-                    console.warn(`Failed to preload ${asset}:`, error);
+                } catch {
                     setErrors(prev => [...prev, asset]);
                     loadedCount++;
                     setLoadingProgress(Math.round((loadedCount / allAssets.length) * 100));

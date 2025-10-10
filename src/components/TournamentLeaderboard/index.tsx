@@ -53,33 +53,13 @@ export const TournamentLeaderboard = ({
         const hasCachedData = typeof window !== 'undefined' && sessionStorage.getItem('leaderboard_data');
         const shouldShowLoading = !hasImmediateData && !hasCachedData;
 
-        console.log('🏁 TournamentLeaderboard MOUNT:', {
-            hasPreloadedData: !!preloadedData,
-            hasImmediateData,
-            hasCachedData: !!hasCachedData,
-            playersCount: preloadedData?.players?.length || 0,
-            initialLoadingState: shouldShowLoading,
-            reason: hasImmediateData
-                ? 'Has preloaded data - no blur'
-                : hasCachedData
-                    ? 'Has cached data - no blur'
-                    : 'No data available - show loading'
-        });
-
         return shouldShowLoading;
     });
     const [currentUserData, setCurrentUserData] = useState<LeaderboardPlayer | null>(null);
 
     // CRITICAL DEBUG: Log when preloaded data becomes available
     useEffect(() => {
-        console.log('🔍 PRELOADED DATA CHANGE DETECTED:', {
-            hasData: !!preloadedData,
-            playersCount: preloadedData?.players?.length || 0,
-            timestamp: Date.now(),
-            currentLoadingState: loading,
-            realtime_update_id: preloadedData?.realtime_update_id
-        });
-    }, [preloadedData, loading]);
+        }, [preloadedData, loading]);
 
     // 🚀 CRITICAL FIX: Direct preloaded data processing for realtime updates
     useEffect(() => {
@@ -152,31 +132,14 @@ export const TournamentLeaderboard = ({
 
     const fetchLeaderboardData = useCallback(async () => {
         try {
-            console.log('🔍 fetchLeaderboardData called:', {
-                hasPreloadedData: !!preloadedData,
-                preloadedPlayersCount: preloadedData?.players?.length || 0,
-                preloadedData: preloadedData
-            });
-
             // 🚀 Use preloaded data if available (skips API call completely)
             if (preloadedData) {
-                console.log('🚀 Using preloaded leaderboard data - no API call needed');
                 const players = preloadedData.players || [];
-
-                console.log('📊 Processing preloaded players:', {
-                    playersCount: players.length,
-                    firstPlayer: players[0]
-                });
 
                 // Set data immediately without loading state
                 setTopPlayers(players.slice(0, 10));
                 setAllPlayers(players);
                 setLoading(false); // Data loaded, stop loading
-
-                console.log('✅ Player data set:', {
-                    topPlayersSet: players.slice(0, 10).length,
-                    allPlayersSet: players.length
-                });
 
                 // Process user rank immediately
                 if ((currentUserId || currentUsername) && onUserRankUpdate) {
@@ -212,7 +175,6 @@ export const TournamentLeaderboard = ({
             }
 
             // Only make network request if no preloaded data available
-            console.log('🌐 Making network request for leaderboard data...');
             setLoading(true); // Set loading only for actual network requests
 
             // Fetch leaderboard data via API (uses service key permissions)
@@ -226,9 +188,6 @@ export const TournamentLeaderboard = ({
             }
 
             // 🧪 REDIS TESTING: Log cache performance for World App testing
-            console.log('🧪 Leaderboard Cache Status:', data.cached ? '⚡ REDIS HIT' : '🗄️ DATABASE QUERY');
-            console.log('🧪 Response includes cached flag:', !!data.cached);
-
             const players = data.players || [];
 
             if (players.length === 0) {
@@ -286,19 +245,10 @@ export const TournamentLeaderboard = ({
 
     // Initial load effect - uses preloaded data if available
     useEffect(() => {
-        console.log('🔄 TournamentLeaderboard useEffect triggered:', {
-            hasPreloadedData: !!preloadedData,
-            preloadedPlayersCount: preloadedData?.players?.length || 0,
-            isGracePeriod,
-            currentLoadingState: loading
-        });
-
         // CRITICAL DEBUG: Log exact timing of data availability
         if (preloadedData) {
-            console.log('✅ PRELOADED DATA AVAILABLE - should load instantly');
-        } else {
-            console.log('⏳ NO PRELOADED DATA - will make network request');
-        }
+            } else {
+            }
 
         // Always try to fetch fresh data - preloaded is just for initial display
         fetchLeaderboardData();
@@ -308,9 +258,6 @@ export const TournamentLeaderboard = ({
         // The InfiniteScrollLeaderboard component handles updates via:
         // - 30-second periodic refresh from Redis cache APIs
         // - Automatic cache invalidation and re-warming on score changes
-        console.log('⚡ TournamentLeaderboard: Using Redis cache refresh, no polling needed');
-
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [fetchLeaderboardData, isGracePeriod, preloadedData]); // Exclude loading to prevent infinite loops
 
     // Force refresh when currentUserId or currentUsername changes (user logs in/out)

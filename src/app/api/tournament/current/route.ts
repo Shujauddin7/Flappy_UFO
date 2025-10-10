@@ -3,25 +3,13 @@ import { createClient } from '@supabase/supabase-js';
 import { getCached, setCached } from '@/lib/redis';
 
 export async function GET() {
-    console.log('🔍 Current Tournament API called');
-    console.log('🌍 Environment:', process.env.NEXT_PUBLIC_ENV);
-
-    const requestStartTime = Date.now();
 
     try {
         // 🚀 STEP 1: Check Redis cache first (5-second cache for tournament info)
         const cacheKey = 'tournament:current';
-        console.log('🔑 Cache key:', cacheKey);
-
         const cachedData = await getCached(cacheKey);
-        console.log('📦 Redis cache result:', cachedData ? 'HIT' : 'MISS');
-
         if (cachedData) {
-            const responseTime = Date.now() - requestStartTime;
-            console.log('⚡ Tournament Cache Status: 🟢 CACHE HIT');
-            console.log(`⏱️  Response includes cached flag: true`);
-            console.log(`🚀 Response time: ${responseTime}ms (Redis cache)`);
-
+//             const responseTime = Date.now() - requestStartTime;
             // Return cached tournament data instantly
             return NextResponse.json({
                 ...cachedData,
@@ -29,8 +17,6 @@ export async function GET() {
                 cached_at: new Date().toISOString()
             });
         }
-
-        console.log('📊 Tournament Cache Status: 🔴 DATABASE QUERY');
 
         // 🗄️ STEP 2: If no cache, fetch from database
         // Environment-specific database configuration (following Plan.md specification)
@@ -55,8 +41,6 @@ export async function GET() {
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
         const now = new Date();
-        console.log('🗓️ Looking for active tournament at:', now.toISOString());
-
         // Fetch current active tournament (get the most recent one if multiple exist)
         const { data: tournaments, error: tournamentError } = await supabase
             .from('tournaments')
@@ -66,7 +50,6 @@ export async function GET() {
             .limit(1);
 
         if (tournamentError) {
-            console.log('❌ Tournament fetch error:', tournamentError);
             return NextResponse.json({
                 error: 'Failed to fetch tournament',
                 details: tournamentError.message
@@ -91,15 +74,6 @@ export async function GET() {
         const endTime = new Date(tournament.end_time);
         const currentTime = new Date();
 
-        console.log('⏰ Time comparison debug:', {
-            current_time: currentTime.toISOString(),
-            start_time: startTime.toISOString(),
-            end_time: endTime.toISOString(),
-            current_timestamp: currentTime.getTime(),
-            start_timestamp: startTime.getTime(),
-            end_timestamp: endTime.getTime()
-        });
-
         // Simple boolean checks
         const hasNotStarted = currentTime < startTime;
         const hasEnded = currentTime >= endTime;
@@ -121,17 +95,6 @@ export async function GET() {
             entries_allowed: isActive && !isGracePeriod  // Block entries during grace period
         };
 
-        console.log('✅ Tournament status calculated:', {
-            tournament_id: tournament.id,
-            tournament_day: tournament.tournament_day,
-            has_not_started: hasNotStarted,
-            is_active: isActive,
-            has_ended: hasEnded,
-            entries_allowed: tournamentStatus.entries_allowed,
-            time_until_start_minutes: hasNotStarted ? Math.round((startTime.getTime() - currentTime.getTime()) / 60000) : 0,
-            time_until_end_minutes: isActive ? Math.round((endTime.getTime() - currentTime.getTime()) / 60000) : 0
-        });
-
         const responseData = {
             tournament,
             status: tournamentStatus,
@@ -140,14 +103,8 @@ export async function GET() {
         };
 
         // 💾 STEP 3: Cache the tournament data for 15 seconds (ultra-fast human count updates)
-        console.log('💾 Caching tournament data for 15 seconds...');
         await setCached(cacheKey, responseData, 15);
-        console.log('✅ Tournament data cached successfully');
-
-        const responseTime = Date.now() - requestStartTime;
-        console.log(`🚀 Total response time: ${responseTime}ms (Database + Redis cache)`);
-        console.log(`📊 Response includes cached flag: false`);
-
+//         const responseTime = Date.now() - requestStartTime;
         return NextResponse.json(responseData);
 
     } catch (error) {
