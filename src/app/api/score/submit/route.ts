@@ -466,6 +466,17 @@ export async function POST(req: NextRequest) {
                     console.log('Sign-in score aggregate update skipped (non-critical):', e);
                 }
 
+                // 🎯 INSTANT RANK: Get user's new rank for immediate display
+                let userRank: number | undefined;
+                try {
+                    const { getUserTournamentRank } = await import('@/utils/leaderboard-queries');
+                    const rankData = await getUserTournamentRank(tournamentDay, walletToCheck);
+                    userRank = rankData?.rank;
+                    console.log('✅ User rank fetched:', userRank);
+                } catch (rankError) {
+                    console.warn('⚠️ Could not fetch user rank (non-critical):', rankError);
+                }
+
                 return NextResponse.json({
                     success: true,
                     data: {
@@ -473,6 +484,7 @@ export async function POST(req: NextRequest) {
                         previous_highest_score: record.highest_score,
                         current_highest_score: score,
                         is_new_high_score: true,
+                        current_rank: userRank,
                         updated_at: new Date().toISOString()
                     }
                 });
@@ -585,6 +597,17 @@ export async function POST(req: NextRequest) {
             // Don't fail the request if cache update fails
         }
 
+        // 🎯 INSTANT RANK: Get user's rank for immediate display (even for non-high scores)
+        let userRank: number | undefined;
+        try {
+            const { getUserTournamentRank } = await import('@/utils/leaderboard-queries');
+            const rankData = await getUserTournamentRank(tournamentDay, walletToCheck);
+            userRank = rankData?.rank;
+            console.log('✅ User rank fetched:', userRank);
+        } catch (rankError) {
+            console.warn('⚠️ Could not fetch user rank (non-critical):', rankError);
+        }
+
         return NextResponse.json({
             success: true,
             data: {
@@ -592,6 +615,7 @@ export async function POST(req: NextRequest) {
                 current_highest_score: record.highest_score,
                 submitted_score: score,
                 is_new_high_score: false,
+                current_rank: userRank,
                 message: 'Score submitted but not higher than current record'
             }
         });

@@ -923,7 +923,8 @@ export default function GameHomepage() {
                     ...prev,
                     currentHigh: Math.max(prev.currentHigh || 0, result.data.current_highest_score),
                     isNewHighScore: result.data.is_new_high_score,
-                    previousHigh: result.data.previous_highest_score
+                    previousHigh: result.data.previous_highest_score,
+                    currentRank: result.data.current_rank // 🎯 INSTANT RANK display
                 }));
 
                 // 🚀 INSTANT OWN SCORE UPDATE: Clear cache + set invalidation flag
@@ -954,7 +955,8 @@ export default function GameHomepage() {
                     // 🎯 CRITICAL FIX: Keep HIGHER value (don't let API downgrade instant calc)
                     setGameResult(prev => ({
                         ...prev,
-                        currentHigh: Math.max(prev.currentHigh || 0, result.data.current_highest_score)
+                        currentHigh: Math.max(prev.currentHigh || 0, result.data.current_highest_score),
+                        currentRank: result.data.current_rank // 🎯 INSTANT RANK display
                     }));
                 }
 
@@ -1016,6 +1018,7 @@ export default function GameHomepage() {
         isNewHighScore?: boolean;
         previousHigh?: number;
         currentHigh?: number;
+        currentRank?: number;
         error?: string;
     }>({
         show: false,
@@ -1085,7 +1088,8 @@ export default function GameHomepage() {
                             ...prev,
                             isNewHighScore: result.data.is_new_high_score,
                             previousHigh: result.data.previous_highest_score,
-                            currentHigh: Math.max(prev.currentHigh || 0, result.data.current_highest_score)
+                            currentHigh: Math.max(prev.currentHigh || 0, result.data.current_highest_score),
+                            currentRank: result.data.current_rank // 🎯 INSTANT RANK display
                         }));
 
                         // 🚀 FIX: Immediately update local highest score state for instant display
@@ -1105,7 +1109,8 @@ export default function GameHomepage() {
                             // 🎯 INSTANT HIGH SCORE DISPLAY: Update modal with current high score
                             setGameResult(prev => ({
                                 ...prev,
-                                currentHigh: Math.max(prev.currentHigh || 0, result.data.current_highest_score)
+                                currentHigh: Math.max(prev.currentHigh || 0, result.data.current_highest_score),
+                                currentRank: result.data.current_rank // 🎯 INSTANT RANK display
                             }));
                         }
 
@@ -1310,6 +1315,61 @@ export default function GameHomepage() {
                                         New Best: {gameResult.currentHigh || userHighestScore}
                                         <div style={{ fontSize: '13px', marginTop: '8px', color: '#10B981' }}>
                                             Amazing! 🚀
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* 🎯 SMART RANK DISPLAY - Show only to Top 100 (avoid demotivation) */}
+                                {gameMode === 'tournament' && gameResult.currentRank && gameResult.currentRank <= 100 && (
+                                    <div className="rank-display" style={{
+                                        marginTop: '15px',
+                                        padding: '12px',
+                                        background: gameResult.currentRank <= 10
+                                            ? 'rgba(255, 215, 0, 0.15)'  // Gold for Top 10
+                                            : gameResult.currentRank <= 50
+                                                ? 'rgba(16, 185, 129, 0.15)'  // Green for Top 50
+                                                : 'rgba(59, 130, 246, 0.15)',  // Blue for Top 100
+                                        border: gameResult.currentRank <= 10
+                                            ? '2px solid rgba(255, 215, 0, 0.5)'
+                                            : gameResult.currentRank <= 50
+                                                ? '2px solid rgba(16, 185, 129, 0.4)'
+                                                : '2px solid rgba(59, 130, 246, 0.4)',
+                                        borderRadius: '8px',
+                                        fontSize: '16px',
+                                        fontWeight: 'bold',
+                                        textAlign: 'center',
+                                        animation: 'fadeIn 0.3s ease-in, pulse 2s ease-in-out infinite',
+                                        color: gameResult.currentRank <= 10
+                                            ? '#FFD700'
+                                            : gameResult.currentRank <= 50
+                                                ? '#10B981'
+                                                : '#3B82F6'
+                                    }}>
+                                        {gameResult.currentRank <= 10 ? (
+                                            <>🥇 Rank #{gameResult.currentRank} - TOP 10!</>
+                                        ) : gameResult.currentRank <= 50 ? (
+                                            <>🏆 Rank #{gameResult.currentRank} - TOP 50!</>
+                                        ) : (
+                                            <>🎯 Rank #{gameResult.currentRank} - TOP 100!</>
+                                        )}
+                                        {gameResult.isNewHighScore && <span style={{ fontSize: '14px', marginLeft: '8px', color: '#FFA500' }}>⬆️ NEW!</span>}
+                                    </div>
+                                )}
+
+                                {/* Show encouraging message for players below Top 100 */}
+                                {gameMode === 'tournament' && gameResult.currentRank && gameResult.currentRank > 100 && !gameResult.isNewHighScore && (
+                                    <div className="current-high-info" style={{
+                                        marginTop: '15px',
+                                        padding: '12px',
+                                        background: 'rgba(59, 130, 246, 0.1)',
+                                        border: '1px solid rgba(59, 130, 246, 0.3)',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        animation: 'fadeIn 0.3s ease-in'
+                                    }}>
+                                        🎯 Your Best: <strong style={{ color: '#3B82F6' }}>{gameResult.currentHigh}</strong>
+                                        <div style={{ fontSize: '13px', marginTop: '6px', color: '#3B82F6' }}>
+                                            Keep improving! 💪
                                         </div>
                                     </div>
                                 )}
