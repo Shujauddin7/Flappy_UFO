@@ -907,10 +907,11 @@ export default function GameHomepage() {
                 setUserHighestScore(result.data.current_highest_score);
                 setScoreUpdateTrigger(Date.now()); // Trigger refresh
 
-                // 🎯 CRITICAL FIX: Force re-render of game result modal with NEW high score
+                // 🎯 CRITICAL FIX: Keep the HIGHER value (instant calc vs API)
+                // Don't let API overwrite if we already calculated a higher value
                 setGameResult(prev => ({
                     ...prev,
-                    currentHigh: result.data.current_highest_score,
+                    currentHigh: Math.max(prev.currentHigh || 0, result.data.current_highest_score),
                     isNewHighScore: result.data.is_new_high_score,
                     previousHigh: result.data.previous_highest_score
                 }));
@@ -940,10 +941,10 @@ export default function GameHomepage() {
                     setUserHighestScore(result.data.current_highest_score);
                     setScoreUpdateTrigger(Date.now()); // Trigger refresh
 
-                    // 🎯 CRITICAL FIX: ALWAYS update modal with current high score for instant display
+                    // 🎯 CRITICAL FIX: Keep HIGHER value (don't let API downgrade instant calc)
                     setGameResult(prev => ({
                         ...prev,
-                        currentHigh: result.data.current_highest_score
+                        currentHigh: Math.max(prev.currentHigh || 0, result.data.current_highest_score)
                     }));
                 }
 
@@ -1297,11 +1298,32 @@ export default function GameHomepage() {
                                         Previous: {gameResult.previousHigh}
                                         <br />
                                         New Best: {gameResult.currentHigh || userHighestScore}
+                                        <div style={{ fontSize: '13px', marginTop: '8px', color: '#10B981' }}>
+                                            Amazing! 🚀
+                                        </div>
                                     </div>
                                 )}
 
-                                {/* 🎯 Show motivational message for tournament mode */}
-                                {gameMode === 'tournament' && !gameResult.isNewHighScore && (
+                                {/* 🎯 FOMO message when NOT new high - encourage continue */}
+                                {gameMode === 'tournament' && !gameResult.isNewHighScore && !tournamentContinueUsed && (
+                                    <div className="current-high-info" style={{
+                                        marginTop: '15px',
+                                        padding: '12px',
+                                        background: 'rgba(255, 165, 0, 0.1)',
+                                        border: '1px solid rgba(255, 165, 0, 0.3)',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        animation: 'fadeIn 0.3s ease-in'
+                                    }}>
+                                        🏆 Your Best: <strong style={{ color: '#FFA500' }}>{gameResult.currentHigh}</strong>
+                                        <div style={{ fontSize: '13px', marginTop: '6px', color: '#FFA500' }}>
+                                            So close! 💫 One more try?
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Show best score after continue used */}
+                                {gameMode === 'tournament' && !gameResult.isNewHighScore && tournamentContinueUsed && (
                                     <div className="current-high-info" style={{
                                         marginTop: '15px',
                                         padding: '12px',
@@ -1312,11 +1334,6 @@ export default function GameHomepage() {
                                         animation: 'fadeIn 0.3s ease-in'
                                     }}>
                                         🏆 Your Best: <strong style={{ color: '#00F5FF' }}>{gameResult.currentHigh}</strong>
-                                        <div style={{ fontSize: '13px', marginTop: '6px', color: '#10B981' }}>
-                                            {gameResult.score >= (gameResult.currentHigh || 0) * 0.8
-                                                ? "Great job! 🚀"
-                                                : "So close! �"}
-                                        </div>
                                     </div>
                                 )}
 
