@@ -251,41 +251,16 @@ export async function publishCombinedScoreUpdate(
         old_score: number
     }
 ): Promise<boolean> {
-    const redis = await getRedisClient();
-    if (!redis) {
-        console.warn('⚠️ Redis not available, skipping score update publish');
-        return false;
-    }
-
-    try {
-        // Combine leaderboard update + score update into ONE message
-        // IMPORTANT: Match the exact format that frontend expects!
-        const combinedMessage = {
-            tournament_id: tournamentId,
-            type: 'score_update',
-            data: {
-                user_id: userId,
-                username: playerDetails.username || `Player ${userId.slice(0, 8)}`,
-                wallet: playerDetails.wallet,
-                old_score: playerDetails.old_score,
-                new_score: score,
-                new_rank: undefined, // Frontend doesn't use this
-                timestamp: Date.now()
-            }
-        };
-
-        // Use environment-specific channel (same as Socket.IO server listens to)
-        const envChannel = getEnvironmentKey('tournament:updates');
-
-        // Only 1 PUBLISH instead of 2! (50% Redis reduction)
-        await redis.publish(envChannel, JSON.stringify(combinedMessage));
-
-        const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
-        console.log(`🚀 OPTIMIZED: Published combined score update (${isProduction ? 'PROD' : 'DEV'}) - 1 command instead of 2`);
-
-        return true;
-    } catch (error) {
-        console.error('❌ Redis combined publish failed:', error);
-        return false;
-    }
+    // Use the EXACT same format as publishScoreUpdate for compatibility
+    return publishRealtimeUpdate('tournament:updates', {
+        tournament_id: tournamentId,
+        type: 'score_update',
+        data: {
+            user_id: userId,
+            username: playerDetails.username || `Player ${userId.slice(0, 8)}`,
+            old_score: playerDetails.old_score,
+            new_score: score,
+            new_rank: undefined
+        }
+    });
 }
