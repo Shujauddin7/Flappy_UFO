@@ -21,9 +21,21 @@ function ErudaLoader() {
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod' ||
             (typeof window !== 'undefined' && window.location.hostname === 'flappyufo.vercel.app');
 
+        // Check if running in World App (mobile)
+        const isWorldApp = typeof window !== 'undefined' &&
+            (window.navigator.userAgent.includes('MiniApp') ||
+                window.navigator.userAgent.includes('WorldApp'));
+
+        // Disable Eruda completely in World App to prevent MiniKit conflicts
+        if (isWorldApp) {
+            console.log('Eruda disabled in World App to prevent crashes');
+            return;
+        }
+
         // Only load Eruda if:
         // 1. Has valid debug key (works on both dev and prod)
         // 2. OR if not in production (dev environment without key)
+        // 3. AND NOT in World App
         if (hasValidDebugKey || !isProduction) {
             // Check if Eruda is already loaded to avoid duplicate loading
             if (window.eruda) {

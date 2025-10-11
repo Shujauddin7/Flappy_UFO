@@ -21,7 +21,7 @@ export async function GET() {
             hasRedisProdUrl: !!process.env.UPSTASH_REDIS_PROD_URL,
             hasRedisDevUrl: !!process.env.UPSTASH_REDIS_DEV_URL,
         },
-        socketUrl: isProduction 
+        socketUrl: isProduction
             ? (process.env.NEXT_PUBLIC_SOCKETIO_PROD_URL || 'https://flappy-ufo-socketio-server-production.up.railway.app')
             : (process.env.NEXT_PUBLIC_SOCKETIO_DEV_URL || 'https://flappy-ufo-socketio-server-dev.up.railway.app'),
         timestamp: new Date().toISOString()

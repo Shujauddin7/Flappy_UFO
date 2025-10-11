@@ -69,10 +69,10 @@ export const TournamentLeaderboard = ({
     useEffect(() => {
         const handleScroll = () => {
             if (!listRef.current) return;
-            
+
             const { scrollTop, scrollHeight, clientHeight } = listRef.current;
             const scrollPercentage = (scrollTop + clientHeight) / scrollHeight;
-            
+
             // Load more when scrolled 80% down
             if (scrollPercentage > 0.8 && displayCount < allPlayers.length) {
                 setDisplayCount(prev => Math.min(prev + 50, allPlayers.length));
@@ -88,7 +88,7 @@ export const TournamentLeaderboard = ({
 
     // CRITICAL DEBUG: Log when preloaded data becomes available
     useEffect(() => {
-        }, [preloadedData, loading]);
+    }, [preloadedData, loading]);
 
     // 🚀 CRITICAL FIX: Direct preloaded data processing for realtime updates
     useEffect(() => {
@@ -276,8 +276,8 @@ export const TournamentLeaderboard = ({
     useEffect(() => {
         // CRITICAL DEBUG: Log exact timing of data availability
         if (preloadedData) {
-            } else {
-            }
+        } else {
+        }
 
         // Always try to fetch fresh data - preloaded is just for initial display
         fetchLeaderboardData();

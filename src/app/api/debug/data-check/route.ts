@@ -4,7 +4,7 @@ import { getSupabaseClient } from '@/utils/database';
 export async function GET() {
     try {
         const supabase = await getSupabaseClient();
-        
+
         // Check current tournament
         const { data: tournaments, error: tournamentError } = await supabase
             .from('tournaments')
@@ -30,7 +30,7 @@ export async function GET() {
                 .eq('tournament_day', currentTournament.tournament_day)
                 .order('highest_score', { ascending: false })
                 .limit(10);
-            
+
             if (!error) {
                 leaderboardData = data;
             }
