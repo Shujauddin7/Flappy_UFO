@@ -4,7 +4,8 @@ import { SocketIOProvider } from '@/contexts/SocketIOContext';
 import { MiniKitProvider } from '@worldcoin/minikit-js/minikit-provider';
 import { Session } from 'next-auth';
 import { SessionProvider } from 'next-auth/react';
-import dynamic from 'next/dynamic';
+// TEMPORARY: Disable dynamic import for Eruda testing
+// import dynamic from 'next/dynamic';
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
 
@@ -55,10 +56,11 @@ function AppDataPreloader({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-const ErudaProvider = dynamic(
-  () => import('@/providers/Eruda').then((c) => c.ErudaProvider),
-  { ssr: false },
-);
+// TEMPORARY: Disable Eruda completely to test mobile crash fix
+// const ErudaProvider = dynamic(
+//   () => import('@/providers/Eruda').then((c) => c.ErudaProvider),
+//   { ssr: false },
+// );
 
 // Define props for ClientProviders
 interface ClientProvidersProps {
@@ -82,8 +84,11 @@ export default function ClientProviders({
   children,
   session,
 }: ClientProvidersProps) {
+  // TEMPORARY: Completely disable Eruda to test if it's causing mobile crashes
+  const DisabledEruda = ({ children }: { children: ReactNode }) => <>{children}</>;
+  
   return (
-    <ErudaProvider>
+    <DisabledEruda>
       <MiniKitProvider>
         <SessionProvider
           session={session}
@@ -102,6 +107,6 @@ export default function ClientProviders({
           </SocketIOProvider>
         </SessionProvider>
       </MiniKitProvider>
-    </ErudaProvider>
+    </DisabledEruda>
   );
 }
