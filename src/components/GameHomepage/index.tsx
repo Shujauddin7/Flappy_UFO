@@ -54,10 +54,10 @@ export default function GameHomepage() {
         };
     }, []);    // Debug state changes
     useEffect(() => {
-        }, [currentScreen]);
+    }, [currentScreen]);
 
     useEffect(() => {
-        }, [isInfoModalOpen]);
+    }, [isInfoModalOpen]);
 
     // Close info modal when navigating away from home screen
     useEffect(() => {
@@ -274,9 +274,9 @@ export default function GameHomepage() {
 
                     if (userRecord) {
                         setUserHighestScore(userRecord.highest_score || 0);
-                        } else {
+                    } else {
                         setUserHighestScore(0);
-                        }
+                    }
                 }
             } catch (error) {
                 console.error('❌ Error fetching user highest score:', error);
@@ -374,8 +374,8 @@ export default function GameHomepage() {
                         ttl: CACHE_TTL.PRELOAD_LEADERBOARD // Use standardized preload leaderboard cache TTL
                     }));
 
-                    } else {
-                    }
+                } else {
+                }
             } catch {
                 // Silent failure - regular loading will work as fallback
             }
@@ -389,7 +389,7 @@ export default function GameHomepage() {
             console.error('❌ Pre-loading failed:', error);
         });
     }, []); // Only run once when component mounts
-    
+
     // Check if tournament is still active before allowing payments
     const checkTournamentActive = useCallback(async () => {
         try {
@@ -890,8 +890,8 @@ export default function GameHomepage() {
 
                     // 🎯 CRITICAL: Set cache invalidation timestamp for instant leaderboard refresh
                     sessionStorage.setItem('cache_invalidated_at', Date.now().toString());
-                    } catch {
-                    }
+                } catch {
+                }
             } else if (result.success) {
                 // Update local state with current highest score for Socket.IO and future reference
                 if (result.data.current_highest_score !== undefined) {
@@ -921,8 +921,8 @@ export default function GameHomepage() {
                     // 🎯 CRITICAL: Set cache invalidation timestamp for instant leaderboard refresh
                     const invalidationTime = Date.now();
                     sessionStorage.setItem('cache_invalidated_at', invalidationTime.toString());
-                    } catch {
-                    }
+                } catch {
+                }
             } else if (!result.success) {
                 console.error('Score submission failed:', result.error);
                 if (isMountedRef.current) {
@@ -1646,21 +1646,6 @@ export default function GameHomepage() {
                             >
                                 Tap To Play
                             </button>
-                            {/* Deployment verification marker */}
-                            <div style={{ 
-                                position: 'fixed', 
-                                top: '10px', 
-                                right: '10px', 
-                                background: 'rgba(0,255,0,0.8)', 
-                                color: 'black',
-                                padding: '8px 12px',
-                                borderRadius: '8px',
-                                fontSize: '14px',
-                                fontWeight: 'bold',
-                                zIndex: 99999 
-                            }}>
-                                ✅ v74e651a - NO ERUDA
-                            </div>
                             <DevSignOut />
                         </div>
                         <div className="bottom-nav-container">
