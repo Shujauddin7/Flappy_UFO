@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { PlayerRankCard } from '@/components/PlayerRankCard';
 
 interface LeaderboardPlayer {
@@ -47,6 +47,9 @@ export const TournamentLeaderboard = ({
 }: TournamentLeaderboardProps) => {
     const [topPlayers, setTopPlayers] = useState<LeaderboardPlayer[]>([]);
     const [allPlayers, setAllPlayers] = useState<LeaderboardPlayer[]>([]);
+    const [visiblePlayers, setVisiblePlayers] = useState<LeaderboardPlayer[]>([]);
+    const [displayCount, setDisplayCount] = useState(50); // Start with 50 players for mobile performance
+    const listRef = useRef<HTMLDivElement>(null);
     const [loading, setLoading] = useState(() => {
         // AGGRESSIVE BLUR PREVENTION: Only show loading if we have absolutely no data
         const hasImmediateData = preloadedData?.players && preloadedData.players.length > 0;
@@ -56,6 +59,32 @@ export const TournamentLeaderboard = ({
         return shouldShowLoading;
     });
     const [currentUserData, setCurrentUserData] = useState<LeaderboardPlayer | null>(null);
+
+    // Virtual scrolling: Update visible players when allPlayers or displayCount changes
+    useEffect(() => {
+        setVisiblePlayers(allPlayers.slice(0, displayCount));
+    }, [allPlayers, displayCount]);
+
+    // Infinite scroll: Load more players when scrolling near bottom
+    useEffect(() => {
+        const handleScroll = () => {
+            if (!listRef.current) return;
+            
+            const { scrollTop, scrollHeight, clientHeight } = listRef.current;
+            const scrollPercentage = (scrollTop + clientHeight) / scrollHeight;
+            
+            // Load more when scrolled 80% down
+            if (scrollPercentage > 0.8 && displayCount < allPlayers.length) {
+                setDisplayCount(prev => Math.min(prev + 50, allPlayers.length));
+            }
+        };
+
+        const listElement = listRef.current;
+        if (listElement) {
+            listElement.addEventListener('scroll', handleScroll, { passive: true });
+            return () => listElement.removeEventListener('scroll', handleScroll);
+        }
+    }, [displayCount, allPlayers.length]);
 
     // CRITICAL DEBUG: Log when preloaded data becomes available
     useEffect(() => {
@@ -336,8 +365,8 @@ export const TournamentLeaderboard = ({
                 </div>
             )}
 
-            <div className="leaderboard-list">
-                {allPlayers.map((player) => {
+            <div className="leaderboard-list" ref={listRef} style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+                {visiblePlayers.map((player) => {
                     // Check if this player is the current user using same matching logic as above
                     const isCurrentUser = currentUserId && (
                         player.wallet === currentUserId ||
@@ -360,6 +389,11 @@ export const TournamentLeaderboard = ({
                         </div>
                     );
                 })}
+                {displayCount < allPlayers.length && (
+                    <div style={{ textAlign: 'center', padding: '1rem', color: '#888' }}>
+                        Showing {displayCount} of {allPlayers.length} players...
+                    </div>
+                )}
             </div>
         </div>
     );
