@@ -139,13 +139,13 @@ export default function ImageLoadingDemo() {
 
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-6">
                         {[
-                            { name: 'Earth', file: 'Earth.jpg' },
-                            { name: 'Mars', file: 'Mars.jpg' },
-                            { name: 'Jupiter', file: 'Jupiter.jpg' },
-                            { name: 'Saturn', file: 'Saturn.jpg' },
-                            { name: 'Venus', file: 'Venus.jpg' },
-                            { name: 'Neptune', file: 'Neptune.jpg' },
-                            { name: 'Uranus', file: 'Uranus.jpg' },
+                            { name: 'Earth', file: 'Earth.webp' },
+                            { name: 'Mars', file: 'Mars.webp' },
+                            { name: 'Jupiter', file: 'Jupiter.webp' },
+                            { name: 'Saturn', file: 'Saturn.webp' },
+                            { name: 'Venus', file: 'Venus.webp' },
+                            { name: 'Neptune', file: 'Neptune.webp' },
+                            { name: 'Uranus', file: 'Uranus.webp' },
                         ].map((planet) => (
                             <div key={planet.name} className="text-center space-y-2">
                                 <PlanetImage

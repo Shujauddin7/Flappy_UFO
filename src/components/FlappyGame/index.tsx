@@ -54,8 +54,8 @@ interface GameState {
 }
 
 const PLANETS = [
-    'Earth.jpg', 'Jupiter.jpg', 'Mercury.jpg',
-    'Neptune.jpg', 'Saturn.jpg', 'Uranus.jpg', 'Venus.jpg'
+    'Earth.webp', 'Jupiter.webp', 'Mercury.webp',
+    'Neptune.webp', 'Saturn.webp', 'Uranus.webp', 'Venus.webp'
 ];
 
 interface FlappyGameProps {
@@ -752,14 +752,14 @@ export default function FlappyGame({
                 // Get planet-specific glow color
                 const getPlanetGlow = (planetName: string): string => {
                     const planetGlows: { [key: string]: string } = {
-                        'Earth.jpg': '#4A90E2', // Blue glow
-                        'Mars.jpg': '#FF6B35', // Red-orange glow  
-                        'Jupiter.jpg': '#FFB347', // Orange-yellow glow
-                        'Saturn.jpg': '#F4D03F', // Golden glow
-                        'Venus.jpg': '#FFC300', // Bright yellow glow
-                        'Neptune.jpg': '#3498DB', // Deep blue glow
-                        'Uranus.jpg': '#85C1E9', // Light blue glow
-                        'Mercury.jpg': '#D7DBDD', // Gray-white glow
+                        'Earth.webp': '#4A90E2', // Blue glow
+                        'Mars.webp': '#FF6B35', // Red-orange glow  
+                        'Jupiter.webp': '#FFB347', // Orange-yellow glow
+                        'Saturn.webp': '#F4D03F', // Golden glow
+                        'Venus.webp': '#FFC300', // Bright yellow glow
+                        'Neptune.webp': '#3498DB', // Deep blue glow
+                        'Uranus.webp': '#85C1E9', // Light blue glow
+                        'Mercury.webp': '#D7DBDD', // Gray-white glow
                     };
                     return planetGlows[planetName] || '#FFFFFF'; // Default white glow
                 };
@@ -769,14 +769,14 @@ export default function FlappyGame({
                 // Helper function to get planet fallback colors
                 const getPlanetFallback = (planetName: string): string => {
                     const planetFallbacks: { [key: string]: string } = {
-                        'Earth.jpg': '#2E7D32',
-                        'Mars.jpg': '#E53935',
-                        'Jupiter.jpg': '#FF8F00',
-                        'Saturn.jpg': '#FFB300',
-                        'Venus.jpg': '#FFB300',
-                        'Neptune.jpg': '#1976D2',
-                        'Uranus.jpg': '#42A5F5',
-                        'Mercury.jpg': '#95A5A6',
+                        'Earth.webp': '#2E7D32',
+                        'Mars.webp': '#E53935',
+                        'Jupiter.webp': '#FF8F00',
+                        'Saturn.webp': '#FFB300',
+                        'Venus.webp': '#FFB300',
+                        'Neptune.webp': '#1976D2',
+                        'Uranus.webp': '#42A5F5',
+                        'Mercury.webp': '#95A5A6',
                     };
                     return planetFallbacks[planetName] || '#6C7B7F';
                 };
@@ -826,7 +826,7 @@ export default function FlappyGame({
                 ctx.stroke();
 
                 // Gas giant atmospheric rings
-                const isGasGiant = ['Jupiter.jpg', 'Saturn.jpg', 'Uranus.jpg', 'Neptune.jpg'].includes(obstacle.planetType);
+                const isGasGiant = ['Jupiter.webp', 'Saturn.webp', 'Uranus.webp', 'Neptune.webp'].includes(obstacle.planetType);
                 if (isGasGiant) {
                     ctx.beginPath();
                     ctx.arc(centerX, centerY, radius * 1.1, 0, Math.PI * 2);

@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { memo } from 'react';
 
 interface Player {
     id: string;
@@ -21,7 +21,7 @@ interface PlayerRankCardProps {
     isLoading?: boolean; // Add loading prop for blur effects
 }
 
-export const PlayerRankCard: React.FC<PlayerRankCardProps> = ({
+export const PlayerRankCard: React.FC<PlayerRankCardProps> = memo(({
     player,
     prizeAmount,
     isCurrentUser,
@@ -102,4 +102,7 @@ export const PlayerRankCard: React.FC<PlayerRankCardProps> = ({
             </div>
         </div>
     );
-};
+});
+
+// Add display name for better debugging
+PlayerRankCard.displayName = 'PlayerRankCard';

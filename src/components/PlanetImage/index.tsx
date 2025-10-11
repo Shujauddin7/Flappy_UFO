@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import Image from 'next/image';
 
 interface PlanetImageProps {
@@ -45,7 +45,7 @@ const getPlanetGlow = (name: string): string => {
     return planetGlows[name] || '#FFFFFF';
 };
 
-export default function PlanetImage({
+const PlanetImage = memo(({
     name,
     src,
     size,
@@ -53,7 +53,7 @@ export default function PlanetImage({
     priority = false,
     onLoad,
     onError
-}: PlanetImageProps) {
+}: PlanetImageProps) => {
     const [imageError, setImageError] = useState(false);
     const [imageLoaded, setImageLoaded] = useState(false);
 
@@ -177,7 +177,7 @@ export default function PlanetImage({
 
             {/* Loading indicator */}
             {!imageLoaded && !imageError && (
-                <div
+                                <div
                     className="absolute inset-0 flex items-center justify-center rounded-full bg-black bg-opacity-20"
                 >
                     <div
@@ -188,4 +188,8 @@ export default function PlanetImage({
             )}
         </div>
     );
-}
+});
+
+PlanetImage.displayName = 'PlanetImage';
+
+export default PlanetImage;
