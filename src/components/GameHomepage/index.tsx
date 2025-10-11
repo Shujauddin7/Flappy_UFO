@@ -1646,6 +1646,21 @@ export default function GameHomepage() {
                             >
                                 Tap To Play
                             </button>
+                            {/* Deployment verification marker */}
+                            <div style={{ 
+                                position: 'fixed', 
+                                top: '10px', 
+                                right: '10px', 
+                                background: 'rgba(0,255,0,0.8)', 
+                                color: 'black',
+                                padding: '8px 12px',
+                                borderRadius: '8px',
+                                fontSize: '14px',
+                                fontWeight: 'bold',
+                                zIndex: 99999 
+                            }}>
+                                ✅ v74e651a - NO ERUDA
+                            </div>
                             <DevSignOut />
                         </div>
                         <div className="bottom-nav-container">
