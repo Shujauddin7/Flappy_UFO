@@ -21,14 +21,15 @@ export const ViewPermissions = () => {
           // You can also fetch this by grabbing from user
           // MiniKit.user.permissions
           const permissions = await MiniKit.commandsAsync.getPermissions();
-          if (permissions?.finalPayload.status === 'success') {
-            setPermissions(permissions?.finalPayload.permissions || {});
-            }
+          if (permissions?.finalPayload?.status === 'success') {
+            setPermissions(permissions?.finalPayload?.permissions || {});
+          }
         } catch (error) {
-          console.error('Failed to fetch permissions:', error);
+          // Silently handle permission errors - MiniKit may not support getPermissions in all environments
+          console.warn('MiniKit permissions not available:', error);
+          setPermissions({}); // Set empty permissions to prevent Object.entries errors
         }
-      } else {
-        }
+      }
     };
     fetchPermissions();
   }, [isInstalled]);
@@ -36,7 +37,7 @@ export const ViewPermissions = () => {
   return (
     <div className="grid w-full gap-4">
       <p className="text-lg font-semibold">Permissions</p>
-      {permissions &&
+      {permissions && typeof permissions === 'object' && Object.keys(permissions).length > 0 &&
         Object.entries(permissions).map(([permission, value]) => (
           <ListItem
             key={permission}

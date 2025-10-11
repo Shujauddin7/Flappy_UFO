@@ -35,9 +35,9 @@ const preloadLeaderboardData = async () => {
         timestamp: Date.now()
       }));
 
-      }
-  } catch {
     }
+  } catch {
+  }
 };
 
 // Component for app-level data preloading
