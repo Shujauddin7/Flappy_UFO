@@ -438,6 +438,8 @@ export default function LeaderboardPage() {
         // Listen for score updates
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const handleScoreUpdate = (message: { tournament_id: string; data: any; }) => {
+            if (!currentTournament?.tournament_day) return;
+            
             const { data } = message;
             setPreloadedLeaderboardData(prev => {
                 if (!prev?.players) {
@@ -506,6 +508,8 @@ export default function LeaderboardPage() {
 
         // Listen for new player joins
         const handlePlayerJoined = () => {
+            if (!currentTournament?.tournament_day) return;
+            
             fetch(`/api/tournament/leaderboard-data?tournament_day=${currentTournament.tournament_day}&bust=${Date.now()}`)
                 .then(res => res.json())
                 .then(freshData => {
@@ -760,7 +764,7 @@ export default function LeaderboardPage() {
                         <div className="prize-pool-info">
                             <div className="prize-pool-text">
                                 Prize pool: <span className={`prize-pool-highlight ${(!currentTournament && !preloadedLeaderboardData) ? 'loading-blur' : ''}`}>
-                                    {currentTournament
+                                    {currentTournament && typeof currentTournament.total_prize_pool === 'number'
                                         ? `${currentTournament.total_prize_pool.toFixed(2)} WLD`
                                         : 'Loading...'}
                                 </span>

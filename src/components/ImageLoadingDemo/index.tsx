@@ -53,7 +53,7 @@ export default function ImageLoadingDemo() {
 
                         <div className="bg-slate-700 rounded p-4 text-center">
                             <div className="text-2xl font-bold text-green-400">
-                                {Object.keys(imagePreloader.images).length}
+                                {imagePreloader.images ? Object.keys(imagePreloader.images).length : 0}
                             </div>
                             <div className="text-sm text-gray-300">Total Images</div>
                         </div>

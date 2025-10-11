@@ -36,7 +36,8 @@ export function useImagePreloader(): UseImagePreloaderReturn {
     const abortControllerRef = useRef<AbortController | null>(null);
 
     // Calculate derived states
-    const imageEntries = Object.entries(images);
+    const safeImages = images || {};
+    const imageEntries = Object.entries(safeImages);
     const totalImages = imageEntries.length;
     const loadedImages = imageEntries.filter(([, result]) => result.loaded).length;
     const allLoaded = totalImages > 0 && loadedImages === totalImages;
