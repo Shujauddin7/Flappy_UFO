@@ -66,7 +66,6 @@ database.md
 next-env.d.ts
 !.env.sample
 
-
 # dev_Markdown_files
 Plan.md
 toself.md
@@ -81,3 +80,4 @@ OPTIMIZATION_OPPORTUNITIES.md
 REDIS_CACHE_OPTIMIZATION.md 
 .env*.local
 OPTIMIZATION.MD 
+
