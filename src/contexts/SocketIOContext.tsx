@@ -54,7 +54,7 @@ export function SocketIOProvider({ children }: { children: React.ReactNode }) {
         if (socketInstance.connected) {
             setIsConnected(true);
         } else {
-            }
+        }
 
         // Cleanup on app unmount (rarely happens in SPA)
         return () => {
@@ -66,6 +66,8 @@ export function SocketIOProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     const joinTournamentRoom = useCallback((tournamentId: string, userId?: string, username?: string) => {
+        console.log('🎮 [DEBUG] joinTournamentRoom called with:', { tournamentId, userId, username });
+
         if (socket) {
             // Check actual socket connection, not just state
             if (socket.connected) {
