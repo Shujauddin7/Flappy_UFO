@@ -150,6 +150,7 @@ export async function publishRealtimeUpdate(channel: string, message: any): Prom
     try {
         const redis = await getRedisClient();
         if (!redis) {
+            console.error('❌ Redis client not available for publishing');
             return false;
         }
 
@@ -161,9 +162,13 @@ export async function publishRealtimeUpdate(channel: string, message: any): Prom
 
         // Use environment-specific channel names for pub/sub
         const envChannel = getEnvironmentKey(channel);
+        
+        console.log('📡 Publishing to Redis:', { channel: envChannel, type: message.type });
 
         // Use RPUSH to add message to end of list (FIFO queue)
         await redis.publish(envChannel, JSON.stringify(formattedMessage));
+        
+        console.log('✅ Published successfully to:', envChannel);
 
         return true;
     } catch (error) {
