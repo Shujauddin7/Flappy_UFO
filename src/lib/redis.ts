@@ -34,7 +34,7 @@ async function getRedisClient() {
                 url: process.env.UPSTASH_REDIS_PROD_URL,
                 token: process.env.UPSTASH_REDIS_PROD_TOKEN,
             });
-            }
+        }
         return prodClient;
     } else {
         if (!devClient) {
@@ -45,7 +45,7 @@ async function getRedisClient() {
                 url: process.env.UPSTASH_REDIS_DEV_URL,
                 token: process.env.UPSTASH_REDIS_DEV_TOKEN,
             });
-            }
+        }
         return devClient;
     }
 }
@@ -160,15 +160,15 @@ export async function publishRealtimeUpdate(channel: string, message: any): Prom
             timestamp: Date.now() // Use numeric timestamp for easy comparison
         };
 
-        // Use environment-specific channel names for pub/sub
-        const envChannel = getEnvironmentKey(channel);
-        
-        console.log('📡 Publishing to Redis:', { channel: envChannel, type: message.type });
+        // 🚨 CRITICAL: Do NOT use environment prefix for pub/sub channels
+        // Railway Socket.IO server subscribes to 'tournament:updates' (no prefix)
+        // Using environment prefix breaks cross-device real-time updates
+        console.log('📡 Publishing to Redis:', { channel, type: message.type });
 
-        // Use RPUSH to add message to end of list (FIFO queue)
-        await redis.publish(envChannel, JSON.stringify(formattedMessage));
-        
-        console.log('✅ Published successfully to:', envChannel);
+        // Publish to the channel directly without environment prefix
+        await redis.publish(channel, JSON.stringify(formattedMessage));
+
+        console.log('✅ Published successfully to:', channel);
 
         return true;
     } catch (error) {
