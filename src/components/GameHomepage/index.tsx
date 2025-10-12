@@ -442,7 +442,7 @@ export default function GameHomepage() {
         setIsInfoModalOpen(true);
     }, []);
 
-    const handlePlayClick = useCallback((e: React.MouseEvent) => {
+    const handlePlayClick = useCallback((e: React.MouseEvent | React.TouchEvent) => {
         e.preventDefault();
         e.stopPropagation();
         setCurrentScreen('gameSelect');
@@ -1642,7 +1642,9 @@ export default function GameHomepage() {
                                 key={`play-btn-${currentScreen}`}
                                 className="custom-play-btn"
                                 onClick={handlePlayClick}
+                                onTouchEnd={handlePlayClick}
                                 aria-label="Tap to Play"
+                                style={{ touchAction: 'manipulation', cursor: 'pointer' }}
                             >
                                 Tap To Play
                             </button>
@@ -1662,6 +1664,7 @@ export default function GameHomepage() {
                                     className="space-nav-btn prizes-nav"
                                     onClick={() => window.location.href = '/leaderboard'}
                                     aria-label="Leaderboard"
+                                    style={{ touchAction: 'manipulation', cursor: 'pointer' }}
                                 >
                                     <div className="space-icon">🏆</div>
 

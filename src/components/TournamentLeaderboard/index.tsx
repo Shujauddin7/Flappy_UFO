@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, memo } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { PlayerRankCard } from '@/components/PlayerRankCard';
 
 interface LeaderboardPlayer {
@@ -35,7 +35,7 @@ interface TournamentLeaderboardProps {
     onUserCardVisibility?: (isVisible: boolean) => void; // Callback for user card visibility
 }
 
-export const TournamentLeaderboard = memo(({
+export const TournamentLeaderboard = ({
     currentUserId = null,
     currentUsername = null,
     isGracePeriod = false,
@@ -397,7 +397,4 @@ export const TournamentLeaderboard = memo(({
             </div>
         </div>
     );
-});
-
-// Add display name for better debugging
-TournamentLeaderboard.displayName = 'TournamentLeaderboard';
+};
