@@ -150,7 +150,6 @@ export async function publishRealtimeUpdate(channel: string, message: any): Prom
     try {
         const redis = await getRedisClient();
         if (!redis) {
-            console.error('❌ Redis client not available for publishing');
             return false;
         }
 
@@ -160,24 +159,18 @@ export async function publishRealtimeUpdate(channel: string, message: any): Prom
             timestamp: Date.now() // Use numeric timestamp for easy comparison
         };
 
-        // 🚨 CRITICAL: Do NOT use environment prefix for pub/sub channels
-        // Railway Socket.IO server subscribes to 'tournament:updates' (no prefix)
-        // Using environment prefix breaks cross-device real-time updates
-        console.log('📡 Publishing to Redis:', { channel, type: message.type });
+        // Use environment-specific channel names for pub/sub
+        const envChannel = getEnvironmentKey(channel);
 
-        // Publish to the channel directly without environment prefix
-        await redis.publish(channel, JSON.stringify(formattedMessage));
-
-        console.log('✅ Published successfully to:', channel);
+        // Use RPUSH to add message to end of list (FIFO queue)
+        await redis.publish(envChannel, JSON.stringify(formattedMessage));
 
         return true;
     } catch (error) {
         console.error('❌ Redis publish error:', error);
         return false;
     }
-}
-
-// 🎯 Specific realtime update functions for different event types
+}// 🎯 Specific realtime update functions for different event types
 export async function publishScoreUpdate(tournamentId: string, data: {
     user_id: string;
     username: string;
