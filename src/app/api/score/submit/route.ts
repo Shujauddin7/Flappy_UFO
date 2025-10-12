@@ -63,10 +63,11 @@ async function updateUserStatistics(userId: string, newScore: number, shouldUpda
         const adminSupabase = createClient(supabaseUrl, supabaseServiceKey);
 
         // Use atomic update to prevent race conditions - only update game stats, never verification fields
+        // Database function signature: update_user_stats_safe(p_coins_earned, p_score, p_user_id)
         const { error: updateError } = await adminSupabase.rpc('update_user_stats_safe', {
             p_user_id: userId,
-            p_increment_games: 1,
-            p_new_high_score: shouldUpdateHighScore ? newScore : null
+            p_coins_earned: 0, // No coins earned for tournament games
+            p_score: shouldUpdateHighScore ? newScore : 0
         });
 
         if (updateError) {
@@ -270,7 +271,7 @@ export async function POST(req: NextRequest) {
                 }, { status: 500 });
             }
 
-            }
+        }
 
         // First, always insert the individual score into game_scores table
         const { error: gameScoreError } = await supabase
@@ -423,9 +424,9 @@ export async function POST(req: NextRequest) {
                         p_games: 1
                     });
                     if (rpcError) {
-                        }
-                } catch {
                     }
+                } catch {
+                }
 
                 // 🎯 INSTANT RANK: Get user's new rank for immediate display
                 let userRank: number | undefined;
@@ -433,8 +434,8 @@ export async function POST(req: NextRequest) {
                     const { getUserTournamentRank } = await import('@/utils/leaderboard-queries');
                     const rankData = await getUserTournamentRank(tournamentDay, walletToCheck);
                     userRank = rankData?.rank;
-                    } catch {
-                    }
+                } catch {
+                }
 
                 return NextResponse.json({
                     success: true,
@@ -554,8 +555,8 @@ export async function POST(req: NextRequest) {
             const { getUserTournamentRank } = await import('@/utils/leaderboard-queries');
             const rankData = await getUserTournamentRank(tournamentDay, walletToCheck);
             userRank = rankData?.rank;
-            } catch {
-            }
+        } catch {
+        }
 
         return NextResponse.json({
             success: true,
