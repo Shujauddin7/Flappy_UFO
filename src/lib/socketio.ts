@@ -39,6 +39,10 @@ export const connectSocket = (): Socket => {
         reconnectionDelayMax: 5000, // Faster max reconnection delay
         timeout: 10000, // Faster connection timeout
         autoConnect: true,
+        // Match Railway server compression settings
+        perMessageDeflate: {
+            threshold: 1024, // Only compress messages larger than 1KB
+        },
     });
 
     // Enhanced connection logging
