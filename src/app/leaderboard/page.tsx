@@ -498,7 +498,6 @@ export default function LeaderboardPage() {
         // Listen for prize pool updates
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const handlePrizePoolUpdate = (message: { tournament_id: string; data: any; }) => {
-            console.log('🎯 PRIZE POOL UPDATE RECEIVED:', message);
             const { data } = message;
             setCurrentTournament(prev => prev ? {
                 ...prev,
