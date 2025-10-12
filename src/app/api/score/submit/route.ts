@@ -64,9 +64,9 @@ async function updateUserStatistics(userId: string, newScore: number, shouldUpda
 
         // Use atomic update to prevent race conditions - only update game stats, never verification fields
         const { error: updateError } = await adminSupabase.rpc('update_user_stats_safe', {
-            p_user_id: userId,
-            p_increment_games: 1,
-            p_new_high_score: shouldUpdateHighScore ? newScore : null
+            p_coins_earned: 0,
+            p_score: shouldUpdateHighScore ? newScore : 0,
+            p_user_id: userId
         });
 
         if (updateError) {
