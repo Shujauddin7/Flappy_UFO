@@ -695,7 +695,7 @@ export default function FlappyGame({
 
                     try {
                         onGameEnd(state.score, state.coinsCollectedThisGame); // Pass only newly collected coins
-                        } catch (gameEndError) {
+                    } catch (gameEndError) {
                         console.error('❌ CRASH in onGameEnd callback:', gameEndError);
                         // Continue game loop but log the error
                         const error = gameEndError as Error;
@@ -704,7 +704,7 @@ export default function FlappyGame({
                             stack: error.stack || 'No stack trace',
                             score: state.score,
                             coins: state.coinsCollectedThisGame
-    });
+                        });
                     }
                 }
 

@@ -177,7 +177,7 @@ const PlanetImage = memo(({
 
             {/* Loading indicator */}
             {!imageLoaded && !imageError && (
-                                <div
+                <div
                     className="absolute inset-0 flex items-center justify-center rounded-full bg-black bg-opacity-20"
                 >
                     <div

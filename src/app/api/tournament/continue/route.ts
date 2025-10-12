@@ -174,15 +174,22 @@ export async function POST(req: NextRequest) {
             if (fetchError) {
                 console.error('❌ Failed to fetch updated tournament data:', fetchError);
             } else if (updatedTournament) {
+                console.log('📡 Publishing prize pool update:', {
+                    tournament_id: tournament.id,
+                    new_prize_pool: updatedTournament.total_prize_pool,
+                    total_players: updatedTournament.total_tournament_players,
+                    increment_amount: continue_amount
+                });
                 await publishPrizePoolUpdate(tournament.id, {
                     new_prize_pool: updatedTournament.total_prize_pool,
                     total_players: updatedTournament.total_tournament_players,
                     increment_amount: continue_amount
                 });
+                console.log('✅ Prize pool update published successfully');
             }
         } catch (socketError) {
             console.error('❌ Socket.IO broadcast failed:', socketError);
-    }
+        }
 
         // �🔄 SYNC: Update tournament_sign_ins aggregates (amount and games count best-effort)
         try {
@@ -203,9 +210,9 @@ export async function POST(req: NextRequest) {
                 p_amount: continue_amount
             });
             if (rpcError) {
-                }
-        } catch {
             }
+        } catch {
+        }
 
         return NextResponse.json({
             success: true,
