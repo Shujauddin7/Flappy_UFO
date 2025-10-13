@@ -429,9 +429,9 @@ export default function LeaderboardPage() {
             return;
         }
 
-        // User info for tournament join
-        const userId = session?.user?.id || 'anonymous';
-        const username = session?.user?.name || 'Anonymous';
+        // User info for tournament join - FIXED: Use correct session properties
+        const userId = session?.user?.walletAddress || 'anonymous';
+        const username = session?.user?.username || 'Anonymous';
 
         // Join tournament room when socket connects
         if (isConnected) {
@@ -545,7 +545,7 @@ export default function LeaderboardPage() {
             socket.off('player_joined', handlePlayerJoined);
             // DON'T disconnect - global socket stays connected!
         };
-    }, [currentTournament, session?.user?.id, session?.user?.name, socket, isConnected, joinTournamentRoom, setPreloadedLeaderboardData, setCurrentTournament]);
+    }, [currentTournament, session?.user?.walletAddress, session?.user?.username, socket, isConnected, joinTournamentRoom, setPreloadedLeaderboardData, setCurrentTournament]);
 
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
         setCurrentUserRank(userRank);
