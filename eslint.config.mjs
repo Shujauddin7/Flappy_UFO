@@ -18,6 +18,8 @@ const eslintConfig = [
     rules: {
       ...react.configs.recommended.rules,
       ...react.configs['jsx-runtime'].rules,
+      // Disable prop-types as we're using TypeScript for type checking
+      'react/prop-types': 'off',
     },
   },
 ];

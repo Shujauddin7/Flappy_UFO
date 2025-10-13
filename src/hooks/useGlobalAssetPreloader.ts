@@ -2,17 +2,17 @@
 
 import { useEffect, useState, useCallback } from 'react';
 
-// Define all game assets that need to be preloaded
+// Define all game assets that need to be preloaded (WebP format for 87% smaller files)
 export const GAME_ASSETS = {
     planets: [
-        '/Earth.jpg',
-        '/Jupiter.jpg',
-        '/Mercury.jpg',
-        '/Neptune.jpg',
-        '/Saturn.jpg',
-        '/Uranus.jpg',
-        '/Venus.jpg',
-        '/OSIRIS.jpg'  // UFO/spaceship image
+        '/Earth.webp',
+        '/Jupiter.webp',
+        '/Mercury.webp',
+        '/Neptune.webp',
+        '/Saturn.webp',
+        '/Uranus.webp',
+        '/Venus.webp',
+        '/OSIRIS.webp'  // UFO/spaceship image
     ],
     // Add other asset types here if needed in the future
     // sounds: [],
@@ -207,10 +207,10 @@ export function useGameAssets() {
             const src = planetName.startsWith('/') ? planetName : `/${planetName}`;
             return globalAssetCache.getAsset(src);
         },
-        getUFOImage: () => globalAssetCache.getAsset('/OSIRIS.jpg'),
+        getUFOImage: () => globalAssetCache.getAsset('/OSIRIS.webp'),
         // Check if critical assets are loaded
         areCriticalAssetsLoaded: () => {
-            const criticalAssets = ['/OSIRIS.jpg', '/Earth.jpg', '/Jupiter.jpg'];
+            const criticalAssets = ['/OSIRIS.webp', '/Earth.webp', '/Jupiter.webp'];
             return criticalAssets.every(asset => globalAssetCache.isAssetLoaded(asset));
         }
     };

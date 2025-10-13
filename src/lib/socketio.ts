@@ -43,7 +43,7 @@ export const connectSocket = (): Socket => {
 
     // Enhanced connection logging
     socket.on('connect', () => {
-        });
+    });
 
     socket.on('connect_error', (error) => {
         console.error('❌ Socket.IO connection error:', {

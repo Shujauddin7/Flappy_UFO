@@ -114,6 +114,7 @@ export async function getOptimizedTournamentStats(tournamentDay: string) {
 
         // Format to match Redis cache structure exactly
         const formattedStats = {
+            id: data.id, // CRITICAL: Include tournament ID for Socket.IO room joining
             tournament_day: data.tournament_day,
             tournament_name: `Tournament ${data.tournament_day}`,
             total_players: data.total_tournament_players || 0,

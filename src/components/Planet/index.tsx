@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { memo } from 'react';
 import PlanetImage from '@/components/PlanetImage';
 
 interface PlanetProps {
@@ -12,14 +12,14 @@ interface PlanetProps {
     onError?: () => void;
 }
 
-export default function Planet({
+const Planet = memo(({
     name,
     image,
     size,
     priority = false,
     onLoad,
     onError
-}: PlanetProps) {
+}: PlanetProps) => {
     return (
         <PlanetImage
             name={name}
@@ -31,4 +31,8 @@ export default function Planet({
             className="planet-wrapper"
         />
     );
-}
+});
+
+Planet.displayName = 'Planet';
+
+export default Planet;

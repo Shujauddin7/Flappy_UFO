@@ -34,7 +34,7 @@ async function getRedisClient() {
                 url: process.env.UPSTASH_REDIS_PROD_URL,
                 token: process.env.UPSTASH_REDIS_PROD_TOKEN,
             });
-            }
+        }
         return prodClient;
     } else {
         if (!devClient) {
@@ -45,7 +45,7 @@ async function getRedisClient() {
                 url: process.env.UPSTASH_REDIS_DEV_URL,
                 token: process.env.UPSTASH_REDIS_DEV_TOKEN,
             });
-            }
+        }
         return devClient;
     }
 }
@@ -170,9 +170,7 @@ export async function publishRealtimeUpdate(channel: string, message: any): Prom
         console.error('❌ Redis publish error:', error);
         return false;
     }
-}
-
-// 🎯 Specific realtime update functions for different event types
+}// 🎯 Specific realtime update functions for different event types
 export async function publishScoreUpdate(tournamentId: string, data: {
     user_id: string;
     username: string;

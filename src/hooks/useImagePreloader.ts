@@ -224,15 +224,15 @@ export function useImagePreloader(): UseImagePreloaderReturn {
     };
 }
 
-// Predefined planet images for the game
+// Predefined planet images for the game (WebP format for 87% smaller file sizes)
 export const PLANET_IMAGES = [
-    'Earth.jpg',
-    'Jupiter.jpg',
-    'Mercury.jpg',
-    'Neptune.jpg',
-    'Saturn.jpg',
-    'Uranus.jpg',
-    'Venus.jpg',
+    'Earth.webp',
+    'Jupiter.webp',
+    'Mercury.webp',
+    'Neptune.webp',
+    'Saturn.webp',
+    'Uranus.webp',
+    'Venus.webp',
 ] as const;
 
 // Utility hook specifically for game images

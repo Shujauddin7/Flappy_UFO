@@ -182,9 +182,7 @@ export async function POST(req: NextRequest) {
             }
         } catch (socketError) {
             console.error('❌ Socket.IO broadcast failed:', socketError);
-    }
-
-        // �🔄 SYNC: Update tournament_sign_ins aggregates (amount and games count best-effort)
+        }        // �🔄 SYNC: Update tournament_sign_ins aggregates (amount and games count best-effort)
         try {
             // Ensure row exists and accumulate continue amount
             await supabase
@@ -203,9 +201,9 @@ export async function POST(req: NextRequest) {
                 p_amount: continue_amount
             });
             if (rpcError) {
-                }
-        } catch {
             }
+        } catch {
+        }
 
         return NextResponse.json({
             success: true,

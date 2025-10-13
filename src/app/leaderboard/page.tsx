@@ -296,7 +296,7 @@ export default function LeaderboardPage() {
                         ]);
 
                         const newTournamentData: TournamentData = {
-                            id: tournamentData.id || 'current',
+                            id: tournamentData.id, // Must have ID from API
                             tournament_day: tournamentData.tournament_day || new Date().toISOString().split('T')[0],
                             is_active: true,
                             total_players: tournamentData.total_players || 0,
@@ -309,6 +309,11 @@ export default function LeaderboardPage() {
                             start_time: new Date().toISOString(),
                             end_time: tournamentData.end_time || null
                         };
+
+                        if (!newTournamentData.id) {
+                            console.error('❌ Tournament ID missing from API response:', tournamentData);
+                            throw new Error('Tournament ID is required');
+                        }
 
                         setCurrentTournament(newTournamentData);
                         setPreloadedLeaderboardData(leaderboard);
@@ -367,7 +372,7 @@ export default function LeaderboardPage() {
                 ]);
 
                 const newTournamentData: TournamentData = {
-                    id: tournamentData.id || 'current', // Use actual tournament ID from API
+                    id: tournamentData.id, // Use actual tournament ID from API
                     tournament_day: tournamentData.tournament_day || new Date().toISOString().split('T')[0],
                     is_active: true,
                     total_players: tournamentData.total_players || 0, // System users
@@ -380,6 +385,11 @@ export default function LeaderboardPage() {
                     start_time: new Date().toISOString(),
                     end_time: tournamentData.end_time || null
                 };
+
+                if (!newTournamentData.id) {
+                    console.error('❌ Tournament ID missing from API response:', tournamentData);
+                    throw new Error('Tournament ID is required');
+                }
 
                 // Update both tournament and leaderboard data
                 setCurrentTournament(newTournamentData);
