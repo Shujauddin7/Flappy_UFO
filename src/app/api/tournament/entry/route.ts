@@ -244,22 +244,6 @@ export async function POST(req: NextRequest) {
         // Create or get user tournament record (single row per user per tournament)
         // Create or get user tournament record using UPSERT to prevent duplicate key issues
         // Don't use the database function as it uses CURRENT_DATE instead of tournament boundary logic
-        console.log('🔍 UPSERT ATTEMPT - Environment check:', {
-            NEXT_PUBLIC_ENV: process.env.NEXT_PUBLIC_ENV,
-            isProduction,
-            supabaseUrl,
-            hasServiceKey: !!supabaseServiceKey,
-            serviceKeyLength: supabaseServiceKey?.length
-        });
-
-        console.log('🔍 Attempting to upsert tournament record with:', {
-            user_id: user.id,
-            tournament_id: finalTournament.id,
-            username: user.username,
-            wallet: wallet,
-            tournament_day: finalTournament.tournament_day
-        });
-
         const { data: tournamentRecord, error: recordError } = await supabase
             .from('user_tournament_records')
             .upsert({
@@ -297,8 +281,6 @@ export async function POST(req: NextRequest) {
                 }
             }, { status: 500 });
         }
-
-        console.log('✅ Tournament record created/updated:', tournamentRecord);
 
         const recordId = tournamentRecord.id;
         // Now update the payment information (preserve existing payments)
