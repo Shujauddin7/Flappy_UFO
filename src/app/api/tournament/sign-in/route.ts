@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
             }
 
             isNewUser = true;
-            } else {
+        } else {
             // Existing user - update tournaments visited
             const { error: updateError } = await supabase
                 .from('tournament_sign_ins')
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
                 );
             }
 
-            }
+        }
 
         // Update tournament total_players count (sign-ins for THIS tournament)
         await updateTournamentSignInCount(supabase, tournamentId);
@@ -144,11 +144,11 @@ async function ensureUserTournamentRecord(supabase: any, wallet: string, usernam
             if (createRecordError) {
                 console.error('❌ Error creating user tournament record:', createRecordError);
             } else {
-                }
+            }
         } else if (recordCheckError) {
             console.error('❌ Error checking user tournament record:', recordCheckError);
         } else {
-            }
+        }
 
     } catch (error) {
         console.error('❌ Error in ensureUserTournamentRecord:', error);
@@ -173,18 +173,11 @@ async function updateTournamentSignInCount(supabase: any, tournamentId: string) 
 
         const signInCount = userRecords?.length || 0;
 
-        // Update tournament total_players (sign-in count for THIS tournament)
-        const { error: updateError } = await supabase
-            .from('tournaments')
-            .update({
-                total_players: signInCount
-            })
-            .eq('id', tournamentId);
-
-        if (updateError) {
-            console.error('❌ Error updating tournament sign-in count:', updateError);
-        } else {
-            }
+        // REMOVED: No longer updating tournament table from sign-ins
+        // REASON: PROD_4 script dropped 'total_players' column from tournaments table
+        // Tournament uses 'total_tournament_players' which is updated by entry/route.ts when users PAY
+        // Sign-ins are tracked separately in tournament_sign_ins table for analytics only
+        console.log(`✅ Sign-in count for tournament ${tournamentId}: ${signInCount} (analytics only, not saved to tournament table)`);
 
     } catch (error) {
         console.error('❌ Error in updateTournamentSignInCount:', error);

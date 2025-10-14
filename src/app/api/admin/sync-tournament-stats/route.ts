@@ -52,7 +52,7 @@ export async function POST() {
         const { error: updateError } = await supabase
             .from('tournaments')
             .update({
-                total_players: totalPlayers,
+                total_tournament_players: totalPlayers, // Fixed: use correct column name (paid entries only)
                 total_prize_pool: totalPrizePool
             })
             .eq('id', tournament.id);

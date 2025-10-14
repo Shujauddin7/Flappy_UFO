@@ -170,7 +170,7 @@ export async function POST(req: NextRequest) {
                 const { error: updateError } = await supabase
                     .from('tournaments')
                     .update({
-                        total_players: uniquePlayerCount,
+                        total_tournament_players: uniquePlayerCount, // Fixed: use correct column name
                         total_prize_pool: totalPrizePool
                     })
                     .eq('id', tournament.id);
@@ -178,7 +178,7 @@ export async function POST(req: NextRequest) {
                 if (updateError) {
                     console.error('❌ Error updating tournament stats:', updateError);
                 } else {
-                    }
+                }
             }
         } catch (error) {
             console.error('❌ Error updating tournament stats:', error);
