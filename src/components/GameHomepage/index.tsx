@@ -2,9 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSessionPersistence } from '@/hooks/useSessionPersistence';
-import { useGameAuth } from '@/hooks/useGameAuth'; // ADD MISSING IMPORT
+import { useGameAuth } from '@/hooks/useGameAuth';
 import { Page } from '@/components/PageLayout';
-import { walletAuth } from '@/auth/wallet';
 import dynamic from 'next/dynamic';
 import { TournamentEntryModal } from '@/components/TournamentEntryModal';
 import InfoModal from '@/components/INFO';
@@ -98,35 +97,13 @@ export default function GameHomepage() {
             });
     }, []); // Run once on app startup
 
-    // Use useGameAuth for proper database operations
-    const { authenticate: authenticateWithDB } = useGameAuth();
+    // ✅ Use useGameAuth hook for authentication (handles wallet auth + database operations)
+    const { authenticate, isAuthenticating: hookIsAuthenticating } = useGameAuth();
 
-    // Local authentication function to replace useGameAuth hook
-    const authenticate = useCallback(async (): Promise<boolean> => {
-        if (session?.user?.walletAddress) {
-            // Still run database operations even if already authenticated
-            return await authenticateWithDB();
-        }
-
-        setIsAuthenticating(true);
-        try {
-            const result = await walletAuth();
-            if (result && !result.error) {
-                // Authentication successful - now trigger database operations
-                setIsAuthenticating(false);
-                return await authenticateWithDB();
-            } else {
-                console.error('Sign in failed:', result?.error);
-                setIsAuthenticating(false);
-                return false;
-            }
-        } catch (error) {
-            console.error('Authentication failed:', error);
-            setIsAuthenticating(false);
-            return false;
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [authenticateWithDB]); // 🚀 FIX: Include authenticateWithDB in deps
+    // Sync local auth state with hook state for UI updates
+    useEffect(() => {
+        setIsAuthenticating(hookIsAuthenticating);
+    }, [hookIsAuthenticating]);
 
     // Verification status state
     // Verification state - managed properly with World App session per Plan.md
@@ -445,10 +422,10 @@ export default function GameHomepage() {
     const handlePlayClick = useCallback(async (e: React.MouseEvent | React.TouchEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        
+
         // Authenticate ONCE on "Tap to Play" - prevents duplicate sign-in prompts
         const authSuccess = await authenticate();
-        
+
         if (authSuccess) {
             setCurrentScreen('gameSelect');
         }
@@ -480,24 +457,24 @@ export default function GameHomepage() {
                             const startTime = new Date(data.tournament.start_time);
                             const minutesUntilStart = Math.ceil((startTime.getTime() - new Date().getTime()) / 60000);
                             alert(`⏰ Tournament has not started yet. Starts in ${minutesUntilStart} minutes!`);
-                            } else if (data.status.has_ended) {
-                                alert('❌ Tournament has ended. Please wait for the next tournament.');
-                            } else if (data.status.is_grace_period) {
-                                alert('⏳ Tournament is in grace period - no new entries allowed. Existing players can still play!');
-                            } else {
-                                alert('❌ Tournament entries are not allowed at this time.');
-                            }
-                            return;
+                        } else if (data.status.has_ended) {
+                            alert('❌ Tournament has ended. Please wait for the next tournament.');
+                        } else if (data.status.is_grace_period) {
+                            alert('⏳ Tournament is in grace period - no new entries allowed. Existing players can still play!');
+                        } else {
+                            alert('❌ Tournament entries are not allowed at this time.');
                         }
-
-                        // Tournament entries allowed, go to tournament entry screen
-                        setCurrentScreen('tournamentEntry');
-                    } catch (error) {
-                        console.error('Error checking tournament status:', error);
-                        alert('Unable to check tournament status. Please try again.');
                         return;
                     }
+
+                    // Tournament entries allowed, go to tournament entry screen
+                    setCurrentScreen('tournamentEntry');
+                } catch (error) {
+                    console.error('Error checking tournament status:', error);
+                    alert('Unable to check tournament status. Please try again.');
+                    return;
                 }
+            }
         } catch (error) {
             console.error('Error during game start:', error);
             alert('Something went wrong. Please try again.');
