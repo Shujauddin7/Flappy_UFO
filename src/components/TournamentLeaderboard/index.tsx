@@ -149,6 +149,17 @@ export const TournamentLeaderboard = ({
         const userCardElement = document.querySelector(`[data-user-id="${currentUserData.wallet}"]`);
         if (userCardElement) {
             observer.observe(userCardElement);
+
+            // 🔥 CRITICAL FIX: Check initial visibility immediately on mount
+            // IntersectionObserver only fires on changes, not initial state
+            const rect = userCardElement.getBoundingClientRect();
+            const isInitiallyVisible = (
+                rect.top >= 0 &&
+                rect.left >= 0 &&
+                rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+                rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+            );
+            onUserCardVisibility(isInitiallyVisible);
         }
 
         return () => {
