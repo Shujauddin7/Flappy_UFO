@@ -31,7 +31,7 @@ async function updateUserTournamentCount(supabase: any, userId: string) {
         if (updateError) {
             console.error('❌ Error updating user tournament count:', updateError);
         } else {
-            }
+        }
     } catch (error) {
         console.error('❌ Error in updateUserTournamentCount:', error);
     }
@@ -90,7 +90,7 @@ async function updateTournamentPlayerCount(supabase: any, tournamentId: string) 
         if (updateError) {
             console.error('❌ Error updating tournament analytics:', updateError);
         } else {
-            }
+        }
     } catch (error) {
         console.error('❌ Error in updateTournamentPlayerCount:', error);
     }
@@ -208,7 +208,7 @@ export async function POST(req: NextRequest) {
             }
 
             user = newUser;
-            } else if (userError) {
+        } else if (userError) {
             console.error('❌ Error fetching user:', userError);
             return NextResponse.json({
                 error: `User database error: ${userError.message}`
@@ -233,7 +233,7 @@ export async function POST(req: NextRequest) {
 
             if (!updateError && updatedUser) {
                 user = updatedUser;
-                }
+            }
         }
 
         // Check verification status - user must be verified for today's tournament
@@ -244,6 +244,22 @@ export async function POST(req: NextRequest) {
         // Create or get user tournament record (single row per user per tournament)
         // Create or get user tournament record using UPSERT to prevent duplicate key issues
         // Don't use the database function as it uses CURRENT_DATE instead of tournament boundary logic
+        console.log('🔍 UPSERT ATTEMPT - Environment check:', {
+            NEXT_PUBLIC_ENV: process.env.NEXT_PUBLIC_ENV,
+            isProduction,
+            supabaseUrl,
+            hasServiceKey: !!supabaseServiceKey,
+            serviceKeyLength: supabaseServiceKey?.length
+        });
+
+        console.log('🔍 Attempting to upsert tournament record with:', {
+            user_id: user.id,
+            tournament_id: finalTournament.id,
+            username: user.username,
+            wallet: wallet,
+            tournament_day: finalTournament.tournament_day
+        });
+
         const { data: tournamentRecord, error: recordError } = await supabase
             .from('user_tournament_records')
             .upsert({
@@ -261,11 +277,28 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (recordError) {
-            console.error('❌ Error upserting tournament record:', recordError);
+            console.error('❌ CRITICAL - Tournament record upsert failed!');
+            console.error('Error object:', recordError);
+            console.error('Error message:', recordError.message);
+            console.error('Error code:', recordError.code);
+            console.error('Error details:', recordError.details);
+            console.error('Error hint:', recordError.hint);
+            console.error('Full error JSON:', JSON.stringify(recordError, null, 2));
+
             return NextResponse.json({
-                error: `Failed to create/update tournament record: ${recordError.message}`
+                error: `Failed to create/update tournament record: ${recordError.message}`,
+                errorCode: recordError.code,
+                errorDetails: recordError.details,
+                errorHint: recordError.hint,
+                debugInfo: {
+                    isProduction,
+                    supabaseUrl,
+                    hasServiceKey: !!supabaseServiceKey
+                }
             }, { status: 500 });
         }
+
+        console.log('✅ Tournament record created/updated:', tournamentRecord);
 
         const recordId = tournamentRecord.id;
         // Now update the payment information (preserve existing payments)
@@ -413,7 +446,7 @@ export async function POST(req: NextRequest) {
                     .eq('wallet', wallet);
             }
         } catch {
-            }
+        }
 
         // 🚨 INSTANT SSE BROADCAST: New tournament entry affects prize pool + total players
         try {
@@ -423,8 +456,8 @@ export async function POST(req: NextRequest) {
                 rewarmCache: true,
                 source: 'new_tournament_entry'
             });
-            } catch {
-            }
+        } catch {
+        }
 
         return NextResponse.json({
             success: true,
