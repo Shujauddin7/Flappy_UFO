@@ -301,7 +301,7 @@ export default function LeaderboardPage() {
                             is_active: true,
                             total_players: tournamentData.total_players || 0,
                             total_tournament_players: tournamentData.total_tournament_players ?? tournamentData.total_players ?? 0,
-                            total_prize_pool: Number(tournamentData.total_prize_pool) || 0,
+                            total_prize_pool: Number(Number(tournamentData.total_prize_pool || 0).toFixed(2)), // 🔥 PREVENT FLASHING: Round to 2 decimals
                             total_collected: Number(tournamentData.total_collected) || 0,
                             admin_fee: Number(tournamentData.admin_fee) || 0,
                             guarantee_amount: Number(tournamentData.guarantee_amount) || 0,
@@ -377,7 +377,7 @@ export default function LeaderboardPage() {
                     is_active: true,
                     total_players: tournamentData.total_players || 0, // System users
                     total_tournament_players: tournamentData.total_tournament_players ?? tournamentData.total_players ?? 0, // Tournament participants with safe fallback
-                    total_prize_pool: Number(tournamentData.total_prize_pool) || 0,
+                    total_prize_pool: Number(Number(tournamentData.total_prize_pool || 0).toFixed(2)), // 🔥 PREVENT FLASHING: Round to 2 decimals
                     total_collected: Number(tournamentData.total_collected) || 0,
                     admin_fee: Number(tournamentData.admin_fee) || 0,
                     guarantee_amount: Number(tournamentData.guarantee_amount) || 0,
@@ -509,11 +509,25 @@ export default function LeaderboardPage() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const handlePrizePoolUpdate = (message: { tournament_id: string; data: any; }) => {
             const { data } = message;
-            setCurrentTournament(prev => prev ? {
-                ...prev,
-                total_prize_pool: data.new_prize_pool,
-                total_tournament_players: data.total_players
-            } : prev);
+            setCurrentTournament(prev => {
+                if (!prev) return prev;
+                
+                // 🔥 PREVENT FLASHING: Only update if difference is significant (> 0.01 WLD)
+                const newPrizePool = Number(data.new_prize_pool) || 0;
+                const currentPrizePool = prev.total_prize_pool || 0;
+                const difference = Math.abs(newPrizePool - currentPrizePool);
+                
+                // Skip update if difference is tiny (rounding errors or cache inconsistencies)
+                if (difference < 0.01 && currentPrizePool > 0) {
+                    return prev;
+                }
+                
+                return {
+                    ...prev,
+                    total_prize_pool: newPrizePool,
+                    total_tournament_players: data.total_players
+                };
+            });
         };
 
         // Listen for new player joins
@@ -549,7 +563,6 @@ export default function LeaderboardPage() {
 
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
         setCurrentUserRank(userRank);
-        // We'll handle visibility based on scroll position, not rank number
     }, []);
 
     const handleUserCardVisibility = useCallback((isVisible: boolean) => {
@@ -878,9 +891,9 @@ export default function LeaderboardPage() {
                     <div className="scroll-indicator-icon">📍</div>
                     <PlayerRankCard
                         player={currentUserRank}
-                        prizeAmount={calculatePrizeForRank(currentUserRank.rank || 1001, currentTournament?.total_prize_pool || 0)}
+                        prizeAmount={calculatePrizeForRank(currentUserRank?.rank || 1001, currentTournament?.total_prize_pool || 0)}
                         isCurrentUser={true}
-                        isTopThree={currentUserRank.rank !== undefined && currentUserRank.rank <= 10}
+                        isTopThree={currentUserRank?.rank !== undefined && currentUserRank.rank <= 10}
                     />
                 </div>
             )}
