@@ -301,7 +301,9 @@ export default function LeaderboardPage() {
                             is_active: true,
                             total_players: tournamentData.total_players || 0,
                             total_tournament_players: tournamentData.total_tournament_players ?? tournamentData.total_players ?? 0,
-                            total_prize_pool: Number(Number(tournamentData.total_prize_pool || 0).toFixed(2)), // 🔥 PREVENT FLASHING: Round to 2 decimals
+                            // 🚨 CRITICAL: Use ONLY base 70% prize pool, NEVER add guarantee
+                            // Database stores: total_prize_pool = 70% of collected (guarantee stored separately)
+                            total_prize_pool: Number(Number(tournamentData.total_prize_pool || 0).toFixed(2)),
                             total_collected: Number(tournamentData.total_collected) || 0,
                             admin_fee: Number(tournamentData.admin_fee) || 0,
                             guarantee_amount: Number(tournamentData.guarantee_amount) || 0,
@@ -309,6 +311,13 @@ export default function LeaderboardPage() {
                             start_time: new Date().toISOString(),
                             end_time: tournamentData.end_time || null
                         };
+
+                        // 🔍 DEBUG: Log exact prize pool value being displayed
+                        console.log('💰 Prize Pool Display:', {
+                            from_api: tournamentData.total_prize_pool,
+                            displayed: newTournamentData.total_prize_pool,
+                            guarantee_NOT_added: tournamentData.guarantee_amount
+                        });
 
                         if (!newTournamentData.id) {
                             console.error('❌ Tournament ID missing from API response:', tournamentData);
@@ -361,12 +370,11 @@ export default function LeaderboardPage() {
                 }
 
                 // 🚀 PARALLEL API CALLS: Tournament stats (fast) + Leaderboard (correct data)
-                const [tournamentResponse, leaderboardResponse] = await Promise.all([
-                    fetch('/api/tournament/stats'),  // Fast for tournament stats
-                    fetch('/api/tournament/leaderboard-data')  // Correct data for players
-                ]);
-
-                const [tournamentData, leaderboard] = await Promise.all([
+                    // Fetch fresh tournament and leaderboard data with cache busting
+                    const [tournamentResponse, leaderboardResponse] = await Promise.all([
+                        fetch('/api/tournament/stats?bust=' + Date.now()), // 🔥 Cache bust to get fresh data
+                        fetch('/api/tournament/leaderboard-data?bust=' + Date.now())
+                    ]);                const [tournamentData, leaderboard] = await Promise.all([
                     tournamentResponse.json(),
                     leaderboardResponse.json()
                 ]);
@@ -377,7 +385,9 @@ export default function LeaderboardPage() {
                     is_active: true,
                     total_players: tournamentData.total_players || 0, // System users
                     total_tournament_players: tournamentData.total_tournament_players ?? tournamentData.total_players ?? 0, // Tournament participants with safe fallback
-                    total_prize_pool: Number(Number(tournamentData.total_prize_pool || 0).toFixed(2)), // 🔥 PREVENT FLASHING: Round to 2 decimals
+                    // 🚨 CRITICAL: Use ONLY base 70% prize pool, NEVER add guarantee
+                    // Database stores: total_prize_pool = 70% of collected (guarantee stored separately)
+                    total_prize_pool: Number(Number(tournamentData.total_prize_pool || 0).toFixed(2)),
                     total_collected: Number(tournamentData.total_collected) || 0,
                     admin_fee: Number(tournamentData.admin_fee) || 0,
                     guarantee_amount: Number(tournamentData.guarantee_amount) || 0,
@@ -385,6 +395,13 @@ export default function LeaderboardPage() {
                     start_time: new Date().toISOString(),
                     end_time: tournamentData.end_time || null
                 };
+
+                // 🔍 DEBUG: Log exact prize pool value being displayed
+                console.log('💰 Prize Pool Display:', {
+                    from_api: tournamentData.total_prize_pool,
+                    displayed: newTournamentData.total_prize_pool,
+                    guarantee_NOT_added: tournamentData.guarantee_amount
+                });
 
                 if (!newTournamentData.id) {
                     console.error('❌ Tournament ID missing from API response:', tournamentData);
