@@ -553,8 +553,8 @@ export default function LeaderboardPage() {
     }, []);
 
     const handleUserCardVisibility = useCallback((isVisible: boolean) => {
-        // Show fixed card only when user's actual card is NOT visible in viewport
-        setShouldShowFixedCard(!isVisible && currentUserRank !== null);
+        // Show fixed card only when user's actual card is NOT visible AND user has valid rank
+        setShouldShowFixedCard(!isVisible && currentUserRank !== null && (currentUserRank.rank || 0) > 0);
     }, [currentUserRank]);
 
     const calculatePrizeForRank = useCallback((rank: number, totalPrizePool: number): string | null => {

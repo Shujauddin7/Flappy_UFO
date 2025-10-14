@@ -442,13 +442,19 @@ export default function GameHomepage() {
         setIsInfoModalOpen(true);
     }, []);
 
-    const handlePlayClick = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    const handlePlayClick = useCallback(async (e: React.MouseEvent | React.TouchEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        setCurrentScreen('gameSelect');
-    }, []);
+        
+        // Authenticate ONCE on "Tap to Play" - prevents duplicate sign-in prompts
+        const authSuccess = await authenticate();
+        
+        if (authSuccess) {
+            setCurrentScreen('gameSelect');
+        }
+    }, [authenticate]);
 
-    // Handle game start with authentication
+    // Handle game start - authentication already done in handlePlayClick
     const handleGameStart = async (mode: GameMode) => {
         try {
             // Reset all game-related state when starting a new game
@@ -457,27 +463,23 @@ export default function GameHomepage() {
             setContinueFromScore(0);
             setTournamentContinueUsed(false); // Reset continue state for new game
 
-            // Always attempt authentication to ensure session is valid
-            const authSuccess = await authenticate();
+            // User already authenticated in handlePlayClick - proceed directly
+            if (mode === 'practice') {
+                // Start practice game immediately
+                setGameMode(mode);
+                setCurrentScreen('playing');
+            } else {
+                // For tournament mode, check tournament status first
+                try {
+                    const response = await fetch('/api/tournament/current');
+                    const data = await response.json();
 
-            if (authSuccess) {
-                // Authentication successful
-                if (mode === 'practice') {
-                    // Start practice game immediately
-                    setGameMode(mode);
-                    setCurrentScreen('playing');
-                } else {
-                    // For tournament mode, check tournament status first
-                    try {
-                        const response = await fetch('/api/tournament/current');
-                        const data = await response.json();
-
-                        if (data.status && !data.status.entries_allowed) {
-                            // Tournament entries not allowed - check why
-                            if (data.status.has_not_started) {
-                                const startTime = new Date(data.tournament.start_time);
-                                const minutesUntilStart = Math.ceil((startTime.getTime() - new Date().getTime()) / 60000);
-                                alert(`⏰ Tournament has not started yet. Starts in ${minutesUntilStart} minutes!`);
+                    if (data.status && !data.status.entries_allowed) {
+                        // Tournament entries not allowed - check why
+                        if (data.status.has_not_started) {
+                            const startTime = new Date(data.tournament.start_time);
+                            const minutesUntilStart = Math.ceil((startTime.getTime() - new Date().getTime()) / 60000);
+                            alert(`⏰ Tournament has not started yet. Starts in ${minutesUntilStart} minutes!`);
                             } else if (data.status.has_ended) {
                                 alert('❌ Tournament has ended. Please wait for the next tournament.');
                             } else if (data.status.is_grace_period) {
@@ -496,11 +498,6 @@ export default function GameHomepage() {
                         return;
                     }
                 }
-            } else {
-                // Authentication failed
-                console.error('Failed to authenticate user');
-                alert('Authentication required to play. Please try again.');
-            }
         } catch (error) {
             console.error('Error during game start:', error);
             alert('Something went wrong. Please try again.');
