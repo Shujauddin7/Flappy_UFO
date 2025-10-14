@@ -370,11 +370,11 @@ export default function LeaderboardPage() {
                 }
 
                 // 🚀 PARALLEL API CALLS: Tournament stats (fast) + Leaderboard (correct data)
-                    // Fetch fresh tournament and leaderboard data with cache busting
-                    const [tournamentResponse, leaderboardResponse] = await Promise.all([
-                        fetch('/api/tournament/stats?bust=' + Date.now()), // 🔥 Cache bust to get fresh data
-                        fetch('/api/tournament/leaderboard-data?bust=' + Date.now())
-                    ]);                const [tournamentData, leaderboard] = await Promise.all([
+                // Fetch fresh tournament and leaderboard data with cache busting
+                const [tournamentResponse, leaderboardResponse] = await Promise.all([
+                    fetch('/api/tournament/stats?bust=' + Date.now()), // 🔥 Cache bust to get fresh data
+                    fetch('/api/tournament/leaderboard-data?bust=' + Date.now())
+                ]); const [tournamentData, leaderboard] = await Promise.all([
                     tournamentResponse.json(),
                     leaderboardResponse.json()
                 ]);
@@ -528,17 +528,17 @@ export default function LeaderboardPage() {
             const { data } = message;
             setCurrentTournament(prev => {
                 if (!prev) return prev;
-                
+
                 // 🔥 PREVENT FLASHING: Only update if difference is significant (> 0.01 WLD)
                 const newPrizePool = Number(data.new_prize_pool) || 0;
                 const currentPrizePool = prev.total_prize_pool || 0;
                 const difference = Math.abs(newPrizePool - currentPrizePool);
-                
+
                 // Skip update if difference is tiny (rounding errors or cache inconsistencies)
                 if (difference < 0.01 && currentPrizePool > 0) {
                     return prev;
                 }
-                
+
                 return {
                     ...prev,
                     total_prize_pool: newPrizePool,
