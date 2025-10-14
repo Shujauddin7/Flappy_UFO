@@ -311,10 +311,10 @@ export async function POST(req: NextRequest) {
             // Update tournament record with new high score
 
             // Use the safe update function
-            // 🔧 FIX: Use correct parameter name that matches dev database
+            // 🔧 FIX: Use correct parameter name that matches database function signature
             const { data: isUpdated, error: updateError } = await supabase
                 .rpc('update_highest_score_safe', {
-                    p_user_tournament_record_id: record.id,
+                    p_record_id: record.id,
                     p_new_score: score
                 });
 
