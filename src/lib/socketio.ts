@@ -28,7 +28,7 @@ export const connectSocket = (): Socket => {
     }
 
     const url = getSocketUrl();
-    
+
     socket = io(url, {
         transports: ['websocket', 'polling'], // Try websocket first, fallback to polling
         upgrade: true, // Allow transport upgrades
