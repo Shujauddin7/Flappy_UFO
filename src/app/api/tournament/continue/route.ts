@@ -39,7 +39,7 @@ async function updateTournamentPrizePool(supabase: any, tournamentId: string) {
             guaranteeAmount = top10Winners * 1.0; // Admin adds 1 WLD per top 10 winner
         }
 
-        const totalPrizePool = basePrizePool + guaranteeAmount; // 70% + guarantee (if needed)
+        const totalPrizePool = basePrizePool; // Store only base 70% (guarantee applied at payout per Plan.md)
         const adminNetResult = adminFeeAmount - guaranteeAmount; // Can be negative
 
         // Update tournament with NEW guarantee system

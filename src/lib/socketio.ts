@@ -29,7 +29,7 @@ export const connectSocket = (): Socket => {
 
     const url = getSocketUrl();
     socket = io(url, {
-        transports: ['websocket', 'polling'], // Try websocket first, fallback to polling
+        transports: ['polling', 'websocket'], // Start with polling (more reliable), upgrade to websocket
         upgrade: true, // Allow transport upgrades
         rememberUpgrade: true, // Remember successful upgrade to websocket
         withCredentials: true,
@@ -37,7 +37,7 @@ export const connectSocket = (): Socket => {
         reconnectionAttempts: 10,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000, // Faster max reconnection delay
-        timeout: 10000, // Faster connection timeout
+        timeout: 20000, // Longer connection timeout for Railway
         autoConnect: true,
     });
 
