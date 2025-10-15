@@ -23,11 +23,18 @@ const getSocketUrl = (): string => {
  * Returns the socket instance for event listening
  */
 export const connectSocket = (): Socket => {
-    if (socket && socket.connected) {
+    // 🔍 If socket already exists (connected or not), return it - DON'T create new one
+    if (socket) {
+        console.log('🔄 Reusing existing socket instance:', {
+            connected: socket.connected,
+            id: socket.id || 'not connected yet'
+        });
         return socket;
     }
 
     const url = getSocketUrl();
+
+    console.log('🆕 Creating NEW Socket.IO instance for:', url);
 
     socket = io(url, {
         transports: ['websocket', 'polling'], // Try websocket first, fallback to polling
@@ -38,27 +45,30 @@ export const connectSocket = (): Socket => {
         reconnectionAttempts: 10,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000,
-        timeout: 10000, // ✅ MATCH PROD - Faster connection timeout
+        timeout: 10000,
         autoConnect: true,
     });
 
-    // Enhanced connection logging
+    // Connection success logging
     socket.on('connect', () => {
         console.log('✅ Socket.IO connected:', {
             id: socket?.id,
             transport: socket?.io?.engine?.transport?.name,
-            url: url,
-            environment: process.env.NEXT_PUBLIC_ENV || 'unknown'
         });
     });
 
+    // Error logging - but only log ONCE per error type
+    let errorLogged = false;
     socket.on('connect_error', (error) => {
-        console.error('❌ Socket.IO connection error:', {
-            message: error.message,
-            type: error.constructor.name,
-            transport: socket?.io?.engine?.transport?.name || 'unknown',
-            url: url
-        });
+        if (!errorLogged) {
+            console.error('❌ Socket.IO connection error:', error.message);
+            errorLogged = true;
+        }
+    });
+
+    // Reset error flag on successful connection
+    socket.on('connect', () => {
+        errorLogged = false;
     });
 
     // Event listeners removed - console logs cleaned up

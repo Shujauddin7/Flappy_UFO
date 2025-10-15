@@ -7,7 +7,7 @@
  */
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { connectSocket, disconnectSocket, joinTournament } from '@/lib/socketio';
+import { connectSocket, joinTournament } from '@/lib/socketio';
 import type { Socket } from 'socket.io-client';
 
 interface SocketIOContextValue {
@@ -59,8 +59,9 @@ export function SocketIOProvider({ children }: { children: React.ReactNode }) {
         return () => {
             socketInstance.off('connect', handleConnect);
             socketInstance.off('disconnect', handleDisconnect);
-            // ❌ Removed: connect_error cleanup (listener not added)
-            disconnectSocket();
+            // ✅ DON'T call disconnectSocket() here - socket should persist!
+            // The socket is a singleton that should stay alive for the entire app lifecycle
+            // Only disconnect when user actually closes the browser tab
         };
     }, []);
 
