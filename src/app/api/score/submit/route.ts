@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { createClient } from '@supabase/supabase-js';
 import { publishCombinedScoreUpdate } from '@/lib/redis';
+import { checkRateLimit, getScoreSubmitLimiter } from '@/utils/rate-limit';
 
 // Helper function to update tournament analytics when continue payments are made
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -107,6 +108,28 @@ export async function POST(req: NextRequest) {
         const session = await auth();
         if (!session?.user?.walletAddress) {
             return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+        }
+
+        // Rate limiting: 10 score submissions per minute per user
+        const rateLimitResult = await checkRateLimit(
+            session.user.walletAddress,
+            getScoreSubmitLimiter()
+        );
+
+        if (!rateLimitResult.success) {
+            return NextResponse.json({
+                error: 'Too many score submissions. Please wait before submitting again.',
+                limit: rateLimitResult.limit,
+                remaining: rateLimitResult.remaining,
+                reset: rateLimitResult.reset
+            }, {
+                status: 429,
+                headers: {
+                    'X-RateLimit-Limit': rateLimitResult.limit.toString(),
+                    'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
+                    'X-RateLimit-Reset': rateLimitResult.reset.toString(),
+                }
+            });
         }
 
         const { user_tournament_record_id, wallet, score, game_duration, used_continue, continue_amount } = await req.json();

@@ -10,7 +10,8 @@ import InfoModal from '@/components/INFO';
 import GracePeriodModal from '@/components/GracePeriodModal';
 import { CACHE_TTL } from '@/utils/leaderboard-cache';
 import { canContinue, spendCoins, getCoins, addCoins } from '@/utils/coins';
-import { useSocketIO } from '@/contexts/SocketIOContext'; // ✅ Use global socket context
+import { useSocketIO } from '@/contexts/SocketIOContext';
+import { fetchWithTimeout } from '@/utils/fetch-timeout';
 
 // Dynamically import FlappyGame to avoid SSR issues
 const FlappyGame = dynamic(() => import('@/components/FlappyGame'), {
@@ -229,7 +230,7 @@ export default function GameHomepage() {
 
             try {
                 // Fetch current tournament to get tournament_id
-                const tournamentRes = await fetch('/api/tournament/current');
+                const tournamentRes = await fetchWithTimeout('/api/tournament/current');
                 const tournamentData = await tournamentRes.json();
 
                 if (!tournamentData?.tournament?.id) {
@@ -240,7 +241,7 @@ export default function GameHomepage() {
                 setCurrentTournamentId(tournamentId);
 
                 // Fetch user's tournament record to get highest score
-                const userRes = await fetch('/api/tournament/leaderboard-data');
+                const userRes = await fetchWithTimeout('/api/tournament/leaderboard-data');
                 const leaderboardData = await userRes.json();
 
                 if (leaderboardData?.players) {
@@ -330,8 +331,8 @@ export default function GameHomepage() {
 
                 // Pre-load both tournament info and leaderboard data
                 const [tournamentResponse, leaderboardResponse] = await Promise.all([
-                    fetch('/api/tournament/current'),
-                    fetch('/api/tournament/leaderboard-data')
+                    fetchWithTimeout('/api/tournament/current'),
+                    fetchWithTimeout('/api/tournament/leaderboard-data')
                 ]);
 
                 if (tournamentResponse.ok && leaderboardResponse.ok) {

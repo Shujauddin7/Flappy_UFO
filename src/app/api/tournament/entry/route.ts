@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { createClient } from '@supabase/supabase-js';
 import { publishPlayerJoined, publishPrizePoolUpdate } from '@/lib/redis';
+import { validatePaymentAmount } from '@/constants/payments';
+import { checkRateLimit, getTournamentEntryLimiter } from '@/utils/rate-limit';
 
 // Helper function to update user's tournament participation count
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -115,12 +117,43 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
         }
 
+        // Rate limiting: 5 tournament entries per minute per user
+        const rateLimitResult = await checkRateLimit(
+            session.user.walletAddress,
+            getTournamentEntryLimiter()
+        );
+
+        if (!rateLimitResult.success) {
+            return NextResponse.json({
+                error: 'Too many tournament entry attempts. Please wait before trying again.',
+                limit: rateLimitResult.limit,
+                remaining: rateLimitResult.remaining,
+                reset: rateLimitResult.reset
+            }, {
+                status: 429,
+                headers: {
+                    'X-RateLimit-Limit': rateLimitResult.limit.toString(),
+                    'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
+                    'X-RateLimit-Reset': rateLimitResult.reset.toString(),
+                }
+            });
+        }
+
         const { payment_reference, paid_amount, is_verified_entry, wallet } = await req.json();
 
         // Validate required fields
         if (!payment_reference || !paid_amount || is_verified_entry === undefined) {
             return NextResponse.json({
                 error: 'Missing required fields: payment_reference, paid_amount, is_verified_entry'
+            }, { status: 400 });
+        }
+
+        // Validate payment amount against server-side constants
+        const paymentValidation = validatePaymentAmount(paid_amount, is_verified_entry, false);
+        if (!paymentValidation.valid) {
+            return NextResponse.json({
+                error: `Invalid payment amount. Expected ${paymentValidation.expected} WLD, received ${paid_amount} WLD`,
+                expected_amount: paymentValidation.expected
             }, { status: 400 });
         }
 
