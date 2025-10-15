@@ -3,6 +3,56 @@ import { auth } from '@/auth';
 import { createClient } from '@supabase/supabase-js';
 import { publishPrizePoolUpdate } from '@/lib/redis';
 
+// Fallback helper to manually update prize pool if trigger fails
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function updateTournamentPrizePoolFallback(supabase: any, tournamentId: string) {
+    try {
+        const { data, error } = await supabase
+            .from('user_tournament_records')
+            .select('verified_paid_amount, standard_paid_amount, total_continue_payments')
+            .eq('tournament_id', tournamentId);
+
+        if (error) {
+            console.error('❌ Error fetching payments for fallback:', error);
+            return;
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const totalRevenue = data?.reduce((sum: number, record: any) => {
+            const entryPayments = (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0);
+            const continuePayments = record.total_continue_payments || 0;
+            return sum + entryPayments + continuePayments;
+        }, 0) || 0;
+
+        const totalPlayers = data?.length || 0;
+        let guaranteeAmount = 0;
+        const adminFeeAmount = totalRevenue * 0.30;
+        const basePrizePool = totalRevenue * 0.70;
+
+        if (totalRevenue < 72) {
+            const top10Winners = Math.min(totalPlayers, 10);
+            guaranteeAmount = top10Winners * 1.0;
+        }
+
+        const totalPrizePool = basePrizePool;
+        const adminNetResult = adminFeeAmount - guaranteeAmount;
+
+        await supabase
+            .from('tournaments')
+            .update({
+                total_prize_pool: totalPrizePool,
+                total_collected: totalRevenue,
+                total_tournament_players: totalPlayers,
+                admin_fee: adminFeeAmount,
+                guarantee_amount: guaranteeAmount,
+                admin_net_result: adminNetResult
+            })
+            .eq('id', tournamentId);
+    } catch (error) {
+        console.error('❌ Fallback update error:', error);
+    }
+}
+
 export async function POST(req: NextRequest) {
     try {
         const session = await auth();
@@ -100,7 +150,9 @@ export async function POST(req: NextRequest) {
             }, { status: 500 });
         }
 
-        // Database trigger automatically updates prize pool (no manual call needed to avoid race condition)
+        // Database trigger updates prize pool automatically
+        // Fallback: Also call manual update to ensure it works if trigger fails (DEV safety)
+        await updateTournamentPrizePoolFallback(supabase, tournament.id);
 
         // 📡 Broadcast prize pool update via Socket.IO for instant cross-device updates
         try {

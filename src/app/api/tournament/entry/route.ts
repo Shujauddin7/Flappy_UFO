@@ -30,10 +30,59 @@ async function updateUserTournamentCount(supabase: any, userId: string) {
 
         if (updateError) {
             console.error('❌ Error updating user tournament count:', updateError);
-        } else {
         }
     } catch (error) {
         console.error('❌ Error in updateUserTournamentCount:', error);
+    }
+}
+
+// Fallback helper to manually update prize pool if trigger fails
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function updateTournamentPlayerCountFallback(supabase: any, tournamentId: string) {
+    try {
+        const { data, error } = await supabase
+            .from('user_tournament_records')
+            .select('user_id, verified_paid_amount, standard_paid_amount, total_continue_payments')
+            .eq('tournament_id', tournamentId);
+
+        if (error) {
+            console.error('❌ Error counting for fallback:', error);
+            return;
+        }
+
+        const uniquePlayerCount = data?.length || 0;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const totalRevenue = data?.reduce((sum: number, record: any) => {
+            const entryPayments = (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0);
+            const continuePayments = record.total_continue_payments || 0;
+            return sum + entryPayments + continuePayments;
+        }, 0) || 0;
+
+        let guaranteeAmount = 0;
+        const adminFeeAmount = totalRevenue * 0.30;
+        const basePrizePool = totalRevenue * 0.70;
+
+        if (totalRevenue < 72) {
+            const top10Winners = Math.min(uniquePlayerCount, 10);
+            guaranteeAmount = top10Winners * 1.0;
+        }
+
+        const totalPrizePool = basePrizePool;
+        const adminNetResult = adminFeeAmount - guaranteeAmount;
+
+        await supabase
+            .from('tournaments')
+            .update({
+                total_tournament_players: uniquePlayerCount,
+                total_prize_pool: totalPrizePool,
+                total_collected: totalRevenue,
+                admin_fee: adminFeeAmount,
+                guarantee_amount: guaranteeAmount,
+                admin_net_result: adminNetResult
+            })
+            .eq('id', tournamentId);
+    } catch (error) {
+        console.error('❌ Fallback update error:', error);
     }
 }
 
@@ -292,7 +341,9 @@ export async function POST(req: NextRequest) {
             }, { status: 500 });
         }
 
-        // Database trigger automatically updates tournament stats (no manual call to avoid race condition)
+        // Database trigger updates tournament stats automatically
+        // Fallback: Also call manual update to ensure it works if trigger fails (DEV safety)
+        await updateTournamentPlayerCountFallback(supabase, finalTournament.id);
 
         // 🔄 NEW: Publish realtime updates to Socket.IO server
         // Publish player joined event

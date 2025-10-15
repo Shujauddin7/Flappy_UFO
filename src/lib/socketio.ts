@@ -46,7 +46,8 @@ export const connectSocket = (): Socket => {
         console.log('✅ Socket.IO connected:', {
             id: socket?.id,
             transport: socket?.io?.engine?.transport?.name,
-            url: url
+            url: url,
+            environment: process.env.NEXT_PUBLIC_ENV || 'unknown'
         });
     });
 
@@ -55,7 +56,9 @@ export const connectSocket = (): Socket => {
             message: error.message,
             type: error.constructor.name,
             transport: socket?.io?.engine?.transport?.name || 'unknown',
-            url: url
+            url: url,
+            environment: process.env.NEXT_PUBLIC_ENV || 'unknown',
+            attemptNumber: socket?.io?.engine?.transport?.writable
         });
     });
 
