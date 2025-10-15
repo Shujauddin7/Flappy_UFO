@@ -43,6 +43,11 @@ export const connectSocket = (): Socket => {
 
     // Enhanced connection logging
     socket.on('connect', () => {
+        console.log('✅ Socket.IO connected:', {
+            id: socket?.id,
+            transport: socket?.io?.engine?.transport?.name,
+            url: url
+        });
     });
 
     socket.on('connect_error', (error) => {
