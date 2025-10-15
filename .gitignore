@@ -89,6 +89,7 @@ PROD_FUNCTIONS_ANALYSIS.md
 .env*.local
 OPTIMIZATION.MD
 
+SOCKETIO_WEBSOCKET_FIX.md
 # SQL migration scripts (internal deployment only)
 sql-scripts/
 

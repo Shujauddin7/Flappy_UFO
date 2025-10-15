@@ -23,18 +23,12 @@ const getSocketUrl = (): string => {
  * Returns the socket instance for event listening
  */
 export const connectSocket = (): Socket => {
-    // 🔍 If socket already exists (connected or not), return it - DON'T create new one
+    // If socket already exists, return it - DON'T create new one
     if (socket) {
-        console.log('🔄 Reusing existing socket instance:', {
-            connected: socket.connected,
-            id: socket.id || 'not connected yet'
-        });
         return socket;
     }
 
     const url = getSocketUrl();
-
-    console.log('🆕 Creating NEW Socket.IO instance for:', url);
 
     socket = io(url, {
         transports: ['websocket', 'polling'], // Try websocket first, fallback to polling
@@ -49,26 +43,13 @@ export const connectSocket = (): Socket => {
         autoConnect: true,
     });
 
-    // Connection success logging
+    // Minimal logging for connection tracking
     socket.on('connect', () => {
-        console.log('✅ Socket.IO connected:', {
-            id: socket?.id,
-            transport: socket?.io?.engine?.transport?.name,
-        });
+        // Intentionally minimal - connection successful
     });
 
-    // Error logging - but only log ONCE per error type
-    let errorLogged = false;
-    socket.on('connect_error', (error) => {
-        if (!errorLogged) {
-            console.error('❌ Socket.IO connection error:', error.message);
-            errorLogged = true;
-        }
-    });
-
-    // Reset error flag on successful connection
-    socket.on('connect', () => {
-        errorLogged = false;
+    socket.on('connect_error', () => {
+        // Intentionally minimal - error handled by Socket.IO fallback
     });
 
     // Event listeners removed - console logs cleaned up
