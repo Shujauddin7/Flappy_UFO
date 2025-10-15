@@ -33,16 +33,27 @@ export const connectSocket = (): Socket => {
 
     const url = getSocketUrl();
     
+    // 🔍 Detect if on mobile browser (mobile browsers may have WebSocket issues)
+    const isMobile = typeof window !== 'undefined' && 
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(window.navigator.userAgent);
+    
+    // 📱 Mobile-optimized configuration
+    // On mobile, start with polling first (more reliable), then upgrade to WebSocket
+    // On desktop, start with WebSocket directly (faster)
+    const transports = isMobile ? ['polling', 'websocket'] : ['websocket', 'polling'];
+    
+    console.log(`🔧 Socket.IO config: ${isMobile ? 'Mobile' : 'Desktop'} detected, transports:`, transports);
+    
     socket = io(url, {
-        transports: ['websocket', 'polling'], // WebSocket first, polling as fallback
+        transports: transports, // Mobile: polling first, Desktop: websocket first
         upgrade: true, // Allow transport upgrades
-        rememberUpgrade: true, // ✅ Remember successful upgrade (reverted from false)
+        rememberUpgrade: true, // Remember successful upgrade
         withCredentials: true,
         reconnection: true,
         reconnectionAttempts: 10,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000,
-        timeout: 20000,
+        timeout: 20000, // 20s timeout
         autoConnect: true,
     });
 
@@ -55,14 +66,15 @@ export const connectSocket = (): Socket => {
             id: socket?.id,
             transport: transport,
             url: url,
-            environment: process.env.NEXT_PUBLIC_ENV || 'unknown'
+            environment: process.env.NEXT_PUBLIC_ENV || 'unknown',
+            device: isMobile ? 'mobile' : 'desktop'
         });
         
-        // ✅ Log if we successfully upgraded to WebSocket
+        // ✅ Log if we successfully connected with WebSocket
         if (transport === 'websocket') {
             console.log('🚀 WebSocket connection established (optimal performance)');
         } else if (transport === 'polling') {
-            console.log('📡 Using polling transport (WebSocket upgrade may happen)');
+            console.log('📡 Connected via polling (attempting WebSocket upgrade...)');
         }
         
         errorShown = false; // Reset error flag on successful connection
@@ -70,7 +82,8 @@ export const connectSocket = (): Socket => {
 
     // ✅ Listen for transport upgrades
     socket.io.engine.on('upgrade', (transport) => {
-        console.log('⬆️ Transport upgraded to:', transport.name);
+        console.log('⬆️ 🚀 Transport UPGRADED to WebSocket! Now using optimal performance.');
+        console.log('✅ Current transport:', transport.name);
     });
 
     socket.on('connect_error', (error) => {
