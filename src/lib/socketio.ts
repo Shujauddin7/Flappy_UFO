@@ -23,43 +23,73 @@ const getSocketUrl = (): string => {
  * Returns the socket instance for event listening
  */
 export const connectSocket = (): Socket => {
+    // If socket exists and is connected, return it
     if (socket && socket.connected) {
         return socket;
     }
 
+    // If socket exists but disconnected, clean it up first
+    if (socket) {
+        socket.removeAllListeners();
+        socket.disconnect();
+        socket = null;
+    }
+
     const url = getSocketUrl();
+    
     socket = io(url, {
         transports: ['websocket', 'polling'], // WebSocket first, polling as fallback
         upgrade: true, // Allow transport upgrades
-        rememberUpgrade: true, // Remember successful upgrade to websocket
+        rememberUpgrade: false, // ✅ DON'T remember upgrade - let it negotiate fresh each time
         withCredentials: true,
         reconnection: true,
         reconnectionAttempts: 10,
         reconnectionDelay: 1000,
-        reconnectionDelayMax: 5000, // Faster max reconnection delay
-        timeout: 20000, // Longer connection timeout for Railway
+        reconnectionDelayMax: 5000,
+        timeout: 20000,
         autoConnect: true,
     });
 
+    let errorShown = false; // Only log first error, then suppress (fallback works)
+    
     // Enhanced connection logging
     socket.on('connect', () => {
+        const transport = socket?.io?.engine?.transport?.name;
         console.log('✅ Socket.IO connected:', {
             id: socket?.id,
-            transport: socket?.io?.engine?.transport?.name,
+            transport: transport,
             url: url,
             environment: process.env.NEXT_PUBLIC_ENV || 'unknown'
         });
+        
+        // ✅ Log if we successfully upgraded to WebSocket
+        if (transport === 'websocket') {
+            console.log('🚀 WebSocket connection established (optimal performance)');
+        } else if (transport === 'polling') {
+            console.log('📡 Using polling transport (WebSocket upgrade may happen)');
+        }
+        
+        errorShown = false; // Reset error flag on successful connection
+    });
+
+    // ✅ Listen for transport upgrades
+    socket.io.engine.on('upgrade', (transport) => {
+        console.log('⬆️ Transport upgraded to:', transport.name);
     });
 
     socket.on('connect_error', (error) => {
-        console.error('❌ Socket.IO connection error:', {
-            message: error.message,
-            type: error.constructor.name,
-            transport: socket?.io?.engine?.transport?.name || 'unknown',
-            url: url,
-            environment: process.env.NEXT_PUBLIC_ENV || 'unknown',
-            attemptNumber: socket?.io?.engine?.transport?.writable
-        });
+        // Only log first error to avoid console spam (polling fallback handles connection)
+        if (!errorShown && error.message === 'websocket error') {
+            console.warn('⚠️ Initial WebSocket handshake failed, using polling (will attempt upgrade after connection)');
+            errorShown = true;
+        } else if (!errorShown) {
+            console.error('❌ Socket.IO connection error:', {
+                message: error.message,
+                transport: socket?.io?.engine?.transport?.name || 'attempting',
+                note: 'Polling fallback will be used automatically'
+            });
+            errorShown = true;
+        }
     });
 
     // Event listeners removed - console logs cleaned up
