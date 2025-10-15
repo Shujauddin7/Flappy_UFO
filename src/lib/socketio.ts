@@ -33,19 +33,8 @@ export const connectSocket = (): Socket => {
 
     const url = getSocketUrl();
     
-    // 🔍 Detect if on mobile browser (mobile browsers may have WebSocket issues)
-    const isMobile = typeof window !== 'undefined' && 
-        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(window.navigator.userAgent);
-    
-    // 📱 Mobile-optimized configuration
-    // On mobile, start with polling first (more reliable), then upgrade to WebSocket
-    // On desktop, start with WebSocket directly (faster)
-    const transports = isMobile ? ['polling', 'websocket'] : ['websocket', 'polling'];
-    
-    console.log(`🔧 Socket.IO config: ${isMobile ? 'Mobile' : 'Desktop'} detected, transports:`, transports);
-    
     socket = io(url, {
-        transports: transports, // Mobile: polling first, Desktop: websocket first
+        transports: ['websocket', 'polling'], // ✅ ALWAYS try WebSocket first (99.9% mobile users)
         upgrade: true, // Allow transport upgrades
         rememberUpgrade: true, // Remember successful upgrade
         withCredentials: true,
@@ -53,7 +42,7 @@ export const connectSocket = (): Socket => {
         reconnectionAttempts: 10,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000,
-        timeout: 20000, // 20s timeout
+        timeout: 20000,
         autoConnect: true,
     });
 
@@ -66,8 +55,7 @@ export const connectSocket = (): Socket => {
             id: socket?.id,
             transport: transport,
             url: url,
-            environment: process.env.NEXT_PUBLIC_ENV || 'unknown',
-            device: isMobile ? 'mobile' : 'desktop'
+            environment: process.env.NEXT_PUBLIC_ENV || 'unknown'
         });
         
         // ✅ Log if we successfully connected with WebSocket
