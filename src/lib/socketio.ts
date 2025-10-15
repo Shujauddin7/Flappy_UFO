@@ -32,7 +32,7 @@ export const connectSocket = (): Socket => {
     // The socket instance should persist across reconnections
 
     const url = getSocketUrl();
-    
+
     socket = io(url, {
         transports: ['websocket', 'polling'], // ✅ ALWAYS try WebSocket first (99.9% mobile users)
         upgrade: true, // Allow transport upgrades
@@ -47,7 +47,7 @@ export const connectSocket = (): Socket => {
     });
 
     let errorShown = false; // Only log first error, then suppress (fallback works)
-    
+
     // Enhanced connection logging
     socket.on('connect', () => {
         const transport = socket?.io?.engine?.transport?.name;
@@ -57,14 +57,14 @@ export const connectSocket = (): Socket => {
             url: url,
             environment: process.env.NEXT_PUBLIC_ENV || 'unknown'
         });
-        
+
         // ✅ Log if we successfully connected with WebSocket
         if (transport === 'websocket') {
             console.log('🚀 WebSocket connection established (optimal performance)');
         } else if (transport === 'polling') {
             console.log('📡 Connected via polling (attempting WebSocket upgrade...)');
         }
-        
+
         errorShown = false; // Reset error flag on successful connection
     });
 

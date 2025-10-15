@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>WebSocket Connection Test</title>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
+
 <body>
     <h1>WebSocket Connection Test</h1>
     <div id="status">Testing...</div>
@@ -26,7 +28,7 @@
 
         // Test DEV server
         const devUrl = 'https://flappy-ufo-socketio-server-dev.up.railway.app';
-        
+
         log('🔄 Attempting WebSocket-only connection...');
         const wsSocket = io(devUrl, {
             transports: ['websocket'], // WebSocket ONLY
@@ -48,7 +50,7 @@
                 description: error.description,
                 type: error.type
             });
-            
+
             // Now try with polling fallback
             log('🔄 Attempting connection with polling fallback...');
             const fallbackSocket = io(devUrl, {
@@ -71,4 +73,5 @@
         });
     </script>
 </body>
+
 </html>
