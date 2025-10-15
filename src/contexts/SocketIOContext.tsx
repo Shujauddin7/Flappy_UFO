@@ -42,13 +42,12 @@ export function SocketIOProvider({ children }: { children: React.ReactNode }) {
             setIsConnected(false);
         };
 
-        const handleConnectError = (error: Error) => {
-            console.error('❌ [GLOBAL] Socket.IO connection error:', error.message);
-        };
+        // ✅ Don't add connect_error listener here - it's already handled in socketio.ts
+        // This prevents duplicate error logging (especially visible in Eruda on mobile)
 
         socketInstance.on('connect', handleConnect);
         socketInstance.on('disconnect', handleDisconnect);
-        socketInstance.on('connect_error', handleConnectError);
+        // ❌ Removed: socketInstance.on('connect_error', handleConnectError);
 
         // IMPORTANT: Check if already connected (might connect before listeners added)
         if (socketInstance.connected) {
@@ -60,7 +59,7 @@ export function SocketIOProvider({ children }: { children: React.ReactNode }) {
         return () => {
             socketInstance.off('connect', handleConnect);
             socketInstance.off('disconnect', handleDisconnect);
-            socketInstance.off('connect_error', handleConnectError);
+            // ❌ Removed: connect_error cleanup (listener not added)
             disconnectSocket();
         };
     }, []);

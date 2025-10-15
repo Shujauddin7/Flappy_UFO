@@ -28,19 +28,15 @@ export const connectSocket = (): Socket => {
         return socket;
     }
 
-    // If socket exists but disconnected, clean it up first
-    if (socket) {
-        socket.removeAllListeners();
-        socket.disconnect();
-        socket = null;
-    }
+    // ❌ REMOVED socket cleanup - this might be breaking reconnection on mobile
+    // The socket instance should persist across reconnections
 
     const url = getSocketUrl();
     
     socket = io(url, {
         transports: ['websocket', 'polling'], // WebSocket first, polling as fallback
         upgrade: true, // Allow transport upgrades
-        rememberUpgrade: false, // ✅ DON'T remember upgrade - let it negotiate fresh each time
+        rememberUpgrade: true, // ✅ Remember successful upgrade (reverted from false)
         withCredentials: true,
         reconnection: true,
         reconnectionAttempts: 10,
