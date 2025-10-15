@@ -3,22 +3,20 @@ import { auth } from '@/auth';
 import { createClient } from '@supabase/supabase-js';
 import { publishPrizePoolUpdate } from '@/lib/redis';
 
-// Helper function to update tournament analytics (includes entry + continue payments)
+// Fallback helper to manually update prize pool if trigger fails
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateTournamentPrizePool(supabase: any, tournamentId: string) {
+async function updateTournamentPrizePoolFallback(supabase: any, tournamentId: string) {
     try {
-        // Get ALL payment data for this tournament
         const { data, error } = await supabase
             .from('user_tournament_records')
             .select('verified_paid_amount, standard_paid_amount, total_continue_payments')
             .eq('tournament_id', tournamentId);
 
         if (error) {
-            console.error('❌ Error fetching tournament payments:', error);
+            console.error('❌ Error fetching payments for fallback:', error);
             return;
         }
 
-        // Calculate total revenue from ALL payments: entry payments + continue payments
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const totalRevenue = data?.reduce((sum: number, record: any) => {
             const entryPayments = (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0);
@@ -26,24 +24,20 @@ async function updateTournamentPrizePool(supabase: any, tournamentId: string) {
             return sum + entryPayments + continuePayments;
         }, 0) || 0;
 
-        // Count total players for guarantee calculation
         const totalPlayers = data?.length || 0;
-
-        // NEW GUARANTEE SYSTEM (per Plan.md): Admin adds 1 WLD per top 10 winner when total collected < 72 WLD
         let guaranteeAmount = 0;
-        const adminFeeAmount = totalRevenue * 0.30; // Always 30%
-        const basePrizePool = totalRevenue * 0.70; // Always 70%
+        const adminFeeAmount = totalRevenue * 0.30;
+        const basePrizePool = totalRevenue * 0.70;
 
         if (totalRevenue < 72) {
             const top10Winners = Math.min(totalPlayers, 10);
-            guaranteeAmount = top10Winners * 1.0; // Admin adds 1 WLD per top 10 winner
+            guaranteeAmount = top10Winners * 1.0;
         }
 
-        const totalPrizePool = basePrizePool + guaranteeAmount; // 70% + guarantee (if needed)
-        const adminNetResult = adminFeeAmount - guaranteeAmount; // Can be negative
+        const totalPrizePool = basePrizePool;
+        const adminNetResult = adminFeeAmount - guaranteeAmount;
 
-        // Update tournament with NEW guarantee system
-        const { error: updateError } = await supabase
+        await supabase
             .from('tournaments')
             .update({
                 total_prize_pool: totalPrizePool,
@@ -54,12 +48,8 @@ async function updateTournamentPrizePool(supabase: any, tournamentId: string) {
                 admin_net_result: adminNetResult
             })
             .eq('id', tournamentId);
-
-        if (updateError) {
-            console.error('❌ Error updating tournament analytics:', updateError);
-        }
     } catch (error) {
-        console.error('❌ Error in updateTournamentPrizePool:', error);
+        console.error('❌ Fallback update error:', error);
     }
 }
 
@@ -160,8 +150,9 @@ export async function POST(req: NextRequest) {
             }, { status: 500 });
         }
 
-        // Update tournament prize pool to include this continue payment (70% rule)
-        await updateTournamentPrizePool(supabase, tournament.id);
+        // Database trigger updates prize pool automatically
+        // Fallback: Also call manual update to ensure it works if trigger fails (DEV safety)
+        await updateTournamentPrizePoolFallback(supabase, tournament.id);
 
         // 📡 Broadcast prize pool update via Socket.IO for instant cross-device updates
         try {

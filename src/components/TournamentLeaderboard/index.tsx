@@ -149,6 +149,19 @@ export const TournamentLeaderboard = ({
         const userCardElement = document.querySelector(`[data-user-id="${currentUserData.wallet}"]`);
         if (userCardElement) {
             observer.observe(userCardElement);
+
+            // 🔥 CRITICAL FIX: Check initial visibility immediately on mount
+            // IntersectionObserver only fires on changes, not initial state
+            // Must match the rootMargin settings (-80px bottom margin for fixed nav)
+            const rect = userCardElement.getBoundingClientRect();
+            const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+            const isInitiallyVisible = (
+                rect.top >= 0 &&
+                rect.left >= 0 &&
+                rect.bottom <= (viewportHeight - 80) && // Account for -80px rootMargin (bottom navigation)
+                rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+            );
+            onUserCardVisibility(isInitiallyVisible);
         }
 
         return () => {

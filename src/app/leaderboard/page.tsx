@@ -301,7 +301,9 @@ export default function LeaderboardPage() {
                             is_active: true,
                             total_players: tournamentData.total_players || 0,
                             total_tournament_players: tournamentData.total_tournament_players ?? tournamentData.total_players ?? 0,
-                            total_prize_pool: Number(tournamentData.total_prize_pool) || 0,
+                            // 🚨 CRITICAL: Use ONLY base 70% prize pool, NEVER add guarantee
+                            // Database stores: total_prize_pool = 70% of collected (guarantee stored separately)
+                            total_prize_pool: Number(Number(tournamentData.total_prize_pool || 0).toFixed(2)),
                             total_collected: Number(tournamentData.total_collected) || 0,
                             admin_fee: Number(tournamentData.admin_fee) || 0,
                             guarantee_amount: Number(tournamentData.guarantee_amount) || 0,
@@ -309,6 +311,13 @@ export default function LeaderboardPage() {
                             start_time: new Date().toISOString(),
                             end_time: tournamentData.end_time || null
                         };
+
+                        // 🔍 DEBUG: Log exact prize pool value being displayed
+                        console.log('💰 Prize Pool Display:', {
+                            from_api: tournamentData.total_prize_pool,
+                            displayed: newTournamentData.total_prize_pool,
+                            guarantee_NOT_added: tournamentData.guarantee_amount
+                        });
 
                         if (!newTournamentData.id) {
                             console.error('❌ Tournament ID missing from API response:', tournamentData);
@@ -361,12 +370,11 @@ export default function LeaderboardPage() {
                 }
 
                 // 🚀 PARALLEL API CALLS: Tournament stats (fast) + Leaderboard (correct data)
+                // Fetch fresh tournament and leaderboard data with cache busting
                 const [tournamentResponse, leaderboardResponse] = await Promise.all([
-                    fetch('/api/tournament/stats'),  // Fast for tournament stats
-                    fetch('/api/tournament/leaderboard-data')  // Correct data for players
-                ]);
-
-                const [tournamentData, leaderboard] = await Promise.all([
+                    fetch('/api/tournament/stats?bust=' + Date.now()), // 🔥 Cache bust to get fresh data
+                    fetch('/api/tournament/leaderboard-data?bust=' + Date.now())
+                ]); const [tournamentData, leaderboard] = await Promise.all([
                     tournamentResponse.json(),
                     leaderboardResponse.json()
                 ]);
@@ -377,7 +385,9 @@ export default function LeaderboardPage() {
                     is_active: true,
                     total_players: tournamentData.total_players || 0, // System users
                     total_tournament_players: tournamentData.total_tournament_players ?? tournamentData.total_players ?? 0, // Tournament participants with safe fallback
-                    total_prize_pool: Number(tournamentData.total_prize_pool) || 0,
+                    // 🚨 CRITICAL: Use ONLY base 70% prize pool, NEVER add guarantee
+                    // Database stores: total_prize_pool = 70% of collected (guarantee stored separately)
+                    total_prize_pool: Number(Number(tournamentData.total_prize_pool || 0).toFixed(2)),
                     total_collected: Number(tournamentData.total_collected) || 0,
                     admin_fee: Number(tournamentData.admin_fee) || 0,
                     guarantee_amount: Number(tournamentData.guarantee_amount) || 0,
@@ -385,6 +395,13 @@ export default function LeaderboardPage() {
                     start_time: new Date().toISOString(),
                     end_time: tournamentData.end_time || null
                 };
+
+                // 🔍 DEBUG: Log exact prize pool value being displayed
+                console.log('💰 Prize Pool Display:', {
+                    from_api: tournamentData.total_prize_pool,
+                    displayed: newTournamentData.total_prize_pool,
+                    guarantee_NOT_added: tournamentData.guarantee_amount
+                });
 
                 if (!newTournamentData.id) {
                     console.error('❌ Tournament ID missing from API response:', tournamentData);
@@ -509,11 +526,25 @@ export default function LeaderboardPage() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const handlePrizePoolUpdate = (message: { tournament_id: string; data: any; }) => {
             const { data } = message;
-            setCurrentTournament(prev => prev ? {
-                ...prev,
-                total_prize_pool: data.new_prize_pool,
-                total_tournament_players: data.total_players
-            } : prev);
+            setCurrentTournament(prev => {
+                if (!prev) return prev;
+
+                // 🔥 PREVENT FLASHING: Only update if difference is significant (> 0.01 WLD)
+                const newPrizePool = Number(data.new_prize_pool) || 0;
+                const currentPrizePool = prev.total_prize_pool || 0;
+                const difference = Math.abs(newPrizePool - currentPrizePool);
+
+                // Skip update if difference is tiny (rounding errors or cache inconsistencies)
+                if (difference < 0.01 && currentPrizePool > 0) {
+                    return prev;
+                }
+
+                return {
+                    ...prev,
+                    total_prize_pool: newPrizePool,
+                    total_tournament_players: data.total_players
+                };
+            });
         };
 
         // Listen for new player joins
@@ -549,12 +580,13 @@ export default function LeaderboardPage() {
 
     const handleUserRankUpdate = useCallback((userRank: LeaderboardPlayer | null) => {
         setCurrentUserRank(userRank);
-        // We'll handle visibility based on scroll position, not rank number
     }, []);
 
     const handleUserCardVisibility = useCallback((isVisible: boolean) => {
-        // Show fixed card only when user's actual card is NOT visible in viewport
-        setShouldShowFixedCard(!isVisible && currentUserRank !== null);
+        // Show fixed card only when user's actual card is NOT visible on screen
+        // Works for all ranks: top 10 (when scrolled away) or outside top 10
+        const hasValidRank = currentUserRank !== null && (currentUserRank.rank || 0) > 0;
+        setShouldShowFixedCard(!isVisible && hasValidRank);
     }, [currentUserRank]);
 
     const calculatePrizeForRank = useCallback((rank: number, totalPrizePool: number): string | null => {
@@ -876,9 +908,9 @@ export default function LeaderboardPage() {
                     <div className="scroll-indicator-icon">📍</div>
                     <PlayerRankCard
                         player={currentUserRank}
-                        prizeAmount={calculatePrizeForRank(currentUserRank.rank || 1001, currentTournament?.total_prize_pool || 0)}
+                        prizeAmount={calculatePrizeForRank(currentUserRank?.rank || 1001, currentTournament?.total_prize_pool || 0)}
                         isCurrentUser={true}
-                        isTopThree={currentUserRank.rank !== undefined && currentUserRank.rank <= 10}
+                        isTopThree={currentUserRank?.rank !== undefined && currentUserRank.rank <= 10}
                     />
                 </div>
             )}

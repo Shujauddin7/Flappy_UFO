@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>WebSocket Connection Test</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+
+<body>
+    <h1>WebSocket Connection Test</h1>
+    <div id="status">Testing...</div>
+    <div id="logs"></div>
+
+    <script>
+        const logDiv = document.getElementById('logs');
+        const statusDiv = document.getElementById('status');
+
+        function log(message, data = null) {
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.innerHTML = `<strong>${time}:</strong> ${message}`;
+            if (data) {
+                entry.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+            logDiv.appendChild(entry);
+            console.log(message, data);
+        }
+
+        // Test DEV server
+        const devUrl = 'https://flappy-ufo-socketio-server-dev.up.railway.app';
+
+        log('🔄 Attempting WebSocket-only connection...');
+        const wsSocket = io(devUrl, {
+            transports: ['websocket'], // WebSocket ONLY
+            timeout: 10000
+        });
+
+        wsSocket.on('connect', () => {
+            log('✅ WebSocket connection successful!', {
+                id: wsSocket.id,
+                transport: wsSocket.io.engine.transport.name
+            });
+            statusDiv.innerHTML = '<span style="color: green;">✅ WebSocket Working!</span>';
+            wsSocket.disconnect();
+        });
+
+        wsSocket.on('connect_error', (error) => {
+            log('❌ WebSocket connection failed', {
+                message: error.message,
+                description: error.description,
+                type: error.type
+            });
+
+            // Now try with polling fallback
+            log('🔄 Attempting connection with polling fallback...');
+            const fallbackSocket = io(devUrl, {
+                transports: ['websocket', 'polling'],
+                upgrade: true
+            });
+
+            fallbackSocket.on('connect', () => {
+                log('✅ Connected with fallback!', {
+                    id: fallbackSocket.id,
+                    transport: fallbackSocket.io.engine.transport.name
+                });
+                statusDiv.innerHTML = '<span style="color: orange;">⚠️ Polling works, WebSocket fails</span>';
+            });
+
+            fallbackSocket.on('connect_error', (err) => {
+                log('❌ Complete connection failure', err);
+                statusDiv.innerHTML = '<span style="color: red;">❌ All connections failed</span>';
+            });
+        });
+    </script>
+</body>
+
+</html>

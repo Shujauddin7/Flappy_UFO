@@ -23,6 +23,12 @@ export const useGameAuth = () => {
             return true;
         }
 
+        // 🔒 CRITICAL: Prevent duplicate authentication attempts
+        if (isAuthenticating) {
+            console.log('⏳ Authentication already in progress, waiting...');
+            return false;
+        }
+
         setIsAuthenticating(true);
         try {
             const result = await walletAuth();
@@ -44,7 +50,7 @@ export const useGameAuth = () => {
             setIsAuthenticating(false);
             return false;
         }
-    }, [isInstalled, isAuthenticated, update]);
+    }, [isInstalled, isAuthenticated, isAuthenticating, update]);
 
     // Removed auto-update to prevent infinite loop
 

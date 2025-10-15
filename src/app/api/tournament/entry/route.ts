@@ -30,30 +30,27 @@ async function updateUserTournamentCount(supabase: any, userId: string) {
 
         if (updateError) {
             console.error('❌ Error updating user tournament count:', updateError);
-        } else {
         }
     } catch (error) {
         console.error('❌ Error in updateUserTournamentCount:', error);
     }
 }
 
-// Helper function to update tournament player count and analytics (NEW: guarantee system per Plan.md)
+// Fallback helper to manually update prize pool if trigger fails
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateTournamentPlayerCount(supabase: any, tournamentId: string) {
+async function updateTournamentPlayerCountFallback(supabase: any, tournamentId: string) {
     try {
-        // Count unique users in user_tournament_records for this tournament and get ALL payment data
         const { data, error } = await supabase
             .from('user_tournament_records')
             .select('user_id, verified_paid_amount, standard_paid_amount, total_continue_payments')
             .eq('tournament_id', tournamentId);
 
         if (error) {
-            console.error('❌ Error counting tournament players:', error);
+            console.error('❌ Error counting for fallback:', error);
             return;
         }
 
         const uniquePlayerCount = data?.length || 0;
-        // Calculate total revenue from ALL payments: entry payments + continue payments
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const totalRevenue = data?.reduce((sum: number, record: any) => {
             const entryPayments = (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0);
@@ -61,24 +58,22 @@ async function updateTournamentPlayerCount(supabase: any, tournamentId: string) 
             return sum + entryPayments + continuePayments;
         }, 0) || 0;
 
-        // NEW GUARANTEE SYSTEM (per Plan.md): Admin adds 1 WLD per top 10 winner when total collected < 72 WLD
         let guaranteeAmount = 0;
-        const adminFeeAmount = totalRevenue * 0.30; // Always 30%
-        const basePrizePool = totalRevenue * 0.70; // Always 70%
+        const adminFeeAmount = totalRevenue * 0.30;
+        const basePrizePool = totalRevenue * 0.70;
 
         if (totalRevenue < 72) {
             const top10Winners = Math.min(uniquePlayerCount, 10);
-            guaranteeAmount = top10Winners * 1.0; // Admin adds 1 WLD per top 10 winner
+            guaranteeAmount = top10Winners * 1.0;
         }
 
-        const totalPrizePool = basePrizePool; // Store only base 70% in database (guarantee applied only at payout time per Plan.md)
-        const adminNetResult = adminFeeAmount - guaranteeAmount; // Can be negative
+        const totalPrizePool = basePrizePool;
+        const adminNetResult = adminFeeAmount - guaranteeAmount;
 
-        // Update tournament with NEW guarantee system
-        const { error: updateError } = await supabase
+        await supabase
             .from('tournaments')
             .update({
-                total_tournament_players: uniquePlayerCount, // FIXED: This is payment count, not sign-in count
+                total_tournament_players: uniquePlayerCount,
                 total_prize_pool: totalPrizePool,
                 total_collected: totalRevenue,
                 admin_fee: adminFeeAmount,
@@ -86,13 +81,8 @@ async function updateTournamentPlayerCount(supabase: any, tournamentId: string) 
                 admin_net_result: adminNetResult
             })
             .eq('id', tournamentId);
-
-        if (updateError) {
-            console.error('❌ Error updating tournament analytics:', updateError);
-        } else {
-        }
     } catch (error) {
-        console.error('❌ Error in updateTournamentPlayerCount:', error);
+        console.error('❌ Fallback update error:', error);
     }
 }
 
@@ -261,24 +251,9 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (recordError) {
-            console.error('❌ CRITICAL - Tournament record upsert failed!');
-            console.error('Error object:', recordError);
-            console.error('Error message:', recordError.message);
-            console.error('Error code:', recordError.code);
-            console.error('Error details:', recordError.details);
-            console.error('Error hint:', recordError.hint);
-            console.error('Full error JSON:', JSON.stringify(recordError, null, 2));
-
+            console.error('❌ Error upserting tournament record:', recordError);
             return NextResponse.json({
-                error: `Failed to create/update tournament record: ${recordError.message}`,
-                errorCode: recordError.code,
-                errorDetails: recordError.details,
-                errorHint: recordError.hint,
-                debugInfo: {
-                    isProduction,
-                    supabaseUrl,
-                    hasServiceKey: !!supabaseServiceKey
-                }
+                error: `Failed to create/update tournament record: ${recordError.message}`
             }, { status: 500 });
         }
 
@@ -366,8 +341,9 @@ export async function POST(req: NextRequest) {
             }, { status: 500 });
         }
 
-        // Update tournament total players count and prize pool after payment update
-        await updateTournamentPlayerCount(supabase, finalTournament.id);
+        // Database trigger updates tournament stats automatically
+        // Fallback: Also call manual update to ensure it works if trigger fails (DEV safety)
+        await updateTournamentPlayerCountFallback(supabase, finalTournament.id);
 
         // 🔄 NEW: Publish realtime updates to Socket.IO server
         // Publish player joined event

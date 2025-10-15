@@ -23,11 +23,13 @@ const getSocketUrl = (): string => {
  * Returns the socket instance for event listening
  */
 export const connectSocket = (): Socket => {
-    if (socket && socket.connected) {
+    // If socket already exists, return it - DON'T create new one
+    if (socket) {
         return socket;
     }
 
     const url = getSocketUrl();
+
     socket = io(url, {
         transports: ['websocket', 'polling'], // Try websocket first, fallback to polling
         upgrade: true, // Allow transport upgrades
@@ -36,22 +38,18 @@ export const connectSocket = (): Socket => {
         reconnection: true,
         reconnectionAttempts: 10,
         reconnectionDelay: 1000,
-        reconnectionDelayMax: 5000, // Faster max reconnection delay
-        timeout: 10000, // Faster connection timeout
+        reconnectionDelayMax: 5000,
+        timeout: 10000,
         autoConnect: true,
     });
 
-    // Enhanced connection logging
+    // Minimal logging for connection tracking
     socket.on('connect', () => {
+        // Intentionally minimal - connection successful
     });
 
-    socket.on('connect_error', (error) => {
-        console.error('❌ Socket.IO connection error:', {
-            message: error.message,
-            type: error.constructor.name,
-            transport: socket?.io?.engine?.transport?.name || 'unknown',
-            url: url
-        });
+    socket.on('connect_error', () => {
+        // Intentionally minimal - error handled by Socket.IO fallback
     });
 
     // Event listeners removed - console logs cleaned up

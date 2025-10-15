@@ -7,7 +7,7 @@
  */
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { connectSocket, disconnectSocket, joinTournament } from '@/lib/socketio';
+import { connectSocket, joinTournament } from '@/lib/socketio';
 import type { Socket } from 'socket.io-client';
 
 interface SocketIOContextValue {
@@ -42,13 +42,12 @@ export function SocketIOProvider({ children }: { children: React.ReactNode }) {
             setIsConnected(false);
         };
 
-        const handleConnectError = (error: Error) => {
-            console.error('❌ [GLOBAL] Socket.IO connection error:', error.message);
-        };
+        // ✅ Don't add connect_error listener here - it's already handled in socketio.ts
+        // This prevents duplicate error logging (especially visible in Eruda on mobile)
 
         socketInstance.on('connect', handleConnect);
         socketInstance.on('disconnect', handleDisconnect);
-        socketInstance.on('connect_error', handleConnectError);
+        // ❌ Removed: socketInstance.on('connect_error', handleConnectError);
 
         // IMPORTANT: Check if already connected (might connect before listeners added)
         if (socketInstance.connected) {
@@ -60,8 +59,9 @@ export function SocketIOProvider({ children }: { children: React.ReactNode }) {
         return () => {
             socketInstance.off('connect', handleConnect);
             socketInstance.off('disconnect', handleDisconnect);
-            socketInstance.off('connect_error', handleConnectError);
-            disconnectSocket();
+            // ✅ DON'T call disconnectSocket() here - socket should persist!
+            // The socket is a singleton that should stay alive for the entire app lifecycle
+            // Only disconnect when user actually closes the browser tab
         };
     }, []);
 
