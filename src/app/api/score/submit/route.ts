@@ -3,6 +3,8 @@ import { auth } from '@/auth';
 import { createClient } from '@supabase/supabase-js';
 import { publishCombinedScoreUpdate } from '@/lib/redis';
 import { checkRateLimit, getScoreSubmitLimiter } from '@/utils/rate-limit';
+import { acquireIdempotencyLock, generateScoreIdempotencyKey } from '@/utils/idempotency';
+import { validateScorePlausibility, validateScoreFormat } from '@/utils/score-validation';
 
 // Helper function to update tournament analytics when continue payments are made
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -132,7 +134,7 @@ export async function POST(req: NextRequest) {
             });
         }
 
-        const { user_tournament_record_id, wallet, score, game_duration, used_continue, continue_amount } = await req.json();
+        const { user_tournament_record_id, wallet, score, game_duration, used_continue, continue_amount, game_session_id } = await req.json();
         // Validate required fields - either user_tournament_record_id OR wallet must be provided
         if ((!user_tournament_record_id && !wallet) || score === undefined || !game_duration) {
             return NextResponse.json({
@@ -140,10 +142,26 @@ export async function POST(req: NextRequest) {
             }, { status: 400 });
         }
 
-        // Validate score (anti-cheat)
+        // Validate score format (must be integer)
+        if (!validateScoreFormat(score)) {
+            return NextResponse.json({
+                error: 'Invalid score format: must be a valid integer'
+            }, { status: 400 });
+        }
+
+        // Validate score (basic anti-cheat)
         if (score < 0 || score > 100000) {
             return NextResponse.json({
                 error: 'Invalid score: must be between 0 and 100,000'
+            }, { status: 400 });
+        }
+
+        // Score plausibility validation (prevent impossible scores)
+        const plausibilityCheck = validateScorePlausibility(score, game_duration);
+        if (!plausibilityCheck.valid) {
+            return NextResponse.json({
+                error: plausibilityCheck.error,
+                details: plausibilityCheck.details
             }, { status: 400 });
         }
 
@@ -163,25 +181,7 @@ export async function POST(req: NextRequest) {
             }, { status: 404 });
         }
 
-        // Prevent duplicate submissions - check if this exact score was already submitted recently
-        const recentSubmission = await supabase
-            .from('game_scores')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('score', score)
-            .eq('game_duration_ms', game_duration)
-            .gte('submitted_at', new Date(Date.now() - 30000).toISOString()) // Within last 30 seconds
-            .limit(1);
-
-        if (recentSubmission.data && recentSubmission.data.length > 0) {
-            return NextResponse.json({
-                success: false,
-                error: 'Duplicate submission',
-                data: { is_duplicate: true }
-            });
-        }
-
-        // Get ACTIVE tournament (source of truth for tournament_id and tournament_day)
+        // Get ACTIVE tournament first to generate idempotency key
         const { data: activeTournament, error: activeTournamentError } = await supabase
             .from('tournaments')
             .select('id, tournament_day')
@@ -194,6 +194,46 @@ export async function POST(req: NextRequest) {
             }, { status: 404 });
         }
 
+        // Idempotency check: Prevent race conditions and duplicate submissions
+        // Uses Redis SETNX with 5-minute TTL to ensure one-time processing
+        const idempotencyKey = generateScoreIdempotencyKey(
+            user.id,
+            activeTournament.id,
+            score,
+            game_duration,
+            game_session_id
+        );
+
+        const lockAcquired = await acquireIdempotencyLock(idempotencyKey, 300); // 5 min TTL
+        
+        if (!lockAcquired) {
+            return NextResponse.json({
+                success: false,
+                error: 'Duplicate submission detected - this score is already being processed',
+                data: { is_duplicate: true }
+            }, { status: 409 }); // 409 Conflict
+        }
+
+        // Extended duplicate prevention: Check last 5 minutes instead of 30 seconds
+        // This provides additional protection beyond idempotency locks
+        const recentSubmission = await supabase
+            .from('game_scores')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('score', score)
+            .eq('game_duration_ms', game_duration)
+            .gte('submitted_at', new Date(Date.now() - 300000).toISOString()) // Within last 5 minutes (extended from 30s)
+            .limit(1);
+
+        if (recentSubmission.data && recentSubmission.data.length > 0) {
+            return NextResponse.json({
+                success: false,
+                error: 'Duplicate submission',
+                data: { is_duplicate: true }
+            });
+        }
+
+        // Use tournament data already fetched above for idempotency key
         const tournamentDay = activeTournament.tournament_day;
 
         // Find the user tournament record - prefer explicit record_id, else by user_id + active tournament_id
