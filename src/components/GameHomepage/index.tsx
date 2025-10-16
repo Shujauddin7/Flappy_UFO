@@ -1152,14 +1152,25 @@ export default function GameHomepage() {
                         <div className="game-result-modal">
                             <div className="modal-header">
                                 <h2 className="modal-title">
-                                    {gameResult.isNewHighScore 
-                                        ? "🎉 New Record!" 
-                                        : gameResult.score === 0 
-                                            ? "Ready to Fly? 🚀"
-                                            : gameResult.score < 5
-                                                ? "Keep Trying! 💫"
-                                                : "Good Run! 🎮"
-                                    }
+                                    {(() => {
+                                        // Random motivating title based on score
+                                        if (gameResult.isNewHighScore) {
+                                            const newRecordTitles = ["🎉 New Record!", "🏆 Champion!", "⭐ Amazing!", "🔥 Legendary!"];
+                                            return newRecordTitles[Math.floor(Math.random() * newRecordTitles.length)];
+                                        } else if (gameResult.score === 0) {
+                                            const lowScoreTitles = ["Try Again! 🚀", "Don't Give Up! 💪", "One More Time! ⚡", "You Got This! 🎯"];
+                                            return lowScoreTitles[Math.floor(Math.random() * lowScoreTitles.length)];
+                                        } else if (gameResult.score < 5) {
+                                            const beginnerTitles = ["Keep Going! 💫", "Almost There! 🌟", "Getting Better! �", "Nice Try! 🎮"];
+                                            return beginnerTitles[Math.floor(Math.random() * beginnerTitles.length)];
+                                        } else if (gameResult.score < 10) {
+                                            const decentTitles = ["Good Run! 🎮", "Well Done! 👍", "Not Bad! ⭐", "Solid Effort! 💪"];
+                                            return decentTitles[Math.floor(Math.random() * decentTitles.length)];
+                                        } else {
+                                            const greatTitles = ["Great Score! 🔥", "Impressive! 🌟", "Fantastic! ⚡", "Excellent! 🎯"];
+                                            return greatTitles[Math.floor(Math.random() * greatTitles.length)];
+                                        }
+                                    })()}
                                 </h2>
                             </div>
 
