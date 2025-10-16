@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { publishCombinedScoreUpdate } from '@/lib/redis';
 import { checkRateLimit, getScoreSubmitLimiter } from '@/utils/rate-limit';
 import { acquireIdempotencyLock, generateScoreIdempotencyKey } from '@/utils/idempotency';
 import { validateScorePlausibility, validateScoreFormat } from '@/utils/score-validation';
 
 // Helper function to update tournament analytics when continue payments are made
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateTournamentPrizePool(supabase: any, tournamentId: string) {
+async function updateTournamentPrizePool(supabase: SupabaseClient, tournamentId: string) {
     try {
         // Get ALL payment data for this tournament
         const { data, error } = await supabase
@@ -22,8 +21,7 @@ async function updateTournamentPrizePool(supabase: any, tournamentId: string) {
         }
 
         // Calculate total revenue from ALL payments: entry payments + continue payments
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const totalRevenue = data?.reduce((sum: number, record: any) => {
+        const totalRevenue = data?.reduce((sum: number, record: { verified_paid_amount?: number; standard_paid_amount?: number; total_continue_payments?: number }) => {
             const entryPayments = (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0);
             const continuePayments = record.total_continue_payments || 0;
             return sum + entryPayments + continuePayments;
@@ -205,7 +203,7 @@ export async function POST(req: NextRequest) {
         );
 
         const lockAcquired = await acquireIdempotencyLock(idempotencyKey, 300); // 5 min TTL
-        
+
         if (!lockAcquired) {
             return NextResponse.json({
                 success: false,
@@ -390,8 +388,16 @@ export async function POST(req: NextRequest) {
 
             if (isUpdated) {
                 // Update game counts properly - verified vs unverified and total
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const gameCountUpdates: any = {
+                const gameCountUpdates: {
+                    total_games_played: number;
+                    updated_at: string;
+                    verified_games_played?: number;
+                    verified_entry_games?: number;
+                    unverified_games_played?: number;
+                    standard_entry_games?: number;
+                    first_game_at?: string;
+                    last_game_at?: string;
+                } = {
                     total_games_played: (record.total_games_played || 0) + 1,
                     updated_at: new Date().toISOString()
                 };
@@ -514,8 +520,16 @@ export async function POST(req: NextRequest) {
         }
 
         // Score was not higher, but still update game count properly
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const gameCountUpdates: any = {
+        const gameCountUpdates: {
+            total_games_played: number;
+            updated_at: string;
+            verified_games_played?: number;
+            verified_entry_games?: number;
+            unverified_games_played?: number;
+            standard_entry_games?: number;
+            first_game_at?: string;
+            last_game_at?: string;
+        } = {
             total_games_played: (record.total_games_played || 0) + 1,
             updated_at: new Date().toISOString()
         };

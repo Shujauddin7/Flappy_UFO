@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { createSuccessResponse, createErrorResponse, API_ERROR_CODES } from '@/types/api';
 
 /**
  * Health check endpoint for monitoring system status
@@ -18,16 +19,16 @@ import { createClient } from '@supabase/supabase-js';
 async function testRedisConnection(): Promise<{ healthy: boolean; latency?: number; error?: string }> {
     try {
         const startTime = Date.now();
-        
+
         // Dynamic import to match redis.ts pattern
         const { Redis } = await import('@upstash/redis');
-        
+
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
-        const redisUrl = isProduction 
-            ? process.env.UPSTASH_REDIS_PROD_URL 
+        const redisUrl = isProduction
+            ? process.env.UPSTASH_REDIS_PROD_URL
             : process.env.UPSTASH_REDIS_DEV_URL;
-        const redisToken = isProduction 
-            ? process.env.UPSTASH_REDIS_PROD_TOKEN 
+        const redisToken = isProduction
+            ? process.env.UPSTASH_REDIS_PROD_TOKEN
             : process.env.UPSTASH_REDIS_DEV_TOKEN;
 
         if (!redisUrl || !redisToken) {
@@ -75,11 +76,11 @@ async function testDatabaseConnection(): Promise<{ healthy: boolean; latency?: n
         const startTime = Date.now();
 
         const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
-        const supabaseUrl = isProduction 
-            ? process.env.SUPABASE_PROD_URL 
+        const supabaseUrl = isProduction
+            ? process.env.SUPABASE_PROD_URL
             : process.env.SUPABASE_DEV_URL;
-        const supabaseKey = isProduction 
-            ? process.env.SUPABASE_PROD_SERVICE_KEY 
+        const supabaseKey = isProduction
+            ? process.env.SUPABASE_PROD_SERVICE_KEY
             : process.env.SUPABASE_DEV_SERVICE_KEY;
 
         if (!supabaseUrl || !supabaseKey) {

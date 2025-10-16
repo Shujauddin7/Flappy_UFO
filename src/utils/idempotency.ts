@@ -7,10 +7,14 @@
  * - Ensure one-time operations in concurrent environments
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-let Redis: any;
-let devClient: any = null;
-let prodClient: any = null;
+import type { Redis as RedisType } from '@upstash/redis';
+
+type RedisClass = typeof RedisType;
+type RedisInstance = InstanceType<RedisClass>;
+
+let Redis: RedisClass | null = null;
+let devClient: RedisInstance | null = null;
+let prodClient: RedisInstance | null = null;
 
 // Initialize Redis class (lazy loading to avoid build issues)
 async function initializeRedis() {
@@ -85,11 +89,11 @@ export async function acquireIdempotencyLock(
         }
 
         const envKey = getEnvironmentKey(key);
-        
+
         // SETNX returns 1 if key was set, 0 if key already exists
         // Using set with NX (not exists) and EX (expiry) flags
         const result = await redis.set(envKey, '1', { nx: true, ex: ttlSeconds });
-        
+
         // Result will be 'OK' if successful, null if key already exists
         return result === 'OK';
     } catch (error) {
@@ -129,11 +133,11 @@ export function generateScoreIdempotencyKey(
 ): string {
     // Round timestamp to nearest second to catch rapid duplicate submissions
     const timestampRounded = Math.floor(Date.now() / 1000);
-    
+
     if (sessionId) {
         return `idempotency:score:${userId}:${tournamentId}:${score}:${gameDuration}:${sessionId}`;
     }
-    
+
     return `idempotency:score:${userId}:${tournamentId}:${score}:${gameDuration}:${timestampRounded}`;
 }
 

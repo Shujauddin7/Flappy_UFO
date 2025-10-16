@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { publishPrizePoolUpdate } from '@/lib/redis';
 
 // Fallback helper to manually update prize pool if trigger fails
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateTournamentPrizePoolFallback(supabase: any, tournamentId: string) {
+async function updateTournamentPrizePoolFallback(supabase: SupabaseClient, tournamentId: string) {
     try {
         const { data, error } = await supabase
             .from('user_tournament_records')
@@ -17,8 +16,7 @@ async function updateTournamentPrizePoolFallback(supabase: any, tournamentId: st
             return;
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const totalRevenue = data?.reduce((sum: number, record: any) => {
+        const totalRevenue = data?.reduce((sum: number, record: { verified_paid_amount?: number; standard_paid_amount?: number; total_continue_payments?: number }) => {
             const entryPayments = (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0);
             const continuePayments = record.total_continue_payments || 0;
             return sum + entryPayments + continuePayments;

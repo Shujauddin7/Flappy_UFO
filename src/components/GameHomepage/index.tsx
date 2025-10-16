@@ -8,6 +8,7 @@ import dynamic from 'next/dynamic';
 import { TournamentEntryModal } from '@/components/TournamentEntryModal';
 import InfoModal from '@/components/INFO';
 import GracePeriodModal from '@/components/GracePeriodModal';
+import { GameErrorBoundary } from '@/components/GameErrorBoundary';
 import { CACHE_TTL } from '@/utils/leaderboard-cache';
 import { canContinue, spendCoins, getCoins, addCoins } from '@/utils/coins';
 import { useSocketIO } from '@/contexts/SocketIOContext';
@@ -1137,12 +1138,14 @@ export default function GameHomepage() {
     if (currentScreen === 'playing') {
         return (
             <>
-                <FlappyGame
-                    key={`${gameMode}-${continueFromScore}-${tournamentContinueUsed}`} // Force remount on continue
-                    gameMode={gameMode}
-                    onGameEnd={handleGameEnd}
-                    continueFromScore={continueFromScore}
-                />
+                <GameErrorBoundary componentName="Game Engine">
+                    <FlappyGame
+                        key={`${gameMode}-${continueFromScore}-${tournamentContinueUsed}`} // Force remount on continue
+                        gameMode={gameMode}
+                        onGameEnd={handleGameEnd}
+                        continueFromScore={continueFromScore}
+                    />
+                </GameErrorBoundary>
                 {/* Game Result Modal - render over the game */}
                 {gameResult.show && (
                     <div className="game-result-modal-overlay">

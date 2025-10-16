@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase'
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerSupabaseClient } from '@/lib/supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export async function POST(req: NextRequest) {
     try {
@@ -93,8 +94,7 @@ export async function POST(req: NextRequest) {
 }
 
 // Helper function to ensure user_tournament_record exists (user should already exist in users table)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function ensureUserTournamentRecord(supabase: any, wallet: string, username: string, worldId: string, tournamentId: string) {
+async function ensureUserTournamentRecord(supabase: SupabaseClient, wallet: string, username: string, worldId: string, tournamentId: string) {
     try {
         // Get tournament info
         const { data: tournament, error: tournamentError } = await supabase
@@ -156,8 +156,7 @@ async function ensureUserTournamentRecord(supabase: any, wallet: string, usernam
 }
 
 // Helper function to update tournament sign-in count
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateTournamentSignInCount(supabase: any, tournamentId: string) {
+async function updateTournamentSignInCount(supabase: SupabaseClient, tournamentId: string) {
     try {
         // Count unique users who have tournament records for this tournament
         // This is the correct way based on database.md schema

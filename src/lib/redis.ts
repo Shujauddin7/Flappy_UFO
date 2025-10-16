@@ -1,17 +1,21 @@
 // Redis implementation with proper @upstash/redis integration
 // Handles both development and production environments safely
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-let Redis: any;
-let devClient: any = null;
-let prodClient: any = null;
+import type { Redis as RedisType } from '@upstash/redis';
+
+type RedisClass = typeof RedisType;
+type RedisInstance = RedisType | null;
+
+let Redis: RedisClass | null = null;
+let devClient: RedisInstance = null;
+let prodClient: RedisInstance = null;
 
 // Initialize Redis class (lazy loading to avoid build issues)
-async function initializeRedis() {
+async function initializeRedis(): Promise<RedisClass | null> {
     if (!Redis) {
         try {
             const { Redis: RedisClient } = await import('@upstash/redis');
-            Redis = RedisClient;
+            Redis = RedisClient as RedisClass;
         } catch {
             return null;
         }
@@ -20,7 +24,7 @@ async function initializeRedis() {
 }
 
 // Get environment-specific Redis client
-async function getRedisClient() {
+async function getRedisClient(): Promise<RedisInstance> {
     const RedisClass = await initializeRedis();
     if (!RedisClass) return null;
 
@@ -61,7 +65,7 @@ function getEnvironmentKey(baseKey: string): string {
     return channel;
 }
 
-export async function getCached(key: string): Promise<any> {
+export async function getCached<T = unknown>(key: string): Promise<T | null> {
     try {
         const redis = await getRedisClient();
         if (!redis) {
@@ -74,11 +78,11 @@ export async function getCached(key: string): Promise<any> {
         if (cachedData) {
             // Handle different data types returned by Upstash Redis
             if (typeof cachedData === 'string') {
-                return JSON.parse(cachedData);
+                return JSON.parse(cachedData) as T;
             } else if (typeof cachedData === 'object') {
-                return cachedData;
+                return cachedData as T;
             } else {
-                return JSON.parse(String(cachedData));
+                return JSON.parse(String(cachedData)) as T;
             }
         }
 
@@ -89,7 +93,7 @@ export async function getCached(key: string): Promise<any> {
     }
 }
 
-export async function setCached(key: string, data: any, ttlSeconds: number = 15): Promise<boolean> {
+export async function setCached(key: string, data: unknown, ttlSeconds: number = 15): Promise<boolean> {
     try {
         const redis = await getRedisClient();
         if (!redis) {
@@ -136,17 +140,20 @@ export async function testRedisConnection(): Promise<boolean> {
 }
 
 // 🚀 NEW: Check if cache needs warming (Professional Gaming Trick)
-export function shouldWarmCache(cachedData: any, maxAgeSeconds: number): boolean {
-    if (!cachedData || !cachedData.fetched_at) return true;
+export function shouldWarmCache(cachedData: unknown, maxAgeSeconds: number): boolean {
+    if (!cachedData || typeof cachedData !== 'object' || cachedData === null) return true;
 
-    const cacheAge = Date.now() - new Date(cachedData.fetched_at).getTime();
+    const cache = cachedData as { fetched_at?: string };
+    if (!cache.fetched_at) return true;
+
+    const cacheAge = Date.now() - new Date(cache.fetched_at).getTime();
     const warmThreshold = maxAgeSeconds * 1000 * 0.7; // Warm at 70% of TTL
 
     return cacheAge > warmThreshold;
 }
 
 // 🔄 Redis Pub/Sub for Socket.IO Integration (Real-time push notifications)
-export async function publishRealtimeUpdate(channel: string, message: any): Promise<boolean> {
+export async function publishRealtimeUpdate(channel: string, message: Record<string, unknown>): Promise<boolean> {
     try {
         const redis = await getRedisClient();
         if (!redis) {
