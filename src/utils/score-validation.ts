@@ -5,23 +5,15 @@
  * Prevents console-based score manipulation and bot attacks
  */
 
-// Game rules configuration
+import { SCORE_VALIDATION } from '@/constants/game-constants';
+
+// Game rules configuration (imported from centralized constants)
 export const GAME_RULES = {
-    // Maximum possible score per second of gameplay
-    // Adjusted based on Flappy UFO mechanics (1 point per obstacle passed)
-    MAX_SCORE_PER_SECOND: 10, // Very generous - assumes passing 10 obstacles per second (impossible for humans)
-
-    // Minimum game duration in milliseconds
-    MIN_DURATION_MS: 1000, // 1 second minimum (to prevent 0ms games with high scores)
-
-    // Maximum absolute score (hard cap)
-    MAX_SCORE: 100000,
-
-    // Minimum score (negative scores not allowed)
-    MIN_SCORE: 0,
-};
-
-export interface ScoreValidationResult {
+    MAX_SCORE_PER_SECOND: SCORE_VALIDATION.MAX_SCORE_PER_SECOND,
+    MIN_DURATION_MS: SCORE_VALIDATION.MIN_DURATION_MS,
+    MAX_SCORE: SCORE_VALIDATION.MAX_SCORE,
+    MIN_SCORE: SCORE_VALIDATION.MIN_SCORE,
+}; export interface ScoreValidationResult {
     valid: boolean;
     error?: string;
     details?: string;

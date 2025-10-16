@@ -6,6 +6,7 @@
 
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
+import { RATE_LIMITS } from '@/constants/game-constants';
 
 // Initialize Redis client for rate limiting
 function getRedisForRateLimit() {
@@ -37,13 +38,16 @@ let generalApiLimiter: Ratelimit | null = null;
 
 /**
  * Get rate limiter for score submission
- * Limit: 10 submissions per minute per user
+ * Limit: Configured in game-constants.ts
  */
 export function getScoreSubmitLimiter(): Ratelimit {
     if (!scoreSubmitLimiter) {
         scoreSubmitLimiter = new Ratelimit({
             redis: getRedisForRateLimit(),
-            limiter: Ratelimit.slidingWindow(10, '60 s'),
+            limiter: Ratelimit.slidingWindow(
+                RATE_LIMITS.SCORE_SUBMIT_PER_MINUTE,
+                `${RATE_LIMITS.WINDOW_SECONDS} s`
+            ),
             analytics: true,
             prefix: 'ratelimit:score',
         });
@@ -53,13 +57,16 @@ export function getScoreSubmitLimiter(): Ratelimit {
 
 /**
  * Get rate limiter for tournament entry
- * Limit: 5 entries per minute per user (prevent spam payments)
+ * Limit: Configured in game-constants.ts
  */
 export function getTournamentEntryLimiter(): Ratelimit {
     if (!tournamentEntryLimiter) {
         tournamentEntryLimiter = new Ratelimit({
             redis: getRedisForRateLimit(),
-            limiter: Ratelimit.slidingWindow(5, '60 s'),
+            limiter: Ratelimit.slidingWindow(
+                RATE_LIMITS.TOURNAMENT_ENTRY_PER_MINUTE,
+                `${RATE_LIMITS.WINDOW_SECONDS} s`
+            ),
             analytics: true,
             prefix: 'ratelimit:entry',
         });
@@ -69,13 +76,16 @@ export function getTournamentEntryLimiter(): Ratelimit {
 
 /**
  * Get rate limiter for World ID verification
- * Limit: 3 verifications per minute per user (prevent quota exhaustion)
+ * Limit: Configured in game-constants.ts
  */
 export function getVerificationLimiter(): Ratelimit {
     if (!verificationLimiter) {
         verificationLimiter = new Ratelimit({
             redis: getRedisForRateLimit(),
-            limiter: Ratelimit.slidingWindow(3, '60 s'),
+            limiter: Ratelimit.slidingWindow(
+                RATE_LIMITS.VERIFICATION_PER_MINUTE,
+                `${RATE_LIMITS.WINDOW_SECONDS} s`
+            ),
             analytics: true,
             prefix: 'ratelimit:verify',
         });
@@ -85,13 +95,16 @@ export function getVerificationLimiter(): Ratelimit {
 
 /**
  * Get general API rate limiter
- * Limit: 30 requests per minute per user
+ * Limit: Configured in game-constants.ts
  */
 export function getGeneralApiLimiter(): Ratelimit {
     if (!generalApiLimiter) {
         generalApiLimiter = new Ratelimit({
             redis: getRedisForRateLimit(),
-            limiter: Ratelimit.slidingWindow(30, '60 s'),
+            limiter: Ratelimit.slidingWindow(
+                RATE_LIMITS.GENERAL_API_PER_MINUTE,
+                `${RATE_LIMITS.WINDOW_SECONDS} s`
+            ),
             analytics: true,
             prefix: 'ratelimit:api',
         });

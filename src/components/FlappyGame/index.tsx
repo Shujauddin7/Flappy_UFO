@@ -161,23 +161,13 @@ export default function FlappyGame({
                     setIsGracePeriod(false);
                     setGracePeriodMessage('');
                 }
-            } catch {
-                // Fallback to the old hardcoded logic if API fails
-                const now = new Date();
-                const utcDay = now.getUTCDay(); // 0 = Sunday
-                const utcHour = now.getUTCHours();
-                const utcMinute = now.getUTCMinutes();
-
-                const inGracePeriod = utcDay === 0 && utcHour === 15 && utcMinute >= 0 && utcMinute < 30;
-
-                if (inGracePeriod) {
-                    const minutesRemaining = 30 - utcMinute;
-                    setIsGracePeriod(true);
-                    setGracePeriodMessage(`Tournament ends in ${minutesRemaining} minutes. Calculating prizes...`);
-                } else {
-                    setIsGracePeriod(false);
-                    setGracePeriodMessage('');
-                }
+            } catch (error) {
+                // If API fails, disable tournament mode to prevent wrong data
+                console.error('Failed to check grace period:', error);
+                setIsGracePeriod(false);
+                setGracePeriodMessage('');
+                // Note: User will still see tournament data from other APIs
+                // This only affects the grace period warning message
             }
         };
 

@@ -4,11 +4,13 @@
  * Used for server-side validation
  */
 
+import { PAYMENT } from './game-constants';
+
 export const PAYMENT_AMOUNTS = {
-    VERIFIED_ENTRY: 0.9,
-    STANDARD_ENTRY: 1.0,
-    VERIFIED_CONTINUE: 0.9,
-    STANDARD_CONTINUE: 1.0,
+    VERIFIED_ENTRY: PAYMENT.VERIFIED_ENTRY,
+    STANDARD_ENTRY: PAYMENT.STANDARD_ENTRY,
+    VERIFIED_CONTINUE: PAYMENT.VERIFIED_CONTINUE,
+    STANDARD_CONTINUE: PAYMENT.STANDARD_CONTINUE,
 } as const;
 
 export const PAYMENT_TOLERANCE = 0.01; // Allow 0.01 variance for floating point
