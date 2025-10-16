@@ -1151,7 +1151,16 @@ export default function GameHomepage() {
                     <div className="game-result-modal-overlay">
                         <div className="game-result-modal">
                             <div className="modal-header">
-                                <h2 className="modal-title">{gameResult.mode} Complete!</h2>
+                                <h2 className="modal-title">
+                                    {gameResult.isNewHighScore 
+                                        ? "🎉 New Record!" 
+                                        : gameResult.score === 0 
+                                            ? "Ready to Fly? 🚀"
+                                            : gameResult.score < 5
+                                                ? "Keep Trying! 💫"
+                                                : "Good Run! 🎮"
+                                    }
+                                </h2>
                             </div>
 
                             <div className="modal-content">
