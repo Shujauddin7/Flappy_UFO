@@ -4,6 +4,9 @@
 # Internal documentation (security sensitive)
 ISSUES.md
 
+# Health check guide (solo dev reference only)
+HEALTHCHECK.md
+
 # Database schema files (development only)
 supabase-*.sql
 

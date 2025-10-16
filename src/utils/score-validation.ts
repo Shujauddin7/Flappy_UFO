@@ -10,13 +10,13 @@ export const GAME_RULES = {
     // Maximum possible score per second of gameplay
     // Adjusted based on Flappy UFO mechanics (1 point per obstacle passed)
     MAX_SCORE_PER_SECOND: 10, // Very generous - assumes passing 10 obstacles per second (impossible for humans)
-    
+
     // Minimum game duration in milliseconds
     MIN_DURATION_MS: 1000, // 1 second minimum (to prevent 0ms games with high scores)
-    
+
     // Maximum absolute score (hard cap)
     MAX_SCORE: 100000,
-    
+
     // Minimum score (negative scores not allowed)
     MIN_SCORE: 0,
 };
@@ -52,7 +52,14 @@ export function validateScorePlausibility(
         };
     }
 
-    // Check minimum game duration
+    // Special case: Allow score 0 with any duration (player can crash immediately)
+    if (score === 0) {
+        return {
+            valid: true
+        };
+    }
+
+    // Check minimum game duration (only for non-zero scores)
     if (gameDurationMs < GAME_RULES.MIN_DURATION_MS) {
         return {
             valid: false,
