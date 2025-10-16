@@ -79,6 +79,10 @@ Rank 10 → 2%.`
     {
         question: "Is my progress saved?",
         answer: "Tournament scores are saved on our servers. Practice Mode coins are saved locally on your device. Your session persists when you return to the game."
+    },
+    {
+        question: "When will I receive my prize?",
+        answer: "Winners receive WLD directly to their wallet within 24 hours after the tournament ends. Payments are processed automatically - no action needed from you!"
     }
 ];
 
