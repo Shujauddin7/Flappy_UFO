@@ -7,8 +7,12 @@ ISSUES.md
 # Health check guide (solo dev reference only)
 HEALTHCHECK.md
 
+# Socket.IO compression fix guide (solo dev reference only)
+FIX_SOCKETIO_COMPRESSION.md
+
 # Database schema files (development only)
 supabase-*.sql
+sql-scripts/PROD_5_RESTORE_TOTAL_PLAYERS.sql
 
 # pg_cron setup guide (local reference only)
 supabase.pg_cron.md
@@ -92,6 +96,8 @@ PROD_FUNCTIONS_ANALYSIS.md
 .env*.local
 OPTIMIZATION.MD
 
+
+
 SOCKETIO_WEBSOCKET_FIX.md
 # SQL migration scripts (internal deployment only)
 sql-scripts/
@@ -99,3 +105,4 @@ sql-scripts/
 # Database backups (local only)
 backup-*.sql
 backup-*.txt 
+

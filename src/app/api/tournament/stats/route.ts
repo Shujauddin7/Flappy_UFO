@@ -17,12 +17,13 @@ export async function GET() {
         if (cachedStats && typeof cachedStats === 'object') {
             const responseTime = Date.now() - startTime;
             // 🔧 ENSURE end_time IS ALWAYS PRESENT - Critical for countdown timer
-            if (!cachedStats.end_time && cachedStats.has_active_tournament) {
+            const stats = cachedStats as Record<string, unknown>;
+            if (!stats.end_time && stats.has_active_tournament) {
                 // Don't return cached data if it's missing critical end_time field
                 // Fall through to fresh database query
             } else {
                 return NextResponse.json({
-                    ...cachedStats,
+                    ...stats,
                     cached: true,
                     response_time_ms: responseTime,
                     fetched_at: new Date().toISOString()
@@ -50,7 +51,7 @@ export async function GET() {
                 });
             }
         } catch {
-            }
+        }
 
         // 🔄 STEP 3: Fallback to legacy method if optimized query fails
         const currentTournament = await getCurrentActiveTournament();
@@ -90,10 +91,10 @@ export async function GET() {
             // Fallback: Calculate end_time as start_time + 24 hours
             const startTime = new Date(currentTournament.start_time);
             endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000).toISOString();
-            } else if (!endTime) {
+        } else if (!endTime) {
             // Last resort: Use current time + 24 hours
             endTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-            }
+        }
 
         const responseData = {
             id: currentTournament.id, // CRITICAL: Include tournament ID for Realtime filters

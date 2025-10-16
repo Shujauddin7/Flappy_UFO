@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createSuccessResponse, createErrorResponse, API_ERROR_CODES } from '@/types/api';
 
 /**
  * Health check endpoint for monitoring system status
