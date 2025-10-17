@@ -705,31 +705,8 @@ export default function FlappyGame({
         }
 
         // Clear canvas with beautiful space background
-        const backgroundGradient = ctx.createRadialGradient(
-            canvas.width / 2, canvas.height / 2, 0,
-            canvas.width / 2, canvas.height / 2, Math.max(canvas.width, canvas.height)
-        );
-        backgroundGradient.addColorStop(0, '#0B1426');
-        backgroundGradient.addColorStop(0.5, '#1E2A4A');
-        backgroundGradient.addColorStop(1, '#0A0A0A');
-
-        ctx.fillStyle = backgroundGradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Optimized animated starfield (frame-rate independent with reduced star count)
-        ctx.globalAlpha = 1;
-        const starCount = 60; // Reduced from 100 for better performance
-        for (let i = 0; i < starCount; i++) {
-            const x = ((i * 150 + currentTime * 0.015) % (canvas.width + 100)) - 50; // Slightly slower movement
-            const y = (i * 234) % canvas.height;
-            const size = Math.random() * 1.5 + 0.5; // Slightly smaller stars
-            const twinkle = 0.3 + Math.sin(currentTime * 0.002 + i) * 0.7; // Slower twinkling
-
-            ctx.fillStyle = '#ffffff';
-            ctx.globalAlpha = twinkle;
-            ctx.fillRect(x, y, size, size);
-        }
-        ctx.globalAlpha = 1;
+        // Clear canvas with transparent background (starfield shows through)
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         // Draw planets, asteroids, coins, and dust particles
         state.obstacles.forEach(obstacle => {
@@ -1397,9 +1374,9 @@ export default function FlappyGame({
                     left: 0,
                     width: '100vw',
                     height: '100vh',
-                    background: '#0B1426',
+                    background: 'transparent',
                     touchAction: 'none',
-                    zIndex: 10,
+                    zIndex: 5,
                     // Hide canvas while loading
                     opacity: globalAssets.isLoading || !globalAssets.allLoaded ? 0 : 1,
                     transition: 'opacity 0.5s ease-in-out'
