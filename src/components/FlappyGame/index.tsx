@@ -709,9 +709,9 @@ export default function FlappyGame({
             canvas.width / 2, canvas.height / 2, 0,
             canvas.width / 2, canvas.height / 2, Math.max(canvas.width, canvas.height)
         );
-        backgroundGradient.addColorStop(0, '#0B1426');
-        backgroundGradient.addColorStop(0.5, '#1E2A4A');
-        backgroundGradient.addColorStop(1, '#0A0A0A');
+        backgroundGradient.addColorStop(0, 'rgba(11, 20, 38, 0.3)');
+        backgroundGradient.addColorStop(0.5, 'rgba(30, 42, 74, 0.3)');
+        backgroundGradient.addColorStop(1, 'rgba(10, 10, 10, 0.3)');
 
         ctx.fillStyle = backgroundGradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
