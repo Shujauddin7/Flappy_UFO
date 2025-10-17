@@ -1076,7 +1076,7 @@ export default function GameHomepage() {
         let mouseY = 0;
         let previousMouseX = 0;
         let previousMouseY = 0;
-        const moveSpeed = 4;
+        const moveSpeed = 1.5;
         let running = true;
 
         function animate() {
