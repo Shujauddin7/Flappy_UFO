@@ -1076,7 +1076,6 @@ export default function GameHomepage() {
         let mouseY = 0;
         let previousMouseX = 0;
         let previousMouseY = 0;
-        const moveSpeed = 1.5;
         let running = true;
 
         function animate() {
@@ -1086,6 +1085,8 @@ export default function GameHomepage() {
             ctx.fillRect(0, 0, width, height);
             const dx = mouseX - previousMouseX;
             const dy = mouseY - previousMouseY;
+            // Use slower speed during gameplay, faster on other screens
+            const moveSpeed = currentScreen === 'playing' ? 1.5 : 4;
             for (const star of stars) {
                 star.update(moveSpeed, dx, dy, width, height);
                 star.draw(ctx, width, height);
