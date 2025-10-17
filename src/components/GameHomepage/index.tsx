@@ -1013,9 +1013,7 @@ export default function GameHomepage() {
     };
 
     useEffect(() => {
-        // Only run stars animation on home screen and related screens
-        if (currentScreen === 'playing') return;
-
+        // Run stars animation on all screens
         const canvas = canvasRef.current;
         if (!canvas) return;
 
