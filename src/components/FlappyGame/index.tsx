@@ -705,16 +705,8 @@ export default function FlappyGame({
         }
 
         // Clear canvas with beautiful space background
-        const backgroundGradient = ctx.createRadialGradient(
-            canvas.width / 2, canvas.height / 2, 0,
-            canvas.width / 2, canvas.height / 2, Math.max(canvas.width, canvas.height)
-        );
-        backgroundGradient.addColorStop(0, 'rgba(11, 20, 38, 0.15)');
-        backgroundGradient.addColorStop(0.5, 'rgba(30, 42, 74, 0.15)');
-        backgroundGradient.addColorStop(1, 'rgba(10, 10, 10, 0.15)');
-
-        ctx.fillStyle = backgroundGradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Clear canvas with transparent background (starfield shows through)
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         // Draw planets, asteroids, coins, and dust particles
         state.obstacles.forEach(obstacle => {
@@ -1382,9 +1374,9 @@ export default function FlappyGame({
                     left: 0,
                     width: '100vw',
                     height: '100vh',
-                    background: '#0B1426',
+                    background: 'transparent',
                     touchAction: 'none',
-                    zIndex: 10,
+                    zIndex: 5,
                     // Hide canvas while loading
                     opacity: globalAssets.isLoading || !globalAssets.allLoaded ? 0 : 1,
                     transition: 'opacity 0.5s ease-in-out'
