@@ -739,27 +739,29 @@ export default function GameHomepage() {
             });
             const { id } = await res.json();
 
-            // Make continue payment using the same amount as entry fee
+            // Make continue payment using 50% of entry fee
+            const continueAmount = tournamentEntryAmount * 0.5;
             const result = await MiniKit.commandsAsync.pay({
                 reference: id,
                 to: process.env.NEXT_PUBLIC_ADMIN_WALLET || '',
                 tokens: [
                     {
                         symbol: Tokens.WLD,
-                        token_amount: tokenToDecimals(tournamentEntryAmount, Tokens.WLD).toString(),
+                        token_amount: tokenToDecimals(continueAmount, Tokens.WLD).toString(),
                     },
                 ],
-                description: `Flappy UFO Tournament Continue (${tournamentEntryAmount} WLD)`,
+                description: `Flappy UFO Tournament Continue (${continueAmount} WLD)`,
             });
 
             if (result.finalPayload.status === 'success') {
                 // Record continue payment in database (only continue-specific columns)
                 try {
+                    const continueAmount = tournamentEntryAmount * 0.5;
                     const continueResponse = await fetch('/api/tournament/continue', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            continue_amount: tournamentEntryAmount
+                            continue_amount: continueAmount
                         }),
                     });
 
@@ -1138,6 +1140,7 @@ export default function GameHomepage() {
     if (currentScreen === 'playing') {
         return (
             <>
+                <canvas ref={canvasRef} className="starfield-canvas" />
                 <GameErrorBoundary componentName="Game Engine">
                     <FlappyGame
                         key={`${gameMode}-${continueFromScore}-${tournamentContinueUsed}`} // Force remount on continue
@@ -1298,7 +1301,7 @@ export default function GameHomepage() {
                                             await handleTournamentContinue(gameResult.score);
                                         }}
                                     >
-                                        Continue ({tournamentEntryAmount} WLD) - One continue per game
+                                        Continue ({tournamentEntryAmount * 0.5} WLD) - One continue per game
                                     </button>
                                 )}
 
