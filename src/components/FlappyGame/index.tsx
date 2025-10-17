@@ -514,9 +514,9 @@ export default function FlappyGame({
                     // Mark as collected to prevent duplicate collection
                     obstacle.collected = true;
 
-                    // Give 2 coins per collection as per Plan.md (Practice Mode only)
-                    gameStateRef.current.coins += 2;
-                    gameStateRef.current.coinsCollectedThisGame += 2; // Track coins collected this game
+                    // Give 1 coin per collection as per Plan.md (Practice Mode only)
+                    gameStateRef.current.coins += 1;
+                    gameStateRef.current.coinsCollectedThisGame += 1; // Track coins collected this game
 
                     // Note: Don't save to localStorage here - will be saved when game ends
 

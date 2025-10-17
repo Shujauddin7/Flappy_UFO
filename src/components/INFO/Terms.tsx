@@ -10,7 +10,7 @@ export default function Terms({ onSupportClick }: TermsProps) {
             heading: "Game Rules",
             content: [
                 "⭐ Navigate your UFO through obstacles by tapping to fly up and releasing to fall",
-                "⭐ Collect stars in Practice Mode to earn coins (2 coins per star)",
+                "⭐ Collect stars in Practice Mode to earn coins (1 coin per star)",
                 "⭐ Score points by successfully passing obstacles (+1 point per obstacle)",
                 "⭐ Use coins to continue in Practice Mode (10 coins per continue)",
                 "⭐ Tournament entries require payment and allow one paid continue per game"

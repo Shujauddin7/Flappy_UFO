@@ -1260,7 +1260,7 @@ export default function GameHomepage() {
                                     <div className="practice-info">
                                         💰 You have {getCoins()} coins
                                         <br />
-                                        <small>Collect ⭐ stars to earn 2 coins each • Use 10 coins to continue</small>
+                                        <small>Collect ⭐ stars to earn 1 coin each • Use 10 coins to continue</small>
                                     </div>
                                 )}
                             </div>

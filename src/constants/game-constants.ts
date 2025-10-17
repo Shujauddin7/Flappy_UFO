@@ -155,7 +155,7 @@ export const API = {
 // ============================================================================
 export const PRACTICE_MODE = {
     /** Coins earned per star collected */
-    COINS_PER_STAR: 2,
+    COINS_PER_STAR: 1,
 
     /** Coins required to continue */
     COINS_PER_CONTINUE: 10,

@@ -14,7 +14,7 @@ interface FAQProps {
 const faqData: FAQItem[] = [
     {
         question: "How does Flappy UFO work?",
-        answer: "Navigate your UFO through planets and asteroids by tapping to fly up. Collect stars in Practice Mode (2 coins each) and compete in weekly WLD tournaments. Your highest score across all entries is recorded."
+        answer: "Navigate your UFO through planets and asteroids by tapping to fly up. Collect stars in Practice Mode (1 coin each) and compete in weekly WLD tournaments. Your highest score across all entries is recorded."
     },
     {
         question: "Is this gambling?",
@@ -74,7 +74,7 @@ Rank 10 → 2%.`
     },
     {
         question: "How do I collect stars in Practice Mode?",
-        answer: "Fly through stars during gameplay to collect them. Each star gives you 2 coins. Stars don't affect your score - they're just for earning continue coins!"
+        answer: "Fly through stars during gameplay to collect them. Each star gives you 1 coin. Stars don't affect your score - they're just for earning continue coins!"
     },
     {
         question: "Is my progress saved?",

@@ -1,5 +1,5 @@
 // Practice Mode coin management with tamper protection
-// As per Plan.md: Earn 2 coins per star, use 10 coins to continue
+// As per Plan.md: Earn 1 coin per star, use 10 coins to continue
 
 const COINS_KEY = 'flappy_ufo_coins';
 const COINS_HASH_KEY = 'flappy_ufo_coins_hash';
