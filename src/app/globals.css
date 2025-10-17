@@ -58,13 +58,15 @@ body {
   /* Allow flexible height */
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
+  /* Changed from space-between to flex-start */
   align-items: center;
   pointer-events: none;
   background: transparent !important;
   /* Override any default backgrounds */
   overflow-y: auto;
   /* Allow scrolling if content exceeds viewport */
+  box-sizing: border-box;
 }
 
 
@@ -106,6 +108,8 @@ body {
   position: relative;
   margin-top: 0.5rem;
   /* Removed padding-right since info button is now positioned absolutely */
+  flex-shrink: 0;
+  /* Prevent shrinking on small screens */
 }
 
 .game-title {
@@ -351,8 +355,11 @@ body {
 .play-section {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  min-height: 0;
+  /* Allow flex item to shrink below content size */
 }
 
 .custom-play-btn {
@@ -446,8 +453,8 @@ body {
 }
 
 .game-modes {
-  flex: 1;
-  /* Take available space between header and footer */
+  flex: 0 1 auto;
+  /* Don't grow, can shrink, auto size */
   display: flex;
   flex-direction: column;
   gap: 1.2rem;
@@ -457,6 +464,12 @@ body {
   /* Restored from main branch */
   align-items: center;
   justify-content: center;
+  padding: 0 1rem;
+  /* Add horizontal padding */
+  margin-top: auto;
+  /* Push to center vertically */
+  margin-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+  /* Space for fixed bottom nav */
 }
 
 .mode-card {
@@ -495,6 +508,18 @@ body {
     transform: translateY(-8px) scale(1.02);
     border-color: rgba(255, 255, 255, 0.4);
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* Mobile responsiveness - only for very small screens */
+@media (max-height: 667px) {
+  .game-modes {
+    gap: 1rem;
+    margin-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .epic-title-section {
+    margin-bottom: 0.8rem;
   }
 }
 
@@ -849,18 +874,21 @@ body {
   /* Full viewport width */
   display: flex;
   justify-content: center;
-  padding: 1rem 2rem 1.5rem;
+  padding: 1rem 2rem calc(1rem + env(safe-area-inset-bottom, 0px));
+  /* Add iOS safe area padding */
   position: fixed !important;
   /* Force fixed positioning */
   bottom: 0 !important;
   left: 0 !important;
   right: 0 !important;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.5);
+  /* Slightly more opaque for better visibility */
   backdrop-filter: blur(10px);
   z-index: 9999 !important;
   /* Highest z-index to ensure it stays on top */
   pointer-events: auto !important;
   /* Enable interactions */
+  box-sizing: border-box;
 }
 
 .space-nav-icons {
