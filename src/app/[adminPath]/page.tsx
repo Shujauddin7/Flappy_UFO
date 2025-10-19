@@ -334,15 +334,12 @@ export default function AdminDashboard() {
 
     // Load previous tournament data
     const handleLoadPreviousTournament = async () => {
-        console.log('🔍 Loading previous tournament...');
         setLoading(true);
         try {
             const response = await fetch('/api/tournament/previous');
-            console.log('📡 API response status:', response.status, response.ok);
             
             if (response.ok) {
                 const data = await response.json();
-                console.log('✅ Previous tournament data:', data);
                 const tournament = data.tournament;
 
                 const mappedTournament = {
@@ -364,11 +361,9 @@ export default function AdminDashboard() {
 
                 if (tournament?.id) {
                     const leaderboardResponse = await fetch(`/api/tournament/leaderboard-data?tournament_id=${tournament.id}`);
-                    console.log('📊 Leaderboard response status:', leaderboardResponse.status);
                     
                     if (leaderboardResponse.ok) {
                         const leaderboardData = await leaderboardResponse.json();
-                        console.log('✅ Leaderboard data:', leaderboardData);
                         const leaderboard = leaderboardData.players || leaderboardData;
 
                         const paidResponse = await fetch(`/api/admin/paid-winners?tournament_id=${tournament.id}`);
@@ -399,7 +394,6 @@ export default function AdminDashboard() {
                         });
 
                         setPreviousWinners(winnersData);
-                        console.log('💾 Set previous winners:', winnersData.length, 'winners');
 
                         const analyticsResponse = await fetch(`/api/admin/tournament-analytics?tournament_day=${tournament.tournament_day}`);
                         if (analyticsResponse.ok) {
@@ -437,16 +431,14 @@ export default function AdminDashboard() {
                 }
             } else {
                 const errorData = await response.json();
-                console.log('❌ API returned non-OK status:', errorData);
                 alert(`No previous tournament found: ${errorData.message || 'This might be the first tournament'}`);
                 setPreviousTournament(null);
                 setPreviousWinners([]);
             }
         } catch (error) {
-            console.error('❌ Error loading previous tournament:', error);
+            console.error('Error loading previous tournament:', error);
         } finally {
             setLoading(false);
-            console.log('✅ Loading complete');
         }
     };
 
