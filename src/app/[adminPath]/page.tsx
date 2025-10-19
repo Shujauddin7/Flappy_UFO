@@ -270,6 +270,14 @@ export default function AdminDashboard() {
         loadCurrentTournament();
     }, [session, isAdmin, router, params?.adminPath, isValidAdminPath, validAdminWallets.length, isPasswordAuthenticated, isWalletAdmin]);
 
+    // Auto-load previous tournament data when switching to previous view
+    useEffect(() => {
+        if (tournamentView === 'previous' && !loading) {
+            handleLoadPreviousTournament();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tournamentView]); // Only run when tournamentView changes
+
     // Early return if not a valid admin path - prevents any admin content from rendering
     if (!isValidAdminPath) {
         return null; // No admin content rendered for invalid paths
