@@ -2,9 +2,63 @@ import { NextResponse } from 'next/server';
 import { getCached, setCached } from '@/lib/redis';
 import { getCurrentActiveTournament } from '@/utils/database';
 import { getLeaderboardData } from '@/utils/leaderboard-queries';
+import { createClient } from '@supabase/supabase-js';
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
+        // Check if a specific tournament_id was requested
+        const { searchParams } = new URL(request.url);
+        const requestedTournamentId = searchParams.get('tournament_id');
+
+        // If specific tournament requested, fetch it directly (don't use cache)
+        if (requestedTournamentId) {
+            const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
+            const supabaseUrl = isProduction ? process.env.SUPABASE_PROD_URL : process.env.SUPABASE_DEV_URL;
+            const supabaseServiceKey = isProduction ? process.env.SUPABASE_PROD_SERVICE_KEY : process.env.SUPABASE_DEV_SERVICE_KEY;
+
+            if (!supabaseUrl || !supabaseServiceKey) {
+                return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+            }
+
+            const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+            // Fetch the specific tournament
+            const { data: tournament, error: tournamentError } = await supabase
+                .from('tournaments')
+                .select('tournament_day')
+                .eq('id', requestedTournamentId)
+                .single();
+
+            if (tournamentError || !tournament) {
+                return NextResponse.json({
+                    players: [],
+                    tournament_day: null,
+                    total_players: 0,
+                    error: 'Tournament not found'
+                }, { status: 404 });
+            }
+
+            const dbPlayers = await getLeaderboardData(tournament.tournament_day, {
+                limit: 1000,
+                includeZeroScores: false
+            });
+
+            const playersWithRank = dbPlayers.map((player, index) => ({
+                ...player,
+                id: player.user_id,
+                rank: index + 1,
+                created_at: new Date().toISOString()
+            }));
+
+            return NextResponse.json({
+                players: playersWithRank,
+                tournament_day: tournament.tournament_day,
+                total_players: playersWithRank.length,
+                cached: false,
+                fetched_at: new Date().toISOString()
+            });
+        }
+
         // 🎯 STEP 1: Check for cached response first (INSTANT if available)
         const cacheKey = 'tournament_leaderboard_response';
         const cachedResponse = await getCached(cacheKey);
@@ -40,7 +94,7 @@ export async function GET() {
             limit: 1000,
             includeZeroScores: false
         });
-//         const queryTime = Date.now() - queryStartTime;
+        //         const queryTime = Date.now() - queryStartTime;
         // 🎯 STEP 4: Build the response
         const playersWithRank = dbPlayers.map((player, index) => ({
             ...player,

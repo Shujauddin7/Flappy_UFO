@@ -199,7 +199,7 @@ export default function AdminDashboard() {
 
                     setWinners(winnersData);
                 } else {
-                    }
+                }
             } catch (error) {
                 console.error('Error loading winners:', error);
             }
@@ -228,7 +228,7 @@ export default function AdminDashboard() {
                     // Update winners with final amounts
                     updateWinnersWithPrizePool(baseAmount, guaranteeAmount);
                 } else {
-                    }
+                }
             } catch (error) {
                 console.error('Error loading prize pool:', error);
             }
@@ -259,7 +259,7 @@ export default function AdminDashboard() {
                         await loadPrizePool(tournament.id, tournament.tournament_day);
                     }
                 } else {
-                    }
+                }
             } catch (error) {
                 console.error('Error loading tournament:', error);
             } finally {
@@ -314,7 +314,7 @@ export default function AdminDashboard() {
                         })
                     );
                 } else {
-                    }
+                }
             } catch (error) {
                 console.error('Failed to reload payment status from database:', error);
             }
@@ -337,6 +337,7 @@ export default function AdminDashboard() {
         setLoading(true);
         try {
             const response = await fetch('/api/tournament/previous');
+
             if (response.ok) {
                 const data = await response.json();
                 const tournament = data.tournament;
@@ -360,6 +361,7 @@ export default function AdminDashboard() {
 
                 if (tournament?.id) {
                     const leaderboardResponse = await fetch(`/api/tournament/leaderboard-data?tournament_id=${tournament.id}`);
+
                     if (leaderboardResponse.ok) {
                         const leaderboardData = await leaderboardResponse.json();
                         const leaderboard = leaderboardData.players || leaderboardData;
@@ -428,6 +430,8 @@ export default function AdminDashboard() {
                     }
                 }
             } else {
+                const errorData = await response.json();
+                alert(`No previous tournament found: ${errorData.message || 'This might be the first tournament'}`);
                 setPreviousTournament(null);
                 setPreviousWinners([]);
             }
@@ -679,9 +683,8 @@ export default function AdminDashboard() {
                                 <button
                                     onClick={() => {
                                         setTournamentView('previous');
-                                        if (!previousTournament) {
-                                            handleLoadPreviousTournament();
-                                        }
+                                        // Always reload to get fresh data when switching to previous view
+                                        handleLoadPreviousTournament();
                                     }}
                                     className={`px-6 py-2 rounded-lg font-semibold transition-all ${tournamentView === 'previous'
                                         ? 'bg-orange-600 text-white shadow-lg scale-105'
