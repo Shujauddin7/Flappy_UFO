@@ -9,7 +9,7 @@ export async function GET(request: Request) {
         // Check if a specific tournament_id was requested
         const { searchParams } = new URL(request.url);
         const requestedTournamentId = searchParams.get('tournament_id');
-        
+
         // If specific tournament requested, fetch it directly (don't use cache)
         if (requestedTournamentId) {
             const isProduction = process.env.NEXT_PUBLIC_ENV === 'prod';
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
             }
 
             const supabase = createClient(supabaseUrl, supabaseServiceKey);
-            
+
             // Fetch the specific tournament
             const { data: tournament, error: tournamentError } = await supabase
                 .from('tournaments')
@@ -94,7 +94,7 @@ export async function GET(request: Request) {
             limit: 1000,
             includeZeroScores: false
         });
-//         const queryTime = Date.now() - queryStartTime;
+        //         const queryTime = Date.now() - queryStartTime;
         // 🎯 STEP 4: Build the response
         const playersWithRank = dbPlayers.map((player, index) => ({
             ...player,

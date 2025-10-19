@@ -337,7 +337,7 @@ export default function AdminDashboard() {
         setLoading(true);
         try {
             const response = await fetch('/api/tournament/previous');
-            
+
             if (response.ok) {
                 const data = await response.json();
                 const tournament = data.tournament;
@@ -361,7 +361,7 @@ export default function AdminDashboard() {
 
                 if (tournament?.id) {
                     const leaderboardResponse = await fetch(`/api/tournament/leaderboard-data?tournament_id=${tournament.id}`);
-                    
+
                     if (leaderboardResponse.ok) {
                         const leaderboardData = await leaderboardResponse.json();
                         const leaderboard = leaderboardData.players || leaderboardData;
