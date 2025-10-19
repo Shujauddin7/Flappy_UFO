@@ -199,7 +199,7 @@ export default function AdminDashboard() {
 
                     setWinners(winnersData);
                 } else {
-                    }
+                }
             } catch (error) {
                 console.error('Error loading winners:', error);
             }
@@ -228,7 +228,7 @@ export default function AdminDashboard() {
                     // Update winners with final amounts
                     updateWinnersWithPrizePool(baseAmount, guaranteeAmount);
                 } else {
-                    }
+                }
             } catch (error) {
                 console.error('Error loading prize pool:', error);
             }
@@ -259,7 +259,7 @@ export default function AdminDashboard() {
                         await loadPrizePool(tournament.id, tournament.tournament_day);
                     }
                 } else {
-                    }
+                }
             } catch (error) {
                 console.error('Error loading tournament:', error);
             } finally {
@@ -314,7 +314,7 @@ export default function AdminDashboard() {
                         })
                     );
                 } else {
-                    }
+                }
             } catch (error) {
                 console.error('Failed to reload payment status from database:', error);
             }
@@ -679,9 +679,8 @@ export default function AdminDashboard() {
                                 <button
                                     onClick={() => {
                                         setTournamentView('previous');
-                                        if (!previousTournament) {
-                                            handleLoadPreviousTournament();
-                                        }
+                                        // Always reload to get fresh data when switching to previous view
+                                        handleLoadPreviousTournament();
                                     }}
                                     className={`px-6 py-2 rounded-lg font-semibold transition-all ${tournamentView === 'previous'
                                         ? 'bg-orange-600 text-white shadow-lg scale-105'

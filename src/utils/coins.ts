@@ -14,7 +14,7 @@ export function saveCoins(amount: number): void {
         localStorage.setItem(COINS_KEY, amount.toString());
         localStorage.setItem(COINS_HASH_KEY, hash);
     } catch {
-        }
+    }
 }
 
 /**
