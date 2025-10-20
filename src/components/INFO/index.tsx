@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import FAQ from './FAQ';
 
 import Terms from './Terms';
@@ -15,11 +15,19 @@ type InfoSection = 'faq' | 'terms' | 'support';
 
 export default function InfoModal({ isOpen, onClose }: InfoModalProps) {
     const [activeSection, setActiveSection] = useState<InfoSection>('faq');
+    const contentRef = useRef<HTMLDivElement>(null);
 
     // Stable close handler
     const handleClose = useCallback(() => {
         onClose();
     }, [onClose]);
+
+    // Reset scroll position when section changes
+    useEffect(() => {
+        if (contentRef.current) {
+            contentRef.current.scrollTop = 0;
+        }
+    }, [activeSection]);
 
     if (!isOpen) {
         return null;
@@ -112,6 +120,7 @@ export default function InfoModal({ isOpen, onClose }: InfoModalProps) {
 
                 {/* Content Area - AGGRESSIVE MOBILE SCROLLING FIX */}
                 <div
+                    ref={contentRef}
                     className="flex-1"
                     style={{
                         overflow: 'auto',

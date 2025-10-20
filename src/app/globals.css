@@ -409,8 +409,8 @@ body {
   color: #00F5FF;
   text-shadow: 0 0 15px #00F5FF, 0 0 30px #00F5FF;
   animation: glow-blue 3s ease-in-out infinite alternate;
-  margin-right: 0.3rem;
-  /* Space between words */
+  margin-right: 0.15rem;
+  /* Single space between words */
 }
 
 .destiny-word {

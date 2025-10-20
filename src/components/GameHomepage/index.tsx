@@ -1195,9 +1195,11 @@ export default function GameHomepage() {
                                         Previous: {gameResult.previousHigh}
                                         <br />
                                         New Best: {gameResult.currentHigh || userHighestScore}
-                                        <div style={{ fontSize: '13px', marginTop: '8px', color: '#10B981' }}>
-                                            Amazing! 🚀
-                                        </div>
+                                        {gameResult.score >= 2 && (
+                                            <div style={{ fontSize: '13px', marginTop: '8px', color: '#10B981' }}>
+                                                Amazing! 🚀
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 

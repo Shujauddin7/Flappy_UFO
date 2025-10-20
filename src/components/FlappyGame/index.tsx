@@ -1103,6 +1103,7 @@ export default function FlappyGame({
         const yPosition = isMobile ? 35 : 45;
 
         ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+        ctx.textBaseline = 'middle'; // Align everything to middle for consistent vertical alignment
 
         // Score display on the left
         const scoreIcon = '🛸';
@@ -1122,7 +1123,7 @@ export default function FlappyGame({
 
         // Draw score number with black background box
         const scoreBoxX = 15 + scoreIconWidth + 8 + scoreLabelWidth;
-        const scoreBoxY = yPosition - fontSize;
+        const scoreBoxY = yPosition - (fontSize + boxPadding) / 2;
         const scoreBoxWidth = scoreNumberWidth + boxPadding * 2;
         const scoreBoxHeight = fontSize + boxPadding;
 
@@ -1156,7 +1157,7 @@ export default function FlappyGame({
 
         // Draw stars number with black background box
         const starsBoxX = starsNumberX - boxPadding;
-        const starsBoxY = yPosition - fontSize;
+        const starsBoxY = yPosition - (fontSize + boxPadding) / 2;
         const starsBoxWidth = starsNumberWidth + boxPadding * 2;
         const starsBoxHeight = fontSize + boxPadding;
 
