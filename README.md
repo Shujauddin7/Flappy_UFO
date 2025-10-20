@@ -4,7 +4,7 @@ This template is a way for you to quickly get started with authentication and ex
 
 ## Getting Started
 
-1. cp .env.example .env.local
+1. cp .env.example .env.local  
 2. Follow the instructions in the .env.local file
 3. Run `npm run dev`
 4. Run `ngrok http 3000`
