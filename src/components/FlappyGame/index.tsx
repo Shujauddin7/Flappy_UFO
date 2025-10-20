@@ -1103,7 +1103,7 @@ export default function FlappyGame({
         const yPosition = isMobile ? 35 : 45;
 
         ctx.font = `bold ${fontSize}px Arial, sans-serif`;
-        ctx.textBaseline = 'middle'; // Align everything to middle for consistent vertical alignment
+        ctx.textBaseline = 'alphabetic'; // Use default baseline for consistent alignment
 
         // Score display on the left
         const scoreIcon = '🛸';
@@ -1115,7 +1115,7 @@ export default function FlappyGame({
         const scoreLabelWidth = ctx.measureText(scoreLabel).width;
         const scoreNumberWidth = ctx.measureText(scoreNumber).width;
 
-        // Draw score icon and label (no background)
+        // Draw score icon and label (no background) - all use same yPosition for alignment
         ctx.shadowBlur = 0;
         ctx.fillText(scoreIcon, 15, yPosition);
         const scoreIconWidth = ctx.measureText(scoreIcon).width;
@@ -1123,7 +1123,7 @@ export default function FlappyGame({
 
         // Draw score number with black background box
         const scoreBoxX = 15 + scoreIconWidth + 8 + scoreLabelWidth;
-        const scoreBoxY = yPosition - (fontSize + boxPadding) / 2;
+        const scoreBoxY = yPosition - fontSize;
         const scoreBoxWidth = scoreNumberWidth + boxPadding * 2;
         const scoreBoxHeight = fontSize + boxPadding;
 
@@ -1157,7 +1157,7 @@ export default function FlappyGame({
 
         // Draw stars number with black background box
         const starsBoxX = starsNumberX - boxPadding;
-        const starsBoxY = yPosition - (fontSize + boxPadding) / 2;
+        const starsBoxY = yPosition - fontSize;
         const starsBoxWidth = starsNumberWidth + boxPadding * 2;
         const starsBoxHeight = fontSize + boxPadding;
 

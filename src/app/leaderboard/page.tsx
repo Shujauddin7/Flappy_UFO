@@ -798,7 +798,7 @@ export default function LeaderboardPage() {
                         {/* Timer Box - Always show when tournament exists */}
                         {timeRemaining && timeRemaining.timeLeft && (
                             <div className="countdown-timer">
-                                ⚡ Tournament Ends: {timeRemaining.timeLeft}
+                                ⚡Tournament Ends: {timeRemaining.timeLeft}
                             </div>
                         )}
 
