@@ -105,4 +105,3 @@ sql-scripts/
 # Database backups (local only)
 backup-*.sql
 backup-*.txt 
-
