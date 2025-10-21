@@ -207,7 +207,7 @@ export default function GameHomepage() {
 
         try {
             setOrbCapabilityLoading(true);
-            
+
             // Always allow users to try Orb verification
             // MiniKit will handle validation and show appropriate error if user doesn't have Orb
             return true;
