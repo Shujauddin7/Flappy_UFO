@@ -1161,25 +1161,7 @@ export default function GameHomepage() {
                         <div className="game-result-modal">
                             <div className="modal-header">
                                 <h2 className="modal-title">
-                                    {(() => {
-                                        // Random motivating title based on score
-                                        if (gameResult.isNewHighScore) {
-                                            const newRecordTitles = ["🎉 New Record!", "🏆 Champion!", "⭐ Amazing!", "🔥 Legendary!"];
-                                            return newRecordTitles[Math.floor(Math.random() * newRecordTitles.length)];
-                                        } else if (gameResult.score === 0) {
-                                            const lowScoreTitles = ["Try Again! 🚀", "Don't Give Up! 💪", "One More Time! ⚡", "You Got This! 🎯"];
-                                            return lowScoreTitles[Math.floor(Math.random() * lowScoreTitles.length)];
-                                        } else if (gameResult.score < 5) {
-                                            const beginnerTitles = ["Keep Going! 💫", "Almost There! 🌟", "Getting Better! �", "Nice Try! 🎮"];
-                                            return beginnerTitles[Math.floor(Math.random() * beginnerTitles.length)];
-                                        } else if (gameResult.score < 10) {
-                                            const decentTitles = ["Good Run! 🎮", "Well Done! 👍", "Not Bad! ⭐", "Solid Effort! 💪"];
-                                            return decentTitles[Math.floor(Math.random() * decentTitles.length)];
-                                        } else {
-                                            const greatTitles = ["Great Score! 🔥", "Impressive! 🌟", "Fantastic! ⚡", "Excellent! 🎯"];
-                                            return greatTitles[Math.floor(Math.random() * greatTitles.length)];
-                                        }
-                                    })()}
+                                    {gameResult.isNewHighScore ? " Champion!" : "Nice Try! 🎮"}
                                 </h2>
                             </div>
 
@@ -1314,7 +1296,7 @@ export default function GameHomepage() {
                                 {/* Tournament Mode: Show message if continue already used */}
                                 {gameMode === 'tournament' && tournamentContinueUsed && (
                                     <div className="tournament-continue-info">
-                                        ⚠️ Continue used. Play again to create new entry.
+                                        ✨ Ready for a fresh start! Play again to create a new entry.
                                     </div>
                                 )}
 
@@ -1554,16 +1536,16 @@ export default function GameHomepage() {
                     }
 
                     .modal-button.continue {
-                        background: linear-gradient(135deg, #ffd700, #ffb347);
-                        color: #000;
-                        box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+                        background: linear-gradient(135deg, #00F5FF, #9333EA);
+                        color: white;
+                        box-shadow: 0 4px 15px rgba(0, 245, 255, 0.3);
                         font-size: 16px;
+                        font-weight: 600;
                     }
 
                     .modal-button.continue:hover {
                         transform: translateY(-2px);
-                        box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
-                        background: linear-gradient(135deg, #ffed4a, #ffc82c);
+                        box-shadow: 0 6px 20px rgba(0, 245, 255, 0.5);
                     }
 
                     .modal-actions {

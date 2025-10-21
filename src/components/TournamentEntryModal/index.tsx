@@ -34,14 +34,12 @@ export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
             {/* Processing Overlay */}
             {isProcessingEntry && (
                 <div
-                    className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50"
-                    style={{ backdropFilter: 'blur(4px)' }}
+                    className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50"
+                    style={{ backdropFilter: 'blur(8px)' }}
                 >
                     <div className="text-center space-y-4 px-6">
-                        <div className="animate-spin rounded-full h-16 w-16 border-4 border-cyan-400 border-t-transparent mx-auto"></div>
-                        <h3 className="text-xl font-bold text-white">Processing Payment</h3>
-                        <p className="text-cyan-300">Please wait while we process your tournament entry...</p>
-                        <p className="text-sm text-gray-400">Do not close this window</p>
+                        <div className="animate-spin rounded-full h-20 w-20 border-4 border-cyan-400 border-t-transparent mx-auto" style={{ animationDuration: '0.6s' }}></div>
+                        <h3 className="text-2xl font-bold text-white">Processing Payment</h3>
                     </div>
                 </div>
             )}
