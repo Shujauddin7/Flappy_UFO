@@ -13,6 +13,7 @@ import { CACHE_TTL } from '@/utils/leaderboard-cache';
 import { canContinue, spendCoins, getCoins, addCoins } from '@/utils/coins';
 import { useSocketIO } from '@/contexts/SocketIOContext';
 import { fetchWithTimeout } from '@/utils/fetch-timeout';
+import { GameNotification } from '@/components/GameNotification';
 
 // Dynamically import FlappyGame to avoid SSR issues
 const FlappyGame = dynamic(() => import('@/components/FlappyGame'), {
@@ -112,7 +113,28 @@ export default function GameHomepage() {
     const [isVerifiedToday, setIsVerifiedToday] = useState<boolean>(false);
     const [verificationLoading, setVerificationLoading] = useState<boolean>(false);
     const [orbCapabilityLoading, setOrbCapabilityLoading] = useState<boolean>(false);
-    const [canUseOrbVerification, setCanUseOrbVerification] = useState<boolean>(true); // Default to true for new users
+
+    // Notification state for GameNotification modal
+    const [notification, setNotification] = useState<{
+        show: boolean;
+        type: 'success' | 'error' | 'warning' | 'info';
+        title: string;
+        message: string;
+    }>({
+        show: false,
+        type: 'info',
+        title: '',
+        message: ''
+    });
+
+    // Helper function to show notifications
+    const showNotification = useCallback((
+        type: 'success' | 'error' | 'warning' | 'info',
+        title: string,
+        message: string
+    ) => {
+        setNotification({ show: true, type, title, message });
+    }, []);
 
     // Tournament entry loading states to prevent duplicate operations
     const [isProcessingEntry, setIsProcessingEntry] = useState<boolean>(false);
@@ -179,33 +201,18 @@ export default function GameHomepage() {
     }, [session?.user?.walletAddress]);
 
     // 🔮 CHECK ORB VERIFICATION CAPABILITY
+    // Made available to everyone - MiniKit will validate Orb ownership during verification
     const checkOrbVerificationCapability = useCallback(async () => {
         if (!session?.user?.walletAddress) return false;
 
         try {
             setOrbCapabilityLoading(true);
 
-            const response = await fetch('/api/users/orb-verification-capability', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    wallet: session.user.walletAddress,
-                }),
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                setCanUseOrbVerification(data.data.canUseOrbDiscount);
-                return data.data.canUseOrbDiscount;
-            } else {
-                console.error('❌ Failed to check Orb capability:', data.error);
-                setCanUseOrbVerification(true); // Default to allowing verification attempts
-                return true;
-            }
+            // Always allow users to try Orb verification
+            // MiniKit will handle validation and show appropriate error if user doesn't have Orb
+            return true;
         } catch (error) {
             console.error('❌ Error checking Orb capability:', error);
-            setCanUseOrbVerification(true); // Default to allowing verification attempts
             return true;
         } finally {
             setOrbCapabilityLoading(false);
@@ -378,13 +385,13 @@ export default function GameHomepage() {
             if (data.tournament && data.status) {
                 // Check if tournament has ended
                 if (data.status.has_ended) {
-                    alert('❌ Tournament has ended! You can no longer participate.');
+                    showNotification('error', 'Tournament Ended', 'Tournament has ended! You can no longer participate.');
                     return false;
                 }
 
                 // Check if tournament hasn't started
                 if (data.status.has_not_started) {
-                    alert('❌ Tournament has not started yet! Please wait.');
+                    showNotification('warning', 'Not Started Yet', 'Tournament has not started yet! Please wait.');
                     return false;
                 }
 
@@ -398,21 +405,21 @@ export default function GameHomepage() {
 
                 // Check if entries are allowed (covers other edge cases)
                 if (!data.status.entries_allowed) {
-                    alert('❌ Tournament entries are not allowed at this time.');
+                    showNotification('error', 'Entries Not Allowed', 'Tournament entries are not allowed at this time.');
                     return false;
                 }
 
                 return true;
             } else {
-                alert('❌ No active tournament found!');
+                showNotification('error', 'No Tournament', 'No active tournament found!');
                 return false;
             }
         } catch (error) {
             console.error('Error checking tournament status:', error);
-            alert('❌ Failed to check tournament status. Please try again.');
+            showNotification('error', 'Check Failed', 'Failed to check tournament status. Please try again.');
             return false;
         }
-    }, []);
+    }, [showNotification]);
 
     // Stable event handlers to prevent recreation and caching issues
     const handleInfoClick = useCallback((e: React.MouseEvent) => {
@@ -458,13 +465,13 @@ export default function GameHomepage() {
                         if (data.status.has_not_started) {
                             const startTime = new Date(data.tournament.start_time);
                             const minutesUntilStart = Math.ceil((startTime.getTime() - new Date().getTime()) / 60000);
-                            alert(`⏰ Tournament has not started yet. Starts in ${minutesUntilStart} minutes!`);
+                            showNotification('warning', 'Not Started Yet', `Tournament has not started yet. Starts in ${minutesUntilStart} minutes!`);
                         } else if (data.status.has_ended) {
-                            alert('❌ Tournament has ended. Please wait for the next tournament.');
+                            showNotification('error', 'Tournament Ended', 'Tournament has ended. Please wait for the next tournament.');
                         } else if (data.status.is_grace_period) {
-                            alert('⏳ Tournament is in grace period - no new entries allowed. Existing players can still play!');
+                            showNotification('info', 'Grace Period', 'Tournament is in grace period - no new entries allowed. Existing players can still play!');
                         } else {
-                            alert('❌ Tournament entries are not allowed at this time.');
+                            showNotification('error', 'Entries Not Allowed', 'Tournament entries are not allowed at this time.');
                         }
                         return;
                     }
@@ -473,13 +480,13 @@ export default function GameHomepage() {
                     setCurrentScreen('tournamentEntry');
                 } catch (error) {
                     console.error('Error checking tournament status:', error);
-                    alert('Unable to check tournament status. Please try again.');
+                    showNotification('error', 'Check Failed', 'Unable to check tournament status. Please try again.');
                     return;
                 }
             }
         } catch (error) {
             console.error('Error during game start:', error);
-            alert('Something went wrong. Please try again.');
+            showNotification('error', 'Error', 'Something went wrong. Please try again.');
         }
     };
 
@@ -513,7 +520,7 @@ export default function GameHomepage() {
 
         } catch (error) {
             console.error('Error during tournament entry:', error);
-            alert('Tournament entry failed. Please try again.');
+            showNotification('error', 'Entry Failed', 'Tournament entry failed. Please try again.');
             setIsProcessingPayment(false); // Re-enable navigation on error
         } finally {
             setIsProcessingEntry(false);
@@ -562,13 +569,13 @@ export default function GameHomepage() {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
             if (errorMessage.includes('CredentialUnavailable') || errorMessage.includes('verification level')) {
-                alert('Orb verification is required for the discounted entry. Please use an Orb to verify your World ID, or choose Standard Entry (1.0 WLD).');
+                showNotification('warning', 'Orb Required', 'Orb verification is required for the discounted entry. Please use an Orb to verify your World ID, or choose Standard Entry (1.0 WLD).');
             } else if (errorMessage.includes('MaxVerificationsReached')) {
-                alert('You have already verified the maximum number of times for this tournament. Please try again in the next tournament.');
+                showNotification('error', 'Max Verifications', 'You have already verified the maximum number of times for this tournament. Please try again in the next tournament.');
             } else if (errorMessage.includes('network') || errorMessage.includes('timeout')) {
-                alert('Network error during verification. Please check your connection and try again, or use Standard Entry.');
+                showNotification('error', 'Network Error', 'Network error during verification. Please check your connection and try again, or use Standard Entry.');
             } else {
-                alert('World ID verification failed. Please try again or use Standard Entry (1.0 WLD).');
+                showNotification('error', 'Verification Failed', 'World ID verification failed. Please try again or use Standard Entry (1.0 WLD).');
             }
         }
     };
@@ -607,7 +614,7 @@ export default function GameHomepage() {
 
             // More specific error message
             const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-            alert(`Verification failed to save to database: ${errorMessage}. Please try again.`);
+            showNotification('error', 'Database Update Failed', `Verification failed to save to database: ${errorMessage}. Please try again.`);
 
             return null;
         }
@@ -644,7 +651,7 @@ export default function GameHomepage() {
 
             // More specific error message
             const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-            alert(`Payment successful but failed to register tournament entry.\n\nError: ${errorMessage}\n\nPlease contact support at flappyufo.help@gmail.com if this persists.`);
+            showNotification('error', 'Entry Registration Failed', `Payment successful but failed to register tournament entry.\n\nError: ${errorMessage}\n\nPlease contact support at flappyufo.help@gmail.com if this persists.`);
             throw error;
         }
     };
@@ -709,7 +716,7 @@ export default function GameHomepage() {
             }
         } catch (error) {
             console.error('❌ Payment error:', error);
-            alert('Payment failed. Please try again.');
+            showNotification('error', 'Payment Failed', 'Payment failed. Please try again.');
             setIsProcessingPayment(false); // Re-enable navigation on error
         }
     };
@@ -1195,9 +1202,11 @@ export default function GameHomepage() {
                                         Previous: {gameResult.previousHigh}
                                         <br />
                                         New Best: {gameResult.currentHigh || userHighestScore}
-                                        <div style={{ fontSize: '13px', marginTop: '8px', color: '#10B981' }}>
-                                            Amazing! 🚀
-                                        </div>
+                                        {gameResult.score >= 2 && (
+                                            <div style={{ fontSize: '13px', marginTop: '8px', color: '#10B981' }}>
+                                                Amazing! 🚀
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -1600,7 +1609,6 @@ export default function GameHomepage() {
                     isVerifiedToday={isVerifiedToday}
                     verificationLoading={verificationLoading}
                     isProcessingEntry={isProcessingEntry}
-                    canUseOrbVerification={canUseOrbVerification}
                     orbCapabilityLoading={orbCapabilityLoading}
                 />
             </Page>
@@ -2140,6 +2148,15 @@ export default function GameHomepage() {
                     100% { opacity: 0.5; }
                 }
             ` }} />
+
+            {/* Game Notification Modal */}
+            <GameNotification
+                isOpen={notification.show}
+                type={notification.type}
+                title={notification.title}
+                message={notification.message}
+                onClose={() => setNotification({ ...notification, show: false })}
+            />
         </>
     );
 }

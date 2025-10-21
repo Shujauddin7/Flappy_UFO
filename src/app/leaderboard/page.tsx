@@ -798,7 +798,7 @@ export default function LeaderboardPage() {
                         {/* Timer Box - Always show when tournament exists */}
                         {timeRemaining && timeRemaining.timeLeft && (
                             <div className="countdown-timer">
-                                ⚡ Tournament ends in {timeRemaining.timeLeft}
+                                ⚡Tournament Ends: {timeRemaining.timeLeft}
                             </div>
                         )}
 
@@ -816,7 +816,7 @@ export default function LeaderboardPage() {
                                     {currentTournament
                                         ? (currentTournament.total_tournament_players ?? currentTournament.total_players ?? 0) // Safe fallback to prevent crashes
                                         : '...'}
-                                </span> <span className="humans-playing-highlight">humans are playing to win the prize pool</span>
+                                </span> <span className="humans-playing-highlight">{currentTournament && (currentTournament.total_tournament_players ?? currentTournament.total_players ?? 0) === 1 ? 'Human is playing' : 'Humans are playing'} to win the prize pool</span>
                             </div>
                         </div>
 

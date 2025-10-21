@@ -409,8 +409,8 @@ body {
   color: #00F5FF;
   text-shadow: 0 0 15px #00F5FF, 0 0 30px #00F5FF;
   animation: glow-blue 3s ease-in-out infinite alternate;
-  margin-right: 0.3rem;
-  /* Space between words */
+  margin-right: 0.25em;
+  /* Single space between words - using em for font-relative spacing */
 }
 
 .destiny-word {
@@ -4182,6 +4182,17 @@ canvas,
     transform: translateY(20px) scale(0.95);
   }
 
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
   to {
     opacity: 1;
     transform: translateY(0) scale(1);

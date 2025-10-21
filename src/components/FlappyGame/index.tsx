@@ -1103,6 +1103,7 @@ export default function FlappyGame({
         const yPosition = isMobile ? 35 : 45;
 
         ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+        ctx.textBaseline = 'alphabetic'; // Use default baseline for consistent alignment
 
         // Score display on the left
         const scoreIcon = '🛸';
@@ -1114,7 +1115,7 @@ export default function FlappyGame({
         const scoreLabelWidth = ctx.measureText(scoreLabel).width;
         const scoreNumberWidth = ctx.measureText(scoreNumber).width;
 
-        // Draw score icon and label (no background)
+        // Draw score icon and label (no background) - all use same yPosition for alignment
         ctx.shadowBlur = 0;
         ctx.fillText(scoreIcon, 15, yPosition);
         const scoreIconWidth = ctx.measureText(scoreIcon).width;
