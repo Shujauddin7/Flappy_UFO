@@ -68,22 +68,19 @@ export default function InfoModal({ isOpen, onClose }: InfoModalProps) {
                     maxHeight: '100dvh'
                 }}
             >
+                {/* Close Button - Absolute positioned in top-right corner */}
+                <button
+                    onClick={handleClose}
+                    className="absolute top-4 right-4 z-50 w-8 h-8 flex items-center justify-center text-[#E5E7EB] hover:text-[#00F5FF] transition-colors duration-200 text-2xl font-bold"
+                    aria-label="Close Info"
+                >
+                    ×
+                </button>
 
                 {/* Fixed Navigation Header - Countdown Timer Style */}
                 <div className="flex-shrink-0">
-                    {/* Top Bar with Close Button Only */}
-                    <div className="flex items-center justify-end px-4 py-3 border-b border-[#00F5FF] border-opacity-20">
-                        <button
-                            onClick={handleClose}
-                            className="w-8 h-8 flex items-center justify-center text-[#E5E7EB] hover:text-[#00F5FF] transition-colors duration-200 text-xl font-bold"
-                            aria-label="Close Info"
-                        >
-                            ×
-                        </button>
-                    </div>
-
                     {/* Navigation Tabs - Countdown Timer Style */}
-                    <div className="flex justify-center gap-3 p-4">
+                    <div className="flex justify-center gap-3 p-4 pt-6 border-b border-[#00F5FF] border-opacity-20">
                         <button
                             onClick={() => handleSectionChange('faq')}
                             className={`px-4 py-2 text-sm font-medium font-['Orbitron'] rounded-full border-2 transition-all duration-200 ${activeSection === 'faq'
