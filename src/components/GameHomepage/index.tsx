@@ -1198,15 +1198,15 @@ export default function GameHomepage() {
                                 {gameResult.isNewHighScore && (
                                     <div className="new-high-score">
                                         🎉 NEW RECORD!
-                                        <br />
-                                        Previous: {gameResult.previousHigh}
-                                        <br />
-                                        New Best: {gameResult.currentHigh || userHighestScore}
-                                        {gameResult.score >= 2 && (
-                                            <div style={{ fontSize: '13px', marginTop: '8px', color: '#10B981' }}>
-                                                Amazing! 🚀
-                                            </div>
-                                        )}
+                                        <div style={{ fontSize: '32px', fontWeight: 'bold', marginTop: '10px' }}>
+                                            {gameResult.currentHigh || userHighestScore}
+                                        </div>
+                                        <div style={{ fontSize: '14px', marginTop: '8px', opacity: 0.9 }}>
+                                            {(() => {
+                                                const messages = ["Amazing! 🚀", "Incredible! ⭐", "Legendary! 🔥", "Fantastic! 💫", "Unstoppable! ⚡"];
+                                                return messages[Math.floor(Math.random() * messages.length)];
+                                            })()}
+                                        </div>
                                     </div>
                                 )}
 
@@ -1215,20 +1215,19 @@ export default function GameHomepage() {
                                     <div className="current-high-info" style={{
                                         marginTop: '15px',
                                         padding: '12px',
-                                        background: 'rgba(255, 165, 0, 0.1)',
-                                        border: '1px solid rgba(255, 165, 0, 0.3)',
+                                        background: 'rgba(0, 245, 255, 0.1)',
+                                        border: '1px solid rgba(0, 245, 255, 0.3)',
                                         borderRadius: '8px',
                                         fontSize: '14px',
                                         animation: 'fadeIn 0.3s ease-in'
                                     }}>
-                                        🏆 Your Best: <strong style={{ color: '#FFA500' }}>{gameResult.currentHigh}</strong>
-                                        <div style={{ fontSize: '13px', marginTop: '6px', color: '#FFA500' }}>
+                                        <div style={{ fontSize: '13px', color: '#00F5FF', textAlign: 'center' }}>
                                             {[
-                                                "So close! 💫 One more try?",
-                                                "You can beat it! 🚀 Try again?",
-                                                "Almost there! 🔥 Keep pushing!",
-                                                "Don't give up! 💪 One more shot?",
-                                                "You've got this! ⭐ Play again?"
+                                                "So close! 💫",
+                                                "You can beat it! 🚀",
+                                                "Almost there! 🔥",
+                                                "Don't give up! 💪",
+                                                "You've got this! ⭐"
                                             ][Math.floor(Math.random() * 5)]}
                                         </div>
                                     </div>
@@ -1239,20 +1238,19 @@ export default function GameHomepage() {
                                     <div className="current-high-info" style={{
                                         marginTop: '15px',
                                         padding: '12px',
-                                        background: 'rgba(0, 245, 255, 0.1)',
-                                        border: '1px solid rgba(0, 245, 255, 0.3)',
+                                        background: 'rgba(147, 51, 234, 0.1)',
+                                        border: '1px solid rgba(147, 51, 234, 0.3)',
                                         borderRadius: '8px',
                                         fontSize: '14px',
                                         animation: 'fadeIn 0.3s ease-in'
                                     }}>
-                                        🏆 Your Best: <strong style={{ color: '#00F5FF' }}>{gameResult.currentHigh}</strong>
-                                        <div style={{ fontSize: '13px', marginTop: '6px', color: '#00F5FF' }}>
+                                        <div style={{ fontSize: '13px', color: '#9333EA', textAlign: 'center' }}>
                                             {[
                                                 "Keep improving! 💪",
-                                                "Nice try! Practice makes perfect! 🎯",
-                                                "Good effort! Try a new entry! 🚀",
-                                                "So close! Start fresh and crush it! 🔥",
-                                                "Every attempt counts! Keep going! ⭐"
+                                                "Nice try! 🎯",
+                                                "Good effort! 🚀",
+                                                "Start fresh! 🔥",
+                                                "Keep going! ⭐"
                                             ][Math.floor(Math.random() * 5)]}
                                         </div>
                                     </div>
@@ -1468,18 +1466,19 @@ export default function GameHomepage() {
                     }
 
                     .new-high-score {
-                        background: linear-gradient(135deg, #ff6b35, #f7931e);
+                        background: linear-gradient(135deg, #00F5FF, #9333EA);
                         color: white;
-                        padding: 15px;
-                        border-radius: 10px;
+                        padding: 20px;
+                        border-radius: 12px;
                         margin: 15px 0;
                         font-weight: bold;
+                        text-align: center;
                         animation: celebrationGlow 1s ease-in-out infinite alternate;
                     }
 
                     @keyframes celebrationGlow {
-                        from { box-shadow: 0 0 20px rgba(255, 107, 53, 0.5); }
-                        to { box-shadow: 0 0 30px rgba(255, 107, 53, 0.8); }
+                        from { box-shadow: 0 0 20px rgba(0, 245, 255, 0.5); }
+                        to { box-shadow: 0 0 30px rgba(147, 51, 234, 0.8); }
                     }
 
                     .current-high-score {
@@ -1804,9 +1803,16 @@ export default function GameHomepage() {
 
                             {gameResult.isNewHighScore && (
                                 <div className="new-high-score">
-                                    🎉 NEW HIGH SCORE!
-                                    <br />
-                                    Previous: {gameResult.previousHigh}
+                                    🎉 NEW RECORD!
+                                    <div style={{ fontSize: '32px', fontWeight: 'bold', marginTop: '10px' }}>
+                                        {gameResult.currentHigh || userHighestScore}
+                                    </div>
+                                    <div style={{ fontSize: '14px', marginTop: '8px', opacity: 0.9 }}>
+                                        {(() => {
+                                            const messages = ["Amazing! 🚀", "Incredible! ⭐", "Legendary! 🔥", "Fantastic! 💫", "Unstoppable! ⚡"];
+                                            return messages[Math.floor(Math.random() * messages.length)];
+                                        })()}
+                                    </div>
                                 </div>
                             )}
 
@@ -1904,12 +1910,19 @@ export default function GameHomepage() {
                 }
 
                 .new-high-score {
-                    color: #10B981;
-                    font-size: 18px;
-                    font-weight: bold;
+                    background: linear-gradient(135deg, #00F5FF, #9333EA);
+                    color: white;
+                    padding: 20px;
+                    border-radius: 12px;
                     margin: 15px 0;
-                    text-shadow: 0 0 10px #10B981;
-                    animation: pulse 2s ease-in-out infinite;
+                    font-weight: bold;
+                    text-align: center;
+                    animation: celebrationGlow 1s ease-in-out infinite alternate;
+                }
+                
+                @keyframes celebrationGlow {
+                    from { box-shadow: 0 0 20px rgba(0, 245, 255, 0.5); }
+                    to { box-shadow: 0 0 30px rgba(147, 51, 234, 0.8); }
                 }
 
                 .current-high-score {
