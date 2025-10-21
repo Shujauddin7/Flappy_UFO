@@ -2926,6 +2926,10 @@ body {
 .prize-pool-info {
   text-align: center;
   margin-bottom: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .prize-pool-text {
@@ -2934,13 +2938,23 @@ body {
   font-size: 1.1rem;
   color: #FFD700;
   text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .players-text {
   font-size: 0.9rem;
   color: rgba(255, 255, 255, 0.8);
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  line-height: 1.6;
 }
 
 /* Highlight styles for prize pool and human count */
@@ -3330,11 +3344,28 @@ body {
   }
 
   .prize-pool-text {
-    font-size: 1rem;
+    font-size: 0.95rem;
+    gap: 0.4rem;
   }
 
   .players-text {
     font-size: 0.8rem;
+    gap: 0.25rem;
+    max-width: 90%;
+  }
+
+  .prize-pool-highlight {
+    font-size: 0.9rem;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .humans-playing-highlight {
+    font-size: 0.8rem;
+    padding: 0.2rem 0.4rem;
+  }
+
+  .human-count-number {
+    font-size: 0.85rem;
   }
 
   .prize-info-box {

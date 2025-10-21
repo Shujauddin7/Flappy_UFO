@@ -71,12 +71,8 @@ export default function InfoModal({ isOpen, onClose }: InfoModalProps) {
 
                 {/* Fixed Navigation Header - Countdown Timer Style */}
                 <div className="flex-shrink-0">
-                    {/* Top Bar with Title and Close */}
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-[#00F5FF] border-opacity-20">
-                        <div className="flex items-center space-x-2">
-                            <span className="text-xl">🛸</span>
-                            <h2 className="text-[#00F5FF] font-bold text-lg">Flappy UFO</h2>
-                        </div>
+                    {/* Top Bar with Close Button Only */}
+                    <div className="flex items-center justify-end px-4 py-3 border-b border-[#00F5FF] border-opacity-20">
                         <button
                             onClick={handleClose}
                             className="w-8 h-8 flex items-center justify-center text-[#E5E7EB] hover:text-[#00F5FF] transition-colors duration-200 text-xl font-bold"

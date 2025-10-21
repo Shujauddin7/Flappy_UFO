@@ -805,7 +805,8 @@ export default function LeaderboardPage() {
                         {/* Prize Pool Info - IMPROVED: Only show blur when actually no data, not when cached */}
                         <div className="prize-pool-info">
                             <div className="prize-pool-text">
-                                Prize pool: <span className={`prize-pool-highlight ${(!currentTournament && !preloadedLeaderboardData) ? 'loading-blur' : ''}`}>
+                                <span>Prize pool:</span>
+                                <span className={`prize-pool-highlight ${(!currentTournament && !preloadedLeaderboardData) ? 'loading-blur' : ''}`}>
                                     {currentTournament && typeof currentTournament.total_prize_pool === 'number'
                                         ? `${currentTournament.total_prize_pool.toFixed(2)} WLD`
                                         : 'Loading...'}
@@ -816,7 +817,10 @@ export default function LeaderboardPage() {
                                     {currentTournament
                                         ? (currentTournament.total_tournament_players ?? currentTournament.total_players ?? 0) // Safe fallback to prevent crashes
                                         : '...'}
-                                </span> <span className="humans-playing-highlight">{currentTournament && (currentTournament.total_tournament_players ?? currentTournament.total_players ?? 0) === 1 ? 'Human is playing' : 'Humans are playing'} to win the prize pool</span>
+                                </span>
+                                <span className="humans-playing-highlight">
+                                    {currentTournament && (currentTournament.total_tournament_players ?? currentTournament.total_players ?? 0) === 1 ? 'Human is playing' : 'Humans are playing'} to win the prize pool
+                                </span>
                             </div>
                         </div>
 
