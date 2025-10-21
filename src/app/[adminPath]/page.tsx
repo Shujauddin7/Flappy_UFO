@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { resetCoins } from '@/utils/coins';
 import { AdminPasswordAuth } from '@/components/AdminPasswordAuth';
+import { GameNotification } from '@/components/GameNotification';
 
 // Import AdminPayout as dynamic component to prevent SSR issues with MiniKit
 const AdminPayout = dynamic(() => import('@/components/AdminPayout').then(mod => ({ default: mod.AdminPayout })), {
@@ -61,6 +62,19 @@ export default function AdminDashboard() {
 
     // Password authentication state (no session storage)
     const [isPasswordAuthenticated, setIsPasswordAuthenticated] = useState(false);
+
+    // Notification state for GameNotification modal
+    const [notification, setNotification] = useState<{
+        show: boolean;
+        type: 'success' | 'error' | 'warning' | 'info';
+        title: string;
+        message: string;
+    }>({
+        show: false,
+        type: 'info',
+        title: '',
+        message: ''
+    });
 
     // Multi-admin wallet system
     const primaryAdminWallet = process.env.NEXT_PUBLIC_ADMIN_WALLET;
@@ -431,7 +445,12 @@ export default function AdminDashboard() {
                 }
             } else {
                 const errorData = await response.json();
-                alert(`No previous tournament found: ${errorData.message || 'This might be the first tournament'}`);
+                setNotification({
+                    show: true,
+                    type: 'warning',
+                    title: 'No Previous Tournament',
+                    message: errorData.message || 'This might be the first tournament'
+                });
                 setPreviousTournament(null);
                 setPreviousWinners([]);
             }
@@ -1001,6 +1020,15 @@ export default function AdminDashboard() {
                     </div>
                 )}
             </div>
+
+            {/* Game Notification Modal */}
+            <GameNotification
+                isOpen={notification.show}
+                type={notification.type}
+                title={notification.title}
+                message={notification.message}
+                onClose={() => setNotification({ ...notification, show: false })}
+            />
         </div>
     );
 }
