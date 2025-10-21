@@ -102,4 +102,7 @@ sql-scripts/
 
 # Database backups (local only)
 backup-*.sql
-backup-*.txt 
+backup-*.txt
+
+# Architecture documentation (internal reference only)
+ARCHITECTURE_FLOWCHART.md 

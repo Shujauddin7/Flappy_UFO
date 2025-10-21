@@ -1537,10 +1537,11 @@ export default function GameHomepage() {
 
                     .modal-button.continue {
                         background: linear-gradient(135deg, #00F5FF, #9333EA);
-                        color: white;
+                        color: #000000;
                         box-shadow: 0 4px 15px rgba(0, 245, 255, 0.3);
                         font-size: 16px;
-                        font-weight: 600;
+                        font-weight: 700;
+                        text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
                     }
 
                     .modal-button.continue:hover {

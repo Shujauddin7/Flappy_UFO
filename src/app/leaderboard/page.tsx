@@ -312,13 +312,6 @@ export default function LeaderboardPage() {
                             end_time: tournamentData.end_time || null
                         };
 
-                        // 🔍 DEBUG: Log exact prize pool value being displayed
-                        console.log('💰 Prize Pool Display:', {
-                            from_api: tournamentData.total_prize_pool,
-                            displayed: newTournamentData.total_prize_pool,
-                            guarantee_NOT_added: tournamentData.guarantee_amount
-                        });
-
                         if (!newTournamentData.id) {
                             console.error('❌ Tournament ID missing from API response:', tournamentData);
                             throw new Error('Tournament ID is required');
@@ -395,13 +388,6 @@ export default function LeaderboardPage() {
                     start_time: new Date().toISOString(),
                     end_time: tournamentData.end_time || null
                 };
-
-                // 🔍 DEBUG: Log exact prize pool value being displayed
-                console.log('💰 Prize Pool Display:', {
-                    from_api: tournamentData.total_prize_pool,
-                    displayed: newTournamentData.total_prize_pool,
-                    guarantee_NOT_added: tournamentData.guarantee_amount
-                });
 
                 if (!newTournamentData.id) {
                     console.error('❌ Tournament ID missing from API response:', tournamentData);
