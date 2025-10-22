@@ -1295,40 +1295,17 @@ export default function FlappyGame({
         }
       });
 
-      // Draw UFO with consistent rendering across all devices
+      // Draw UFO emoji - simple and consistent
       ctx.save();
       ctx.translate(state.ufo.x + 30, state.ufo.y + 25);
       ctx.rotate((state.ufo.rotation * Math.PI) / 180);
 
-      // Draw custom UFO shape instead of emoji for consistency
-      // This ensures no glow effects and identical appearance on all devices
-      ctx.fillStyle = "#C0C0C0"; // Silver color for UFO body
-      ctx.strokeStyle = "#808080"; // Darker silver for outline
-      ctx.lineWidth = 2;
-
-      // UFO main body (ellipse)
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 25, 12, 0, 0, 2 * Math.PI);
-      ctx.fill();
-      ctx.stroke();
-
-      // UFO dome (top circle)
-      ctx.fillStyle = "#E0E0E0"; // Lighter silver for dome
-      ctx.beginPath();
-      ctx.ellipse(0, -8, 15, 8, 0, 0, 2 * Math.PI);
-      ctx.fill();
-      ctx.stroke();
-
-      // UFO lights (small circles)
-      ctx.fillStyle = "#00F5FF"; // Cyan lights
-      for (let i = 0; i < 5; i++) {
-        const angle = (i * 2 * Math.PI) / 5;
-        const x = Math.cos(angle) * 18;
-        const y = Math.sin(angle) * 6;
-        ctx.beginPath();
-        ctx.arc(x, y, 2, 0, 2 * Math.PI);
-        ctx.fill();
-      }
+      // Simple UFO emoji without any effects
+      ctx.font = "60px Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillText("🛸", 0, 0);
 
       ctx.restore();
 
@@ -1534,7 +1511,8 @@ export default function FlappyGame({
         cancelAnimationFrame(gameLoopRef.current);
       }
     };
-  }, [gameLoop, gameMode, continueFromScore]); // Added dependencies to restart loop when game restarts
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameMode, continueFromScore]); // Restart loop when game restarts, but don't include gameLoop to avoid infinite loop
 
   return (
     <Page>

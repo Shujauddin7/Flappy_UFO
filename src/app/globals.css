@@ -138,8 +138,7 @@ body {
   font-size: 1.2em;
   vertical-align: middle;
   margin: 0 0.05em;
-  filter: drop-shadow(0 0 8px #00F5FF);
-  /* Glow effect for home screen only - makes it stand out */
+  /* No glow effect - simple emoji */
 }
 
 .info-btn {
@@ -477,11 +476,8 @@ body {
   position: relative;
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(0, 245, 255, 0.3);
-  /* Permanent cyan border */
   border-radius: 20px;
-  /* Restored from main branch */
-  padding: clamp(1rem, 3vw, 1.5rem);
-  /* Responsive padding */
+  padding: 1.5rem;
   width: 100%;
   max-width: 100%;
   backdrop-filter: blur(20px);
@@ -489,7 +485,6 @@ body {
   cursor: pointer;
   overflow: hidden;
   transform-origin: center;
-  /* Permanent cyan glow effect */
   box-shadow: 0 5px 15px rgba(0, 245, 255, 0.15), 0 0 20px rgba(0, 245, 255, 0.1);
   box-sizing: border-box;
 }
@@ -634,17 +629,14 @@ body {
 .mode-name {
   font-family: 'Orbitron', monospace;
   font-weight: 800;
-  font-size: clamp(1.2rem, 4vw, 1.6rem);
-  /* Responsive font size */
+  font-size: 1.6rem;
   margin: 0 0 0.3rem;
   color: #ffffff;
-  letter-spacing: clamp(1px, 0.5vw, 2px);
-  /* Responsive letter spacing */
+  letter-spacing: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  /* Space between icon and text */
   text-align: center;
   line-height: 1.2;
 }
@@ -675,8 +667,7 @@ body {
 }
 
 .mode-desc {
-  font-size: clamp(0.8rem, 2.5vw, 1rem);
-  /* Responsive font size */
+  font-size: 1rem;
   color: rgba(255, 255, 255, 0.7);
   margin: 0 0 1rem;
   font-weight: 500;
@@ -694,8 +685,7 @@ body {
 }
 
 .feature {
-  font-size: clamp(0.75rem, 2vw, 0.9rem);
-  /* Responsive font size that scales with viewport */
+  font-size: 0.9rem;
   color: rgba(255, 255, 255, 0.8);
   font-weight: 500;
   line-height: 1.3;
@@ -707,11 +697,11 @@ body {
   background: linear-gradient(45deg, #00F5FF, #1D4ED8);
   border: none;
   border-radius: 15px;
-  padding: clamp(0.8rem, 3vw, 1rem) clamp(1rem, 4vw, 2rem);
+  padding: 1rem 2rem;
   width: 100%;
   font-family: 'Orbitron', monospace;
   font-weight: 700;
-  font-size: clamp(0.8rem, 2.5vw, 1rem);
+  font-size: 1rem;
   color: #000;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -719,7 +709,7 @@ body {
   letter-spacing: 1px;
   box-shadow: 0 8px 25px rgba(0, 245, 255, 0.4);
   overflow: hidden;
-  min-height: 48px; /* Ensure minimum touch target size */
+  min-height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
