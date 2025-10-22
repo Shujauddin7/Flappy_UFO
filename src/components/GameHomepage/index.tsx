@@ -1247,8 +1247,6 @@ export default function GameHomepage() {
                                 {/* Practice Mode coin info */}
                                 {gameMode === 'practice' && (
                                     <div className="practice-info">
-                                        💰 You have {getCoins()} coins
-                                        <br />
                                         <small>Collect ⭐ stars to earn 1 coin each • Use 10 coins to continue</small>
                                     </div>
                                 )}
@@ -1288,8 +1286,16 @@ export default function GameHomepage() {
                                             setIsProcessingPayment(true); // Disable navigation during payment
                                             await handleTournamentContinue(gameResult.score);
                                         }}
+                                        style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '4px',
+                                            padding: '16px 24px',
+                                            lineHeight: '1.4'
+                                        }}
                                     >
-                                        Continue ({tournamentEntryAmount * 0.5} WLD) - One continue per game
+                                        <span style={{ fontSize: '16px', fontWeight: 'bold' }}>CONTINUE ({tournamentEntryAmount * 0.5} WLD)</span>
+                                        <span style={{ fontSize: '13px', opacity: 0.9 }}>One continue per game</span>
                                     </button>
                                 )}
 
@@ -1726,7 +1732,7 @@ export default function GameHomepage() {
                                 <p className="mode-desc">Conquer for glory</p>
                                 <div className="mode-features">
                                     <span className="feature">💰 Win WLD prizes</span>
-                                    <span className="feature">🏆 Daily challenges</span>
+                                    <span className="feature">🏆 Weekly challenges</span>
                                 </div>
                                 <button
                                     className="mode-button tournament-button"

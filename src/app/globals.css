@@ -686,8 +686,8 @@ body {
 }
 
 .feature {
-  font-size: 0.9rem;
-  /* Increased from 0.8rem */
+  font-size: 1rem;
+  /* Increased from 0.9rem for better readability */
   color: rgba(255, 255, 255, 0.8);
   font-weight: 500;
 }
