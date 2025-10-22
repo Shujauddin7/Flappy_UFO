@@ -520,10 +520,8 @@ export default function GameHomepage() {
 
         } catch (error) {
             console.error('Error during tournament entry:', error);
-            // Don't show generic error - specific errors are already shown in handleWorldIDVerification
-            if (entryType !== 'verify') {
-                showNotification('error', 'Entry Failed', 'Tournament entry failed. Please try again.');
-            }
+            // Error notification already shown in handleWorldIDVerification or handlePayment
+            // Just ensure payment processing state is reset
             setIsProcessingPayment(false); // Re-enable navigation on error
         } finally {
             setIsProcessingEntry(false);
@@ -629,8 +627,8 @@ export default function GameHomepage() {
                     `${miniKitError || errorMessage}. Try again or use Standard Entry (1.0 WLD).`);
             }
             
-            // Throw error to stop execution
-            throw error;
+            // Don't throw - let the notification be visible
+            // The error is already handled and user is informed
         } finally {
             setIsProcessingEntry(false);
             setIsProcessingPayment(false);
