@@ -543,39 +543,21 @@ export default function GameHomepage() {
             });
 
             console.log('MiniKit verification result:', result); // Debug log
+            console.log('Full result object:', JSON.stringify(result, null, 2));
 
-            // 🔥 CHECK RESULT STATUS IMMEDIATELY - MiniKit doesn't throw errors!
-            if (result.finalPayload.status !== 'success') {
-                // Extract error information from MiniKit response
-                const miniKitError = result.finalPayload.error_code || 'Verification failed';
+            // Reset processing states immediately after MiniKit call
+            setIsProcessingEntry(false);
+            setIsProcessingPayment(false);
+
+            // 🔥 CHECK RESULT STATUS - Handle ALL non-success cases
+            if (!result || !result.finalPayload || result.finalPayload.status !== 'success') {
+                console.log('MiniKit verification failed or cancelled');
                 
-                console.log('MiniKit error details:', {
-                    status: result.finalPayload.status,
-                    error_code: result.finalPayload.error_code
-                });
+                // Show popup for ANY non-success result (including cancellation)
+                showNotification('warning', '🌍 Orb Verification Required',
+                    'Please complete Orb verification at worldcoin.org first, then try again. Or choose Standard Entry (1.0 WLD).');
                 
-                // Reset processing states immediately
-                setIsProcessingEntry(false);
-                setIsProcessingPayment(false);
-                
-                // Check if this is an Orb verification issue
-                const errorString = miniKitError.toLowerCase();
-                const isOrbVerificationIssue = 
-                    errorString.includes('credentialunavailable') ||
-                    errorString.includes('verification level') ||
-                    errorString.includes('not verified') ||
-                    errorString.includes('orb') ||
-                    errorString.includes('verification') ||
-                    errorString.includes('credential') ||
-                    result.finalPayload.status === 'error';
-                
-                if (isOrbVerificationIssue) {
-                    // Show popup immediately for Orb verification issues
-                    showNotification('warning', '🌍 Orb Verification Required',
-                        'Please complete Orb verification at worldcoin.org first, then try again. Or choose Standard Entry (1.0 WLD).');
-                }
-                
-                return; // Exit early, don't throw error
+                return; // Exit early
             }
 
             // Send proof to backend for verification
