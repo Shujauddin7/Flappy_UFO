@@ -454,22 +454,16 @@ body {
 
 .game-modes {
   flex: 0 1 auto;
-  /* Don't grow, can shrink, auto size */
   display: flex;
   flex-direction: column;
   gap: 1.2rem;
-  /* Restored from main branch */
   width: 100%;
-  max-width: 350px;
-  /* Restored from main branch */
+  max-width: 360px;
   align-items: center;
   justify-content: center;
   padding: 0 1rem;
-  /* Add horizontal padding */
   margin-top: auto;
-  /* Push to center vertically */
   margin-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
-  /* Space for fixed bottom nav */
 }
 
 .mode-card {
@@ -477,7 +471,7 @@ body {
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(0, 245, 255, 0.3);
   border-radius: 20px;
-  padding: 1.5rem;
+  padding: 1.2rem;
   width: 100%;
   max-width: 100%;
   backdrop-filter: blur(20px);
@@ -629,10 +623,10 @@ body {
 .mode-name {
   font-family: 'Orbitron', monospace;
   font-weight: 800;
-  font-size: 1.6rem;
-  margin: 0 0 0.3rem;
+  font-size: 1.4rem;
+  margin: 0 0 0.4rem;
   color: #ffffff;
-  letter-spacing: 2px;
+  letter-spacing: 1.5px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -667,9 +661,9 @@ body {
 }
 
 .mode-desc {
-  font-size: 1rem;
+  font-size: 0.9rem;
   color: rgba(255, 255, 255, 0.7);
-  margin: 0 0 1rem;
+  margin: 0 0 0.8rem;
   font-weight: 500;
   font-style: italic;
   text-align: center;
@@ -679,13 +673,12 @@ body {
 .mode-features {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  margin-bottom: 1.2rem;
-  /* Reduced from 1.5rem */
+  gap: 0.3rem;
+  margin-bottom: 1rem;
 }
 
 .feature {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: rgba(255, 255, 255, 0.8);
   font-weight: 500;
   line-height: 1.3;
@@ -697,11 +690,11 @@ body {
   background: linear-gradient(45deg, #00F5FF, #1D4ED8);
   border: none;
   border-radius: 15px;
-  padding: 1rem 2rem;
+  padding: 0.9rem 1.5rem;
   width: 100%;
   font-family: 'Orbitron', monospace;
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 0.9rem;
   color: #000;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -885,18 +878,18 @@ body {
   }
 
   .tournament-entry-screen .game-modes {
-    gap: 0.8rem;
-    max-width: 320px;
+    gap: 1rem;
+    max-width: 340px;
     padding: 0 0.5rem;
   }
 
   .tournament-entry-screen .mode-card {
-    padding: 0.8rem;
+    padding: 1rem;
   }
 
   .tournament-entry-screen .mode-button {
-    padding: 0.7rem 0.8rem;
-    font-size: 0.75rem;
+    padding: 0.8rem 1rem;
+    font-size: 0.8rem;
     min-height: 44px;
   }
 }
@@ -907,18 +900,18 @@ body {
   }
 
   .tournament-entry-screen .game-modes {
-    gap: 0.6rem;
-    max-width: 300px;
+    gap: 0.8rem;
+    max-width: 320px;
     padding: 0 0.3rem;
   }
 
   .tournament-entry-screen .mode-card {
-    padding: 0.6rem;
+    padding: 0.8rem;
   }
 
   .tournament-entry-screen .mode-button {
-    padding: 0.6rem 0.6rem;
-    font-size: 0.7rem;
+    padding: 0.7rem 0.8rem;
+    font-size: 0.75rem;
     min-height: 42px;
     line-height: 1.1;
     word-break: break-word;
@@ -927,8 +920,8 @@ body {
 
 @media (max-width: 320px) {
   .tournament-entry-screen .mode-button {
-    font-size: 0.65rem !important;
-    padding: 0.5rem 0.4rem !important;
+    font-size: 0.7rem !important;
+    padding: 0.6rem 0.6rem !important;
     min-height: 40px !important;
   }
 }
@@ -1142,76 +1135,62 @@ body {
   .game-select-screen {
     padding: 1rem 1rem 0.5rem;
     min-height: 100dvh;
-    /* Use min-height instead of fixed height */
     height: auto;
-    /* Allow height to adjust to content */
   }
 
   .epic-title-section {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.2rem;
     flex-shrink: 0;
   }
 
   .game-modes {
     gap: 1rem;
-    max-width: 320px;
+    max-width: 340px;
     flex: 1;
-    /* Take available space but allow shrinking */
     min-height: 0;
-    /* Allow shrinking below initial size */
   }
 
   .mode-card {
-    padding: 0.8rem;
-    /* Further reduced padding for small screens */
-    border-radius: 16px;
+    padding: 1rem;
+    border-radius: 18px;
     min-height: auto;
   }
 
   .mode-content {
-    gap: 0.5rem;
-    /* Further reduced gap between elements */
+    gap: 0.4rem;
   }
 
   .mode-icon {
-    font-size: 1.6rem;
-    /* Smaller icon for mobile */
+    font-size: 1.5rem;
     margin-bottom: 0.3rem;
   }
 
   .mode-name {
-    font-size: 1.1rem;
-    /* Optimized for mobile readability */
-    margin-bottom: 0.2rem;
+    font-size: 1.2rem;
+    margin-bottom: 0.3rem;
     letter-spacing: 1px;
   }
 
   .mode-desc {
     font-size: 0.8rem;
-    /* Optimized for mobile */
-    margin-bottom: 0.6rem;
+    margin-bottom: 0.7rem;
   }
 
   .mode-features {
     margin-bottom: 0.8rem;
-    /* Reduced margin */
-    gap: 0.2rem;
+    gap: 0.25rem;
   }
 
   .feature {
     font-size: 0.75rem;
-    /* Smaller but still readable */
     padding: 0.1rem 0;
     line-height: 1.2;
   }
 
   .mode-button {
-    padding: 0.7rem 1rem;
-    /* Optimized button padding */
+    padding: 0.8rem 1.2rem;
     font-size: 0.8rem;
-    /* Smaller but readable text */
     min-height: 44px;
-    /* Ensure touch target */
     border-radius: 12px;
   }
 
@@ -1244,7 +1223,6 @@ body {
   .bottom-nav-container {
     padding: 0 1rem 0.8rem;
     flex-shrink: 0;
-    /* Ensure navigation is always visible */
   }
 }
 
