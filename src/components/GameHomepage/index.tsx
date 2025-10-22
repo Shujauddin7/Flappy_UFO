@@ -761,33 +761,22 @@ export default function GameHomepage() {
             });
 
             if (result.finalPayload.status === 'success') {
-                // Record continue payment in database (only continue-specific columns)
-                try {
-                    const continueAmount = tournamentEntryAmount * 0.5;
-                    const continueResponse = await fetch('/api/tournament/continue', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            continue_amount: continueAmount
-                        }),
-                    });
-
-                    const continueData = await continueResponse.json();
-
-                    if (!continueData.success) {
-                        // Don't fail the continue - just log the warning
-                    }
-                } catch {
-                    // Don't fail the continue - just log the warning
-                }
-
-                // Mark continue as used and continue the game from current score
+                // ⚡ OPTIMIZED: Continue game immediately, record payment in background
                 setTournamentContinueUsed(true);
                 setContinueFromScore(score);
                 setGameResult({ show: false, score: 0, coins: 0, mode: '' });
-
-                // Re-enable navigation after game restarts
                 setIsProcessingPayment(false);
+
+                // Record continue payment in database (fire and forget - don't wait)
+                fetch('/api/tournament/continue', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        continue_amount: continueAmount
+                    }),
+                }).catch(() => {
+                    // Silent fail - don't block user experience
+                });
 
             } else {
                 setIsProcessingPayment(false); // Re-enable navigation if payment cancelled
@@ -1244,10 +1233,10 @@ export default function GameHomepage() {
                                     </div>
                                 )}
 
-                                {/* Practice Mode coin info */}
+                                {/* Practice Mode star info */}
                                 {gameMode === 'practice' && (
                                     <div className="practice-info">
-                                        <small>Collect ⭐ stars to earn 1 coin each • Use 10 coins to continue</small>
+                                        <small>Collect ⭐ stars to earn more • Use 10 ⭐ to continue</small>
                                     </div>
                                 )}
                             </div>
@@ -1267,12 +1256,20 @@ export default function GameHomepage() {
                                                 // Insufficient coins - show error in game result instead of alert
                                                 setGameResult(prev => ({
                                                     ...prev,
-                                                    error: 'Not enough coins to continue! You need 10 coins.'
+                                                    error: 'Not enough stars to continue! You need 10 stars.'
                                                 }));
                                             }
                                         }}
+                                        style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '4px',
+                                            padding: '16px 24px',
+                                            lineHeight: '1.4'
+                                        }}
                                     >
-                                        Continue (10 ⭐) - {getCoins()} coins available
+                                        <span style={{ fontSize: '16px', fontWeight: 'bold' }}>CONTINUE (10 ⭐)</span>
+                                        <span style={{ fontSize: '13px', opacity: 0.9 }}>{getCoins()} stars available</span>
                                     </button>
                                 )}
 
