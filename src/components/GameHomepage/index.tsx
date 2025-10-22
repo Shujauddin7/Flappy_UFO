@@ -543,9 +543,12 @@ export default function GameHomepage() {
             // 🔥 CHECK RESULT STATUS IMMEDIATELY - MiniKit doesn't throw errors!
             if (result.finalPayload.status !== 'success') {
                 // Extract error information from MiniKit response
-                const miniKitError = result.finalPayload.error_code ||
-                    'Verification failed';
-                throw new Error(miniKitError);
+                const miniKitError = result.finalPayload.error_code || 'Verification failed';
+                
+                // Create error object with MiniKit response details
+                const error = new Error(miniKitError) as Error & { finalPayload?: { error_code?: string; message?: string } };
+                error.finalPayload = result.finalPayload;
+                throw error;
             }
 
             // Send proof to backend for verification
@@ -575,7 +578,7 @@ export default function GameHomepage() {
         } catch (error) {
             console.error('World ID verification error:', error);
 
-            // 🎯 SMART ERROR DETECTION - Provide specific, helpful messages
+            // 🎯 SMART ERROR DETECTION - Only show popup for Orb verification issues
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             const errorString = errorMessage.toLowerCase();
 
@@ -584,54 +587,40 @@ export default function GameHomepage() {
                 (error as { finalPayload?: { error_code?: string; message?: string } })?.finalPayload?.message || '';
             const miniKitErrorLower = miniKitError.toLowerCase();
 
-            // 1. ORB VERIFICATION NOT COMPLETED
-            if (errorString.includes('credentialunavailable') ||
+            // ONLY show popup notification for ORB VERIFICATION NOT COMPLETED
+            // This is the specific case where user needs to complete Orb verification
+            const isOrbVerificationIssue = 
+                errorString.includes('credentialunavailable') ||
                 errorString.includes('verification level') ||
                 errorString.includes('not verified') ||
                 errorString.includes('orb') ||
                 miniKitErrorLower.includes('verification') ||
-                miniKitErrorLower.includes('orb')) {
-                showNotification('warning', '🌍 Orb Verification Required',
-                    'Please complete Orb verification at worldcoin.org first, then try again. Or choose Standard Entry (1.0 WLD).');
+                miniKitErrorLower.includes('orb') ||
+                miniKitErrorLower.includes('credential');
+                
+            if (isOrbVerificationIssue) {
+                
+                // Reset processing states first
+                setIsProcessingEntry(false);
+                setIsProcessingPayment(false);
+                
+                // Show popup immediately for Orb verification issues
+                setTimeout(() => {
+                    showNotification('warning', '🌍 Orb Verification Required',
+                        'Please complete Orb verification at worldcoin.org first, then try again. Or choose Standard Entry (1.0 WLD).');
+                }, 100); // Small delay to ensure state is updated
             }
-            // 2. ALREADY VERIFIED TODAY
-            else if (errorString.includes('maxverificationsreached') ||
-                errorString.includes('already verified') ||
-                errorString.includes('duplicate') ||
-                miniKitErrorLower.includes('already') ||
-                miniKitErrorLower.includes('duplicate')) {
-                showNotification('info', '✅ Already Verified Today',
-                    'You can only verify once per tournament. Your discount is already active!');
-            }
-            // 3. NETWORK/TIMEOUT ISSUES
-            else if (errorString.includes('network') ||
-                errorString.includes('timeout') ||
-                errorString.includes('connection') ||
-                miniKitErrorLower.includes('network') ||
-                miniKitErrorLower.includes('timeout')) {
-                showNotification('error', '🌐 Connection Issue',
-                    'Network error. Check your internet and try again, or use Standard Entry.');
-            }
-            // 4. USER CANCELLED
-            else if (errorString.includes('cancel') ||
-                errorString.includes('rejected') ||
-                errorString.includes('error') ||
-                miniKitErrorLower.includes('cancel') ||
-                miniKitErrorLower.includes('error')) {
-                showNotification('info', 'Verification Cancelled',
-                    'You cancelled the verification. Choose Standard Entry to continue.');
-            }
-            // 5. GENERIC ERROR WITH DETAILS
+            // For all other errors, just log them but don't show popup
+            // This includes: already verified, network issues, user cancelled, etc.
             else {
-                showNotification('error', 'Verification Failed',
-                    `${miniKitError || errorMessage}. Try again or use Standard Entry (1.0 WLD).`);
+                console.log('Verification failed (not Orb-related):', miniKitError || errorMessage);
+                // Silently fail for non-Orb verification issues
+                // User can try again or use standard entry
+                setIsProcessingEntry(false);
+                setIsProcessingPayment(false);
             }
 
-            // Don't throw - let the notification be visible
-            // The error is already handled and user is informed
-        } finally {
-            setIsProcessingEntry(false);
-            setIsProcessingPayment(false);
+            // Don't throw - let the user try again or use standard entry
         }
     };
 
