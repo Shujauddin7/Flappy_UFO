@@ -686,9 +686,9 @@ body {
 }
 
 .feature {
-  font-size: 1.05rem;
-  /* Location: Line 688 - Increased from 1rem for better readability */
-  /* Adjust here if text breaks layout on small screens */
+  font-size: 0.95rem;
+  /* Balanced size - not too big (1.05rem) not too small (0.9rem) */
+  /* Responsive adjustments in media queries below for different devices */
   color: rgba(255, 255, 255, 0.8);
   font-weight: 500;
 }
@@ -1133,8 +1133,8 @@ body {
   }
 
   .feature {
-    font-size: 0.85rem;
-    /* Increased text size for better readability */
+    font-size: 0.82rem;
+    /* Slightly smaller for 500px and below to prevent overflow */
     padding: 0.2rem 0;
   }
 
@@ -1725,6 +1725,11 @@ body {
 
   .mode-card {
     padding: 1.5rem;
+  }
+
+  .mode-features .feature {
+    font-size: 0.9rem;
+    /* Slightly larger for tablet/large phone screens */
   }
 
   .choose-word {
