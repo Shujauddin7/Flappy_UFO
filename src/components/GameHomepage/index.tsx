@@ -535,6 +535,8 @@ export default function GameHomepage() {
             const { MiniKit, VerificationLevel } = await import('@worldcoin/minikit-js');
 
             // Use MiniKit to verify World ID with Orb verification level
+            console.log('Starting MiniKit verification...');
+            
             const result = await MiniKit.commandsAsync.verify({
                 action: 'flappy-ufo', // World ID app identifier from developer portal
                 verification_level: VerificationLevel.Orb, // Require Orb verification for discount
@@ -607,8 +609,39 @@ export default function GameHomepage() {
             setIsProcessingEntry(false);
             setIsProcessingPayment(false);
 
-            // For any error in the try block (network, API, etc.), just log and return
-            console.log('Verification process failed:', error);
+            // Check if this is a user cancellation or Orb verification issue
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            const errorString = errorMessage.toLowerCase();
+            
+            console.log('Error details:', {
+                message: errorMessage,
+                error: error
+            });
+
+            // Show popup for Orb verification issues or user cancellation
+            const isOrbVerificationIssue = 
+                errorString.includes('credentialunavailable') ||
+                errorString.includes('verification level') ||
+                errorString.includes('not verified') ||
+                errorString.includes('orb') ||
+                errorString.includes('verification') ||
+                errorString.includes('credential') ||
+                errorString.includes('cancelled') ||
+                errorString.includes('canceled') ||
+                errorString.includes('user_cancelled') ||
+                errorString.includes('user_canceled') ||
+                errorString.includes('rejected') ||
+                errorString.includes('denied');
+            
+            if (isOrbVerificationIssue) {
+                // Show popup immediately for Orb verification issues
+                showNotification('warning', '🌍 Orb Verification Required',
+                    'Please complete Orb verification at worldcoin.org first, then try again. Or choose Standard Entry (1.0 WLD).');
+            } else {
+                // For other errors, still show the popup as it might be an Orb issue
+                showNotification('warning', '🌍 Orb Verification Required',
+                    'Please complete Orb verification at worldcoin.org first, then try again. Or choose Standard Entry (1.0 WLD).');
+            }
         }
     };
 
