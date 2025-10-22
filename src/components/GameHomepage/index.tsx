@@ -565,17 +565,54 @@ export default function GameHomepage() {
         } catch (error) {
             console.error('World ID verification error:', error);
 
-            // Provide more specific error messages
+            // 🎯 SMART ERROR DETECTION - Provide specific, helpful messages
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            const errorString = errorMessage.toLowerCase();
 
-            if (errorMessage.includes('CredentialUnavailable') || errorMessage.includes('verification level')) {
-                showNotification('warning', 'Orb Required', 'Orb verification is required for the discounted entry. Please use an Orb to verify your World ID, or choose Standard Entry (1.0 WLD).');
-            } else if (errorMessage.includes('MaxVerificationsReached')) {
-                showNotification('error', 'Max Verifications', 'You have already verified the maximum number of times for this tournament. Please try again in the next tournament.');
-            } else if (errorMessage.includes('network') || errorMessage.includes('timeout')) {
-                showNotification('error', 'Network Error', 'Network error during verification. Please check your connection and try again, or use Standard Entry.');
-            } else {
-                showNotification('error', 'Verification Failed', 'World ID verification failed. Please try again or use Standard Entry (1.0 WLD).');
+            // Check MiniKit response status if available
+            const miniKitError = (error as { finalPayload?: { error_code?: string; message?: string } })?.finalPayload?.error_code || 
+                               (error as { finalPayload?: { error_code?: string; message?: string } })?.finalPayload?.message || '';
+            const miniKitErrorLower = miniKitError.toLowerCase();
+
+            // 1. ORB VERIFICATION NOT COMPLETED
+            if (errorString.includes('credentialunavailable') || 
+                errorString.includes('verification level') ||
+                errorString.includes('not verified') ||
+                errorString.includes('orb') ||
+                miniKitErrorLower.includes('verification') ||
+                miniKitErrorLower.includes('orb')) {
+                showNotification('warning', '🌍 Orb Verification Required', 
+                    'Please complete Orb verification at worldcoin.org first, then try again. Or choose Standard Entry (1.0 WLD).');
+            } 
+            // 2. ALREADY VERIFIED TODAY
+            else if (errorString.includes('maxverificationsreached') || 
+                     errorString.includes('already verified') ||
+                     errorString.includes('duplicate') ||
+                     miniKitErrorLower.includes('already') ||
+                     miniKitErrorLower.includes('duplicate')) {
+                showNotification('info', '✅ Already Verified Today', 
+                    'You can only verify once per tournament. Your discount is already active!');
+            } 
+            // 3. NETWORK/TIMEOUT ISSUES
+            else if (errorString.includes('network') || 
+                     errorString.includes('timeout') ||
+                     errorString.includes('connection') ||
+                     miniKitErrorLower.includes('network') ||
+                     miniKitErrorLower.includes('timeout')) {
+                showNotification('error', '🌐 Connection Issue', 
+                    'Network error. Check your internet and try again, or use Standard Entry.');
+            } 
+            // 4. USER CANCELLED
+            else if (errorString.includes('cancel') || 
+                     errorString.includes('rejected') ||
+                     miniKitErrorLower.includes('cancel')) {
+                showNotification('info', 'Verification Cancelled', 
+                    'You cancelled the verification. Choose Standard Entry to continue.');
+            }
+            // 5. GENERIC ERROR WITH DETAILS
+            else {
+                showNotification('error', 'Verification Failed', 
+                    `${miniKitError || errorMessage}. Try again or use Standard Entry (1.0 WLD).`);
             }
         }
     };
@@ -688,28 +725,20 @@ export default function GameHomepage() {
             });
 
             if (result.finalPayload.status === 'success') {
-                try {
-                    // Create tournament entry after successful payment
-                    await createTournamentEntry(result.finalPayload.reference, amount, isVerified);
+                // ⚡ OPTIMIZED: Start game immediately, create entry in background
+                setTournamentEntryAmount(amount);
+                setTournamentContinueUsed(false);
+                setGameMode('tournament');
+                setCurrentScreen('playing');
+                setIsProcessingPayment(false);
 
-                    // Track entry amount and reset continue status for new game
-                    setTournamentEntryAmount(amount);
-                    setTournamentContinueUsed(false);
-
-                    // Start the game directly (only if entry creation succeeds)
-                    setGameMode('tournament');
-                    setCurrentScreen('playing');
-
-                    // Re-enable navigation after game starts
-                    setIsProcessingPayment(false);
-                } catch (entryError) {
-                    // Payment succeeded but entry creation failed
-                    // Don't throw error here to avoid double alert
+                // Create tournament entry in background (fire and forget)
+                createTournamentEntry(result.finalPayload.reference, amount, isVerified).catch((entryError) => {
                     console.error('❌ Tournament entry creation failed after successful payment:', entryError);
-                    // The error message is already shown in createTournamentEntry function
-                    setIsProcessingPayment(false); // Re-enable navigation on error
-                    return;
-                }
+                    // Entry creation failed but user already paid and started game
+                    // Log error but don't interrupt game experience
+                });
+
             } else {
                 setIsProcessingPayment(false); // Re-enable navigation if payment cancelled
                 throw new Error('Payment failed or was cancelled');
