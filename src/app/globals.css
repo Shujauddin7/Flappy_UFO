@@ -481,11 +481,14 @@ body {
   /* Restored from main branch */
   padding: 1.5rem;
   /* Restored from main branch */
+  min-height: 280px;
+  /* Ensure button doesn't overflow */
   width: 100%;
   backdrop-filter: blur(20px);
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   cursor: pointer;
-  overflow: hidden;
+  overflow: visible;
+  /* Changed from hidden to visible */
   transform-origin: center;
   /* Permanent cyan glow effect */
   box-shadow: 0 5px 15px rgba(0, 245, 255, 0.15), 0 0 20px rgba(0, 245, 255, 0.1);
@@ -1226,7 +1229,9 @@ body {
   }
 
   .mode-card {
-    padding: 0.8rem;
+    padding: 1.2rem;
+    min-height: 260px;
+    /* Ensure button stays inside on all devices */
   }
 
   .mode-content {

@@ -542,6 +542,14 @@ export default function GameHomepage() {
                 verification_level: VerificationLevel.Orb, // Require Orb verification for discount
             });
 
+            // 🔥 CHECK RESULT STATUS IMMEDIATELY - MiniKit doesn't throw errors!
+            if (result.finalPayload.status !== 'success') {
+                // Extract error information from MiniKit response
+                const miniKitError = result.finalPayload.error_code || 
+                                   'Verification failed';
+                throw new Error(miniKitError);
+            }
+
             // Send proof to backend for verification
             const response = await fetch('/api/verify-proof', {
                 method: 'POST',
