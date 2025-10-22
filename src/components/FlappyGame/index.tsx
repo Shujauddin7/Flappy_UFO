@@ -1,1436 +1,1697 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { Page } from '@/components/PageLayout';
-import { getCoins } from '@/utils/coins';
-import { useGameAssets } from '@/hooks/useGlobalAssetPreloader';
+import { useEffect, useRef, useState, useCallback } from "react";
+import { Page } from "@/components/PageLayout";
+import { getCoins } from "@/utils/coins";
+import { useGameAssets } from "@/hooks/useGlobalAssetPreloader";
 
 interface GameObject {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    type: 'planet' | 'coin' | 'trigger' | 'invisible-wall' | 'asteroid' | 'dust-particle' | 'energy-barrier' | 'asteroid-chunk' | 'nebula-cloud' | 'space-debris' | 'laser-grid';
-    planetType?: string;
-    barrierType?: 'energy' | 'asteroid-belt' | 'nebula' | 'debris' | 'laser';
-    scored?: boolean;
-    collected?: boolean; // For preventing duplicate coin collection
-    moveSpeed?: number;
-    moveDirection?: number;
-    baseY?: number;
-    // For animated effects
-    animationPhase?: number;
-    glowIntensity?: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  type:
+    | "planet"
+    | "coin"
+    | "trigger"
+    | "invisible-wall"
+    | "asteroid"
+    | "dust-particle"
+    | "energy-barrier"
+    | "asteroid-chunk"
+    | "nebula-cloud"
+    | "space-debris"
+    | "laser-grid";
+  planetType?: string;
+  barrierType?: "energy" | "asteroid-belt" | "nebula" | "debris" | "laser";
+  scored?: boolean;
+  collected?: boolean; // For preventing duplicate coin collection
+  moveSpeed?: number;
+  moveDirection?: number;
+  baseY?: number;
+  // For animated effects
+  animationPhase?: number;
+  glowIntensity?: number;
 }
 
 interface UFO {
-    x: number;
-    y: number;
-    velocity: number;
-    rotation: number;
+  x: number;
+  y: number;
+  velocity: number;
+  rotation: number;
 }
 
 interface Particle {
-    x: number;
-    y: number;
-    vx: number;
-    vy: number;
-    life: number;
-    maxLife: number;
-    size: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  size: number;
 }
 
 interface GameState {
-    ufo: UFO;
-    obstacles: GameObject[];
-    particles: Particle[];
-    score: number;
-    coins: number;
-    coinsCollectedThisGame: number; // Track only coins collected during this game session
-    gameStatus: 'ready' | 'playing' | 'gameOver';
-    gameEndCalled?: boolean; // Prevent multiple game end calls
-    gamePatternSeed: number; // Seed for consistent but varied patterns per game
-    obstacleCount: number; // Track number of obstacles created
+  ufo: UFO;
+  obstacles: GameObject[];
+  particles: Particle[];
+  score: number;
+  coins: number;
+  coinsCollectedThisGame: number; // Track only coins collected during this game session
+  gameStatus: "ready" | "playing" | "gameOver";
+  gameEndCalled?: boolean; // Prevent multiple game end calls
+  gamePatternSeed: number; // Seed for consistent but varied patterns per game
+  obstacleCount: number; // Track number of obstacles created
 }
 
 const PLANETS = [
-    'Earth.webp', 'Jupiter.webp', 'Mercury.webp',
-    'Neptune.webp', 'Saturn.webp', 'Uranus.webp', 'Venus.webp'
+  "Earth.webp",
+  "Jupiter.webp",
+  "Mercury.webp",
+  "Neptune.webp",
+  "Saturn.webp",
+  "Uranus.webp",
+  "Venus.webp",
 ];
 
 interface FlappyGameProps {
-    gameMode: 'practice' | 'tournament' | null;
-    onGameEnd: (score: number, coins: number) => void;
-    continueFromScore?: number; // For practice mode continue functionality
+  gameMode: "practice" | "tournament" | null;
+  onGameEnd: (score: number, coins: number) => void;
+  continueFromScore?: number; // For practice mode continue functionality
 }
 
 export default function FlappyGame({
-    gameMode,
-    onGameEnd,
-    continueFromScore = 0
+  gameMode,
+  onGameEnd,
+  continueFromScore = 0,
 }: FlappyGameProps) {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [isGracePeriod, setIsGracePeriod] = useState(false);
-    const [gracePeriodMessage, setGracePeriodMessage] = useState('');
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isGracePeriod, setIsGracePeriod] = useState(false);
+  const [gracePeriodMessage, setGracePeriodMessage] = useState("");
 
-    // Use global asset preloader for better performance and caching
-    const globalAssets = useGameAssets();
+  // Use global asset preloader for better performance and caching
+  const globalAssets = useGameAssets();
 
-    const gameStateRef = useRef<GameState>({
-        ufo: { x: 100, y: 300, velocity: 0, rotation: 0 },
-        obstacles: [],
-        particles: [],
-        score: 0,
-        coins: 0,
-        coinsCollectedThisGame: 0,
-        gameStatus: 'ready',
-        gameEndCalled: false, // Initialize flag
-        gamePatternSeed: Math.random() * 1000, // Random seed for each game
-        obstacleCount: 0 // Track obstacles created
-    });
+  const gameStateRef = useRef<GameState>({
+    ufo: { x: 100, y: 300, velocity: 0, rotation: 0 },
+    obstacles: [],
+    particles: [],
+    score: 0,
+    coins: 0,
+    coinsCollectedThisGame: 0,
+    gameStatus: "ready",
+    gameEndCalled: false, // Initialize flag
+    gamePatternSeed: Math.random() * 1000, // Random seed for each game
+    obstacleCount: 0, // Track obstacles created
+  });
 
-    const [, setGameState] = useState(gameStateRef.current);
-    const gameLoopRef = useRef<number | undefined>(undefined);
-    const lastTimeRef = useRef<number>(0); // For deltaTime calculation
+  const [, setGameState] = useState(gameStateRef.current);
+  const gameLoopRef = useRef<number | undefined>(undefined);
+  const lastTimeRef = useRef<number>(0); // For deltaTime calculation
 
-    // Reset game state when component mounts
-    useEffect(() => {
-        // Initialize coins based on mode
-        const initialCoins = gameMode === 'practice' ? getCoins() : 0;
+  // Reset game state when component mounts
+  useEffect(() => {
+    // Initialize coins based on mode
+    const initialCoins = gameMode === "practice" ? getCoins() : 0;
 
-        gameStateRef.current = {
-            ufo: { x: 100, y: 300, velocity: 0, rotation: 0 },
-            obstacles: [],
-            particles: [],
-            score: continueFromScore, // Start from previous score if continuing
-            coins: initialCoins, // Load saved coins for practice mode
-            coinsCollectedThisGame: 0, // Reset coins collected this game
-            gameStatus: 'ready',
-            gameEndCalled: false,
-            gamePatternSeed: Math.random() * 1000, // New random seed for each game
-            obstacleCount: 0 // Reset obstacle counter
-        };
+    gameStateRef.current = {
+      ufo: { x: 100, y: 300, velocity: 0, rotation: 0 },
+      obstacles: [],
+      particles: [],
+      score: continueFromScore, // Start from previous score if continuing
+      coins: initialCoins, // Load saved coins for practice mode
+      coinsCollectedThisGame: 0, // Reset coins collected this game
+      gameStatus: "ready",
+      gameEndCalled: false,
+      gamePatternSeed: Math.random() * 1000, // New random seed for each game
+      obstacleCount: 0, // Reset obstacle counter
+    };
 
-        // Reset deltaTime calculation
-        lastTimeRef.current = 0;
+    // Reset deltaTime calculation
+    lastTimeRef.current = 0;
 
-        setGameState({ ...gameStateRef.current });
-    }, [gameMode, continueFromScore]);
+    setGameState({ ...gameStateRef.current });
+  }, [gameMode, continueFromScore]);
 
-    // Load planet images using the global asset preloader
-    useEffect(() => {
-        // Images are preloaded by the global asset preloader
-        // We can access them via globalAssets.getPlanetImage(planetName)
-    }, [globalAssets]);
+  // Load planet images using the global asset preloader
+  useEffect(() => {
+    // Images are preloaded by the global asset preloader
+    // We can access them via globalAssets.getPlanetImage(planetName)
+  }, [globalAssets]);
 
-    // Check for grace period using dynamic tournament end time - only for tournament mode
-    useEffect(() => {
-        if (gameMode !== 'tournament') {
-            setIsGracePeriod(false);
-            setGracePeriodMessage('');
-            return;
+  // Check for grace period using dynamic tournament end time - only for tournament mode
+  useEffect(() => {
+    if (gameMode !== "tournament") {
+      setIsGracePeriod(false);
+      setGracePeriodMessage("");
+      return;
+    }
+
+    const checkGracePeriod = async () => {
+      try {
+        const response = await fetch("/api/tournament/current");
+        const data = await response.json();
+
+        if (!data.tournament || !data.tournament.end_time) {
+          setIsGracePeriod(false);
+          setGracePeriodMessage("");
+          return;
         }
 
-        const checkGracePeriod = async () => {
-            try {
-                const response = await fetch('/api/tournament/current');
-                const data = await response.json();
+        const now = new Date();
+        const tournamentEnd = new Date(data.tournament.end_time);
+        const gracePeriodStart = new Date(
+          tournamentEnd.getTime() - 30 * 60 * 1000
+        ); // 30 minutes before end
 
-                if (!data.tournament || !data.tournament.end_time) {
-                    setIsGracePeriod(false);
-                    setGracePeriodMessage('');
-                    return;
-                }
+        // Check if we're in the grace period (30 minutes before tournament end)
+        const inGracePeriod = now >= gracePeriodStart && now < tournamentEnd;
 
-                const now = new Date();
-                const tournamentEnd = new Date(data.tournament.end_time);
-                const gracePeriodStart = new Date(tournamentEnd.getTime() - (30 * 60 * 1000)); // 30 minutes before end
-
-                // Check if we're in the grace period (30 minutes before tournament end)
-                const inGracePeriod = now >= gracePeriodStart && now < tournamentEnd;
-
-                if (inGracePeriod) {
-                    const minutesRemaining = Math.ceil((tournamentEnd.getTime() - now.getTime()) / (60 * 1000));
-                    setIsGracePeriod(true);
-                    setGracePeriodMessage(`Tournament ends in ${minutesRemaining} minutes. Calculating prizes...`);
-                } else if (now >= tournamentEnd) {
-                    // Tournament has ended
-                    setIsGracePeriod(true);
-                    setGracePeriodMessage('Tournament has ended. Please wait for the next tournament.');
-                } else {
-                    setIsGracePeriod(false);
-                    setGracePeriodMessage('');
-                }
-            } catch (error) {
-                // If API fails, disable tournament mode to prevent wrong data
-                console.error('Failed to check grace period:', error);
-                setIsGracePeriod(false);
-                setGracePeriodMessage('');
-                // Note: User will still see tournament data from other APIs
-                // This only affects the grace period warning message
-            }
-        };
-
-        // Check immediately
-        checkGracePeriod();
-
-        // Check every 30 seconds during tournament mode
-        const interval = setInterval(checkGracePeriod, 30000);
-
-        return () => clearInterval(interval);
-    }, [gameMode]);
-
-    // Create simple space obstacles - with varied patterns per game
-    const createObstacles = useCallback((x: number, currentScore: number, obstacleIndex: number, patternSeed: number) => {
-        const obstacles: GameObject[] = [];
-        const canvas = canvasRef.current;
-        if (!canvas) return obstacles;
-
-        const canvasHeight = canvas.height;
-
-        // Progressive difficulty with more randomization
-        let gapSize = 280 + Math.random() * 40 - 20; // Random variation: 260-300
-        if (currentScore > 3) gapSize = 250 + Math.random() * 30 - 15; // 235-265  
-        if (currentScore > 8) gapSize = 220 + Math.random() * 20 - 10; // 210-230
-        if (currentScore > 15) gapSize = 200 + Math.random() * 20 - 10; // 190-210
-        if (currentScore > 25) gapSize = 180 + Math.random() * 20 - 10; // 170-190
-
-        // More randomized gap position
-        const minGapY = 80 + Math.random() * 40; // 80-120
-        const maxGapY = canvasHeight - gapSize - 80 - Math.random() * 40; // More varied
-        const gapY = minGapY + Math.random() * (maxGapY - minGapY);
-
-        // Randomize pipe width and position slightly for more variation
-        const pipeWidth = 70 + Math.random() * 20; // 70-90px wide
-        const pipeX = x + Math.random() * 20 - 10; // Slight X variation
-
-        // Normal pipes with varied barrier patterns
-        const barrierTypes: ('energy' | 'asteroid-belt' | 'nebula' | 'debris' | 'laser')[] =
-            ['energy', 'asteroid-belt', 'nebula', 'debris', 'laser'];
-        const selectedBarrierType = barrierTypes[Math.floor((patternSeed + obstacleIndex * 17) % barrierTypes.length)];
-
-        // Calculate planet sizes first to constrain barriers within planet boundaries
-        const topPlanetSize = 60 + Math.random() * 20;
-        const bottomPlanetSize = 60 + Math.random() * 20;
-        const planetCenterX = pipeX + pipeWidth / 2;
-
-        // Calculate planet positions
-        const topPlanetY = Math.max(20, gapY - topPlanetSize - 15);
-        const bottomPlanetY = Math.min(canvasHeight - bottomPlanetSize - 20, gapY + gapSize + 15);
-
-        // Calculate the maximum planet boundary for barriers (horizontal)
-        const maxPlanetSize = Math.max(topPlanetSize, bottomPlanetSize);
-        const planetLeftEdge = planetCenterX - maxPlanetSize / 2;
-        const planetRightEdge = planetCenterX + maxPlanetSize / 2;
-        const planetBarrierWidth = maxPlanetSize;
-
-        // Calculate barrier height boundaries (vertical) - barriers should have gap from planets
-        const BARRIER_PLANET_GAP = 15; // 15px gap between barriers and planets
-        const topBarrierEndY = topPlanetY - BARRIER_PLANET_GAP; // End 15px before top planet
-        const bottomBarrierStartY = bottomPlanetY + bottomPlanetSize + BARRIER_PLANET_GAP; // Start 15px after bottom planet
-
-        // Create barriers based on selected type - constrained within planet boundaries
-        if (selectedBarrierType === 'energy') {
-            // Energy barriers - vertical blue energy beams within planet boundary
-            for (let i = 0; i < 3; i++) {
-                const beamX = planetLeftEdge + (i * (planetBarrierWidth / 4)) + (planetBarrierWidth / 8); // Center beams within planet
-
-                // Top barrier - from screen top to top planet bottom
-                obstacles.push({
-                    x: beamX,
-                    y: 0,
-                    width: 6,
-                    height: topBarrierEndY,
-                    type: 'energy-barrier',
-                    barrierType: 'energy',
-                    animationPhase: Math.random() * Math.PI * 2
-                });
-
-                // Bottom barrier - from bottom planet top to screen bottom
-                obstacles.push({
-                    x: beamX,
-                    y: bottomBarrierStartY,
-                    width: 6,
-                    height: canvasHeight - bottomBarrierStartY,
-                    type: 'energy-barrier',
-                    barrierType: 'energy',
-                    animationPhase: Math.random() * Math.PI * 2
-                });
-            }
-        } else if (selectedBarrierType === 'asteroid-belt') {
-            // Asteroid belt - scattered small asteroids within planet boundary
-            const asteroidCount = Math.floor(planetBarrierWidth / 25);
-            for (let i = 0; i < asteroidCount; i++) {
-                const asteroidX = planetLeftEdge + (i * 25) + Math.random() * 10 - 5;
-
-                // Top asteroid belt - from screen top to top planet bottom
-                for (let j = 0; j < Math.floor(topBarrierEndY / 35); j++) {
-                    obstacles.push({
-                        x: Math.max(planetLeftEdge, Math.min(planetRightEdge - 12, asteroidX + Math.random() * 8 - 4)),
-                        y: j * 35 + Math.random() * 8 - 4,
-                        width: 12 + Math.random() * 8,
-                        height: 12 + Math.random() * 8,
-                        type: 'asteroid-chunk',
-                        barrierType: 'asteroid-belt',
-                        animationPhase: Math.random() * Math.PI * 2
-                    });
-                }
-
-                // Bottom asteroid belt - from bottom planet top to screen bottom
-                for (let j = 0; j < Math.floor((canvasHeight - bottomBarrierStartY) / 35); j++) {
-                    obstacles.push({
-                        x: Math.max(planetLeftEdge, Math.min(planetRightEdge - 12, asteroidX + Math.random() * 8 - 4)),
-                        y: bottomBarrierStartY + (j * 35) + Math.random() * 8 - 4,
-                        width: 12 + Math.random() * 8,
-                        height: 12 + Math.random() * 8,
-                        type: 'asteroid-chunk',
-                        barrierType: 'asteroid-belt',
-                        animationPhase: Math.random() * Math.PI * 2
-                    });
-                }
-            }
-        } else if (selectedBarrierType === 'nebula') {
-            // Nebula clouds - colorful gas clouds within planet boundary
-            const cloudCount = 3 + Math.floor(Math.random() * 2);
-            for (let i = 0; i < cloudCount; i++) {
-                const cloudX = planetLeftEdge + (i * (planetBarrierWidth / cloudCount)) + Math.random() * 15 - 7;
-
-                // Top nebula clouds - from screen top to top planet bottom
-                for (let j = 0; j < Math.floor(topBarrierEndY / 40); j++) {
-                    obstacles.push({
-                        x: Math.max(planetLeftEdge, Math.min(planetRightEdge - 25, cloudX + Math.random() * 20 - 10)),
-                        y: j * 40 + Math.random() * 15 - 7,
-                        width: 25 + Math.random() * 15,
-                        height: 25 + Math.random() * 15,
-                        type: 'nebula-cloud',
-                        barrierType: 'nebula',
-                        animationPhase: Math.random() * Math.PI * 2,
-                        glowIntensity: 0.5 + Math.random() * 0.3
-                    });
-                }
-
-                // Bottom nebula clouds - from bottom planet top to screen bottom
-                for (let j = 0; j < Math.floor((canvasHeight - bottomBarrierStartY) / 40); j++) {
-                    obstacles.push({
-                        x: Math.max(planetLeftEdge, Math.min(planetRightEdge - 25, cloudX + Math.random() * 20 - 10)),
-                        y: bottomBarrierStartY + (j * 40) + Math.random() * 15 - 7,
-                        width: 25 + Math.random() * 15,
-                        height: 25 + Math.random() * 15,
-                        type: 'nebula-cloud',
-                        barrierType: 'nebula',
-                        animationPhase: Math.random() * Math.PI * 2,
-                        glowIntensity: 0.5 + Math.random() * 0.3
-                    });
-                }
-            }
-        } else if (selectedBarrierType === 'debris') {
-            // Space debris - satellites and space junk within planet boundary
-            const debrisCount = Math.floor(planetBarrierWidth / 30);
-            for (let i = 0; i < debrisCount; i++) {
-                const debrisX = planetLeftEdge + (i * 30) + Math.random() * 12 - 6;
-
-                // Top debris field - from screen top to top planet bottom
-                for (let j = 0; j < Math.floor(topBarrierEndY / 45); j++) {
-                    obstacles.push({
-                        x: Math.max(planetLeftEdge, Math.min(planetRightEdge - 15, debrisX + Math.random() * 10 - 5)),
-                        y: j * 45 + Math.random() * 10 - 5,
-                        width: 15 + Math.random() * 10,
-                        height: 10 + Math.random() * 8,
-                        type: 'space-debris',
-                        barrierType: 'debris',
-                        animationPhase: Math.random() * Math.PI * 2
-                    });
-                }
-
-                // Bottom debris field - from bottom planet top to screen bottom
-                for (let j = 0; j < Math.floor((canvasHeight - bottomBarrierStartY) / 45); j++) {
-                    obstacles.push({
-                        x: Math.max(planetLeftEdge, Math.min(planetRightEdge - 15, debrisX + Math.random() * 10 - 5)),
-                        y: bottomBarrierStartY + (j * 45) + Math.random() * 10 - 5,
-                        width: 15 + Math.random() * 10,
-                        height: 10 + Math.random() * 8,
-                        type: 'space-debris',
-                        barrierType: 'debris',
-                        animationPhase: Math.random() * Math.PI * 2
-                    });
-                }
-            }
-        } else if (selectedBarrierType === 'laser') {
-            // Laser grid - thin red laser lines within planet boundary
-            const laserLines = Math.min(6, Math.floor(planetBarrierWidth / 10)) + Math.floor(Math.random() * 3);
-            for (let i = 0; i < laserLines; i++) {
-                const laserX = planetLeftEdge + (i * (planetBarrierWidth / (laserLines + 1))) + (planetBarrierWidth / (laserLines + 1)); // Evenly space within planet
-
-                // Top laser grid - from screen top to top planet bottom
-                obstacles.push({
-                    x: laserX,
-                    y: 0,
-                    width: 2,
-                    height: topBarrierEndY,
-                    type: 'laser-grid',
-                    barrierType: 'laser',
-                    animationPhase: Math.random() * Math.PI * 2
-                });
-
-                // Bottom laser grid - from bottom planet top to screen bottom
-                obstacles.push({
-                    x: laserX,
-                    y: bottomBarrierStartY,
-                    width: 2,
-                    height: canvasHeight - bottomBarrierStartY,
-                    type: 'laser-grid',
-                    barrierType: 'laser',
-                    animationPhase: Math.random() * Math.PI * 2
-                });
-            }
+        if (inGracePeriod) {
+          const minutesRemaining = Math.ceil(
+            (tournamentEnd.getTime() - now.getTime()) / (60 * 1000)
+          );
+          setIsGracePeriod(true);
+          setGracePeriodMessage(
+            `Tournament ends in ${minutesRemaining} minutes. Calculating prizes...`
+          );
+        } else if (now >= tournamentEnd) {
+          // Tournament has ended
+          setIsGracePeriod(true);
+          setGracePeriodMessage(
+            "Tournament has ended. Please wait for the next tournament."
+          );
+        } else {
+          setIsGracePeriod(false);
+          setGracePeriodMessage("");
         }
+      } catch (error) {
+        // If API fails, disable tournament mode to prevent wrong data
+        console.error("Failed to check grace period:", error);
+        setIsGracePeriod(false);
+        setGracePeriodMessage("");
+        // Note: User will still see tournament data from other APIs
+        // This only affects the grace period warning message
+      }
+    };
 
-        // Add planets with barriers
-        const topPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
-        const bottomPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
+    // Check immediately
+    checkGracePeriod();
 
-        // Top planet
-        obstacles.push({
-            x: planetCenterX - topPlanetSize / 2,
-            y: topPlanetY,
-            width: topPlanetSize,
-            height: topPlanetSize,
-            type: 'planet',
-            planetType: topPlanet,
-            moveSpeed: Math.random() > 0.8 ? 0.4 + Math.random() * 0.4 : 0,
-            moveDirection: Math.random() > 0.5 ? 1 : -1,
-            baseY: topPlanetY
-        });
+    // Check every 30 seconds during tournament mode
+    const interval = setInterval(checkGracePeriod, 30000);
 
-        // Bottom planet
-        obstacles.push({
-            x: planetCenterX - bottomPlanetSize / 2,
-            y: bottomPlanetY,
-            width: bottomPlanetSize,
-            height: bottomPlanetSize,
-            type: 'planet',
-            planetType: bottomPlanet,
-            moveSpeed: Math.random() > 0.8 ? 0.4 + Math.random() * 0.4 : 0,
-            moveDirection: Math.random() > 0.5 ? 1 : -1,
-            baseY: bottomPlanetY
-        });
+    return () => clearInterval(interval);
+  }, [gameMode]);
 
-        // Coin in the gap for bonus (sometimes)
-        if (Math.random() > 0.3) {
+  // Create simple space obstacles - with varied patterns per game
+  const createObstacles = useCallback(
+    (
+      x: number,
+      currentScore: number,
+      obstacleIndex: number,
+      patternSeed: number
+    ) => {
+      const obstacles: GameObject[] = [];
+      const canvas = canvasRef.current;
+      if (!canvas) return obstacles;
+
+      const canvasHeight = canvas.height;
+
+      // Progressive difficulty with more randomization
+      let gapSize = 280 + Math.random() * 40 - 20; // Random variation: 260-300
+      if (currentScore > 3) gapSize = 250 + Math.random() * 30 - 15; // 235-265
+      if (currentScore > 8) gapSize = 220 + Math.random() * 20 - 10; // 210-230
+      if (currentScore > 15) gapSize = 200 + Math.random() * 20 - 10; // 190-210
+      if (currentScore > 25) gapSize = 180 + Math.random() * 20 - 10; // 170-190
+
+      // More randomized gap position
+      const minGapY = 80 + Math.random() * 40; // 80-120
+      const maxGapY = canvasHeight - gapSize - 80 - Math.random() * 40; // More varied
+      const gapY = minGapY + Math.random() * (maxGapY - minGapY);
+
+      // Randomize pipe width and position slightly for more variation
+      const pipeWidth = 70 + Math.random() * 20; // 70-90px wide
+      const pipeX = x + Math.random() * 20 - 10; // Slight X variation
+
+      // Normal pipes with varied barrier patterns
+      const barrierTypes: (
+        | "energy"
+        | "asteroid-belt"
+        | "nebula"
+        | "debris"
+        | "laser"
+      )[] = ["energy", "asteroid-belt", "nebula", "debris", "laser"];
+      const selectedBarrierType =
+        barrierTypes[
+          Math.floor((patternSeed + obstacleIndex * 17) % barrierTypes.length)
+        ];
+
+      // Calculate planet sizes first to constrain barriers within planet boundaries
+      const topPlanetSize = 60 + Math.random() * 20;
+      const bottomPlanetSize = 60 + Math.random() * 20;
+      const planetCenterX = pipeX + pipeWidth / 2;
+
+      // Calculate planet positions
+      const topPlanetY = Math.max(20, gapY - topPlanetSize - 15);
+      const bottomPlanetY = Math.min(
+        canvasHeight - bottomPlanetSize - 20,
+        gapY + gapSize + 15
+      );
+
+      // Calculate the maximum planet boundary for barriers (horizontal)
+      const maxPlanetSize = Math.max(topPlanetSize, bottomPlanetSize);
+      const planetLeftEdge = planetCenterX - maxPlanetSize / 2;
+      const planetRightEdge = planetCenterX + maxPlanetSize / 2;
+      const planetBarrierWidth = maxPlanetSize;
+
+      // Calculate barrier height boundaries (vertical) - barriers should have gap from planets
+      const BARRIER_PLANET_GAP = 15; // 15px gap between barriers and planets
+      const topBarrierEndY = topPlanetY - BARRIER_PLANET_GAP; // End 15px before top planet
+      const bottomBarrierStartY =
+        bottomPlanetY + bottomPlanetSize + BARRIER_PLANET_GAP; // Start 15px after bottom planet
+
+      // Create barriers based on selected type - constrained within planet boundaries
+      if (selectedBarrierType === "energy") {
+        // Energy barriers - vertical blue energy beams within planet boundary
+        for (let i = 0; i < 3; i++) {
+          const beamX =
+            planetLeftEdge +
+            i * (planetBarrierWidth / 4) +
+            planetBarrierWidth / 8; // Center beams within planet
+
+          // Top barrier - from screen top to top planet bottom
+          obstacles.push({
+            x: beamX,
+            y: 0,
+            width: 6,
+            height: topBarrierEndY,
+            type: "energy-barrier",
+            barrierType: "energy",
+            animationPhase: Math.random() * Math.PI * 2,
+          });
+
+          // Bottom barrier - from bottom planet top to screen bottom
+          obstacles.push({
+            x: beamX,
+            y: bottomBarrierStartY,
+            width: 6,
+            height: canvasHeight - bottomBarrierStartY,
+            type: "energy-barrier",
+            barrierType: "energy",
+            animationPhase: Math.random() * Math.PI * 2,
+          });
+        }
+      } else if (selectedBarrierType === "asteroid-belt") {
+        // Asteroid belt - scattered small asteroids within planet boundary
+        const asteroidCount = Math.floor(planetBarrierWidth / 25);
+        for (let i = 0; i < asteroidCount; i++) {
+          const asteroidX = planetLeftEdge + i * 25 + Math.random() * 10 - 5;
+
+          // Top asteroid belt - from screen top to top planet bottom
+          for (let j = 0; j < Math.floor(topBarrierEndY / 35); j++) {
             obstacles.push({
-                x: pipeX + pipeWidth / 2 - 12,
-                y: gapY + gapSize / 2 - 12,
-                width: 24,
-                height: 24,
-                type: 'coin'
+              x: Math.max(
+                planetLeftEdge,
+                Math.min(
+                  planetRightEdge - 12,
+                  asteroidX + Math.random() * 8 - 4
+                )
+              ),
+              y: j * 35 + Math.random() * 8 - 4,
+              width: 12 + Math.random() * 8,
+              height: 12 + Math.random() * 8,
+              type: "asteroid-chunk",
+              barrierType: "asteroid-belt",
+              animationPhase: Math.random() * Math.PI * 2,
             });
-        }
+          }
 
-        // Scoring trigger (invisible)
-        obstacles.push({
-            x: pipeX + pipeWidth / 2,
+          // Bottom asteroid belt - from bottom planet top to screen bottom
+          for (
+            let j = 0;
+            j < Math.floor((canvasHeight - bottomBarrierStartY) / 35);
+            j++
+          ) {
+            obstacles.push({
+              x: Math.max(
+                planetLeftEdge,
+                Math.min(
+                  planetRightEdge - 12,
+                  asteroidX + Math.random() * 8 - 4
+                )
+              ),
+              y: bottomBarrierStartY + j * 35 + Math.random() * 8 - 4,
+              width: 12 + Math.random() * 8,
+              height: 12 + Math.random() * 8,
+              type: "asteroid-chunk",
+              barrierType: "asteroid-belt",
+              animationPhase: Math.random() * Math.PI * 2,
+            });
+          }
+        }
+      } else if (selectedBarrierType === "nebula") {
+        // Nebula clouds - colorful gas clouds within planet boundary
+        const cloudCount = 3 + Math.floor(Math.random() * 2);
+        for (let i = 0; i < cloudCount; i++) {
+          const cloudX =
+            planetLeftEdge +
+            i * (planetBarrierWidth / cloudCount) +
+            Math.random() * 15 -
+            7;
+
+          // Top nebula clouds - from screen top to top planet bottom
+          for (let j = 0; j < Math.floor(topBarrierEndY / 40); j++) {
+            obstacles.push({
+              x: Math.max(
+                planetLeftEdge,
+                Math.min(planetRightEdge - 25, cloudX + Math.random() * 20 - 10)
+              ),
+              y: j * 40 + Math.random() * 15 - 7,
+              width: 25 + Math.random() * 15,
+              height: 25 + Math.random() * 15,
+              type: "nebula-cloud",
+              barrierType: "nebula",
+              animationPhase: Math.random() * Math.PI * 2,
+              glowIntensity: 0.5 + Math.random() * 0.3,
+            });
+          }
+
+          // Bottom nebula clouds - from bottom planet top to screen bottom
+          for (
+            let j = 0;
+            j < Math.floor((canvasHeight - bottomBarrierStartY) / 40);
+            j++
+          ) {
+            obstacles.push({
+              x: Math.max(
+                planetLeftEdge,
+                Math.min(planetRightEdge - 25, cloudX + Math.random() * 20 - 10)
+              ),
+              y: bottomBarrierStartY + j * 40 + Math.random() * 15 - 7,
+              width: 25 + Math.random() * 15,
+              height: 25 + Math.random() * 15,
+              type: "nebula-cloud",
+              barrierType: "nebula",
+              animationPhase: Math.random() * Math.PI * 2,
+              glowIntensity: 0.5 + Math.random() * 0.3,
+            });
+          }
+        }
+      } else if (selectedBarrierType === "debris") {
+        // Space debris - satellites and space junk within planet boundary
+        const debrisCount = Math.floor(planetBarrierWidth / 30);
+        for (let i = 0; i < debrisCount; i++) {
+          const debrisX = planetLeftEdge + i * 30 + Math.random() * 12 - 6;
+
+          // Top debris field - from screen top to top planet bottom
+          for (let j = 0; j < Math.floor(topBarrierEndY / 45); j++) {
+            obstacles.push({
+              x: Math.max(
+                planetLeftEdge,
+                Math.min(planetRightEdge - 15, debrisX + Math.random() * 10 - 5)
+              ),
+              y: j * 45 + Math.random() * 10 - 5,
+              width: 15 + Math.random() * 10,
+              height: 10 + Math.random() * 8,
+              type: "space-debris",
+              barrierType: "debris",
+              animationPhase: Math.random() * Math.PI * 2,
+            });
+          }
+
+          // Bottom debris field - from bottom planet top to screen bottom
+          for (
+            let j = 0;
+            j < Math.floor((canvasHeight - bottomBarrierStartY) / 45);
+            j++
+          ) {
+            obstacles.push({
+              x: Math.max(
+                planetLeftEdge,
+                Math.min(planetRightEdge - 15, debrisX + Math.random() * 10 - 5)
+              ),
+              y: bottomBarrierStartY + j * 45 + Math.random() * 10 - 5,
+              width: 15 + Math.random() * 10,
+              height: 10 + Math.random() * 8,
+              type: "space-debris",
+              barrierType: "debris",
+              animationPhase: Math.random() * Math.PI * 2,
+            });
+          }
+        }
+      } else if (selectedBarrierType === "laser") {
+        // Laser grid - thin red laser lines within planet boundary
+        const laserLines =
+          Math.min(6, Math.floor(planetBarrierWidth / 10)) +
+          Math.floor(Math.random() * 3);
+        for (let i = 0; i < laserLines; i++) {
+          const laserX =
+            planetLeftEdge +
+            i * (planetBarrierWidth / (laserLines + 1)) +
+            planetBarrierWidth / (laserLines + 1); // Evenly space within planet
+
+          // Top laser grid - from screen top to top planet bottom
+          obstacles.push({
+            x: laserX,
             y: 0,
             width: 2,
-            height: canvasHeight,
-            type: 'trigger',
-            scored: false
+            height: topBarrierEndY,
+            type: "laser-grid",
+            barrierType: "laser",
+            animationPhase: Math.random() * Math.PI * 2,
+          });
+
+          // Bottom laser grid - from bottom planet top to screen bottom
+          obstacles.push({
+            x: laserX,
+            y: bottomBarrierStartY,
+            width: 2,
+            height: canvasHeight - bottomBarrierStartY,
+            type: "laser-grid",
+            barrierType: "laser",
+            animationPhase: Math.random() * Math.PI * 2,
+          });
+        }
+      }
+
+      // Add planets with barriers
+      const topPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
+      const bottomPlanet = PLANETS[Math.floor(Math.random() * PLANETS.length)];
+
+      // Top planet
+      obstacles.push({
+        x: planetCenterX - topPlanetSize / 2,
+        y: topPlanetY,
+        width: topPlanetSize,
+        height: topPlanetSize,
+        type: "planet",
+        planetType: topPlanet,
+        moveSpeed: Math.random() > 0.8 ? 0.4 + Math.random() * 0.4 : 0,
+        moveDirection: Math.random() > 0.5 ? 1 : -1,
+        baseY: topPlanetY,
+      });
+
+      // Bottom planet
+      obstacles.push({
+        x: planetCenterX - bottomPlanetSize / 2,
+        y: bottomPlanetY,
+        width: bottomPlanetSize,
+        height: bottomPlanetSize,
+        type: "planet",
+        planetType: bottomPlanet,
+        moveSpeed: Math.random() > 0.8 ? 0.4 + Math.random() * 0.4 : 0,
+        moveDirection: Math.random() > 0.5 ? 1 : -1,
+        baseY: bottomPlanetY,
+      });
+
+      // Coin in the gap for bonus (sometimes)
+      if (Math.random() > 0.3) {
+        obstacles.push({
+          x: pipeX + pipeWidth / 2 - 12,
+          y: gapY + gapSize / 2 - 12,
+          width: 24,
+          height: 24,
+          type: "coin",
         });
+      }
 
-        return obstacles;
-    }, []);
+      // Scoring trigger (invisible)
+      obstacles.push({
+        x: pipeX + pipeWidth / 2,
+        y: 0,
+        width: 2,
+        height: canvasHeight,
+        type: "trigger",
+        scored: false,
+      });
 
-    // Create particles for effects - optimized version with better bounds
-    const createParticles = useCallback((x: number, y: number, count: number, type: 'jump' | 'score' | 'explosion' | 'coin' = 'jump') => {
-        const particles: Particle[] = [];
+      return obstacles;
+    },
+    []
+  );
 
-        // Limit particle count for better performance
-        const maxCount = Math.min(count, 12);
+  // Create particles for effects - optimized version with better bounds
+  const createParticles = useCallback(
+    (
+      x: number,
+      y: number,
+      count: number,
+      type: "jump" | "score" | "explosion" | "coin" = "jump"
+    ) => {
+      const particles: Particle[] = [];
 
-        for (let i = 0; i < maxCount; i++) {
-            // Reduce particle velocities to keep them more contained, especially for explosions
-            let velocityMultiplier = 6;
-            if (type === 'explosion') {
-                velocityMultiplier = 4; // Reduced from 8 to 4 for better containment
-            } else if (type === 'jump') {
-                velocityMultiplier = 3; // Reduced for more subtle jump effects
+      // Limit particle count for better performance
+      const maxCount = Math.min(count, 12);
+
+      for (let i = 0; i < maxCount; i++) {
+        // Reduce particle velocities to keep them more contained, especially for explosions
+        let velocityMultiplier = 6;
+        if (type === "explosion") {
+          velocityMultiplier = 4; // Reduced from 8 to 4 for better containment
+        } else if (type === "jump") {
+          velocityMultiplier = 3; // Reduced for more subtle jump effects
+        }
+
+        const particle: Particle = {
+          x,
+          y,
+          vx: (Math.random() - 0.5) * velocityMultiplier,
+          vy: (Math.random() - 0.5) * velocityMultiplier,
+          life: type === "explosion" ? 35 : type === "coin" ? 25 : 30, // Reduced lifespans for better performance
+          maxLife: type === "explosion" ? 35 : type === "coin" ? 25 : 30,
+          size: type === "coin" ? 3 + Math.random() * 2 : 2 + Math.random() * 3,
+        };
+        particles.push(particle);
+      }
+
+      return particles;
+    },
+    []
+  );
+
+  // UFO controls
+  const handleJump = useCallback(() => {
+    if (gameStateRef.current.gameStatus === "ready") {
+      gameStateRef.current.gameStatus = "playing";
+      lastTimeRef.current = 0; // Reset deltaTime when starting
+    }
+    if (gameStateRef.current.gameStatus === "playing") {
+      gameStateRef.current.ufo.velocity = -8; // Balanced jump strength (frame-rate independent)
+      gameStateRef.current.ufo.rotation = -20; // Visual feedback
+
+      // Jump particles
+      const jumpParticles = createParticles(
+        gameStateRef.current.ufo.x - 5,
+        gameStateRef.current.ufo.y + 15,
+        4,
+        "jump"
+      );
+      gameStateRef.current.particles.push(...jumpParticles);
+    }
+  }, [createParticles]); // Collision detection - fair and forgiving
+  const checkCollisions = useCallback(() => {
+    const { ufo, obstacles } = gameStateRef.current;
+    const canvas = canvasRef.current;
+    if (!canvas) return false;
+
+    // Ground and ceiling collision (adjusted for larger UFO)
+    if (ufo.y <= 30 || ufo.y >= canvas.height - 80) {
+      return true;
+    }
+
+    // Check collisions with different obstacle types
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      const obstacle = obstacles[i];
+
+      if (obstacle.type === "coin" && !obstacle.collected) {
+        // Coin collection (adjusted for larger UFO)
+        if (
+          ufo.x + 15 < obstacle.x + obstacle.width &&
+          ufo.x + 45 > obstacle.x &&
+          ufo.y + 15 < obstacle.y + obstacle.height &&
+          ufo.y + 35 > obstacle.y
+        ) {
+          // Mark as collected to prevent duplicate collection
+          obstacle.collected = true;
+
+          // Give 1 coin per collection as per Plan.md (Practice Mode only)
+          gameStateRef.current.coins += 1;
+          gameStateRef.current.coinsCollectedThisGame += 1; // Track coins collected this game
+
+          // Note: Don't save to localStorage here - will be saved when game ends
+
+          const coinParticles = createParticles(
+            obstacle.x,
+            obstacle.y,
+            6,
+            "coin"
+          );
+          gameStateRef.current.particles.push(...coinParticles);
+
+          // Remove collected coin immediately
+          obstacles.splice(i, 1);
+          continue; // Skip to next obstacle
+        }
+      } else if (obstacle.type === "planet") {
+        // Planet collision - generous UFO hitbox (adjusted for larger UFO)
+        const distance = Math.sqrt(
+          Math.pow(ufo.x + 30 - (obstacle.x + obstacle.width / 2), 2) +
+            Math.pow(ufo.y + 25 - (obstacle.y + obstacle.height / 2), 2)
+        );
+
+        if (distance < obstacle.width / 2 + 20) {
+          // Generous collision radius
+          return true; // Collision with planet
+        }
+      } else if (obstacle.type === "asteroid") {
+        // Asteroid collision - slightly smaller hitbox than planets
+        const distance = Math.sqrt(
+          Math.pow(ufo.x + 30 - (obstacle.x + obstacle.width / 2), 2) +
+            Math.pow(ufo.y + 25 - (obstacle.y + obstacle.height / 2), 2)
+        );
+
+        if (distance < obstacle.width / 2 + 15) {
+          // Slightly smaller collision radius for asteroids
+          return true; // Collision with asteroid
+        }
+      } else if (obstacle.type === "dust-particle") {
+        // Dust particle collision - small particles with forgiving hitbox
+        if (
+          ufo.x + 25 < obstacle.x + obstacle.width &&
+          ufo.x + 35 > obstacle.x &&
+          ufo.y + 25 < obstacle.y + obstacle.height &&
+          ufo.y + 35 > obstacle.y
+        ) {
+          return true; // Collision with dust particle
+        }
+      } else if (
+        obstacle.type === "energy-barrier" ||
+        obstacle.type === "laser-grid"
+      ) {
+        // Energy barriers and laser grids - precise collision
+        if (
+          ufo.x + 20 < obstacle.x + obstacle.width &&
+          ufo.x + 40 > obstacle.x &&
+          ufo.y + 20 < obstacle.y + obstacle.height &&
+          ufo.y + 40 > obstacle.y
+        ) {
+          return true; // Collision with energy/laser barrier
+        }
+      } else if (
+        obstacle.type === "asteroid-chunk" ||
+        obstacle.type === "space-debris"
+      ) {
+        // Asteroid chunks and space debris - circular collision
+        const distance = Math.sqrt(
+          Math.pow(ufo.x + 30 - (obstacle.x + obstacle.width / 2), 2) +
+            Math.pow(ufo.y + 25 - (obstacle.y + obstacle.height / 2), 2)
+        );
+
+        if (distance < obstacle.width / 2 + 18) {
+          // Forgiving collision for chunks
+          return true; // Collision with asteroid chunk or debris
+        }
+      } else if (obstacle.type === "nebula-cloud") {
+        // Nebula clouds - softer collision detection (more forgiving)
+        if (
+          ufo.x + 28 < obstacle.x + obstacle.width &&
+          ufo.x + 32 > obstacle.x &&
+          ufo.y + 28 < obstacle.y + obstacle.height &&
+          ufo.y + 32 > obstacle.y
+        ) {
+          return true; // Collision with nebula cloud
+        }
+      } else if (obstacle.type === "invisible-wall") {
+        // Invisible wall collision for moving planet pipes
+        if (
+          ufo.x + 20 < obstacle.x + obstacle.width &&
+          ufo.x + 40 > obstacle.x &&
+          ufo.y + 20 < obstacle.y + obstacle.height &&
+          ufo.y + 40 > obstacle.y
+        ) {
+          return true; // Collision with invisible boundary
+        }
+      }
+    }
+
+    return false;
+  }, [createParticles]); // Main game loop
+  const gameLoop = useCallback(
+    (currentTime: number = 0) => {
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext("2d");
+      if (!canvas || !ctx) return;
+
+      // Calculate deltaTime for frame-rate independent movement
+      const deltaTime =
+        lastTimeRef.current === 0 ? 16.67 : currentTime - lastTimeRef.current; // Default to ~60fps on first frame
+      lastTimeRef.current = currentTime;
+
+      // Target 60fps as baseline (16.67ms per frame)
+      const timeMultiplier = deltaTime / 16.67;
+
+      const state = gameStateRef.current;
+
+      if (state.gameStatus === "playing") {
+        // UFO physics - balanced and smooth (now frame-rate independent)
+        state.ufo.velocity += 0.5 * timeMultiplier; // Gentle gravity - keep constant
+        state.ufo.y += state.ufo.velocity * timeMultiplier;
+
+        // Rotation based on velocity
+        state.ufo.rotation = Math.max(
+          -30,
+          Math.min(30, state.ufo.velocity * 2)
+        );
+
+        // Move obstacles at consistent speed (now frame-rate independent)
+        state.obstacles = state.obstacles.filter((obstacle) => {
+          obstacle.x -= 4.5 * timeMultiplier; // Faster speed for better gameplay feel
+
+          // Move planets and asteroids up and down if they have movement (frame-rate independent)
+          if (
+            (obstacle.type === "planet" || obstacle.type === "asteroid") &&
+            obstacle.moveSpeed &&
+            obstacle.moveSpeed > 0 &&
+            obstacle.baseY !== undefined
+          ) {
+            obstacle.y +=
+              obstacle.moveDirection! * obstacle.moveSpeed * timeMultiplier;
+
+            // Bounce at boundaries (keep within reasonable limits)
+            const bounceRange = obstacle.type === "asteroid" ? 50 : 30; // Asteroids move more
+            if (
+              obstacle.y < obstacle.baseY - bounceRange ||
+              obstacle.y > obstacle.baseY + bounceRange
+            ) {
+              obstacle.moveDirection! *= -1;
             }
+          }
 
-            const particle: Particle = {
-                x,
-                y,
-                vx: (Math.random() - 0.5) * velocityMultiplier,
-                vy: (Math.random() - 0.5) * velocityMultiplier,
-                life: type === 'explosion' ? 35 : type === 'coin' ? 25 : 30, // Reduced lifespans for better performance
-                maxLife: type === 'explosion' ? 35 : type === 'coin' ? 25 : 30,
-                size: type === 'coin' ? 3 + Math.random() * 2 : 2 + Math.random() * 3
-            };
-            particles.push(particle);
-        }
+          // Score when passing trigger
+          if (
+            obstacle.type === "trigger" &&
+            obstacle.x + obstacle.width < state.ufo.x &&
+            !obstacle.scored
+          ) {
+            state.score += 1;
+            obstacle.scored = true;
 
-        return particles;
-    }, []);
-
-    // UFO controls
-    const handleJump = useCallback(() => {
-        if (gameStateRef.current.gameStatus === 'ready') {
-            gameStateRef.current.gameStatus = 'playing';
-            lastTimeRef.current = 0; // Reset deltaTime when starting
-        }
-        if (gameStateRef.current.gameStatus === 'playing') {
-            gameStateRef.current.ufo.velocity = -8; // Balanced jump strength (frame-rate independent)
-            gameStateRef.current.ufo.rotation = -20; // Visual feedback
-
-            // Jump particles
-            const jumpParticles = createParticles(
-                gameStateRef.current.ufo.x - 5,
-                gameStateRef.current.ufo.y + 15,
-                4,
-                'jump'
+            // Score particles
+            const scoreParticles = createParticles(
+              state.ufo.x,
+              state.ufo.y,
+              4,
+              "score"
             );
-            gameStateRef.current.particles.push(...jumpParticles);
-        }
-    }, [createParticles]);    // Collision detection - fair and forgiving
-    const checkCollisions = useCallback(() => {
-        const { ufo, obstacles } = gameStateRef.current;
-        const canvas = canvasRef.current;
-        if (!canvas) return false;
+            state.particles.push(...scoreParticles);
+          }
 
-        // Ground and ceiling collision (adjusted for larger UFO)
-        if (ufo.y <= 30 || ufo.y >= canvas.height - 80) {
-            return true;
-        }
-
-        // Check collisions with different obstacle types
-        for (let i = obstacles.length - 1; i >= 0; i--) {
-            const obstacle = obstacles[i];
-
-            if (obstacle.type === 'coin' && !obstacle.collected) {
-                // Coin collection (adjusted for larger UFO)
-                if (ufo.x + 15 < obstacle.x + obstacle.width &&
-                    ufo.x + 45 > obstacle.x &&
-                    ufo.y + 15 < obstacle.y + obstacle.height &&
-                    ufo.y + 35 > obstacle.y) {
-
-                    // Mark as collected to prevent duplicate collection
-                    obstacle.collected = true;
-
-                    // Give 1 coin per collection as per Plan.md (Practice Mode only)
-                    gameStateRef.current.coins += 1;
-                    gameStateRef.current.coinsCollectedThisGame += 1; // Track coins collected this game
-
-                    // Note: Don't save to localStorage here - will be saved when game ends
-
-                    const coinParticles = createParticles(obstacle.x, obstacle.y, 6, 'coin');
-                    gameStateRef.current.particles.push(...coinParticles);
-
-                    // Remove collected coin immediately
-                    obstacles.splice(i, 1);
-                    continue; // Skip to next obstacle
-                }
-            } else if (obstacle.type === 'planet') {
-                // Planet collision - generous UFO hitbox (adjusted for larger UFO)
-                const distance = Math.sqrt(
-                    Math.pow((ufo.x + 30) - (obstacle.x + obstacle.width / 2), 2) +
-                    Math.pow((ufo.y + 25) - (obstacle.y + obstacle.height / 2), 2)
-                );
-
-                if (distance < (obstacle.width / 2 + 20)) { // Generous collision radius
-                    return true; // Collision with planet
-                }
-            } else if (obstacle.type === 'asteroid') {
-                // Asteroid collision - slightly smaller hitbox than planets
-                const distance = Math.sqrt(
-                    Math.pow((ufo.x + 30) - (obstacle.x + obstacle.width / 2), 2) +
-                    Math.pow((ufo.y + 25) - (obstacle.y + obstacle.height / 2), 2)
-                );
-
-                if (distance < (obstacle.width / 2 + 15)) { // Slightly smaller collision radius for asteroids
-                    return true; // Collision with asteroid
-                }
-            } else if (obstacle.type === 'dust-particle') {
-                // Dust particle collision - small particles with forgiving hitbox
-                if (ufo.x + 25 < obstacle.x + obstacle.width &&
-                    ufo.x + 35 > obstacle.x &&
-                    ufo.y + 25 < obstacle.y + obstacle.height &&
-                    ufo.y + 35 > obstacle.y) {
-
-                    return true; // Collision with dust particle
-                }
-            } else if (obstacle.type === 'energy-barrier' || obstacle.type === 'laser-grid') {
-                // Energy barriers and laser grids - precise collision
-                if (ufo.x + 20 < obstacle.x + obstacle.width &&
-                    ufo.x + 40 > obstacle.x &&
-                    ufo.y + 20 < obstacle.y + obstacle.height &&
-                    ufo.y + 40 > obstacle.y) {
-
-                    return true; // Collision with energy/laser barrier
-                }
-            } else if (obstacle.type === 'asteroid-chunk' || obstacle.type === 'space-debris') {
-                // Asteroid chunks and space debris - circular collision
-                const distance = Math.sqrt(
-                    Math.pow((ufo.x + 30) - (obstacle.x + obstacle.width / 2), 2) +
-                    Math.pow((ufo.y + 25) - (obstacle.y + obstacle.height / 2), 2)
-                );
-
-                if (distance < (obstacle.width / 2 + 18)) { // Forgiving collision for chunks
-                    return true; // Collision with asteroid chunk or debris
-                }
-            } else if (obstacle.type === 'nebula-cloud') {
-                // Nebula clouds - softer collision detection (more forgiving)
-                if (ufo.x + 28 < obstacle.x + obstacle.width &&
-                    ufo.x + 32 > obstacle.x &&
-                    ufo.y + 28 < obstacle.y + obstacle.height &&
-                    ufo.y + 32 > obstacle.y) {
-
-                    return true; // Collision with nebula cloud
-                }
-            } else if (obstacle.type === 'invisible-wall') {
-                // Invisible wall collision for moving planet pipes
-                if (ufo.x + 20 < obstacle.x + obstacle.width &&
-                    ufo.x + 40 > obstacle.x &&
-                    ufo.y + 20 < obstacle.y + obstacle.height &&
-                    ufo.y + 40 > obstacle.y) {
-
-                    return true; // Collision with invisible boundary
-                }
-            }
-        }
-
-        return false;
-    }, [createParticles]);    // Main game loop
-    const gameLoop = useCallback((currentTime: number = 0) => {
-        const canvas = canvasRef.current;
-        const ctx = canvas?.getContext('2d');
-        if (!canvas || !ctx) return;
-
-        // Calculate deltaTime for frame-rate independent movement
-        const deltaTime = lastTimeRef.current === 0 ? 16.67 : currentTime - lastTimeRef.current; // Default to ~60fps on first frame
-        lastTimeRef.current = currentTime;
-
-        // Target 60fps as baseline (16.67ms per frame)
-        const timeMultiplier = deltaTime / 16.67;
-
-        const state = gameStateRef.current;
-
-        if (state.gameStatus === 'playing') {
-            // UFO physics - balanced and smooth (now frame-rate independent)
-            state.ufo.velocity += 0.5 * timeMultiplier; // Gentle gravity - keep constant
-            state.ufo.y += state.ufo.velocity * timeMultiplier;
-
-            // Rotation based on velocity
-            state.ufo.rotation = Math.max(-30, Math.min(30, state.ufo.velocity * 2));
-
-            // Move obstacles at consistent speed (now frame-rate independent)
-            state.obstacles = state.obstacles.filter(obstacle => {
-                obstacle.x -= 4.5 * timeMultiplier; // Faster speed for better gameplay feel
-
-                // Move planets and asteroids up and down if they have movement (frame-rate independent)
-                if ((obstacle.type === 'planet' || obstacle.type === 'asteroid') && obstacle.moveSpeed && obstacle.moveSpeed > 0 && obstacle.baseY !== undefined) {
-                    obstacle.y += obstacle.moveDirection! * obstacle.moveSpeed * timeMultiplier;
-
-                    // Bounce at boundaries (keep within reasonable limits)
-                    const bounceRange = obstacle.type === 'asteroid' ? 50 : 30; // Asteroids move more
-                    if (obstacle.y < obstacle.baseY - bounceRange || obstacle.y > obstacle.baseY + bounceRange) {
-                        obstacle.moveDirection! *= -1;
-                    }
-                }
-
-                // Score when passing trigger
-                if (obstacle.type === 'trigger' &&
-                    obstacle.x + obstacle.width < state.ufo.x &&
-                    !obstacle.scored) {
-                    state.score += 1;
-                    obstacle.scored = true;
-
-                    // Score particles
-                    const scoreParticles = createParticles(state.ufo.x, state.ufo.y, 4, 'score');
-                    state.particles.push(...scoreParticles);
-                }
-
-                return obstacle.x > -150; // Remove off-screen obstacles
-            });
-
-            // Generate new obstacles
-            if (state.obstacles.length === 0 ||
-                state.obstacles[state.obstacles.length - 1].x < canvas.width - 350) {
-                const newObstacles = createObstacles(canvas.width + 100, state.score, state.obstacleCount, state.gamePatternSeed);
-                state.obstacles.push(...newObstacles);
-                state.obstacleCount++; // Increment obstacle counter for pattern variation
-            }
-
-            // Update particles (frame-rate independent) with performance optimization
-            if (state.particles.length > 0) {
-                state.particles = state.particles.filter(particle => {
-                    particle.x += particle.vx * timeMultiplier;
-                    particle.y += particle.vy * timeMultiplier;
-                    particle.vx *= Math.pow(0.96, timeMultiplier); // Slightly improved drag
-                    particle.vy *= Math.pow(0.96, timeMultiplier);
-                    particle.life -= timeMultiplier;
-                    return particle.life > 0;
-                });
-
-                // Limit total particles for performance
-                if (state.particles.length > 50) {
-                    state.particles = state.particles.slice(-50);
-                }
-            }
-
-            // Check collisions
-            if (checkCollisions()) {
-                state.gameStatus = 'gameOver';
-
-                // Call onGameEnd immediately with crash protection
-                if (!state.gameEndCalled) {
-                    state.gameEndCalled = true;
-
-                    try {
-                        onGameEnd(state.score, state.coinsCollectedThisGame); // Pass only newly collected coins
-                    } catch (gameEndError) {
-                        console.error('❌ CRASH in onGameEnd callback:', gameEndError);
-                        // Continue game loop but log the error
-                        const error = gameEndError as Error;
-                        console.error('Error details:', {
-                            message: error.message || 'Unknown error',
-                            stack: error.stack || 'No stack trace',
-                            score: state.score,
-                            coins: state.coinsCollectedThisGame
-                        });
-                    }
-                }
-
-                // Explosion particles for visual effect
-                const explosionParticles = createParticles(state.ufo.x, state.ufo.y, 12, 'explosion');
-                state.particles.push(...explosionParticles);
-            }
-        }
-
-        // Clear canvas with beautiful space background
-        // Clear canvas with transparent background (starfield shows through)
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Draw planets, asteroids, coins, and dust particles
-        state.obstacles.forEach(obstacle => {
-            if (obstacle.type === 'planet' && obstacle.planetType) {
-                const img = globalAssets.getPlanetImage(obstacle.planetType);
-                const centerX = obstacle.x + obstacle.width / 2;
-                const centerY = obstacle.y + obstacle.height / 2;
-                const radius = obstacle.width / 2;
-
-                // Get planet-specific glow color
-                const getPlanetGlow = (planetName: string): string => {
-                    const planetGlows: { [key: string]: string } = {
-                        'Earth.webp': '#4A90E2', // Blue glow
-                        'Mars.webp': '#FF6B35', // Red-orange glow  
-                        'Jupiter.webp': '#FFB347', // Orange-yellow glow
-                        'Saturn.webp': '#F4D03F', // Golden glow
-                        'Venus.webp': '#FFC300', // Bright yellow glow
-                        'Neptune.webp': '#3498DB', // Deep blue glow
-                        'Uranus.webp': '#85C1E9', // Light blue glow
-                        'Mercury.webp': '#D7DBDD', // Gray-white glow
-                    };
-                    return planetGlows[planetName] || '#FFFFFF'; // Default white glow
-                };
-
-                const glowColor = getPlanetGlow(obstacle.planetType);
-
-                // Helper function to get planet fallback colors
-                const getPlanetFallback = (planetName: string): string => {
-                    const planetFallbacks: { [key: string]: string } = {
-                        'Earth.webp': '#2E7D32',
-                        'Mars.webp': '#E53935',
-                        'Jupiter.webp': '#FF8F00',
-                        'Saturn.webp': '#FFB300',
-                        'Venus.webp': '#FFB300',
-                        'Neptune.webp': '#1976D2',
-                        'Uranus.webp': '#42A5F5',
-                        'Mercury.webp': '#95A5A6',
-                    };
-                    return planetFallbacks[planetName] || '#6C7B7F';
-                };
-
-                // Planet glow with planet-specific color
-                ctx.save();
-
-                // Outer glow effect
-                ctx.globalAlpha = 0.6;
-                ctx.shadowColor = glowColor;
-                ctx.shadowBlur = 20;
-                const outerGlow = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius * 1.3);
-                outerGlow.addColorStop(0, `${glowColor}60`);
-                outerGlow.addColorStop(1, 'transparent');
-                ctx.fillStyle = outerGlow;
-                ctx.beginPath();
-                ctx.arc(centerX, centerY, radius * 1.3, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.globalAlpha = 1;
-
-                // Create circular clip for the planet image
-                ctx.beginPath();
-                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-                ctx.clip();
-
-                if (img) {
-                    // Draw the image within the circular clip
-                    ctx.drawImage(img, obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-                } else {
-                    // Fallback gradient circle with planet color
-                    const fallbackColor = getPlanetFallback(obstacle.planetType);
-                    const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
-                    gradient.addColorStop(0, fallbackColor);
-                    gradient.addColorStop(0.7, `${fallbackColor}80`);
-                    gradient.addColorStop(1, `${fallbackColor}20`);
-                    ctx.fillStyle = gradient;
-                    ctx.fill();
-                }
-
-                ctx.restore();
-
-                // Add planet-specific atmospheric ring
-                ctx.beginPath();
-                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-                ctx.strokeStyle = `${glowColor}50`;
-                ctx.lineWidth = 2;
-                ctx.stroke();
-
-                // Gas giant atmospheric rings
-                const isGasGiant = ['Jupiter.webp', 'Saturn.webp', 'Uranus.webp', 'Neptune.webp'].includes(obstacle.planetType);
-                if (isGasGiant) {
-                    ctx.beginPath();
-                    ctx.arc(centerX, centerY, radius * 1.1, 0, Math.PI * 2);
-                    ctx.strokeStyle = `${glowColor}30`;
-                    ctx.lineWidth = 1;
-                    ctx.stroke();
-                }
-
-            } else if (obstacle.type === 'asteroid') {
-                // Draw asteroid with rocky texture
-                const centerX = obstacle.x + obstacle.width / 2;
-                const centerY = obstacle.y + obstacle.height / 2;
-                const radius = obstacle.width / 2;
-
-                ctx.save();
-
-                // Asteroid glow (orange/red)
-                ctx.globalAlpha = 0.4;
-                ctx.shadowColor = '#FF6B35';
-                ctx.shadowBlur = 15;
-                const asteroidGlow = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius * 1.2);
-                asteroidGlow.addColorStop(0, '#FF6B3560');
-                asteroidGlow.addColorStop(1, 'transparent');
-                ctx.fillStyle = asteroidGlow;
-                ctx.beginPath();
-                ctx.arc(centerX, centerY, radius * 1.2, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.globalAlpha = 1;
-
-                // Irregular asteroid shape
-                ctx.beginPath();
-                const sides = 8;
-                for (let i = 0; i < sides; i++) {
-                    const angle = (i / sides) * Math.PI * 2;
-                    const radiusVariation = radius * (0.7 + Math.random() * 0.3); // Irregular shape
-                    const x = centerX + Math.cos(angle) * radiusVariation;
-                    const y = centerY + Math.sin(angle) * radiusVariation;
-                    if (i === 0) ctx.moveTo(x, y);
-                    else ctx.lineTo(x, y);
-                }
-                ctx.closePath();
-
-                // Asteroid gradient
-                const asteroidGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
-                asteroidGradient.addColorStop(0, '#8B4513');
-                asteroidGradient.addColorStop(0.5, '#654321');
-                asteroidGradient.addColorStop(1, '#3E2723');
-                ctx.fillStyle = asteroidGradient;
-                ctx.fill();
-
-                // Add some texture lines
-                ctx.strokeStyle = '#2E1A17';
-                ctx.lineWidth = 1;
-                ctx.stroke();
-
-                ctx.restore();
-
-            } else if (obstacle.type === 'energy-barrier') {
-                // Energy Barrier - glowing vertical energy beam
-                const centerX = obstacle.x + obstacle.width / 2;
-                const animatedGlow = obstacle.glowIntensity! * (0.7 + Math.sin(currentTime * 0.005 + obstacle.animationPhase!) * 0.3);
-
-                ctx.save();
-                ctx.globalAlpha = animatedGlow;
-
-                // Energy beam gradient
-                const energyGradient = ctx.createLinearGradient(obstacle.x, 0, obstacle.x + obstacle.width, 0);
-                energyGradient.addColorStop(0, 'transparent');
-                energyGradient.addColorStop(0.5, '#00BFFF');
-                energyGradient.addColorStop(1, 'transparent');
-
-                ctx.fillStyle = energyGradient;
-                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-
-                // Add energy particles
-                ctx.shadowColor = '#00BFFF';
-                ctx.shadowBlur = 15;
-                ctx.fillStyle = '#00BFFF';
-                ctx.fillRect(centerX - 1, obstacle.y, 2, obstacle.height);
-
-                ctx.restore();
-
-            } else if (obstacle.type === 'asteroid-chunk') {
-                // Asteroid Chunk - rocky space debris
-                const centerX = obstacle.x + obstacle.width / 2;
-                const centerY = obstacle.y + obstacle.height / 2;
-                const radius = obstacle.width / 2;
-
-                ctx.save();
-
-                // Rotating asteroid
-                ctx.translate(centerX, centerY);
-                ctx.rotate(currentTime * 0.001 + obstacle.animationPhase!);
-
-                // Asteroid shape
-                ctx.beginPath();
-                const sides = 6;
-                for (let i = 0; i < sides; i++) {
-                    const angle = (i / sides) * Math.PI * 2;
-                    const radiusVar = radius * (0.8 + Math.random() * 0.4);
-                    const x = Math.cos(angle) * radiusVar;
-                    const y = Math.sin(angle) * radiusVar;
-                    if (i === 0) ctx.moveTo(x, y);
-                    else ctx.lineTo(x, y);
-                }
-                ctx.closePath();
-
-                // Asteroid gradient
-                const asteroidGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
-                asteroidGradient.addColorStop(0, '#8B7355');
-                asteroidGradient.addColorStop(0.7, '#5D4E37');
-                asteroidGradient.addColorStop(1, '#2F1B14');
-                ctx.fillStyle = asteroidGradient;
-                ctx.fill();
-
-                ctx.strokeStyle = '#3E2723';
-                ctx.lineWidth = 1;
-                ctx.stroke();
-
-                ctx.restore();
-
-            } else if (obstacle.type === 'nebula-cloud') {
-                // Nebula Cloud - colorful space gas
-                const centerX = obstacle.x + obstacle.width / 2;
-                const centerY = obstacle.y + obstacle.height / 2;
-                const radius = obstacle.width / 2;
-                const animatedAlpha = obstacle.glowIntensity! * (0.4 + Math.sin(currentTime * 0.003 + obstacle.animationPhase!) * 0.2);
-
-                ctx.save();
-                ctx.globalAlpha = animatedAlpha;
-
-                // Nebula colors (purple, pink, blue)
-                const nebulaColors = ['#9333EA', '#EC4899', '#3B82F6'];
-                const color = nebulaColors[Math.floor(obstacle.animationPhase! * nebulaColors.length) % nebulaColors.length];
-
-                // Multi-layer nebula effect
-                for (let layer = 0; layer < 3; layer++) {
-                    const layerRadius = radius * (1 + layer * 0.3);
-                    const nebulaGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, layerRadius);
-                    nebulaGradient.addColorStop(0, color + '40');
-                    nebulaGradient.addColorStop(0.7, color + '20');
-                    nebulaGradient.addColorStop(1, 'transparent');
-
-                    ctx.fillStyle = nebulaGradient;
-                    ctx.beginPath();
-                    ctx.arc(centerX, centerY, layerRadius, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-
-                ctx.restore();
-
-            } else if (obstacle.type === 'space-debris') {
-                // Space Debris - satellites and space junk
-                const centerX = obstacle.x + obstacle.width / 2;
-                const centerY = obstacle.y + obstacle.height / 2;
-
-                ctx.save();
-
-                // Rotating debris
-                ctx.translate(centerX, centerY);
-                ctx.rotate(currentTime * 0.002 + obstacle.animationPhase!);
-
-                // Metallic debris shape
-                ctx.fillStyle = '#708090';
-                ctx.strokeStyle = '#2F4F4F';
-                ctx.lineWidth = 1;
-
-                // Random debris shape
-                ctx.fillRect(-obstacle.width / 2, -obstacle.height / 2, obstacle.width, obstacle.height);
-                ctx.strokeRect(-obstacle.width / 2, -obstacle.height / 2, obstacle.width, obstacle.height);
-
-                // Blinking light
-                if (Math.sin(currentTime * 0.01 + obstacle.animationPhase!) > 0.5) {
-                    ctx.fillStyle = '#FF0000';
-                    ctx.fillRect(-2, -2, 4, 4);
-                }
-
-                ctx.restore();
-
-            } else if (obstacle.type === 'laser-grid') {
-                // Laser Grid - thin laser lines
-                const animatedAlpha = obstacle.glowIntensity! * (0.8 + Math.sin(currentTime * 0.008 + obstacle.animationPhase!) * 0.2);
-
-                ctx.save();
-                ctx.globalAlpha = animatedAlpha;
-                ctx.shadowColor = '#FF0000';
-                ctx.shadowBlur = 8;
-
-                // Red laser beam
-                ctx.fillStyle = '#FF0000';
-                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-
-                // Laser pulse effect
-                const pulse = Math.sin(currentTime * 0.01 + obstacle.animationPhase!);
-                if (pulse > 0.7) {
-                    ctx.fillStyle = '#FFFFFF';
-                    ctx.fillRect(obstacle.x + 0.5, obstacle.y, obstacle.width - 1, obstacle.height);
-                }
-
-                ctx.restore();
-
-            } else if (obstacle.type === 'dust-particle') {
-                // Optimized space dust particles rendering
-                const centerX = obstacle.x + obstacle.width / 2;
-                const centerY = obstacle.y + obstacle.height / 2;
-                const radius = obstacle.width / 2;
-
-                ctx.save();
-
-                // Dust particle with subtle glow - reduced shadow blur for performance
-                ctx.globalAlpha = 0.85;
-                ctx.fillStyle = '#87CEEB'; // Sky blue dust
-
-                // Only add glow effect occasionally for performance
-                if (Math.random() > 0.7) {
-                    ctx.shadowColor = '#87CEEB';
-                    ctx.shadowBlur = 2;
-                }
-
-                // Small glowing dot
-                ctx.beginPath();
-                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Add tiny sparkle effect less frequently for performance
-                if (Math.random() > 0.98) {
-                    ctx.globalAlpha = 1;
-                    ctx.fillStyle = '#FFFFFF';
-                    ctx.fillRect(centerX - 0.5, centerY - 0.5, 1, 1);
-                }
-
-                ctx.restore();
-                ctx.shadowBlur = 0;
-
-            } else if (obstacle.type === 'coin') {
-                // Animated coin (frame-rate independent)
-                const time = currentTime * 0.005;
-                const scale = 1 + Math.sin(time) * 0.2;
-
-                ctx.save();
-                ctx.translate(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2);
-                ctx.scale(scale, scale);
-
-                ctx.fillStyle = '#FFD700';
-                ctx.shadowColor = '#FFD700';
-                ctx.shadowBlur = 10;
-
-                // Star shape
-                ctx.beginPath();
-                for (let i = 0; i < 5; i++) {
-                    const angle = (i * Math.PI * 2) / 5 - Math.PI / 2;
-                    const x = Math.cos(angle) * 10;
-                    const y = Math.sin(angle) * 10;
-                    if (i === 0) ctx.moveTo(x, y);
-                    else ctx.lineTo(x, y);
-
-                    const innerAngle = ((i + 0.5) * Math.PI * 2) / 5 - Math.PI / 2;
-                    const innerX = Math.cos(innerAngle) * 5;
-                    const innerY = Math.sin(innerAngle) * 5;
-                    ctx.lineTo(innerX, innerY);
-                }
-                ctx.closePath();
-                ctx.fill();
-                ctx.restore();
-                ctx.shadowBlur = 0;
-            }
+          return obstacle.x > -150; // Remove off-screen obstacles
         });
 
-        // Draw UFO with consistent rendering across all devices
-        ctx.save();
-        ctx.translate(state.ufo.x + 30, state.ufo.y + 25);
-        ctx.rotate(state.ufo.rotation * Math.PI / 180);
-
-        // Draw custom UFO shape instead of emoji for consistency
-        // This ensures no glow effects and identical appearance on all devices
-        ctx.fillStyle = '#C0C0C0'; // Silver color for UFO body
-        ctx.strokeStyle = '#808080'; // Darker silver for outline
-        ctx.lineWidth = 2;
-        
-        // UFO main body (ellipse)
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 25, 12, 0, 0, 2 * Math.PI);
-        ctx.fill();
-        ctx.stroke();
-        
-        // UFO dome (top circle)
-        ctx.fillStyle = '#E0E0E0'; // Lighter silver for dome
-        ctx.beginPath();
-        ctx.ellipse(0, -8, 15, 8, 0, 0, 2 * Math.PI);
-        ctx.fill();
-        ctx.stroke();
-        
-        // UFO lights (small circles)
-        ctx.fillStyle = '#00F5FF'; // Cyan lights
-        for (let i = 0; i < 5; i++) {
-            const angle = (i * 2 * Math.PI) / 5;
-            const x = Math.cos(angle) * 18;
-            const y = Math.sin(angle) * 6;
-            ctx.beginPath();
-            ctx.arc(x, y, 2, 0, 2 * Math.PI);
-            ctx.fill();
+        // Generate new obstacles
+        if (
+          state.obstacles.length === 0 ||
+          state.obstacles[state.obstacles.length - 1].x < canvas.width - 350
+        ) {
+          const newObstacles = createObstacles(
+            canvas.width + 100,
+            state.score,
+            state.obstacleCount,
+            state.gamePatternSeed
+          );
+          state.obstacles.push(...newObstacles);
+          state.obstacleCount++; // Increment obstacle counter for pattern variation
         }
 
-        ctx.restore();
-
-        // Optimized particle rendering with better visual effects
+        // Update particles (frame-rate independent) with performance optimization
         if (state.particles.length > 0) {
-            state.particles.forEach(particle => {
-                const alpha = particle.life / particle.maxLife;
-                ctx.globalAlpha = alpha * 0.9; // Slightly more transparent
+          state.particles = state.particles.filter((particle) => {
+            particle.x += particle.vx * timeMultiplier;
+            particle.y += particle.vy * timeMultiplier;
+            particle.vx *= Math.pow(0.96, timeMultiplier); // Slightly improved drag
+            particle.vy *= Math.pow(0.96, timeMultiplier);
+            particle.life -= timeMultiplier;
+            return particle.life > 0;
+          });
 
-                // Different colors based on particle age for better visual effect
-                if (alpha > 0.7) {
-                    ctx.fillStyle = '#00BFFF'; // Bright cyan when fresh
-                } else if (alpha > 0.4) {
-                    ctx.fillStyle = '#87CEEB'; // Sky blue when aging
-                } else {
-                    ctx.fillStyle = '#4682B4'; // Steel blue when fading
-                }
+          // Limit total particles for performance
+          if (state.particles.length > 50) {
+            state.particles = state.particles.slice(-50);
+          }
+        }
 
-                ctx.fillRect(particle.x, particle.y, particle.size, particle.size);
-            });
+        // Check collisions
+        if (checkCollisions()) {
+          state.gameStatus = "gameOver";
+
+          // Call onGameEnd immediately with crash protection
+          if (!state.gameEndCalled) {
+            state.gameEndCalled = true;
+
+            try {
+              onGameEnd(state.score, state.coinsCollectedThisGame); // Pass only newly collected coins
+            } catch (gameEndError) {
+              console.error("❌ CRASH in onGameEnd callback:", gameEndError);
+              // Continue game loop but log the error
+              const error = gameEndError as Error;
+              console.error("Error details:", {
+                message: error.message || "Unknown error",
+                stack: error.stack || "No stack trace",
+                score: state.score,
+                coins: state.coinsCollectedThisGame,
+              });
+            }
+          }
+
+          // Explosion particles for visual effect
+          const explosionParticles = createParticles(
+            state.ufo.x,
+            state.ufo.y,
+            12,
+            "explosion"
+          );
+          state.particles.push(...explosionParticles);
+        }
+      }
+
+      // Clear canvas with beautiful space background
+      // Clear canvas with transparent background (starfield shows through)
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw planets, asteroids, coins, and dust particles
+      state.obstacles.forEach((obstacle) => {
+        if (obstacle.type === "planet" && obstacle.planetType) {
+          const img = globalAssets.getPlanetImage(obstacle.planetType);
+          const centerX = obstacle.x + obstacle.width / 2;
+          const centerY = obstacle.y + obstacle.height / 2;
+          const radius = obstacle.width / 2;
+
+          // Get planet-specific glow color
+          const getPlanetGlow = (planetName: string): string => {
+            const planetGlows: { [key: string]: string } = {
+              "Earth.webp": "#4A90E2", // Blue glow
+              "Mars.webp": "#FF6B35", // Red-orange glow
+              "Jupiter.webp": "#FFB347", // Orange-yellow glow
+              "Saturn.webp": "#F4D03F", // Golden glow
+              "Venus.webp": "#FFC300", // Bright yellow glow
+              "Neptune.webp": "#3498DB", // Deep blue glow
+              "Uranus.webp": "#85C1E9", // Light blue glow
+              "Mercury.webp": "#D7DBDD", // Gray-white glow
+            };
+            return planetGlows[planetName] || "#FFFFFF"; // Default white glow
+          };
+
+          const glowColor = getPlanetGlow(obstacle.planetType);
+
+          // Helper function to get planet fallback colors
+          const getPlanetFallback = (planetName: string): string => {
+            const planetFallbacks: { [key: string]: string } = {
+              "Earth.webp": "#2E7D32",
+              "Mars.webp": "#E53935",
+              "Jupiter.webp": "#FF8F00",
+              "Saturn.webp": "#FFB300",
+              "Venus.webp": "#FFB300",
+              "Neptune.webp": "#1976D2",
+              "Uranus.webp": "#42A5F5",
+              "Mercury.webp": "#95A5A6",
+            };
+            return planetFallbacks[planetName] || "#6C7B7F";
+          };
+
+          // Planet glow with planet-specific color
+          ctx.save();
+
+          // Outer glow effect
+          ctx.globalAlpha = 0.6;
+          ctx.shadowColor = glowColor;
+          ctx.shadowBlur = 20;
+          const outerGlow = ctx.createRadialGradient(
+            centerX,
+            centerY,
+            0,
+            centerX,
+            centerY,
+            radius * 1.3
+          );
+          outerGlow.addColorStop(0, `${glowColor}60`);
+          outerGlow.addColorStop(1, "transparent");
+          ctx.fillStyle = outerGlow;
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, radius * 1.3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+
+          // Create circular clip for the planet image
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+          ctx.clip();
+
+          if (img) {
+            // Draw the image within the circular clip
+            ctx.drawImage(
+              img,
+              obstacle.x,
+              obstacle.y,
+              obstacle.width,
+              obstacle.height
+            );
+          } else {
+            // Fallback gradient circle with planet color
+            const fallbackColor = getPlanetFallback(obstacle.planetType);
+            const gradient = ctx.createRadialGradient(
+              centerX,
+              centerY,
+              0,
+              centerX,
+              centerY,
+              radius
+            );
+            gradient.addColorStop(0, fallbackColor);
+            gradient.addColorStop(0.7, `${fallbackColor}80`);
+            gradient.addColorStop(1, `${fallbackColor}20`);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+          }
+
+          ctx.restore();
+
+          // Add planet-specific atmospheric ring
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+          ctx.strokeStyle = `${glowColor}50`;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // Gas giant atmospheric rings
+          const isGasGiant = [
+            "Jupiter.webp",
+            "Saturn.webp",
+            "Uranus.webp",
+            "Neptune.webp",
+          ].includes(obstacle.planetType);
+          if (isGasGiant) {
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius * 1.1, 0, Math.PI * 2);
+            ctx.strokeStyle = `${glowColor}30`;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+        } else if (obstacle.type === "asteroid") {
+          // Draw asteroid with rocky texture
+          const centerX = obstacle.x + obstacle.width / 2;
+          const centerY = obstacle.y + obstacle.height / 2;
+          const radius = obstacle.width / 2;
+
+          ctx.save();
+
+          // Asteroid glow (orange/red)
+          ctx.globalAlpha = 0.4;
+          ctx.shadowColor = "#FF6B35";
+          ctx.shadowBlur = 15;
+          const asteroidGlow = ctx.createRadialGradient(
+            centerX,
+            centerY,
+            0,
+            centerX,
+            centerY,
+            radius * 1.2
+          );
+          asteroidGlow.addColorStop(0, "#FF6B3560");
+          asteroidGlow.addColorStop(1, "transparent");
+          ctx.fillStyle = asteroidGlow;
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, radius * 1.2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+
+          // Irregular asteroid shape
+          ctx.beginPath();
+          const sides = 8;
+          for (let i = 0; i < sides; i++) {
+            const angle = (i / sides) * Math.PI * 2;
+            const radiusVariation = radius * (0.7 + Math.random() * 0.3); // Irregular shape
+            const x = centerX + Math.cos(angle) * radiusVariation;
+            const y = centerY + Math.sin(angle) * radiusVariation;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.closePath();
+
+          // Asteroid gradient
+          const asteroidGradient = ctx.createRadialGradient(
+            centerX,
+            centerY,
+            0,
+            centerX,
+            centerY,
+            radius
+          );
+          asteroidGradient.addColorStop(0, "#8B4513");
+          asteroidGradient.addColorStop(0.5, "#654321");
+          asteroidGradient.addColorStop(1, "#3E2723");
+          ctx.fillStyle = asteroidGradient;
+          ctx.fill();
+
+          // Add some texture lines
+          ctx.strokeStyle = "#2E1A17";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          ctx.restore();
+        } else if (obstacle.type === "energy-barrier") {
+          // Energy Barrier - glowing vertical energy beam
+          const centerX = obstacle.x + obstacle.width / 2;
+          const animatedGlow =
+            obstacle.glowIntensity! *
+            (0.7 +
+              Math.sin(currentTime * 0.005 + obstacle.animationPhase!) * 0.3);
+
+          ctx.save();
+          ctx.globalAlpha = animatedGlow;
+
+          // Energy beam gradient
+          const energyGradient = ctx.createLinearGradient(
+            obstacle.x,
+            0,
+            obstacle.x + obstacle.width,
+            0
+          );
+          energyGradient.addColorStop(0, "transparent");
+          energyGradient.addColorStop(0.5, "#00BFFF");
+          energyGradient.addColorStop(1, "transparent");
+
+          ctx.fillStyle = energyGradient;
+          ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+
+          // Add energy particles
+          ctx.shadowColor = "#00BFFF";
+          ctx.shadowBlur = 15;
+          ctx.fillStyle = "#00BFFF";
+          ctx.fillRect(centerX - 1, obstacle.y, 2, obstacle.height);
+
+          ctx.restore();
+        } else if (obstacle.type === "asteroid-chunk") {
+          // Asteroid Chunk - rocky space debris
+          const centerX = obstacle.x + obstacle.width / 2;
+          const centerY = obstacle.y + obstacle.height / 2;
+          const radius = obstacle.width / 2;
+
+          ctx.save();
+
+          // Rotating asteroid
+          ctx.translate(centerX, centerY);
+          ctx.rotate(currentTime * 0.001 + obstacle.animationPhase!);
+
+          // Asteroid shape
+          ctx.beginPath();
+          const sides = 6;
+          for (let i = 0; i < sides; i++) {
+            const angle = (i / sides) * Math.PI * 2;
+            const radiusVar = radius * (0.8 + Math.random() * 0.4);
+            const x = Math.cos(angle) * radiusVar;
+            const y = Math.sin(angle) * radiusVar;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.closePath();
+
+          // Asteroid gradient
+          const asteroidGradient = ctx.createRadialGradient(
+            0,
+            0,
+            0,
+            0,
+            0,
+            radius
+          );
+          asteroidGradient.addColorStop(0, "#8B7355");
+          asteroidGradient.addColorStop(0.7, "#5D4E37");
+          asteroidGradient.addColorStop(1, "#2F1B14");
+          ctx.fillStyle = asteroidGradient;
+          ctx.fill();
+
+          ctx.strokeStyle = "#3E2723";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          ctx.restore();
+        } else if (obstacle.type === "nebula-cloud") {
+          // Nebula Cloud - colorful space gas
+          const centerX = obstacle.x + obstacle.width / 2;
+          const centerY = obstacle.y + obstacle.height / 2;
+          const radius = obstacle.width / 2;
+          const animatedAlpha =
+            obstacle.glowIntensity! *
+            (0.4 +
+              Math.sin(currentTime * 0.003 + obstacle.animationPhase!) * 0.2);
+
+          ctx.save();
+          ctx.globalAlpha = animatedAlpha;
+
+          // Nebula colors (purple, pink, blue)
+          const nebulaColors = ["#9333EA", "#EC4899", "#3B82F6"];
+          const color =
+            nebulaColors[
+              Math.floor(obstacle.animationPhase! * nebulaColors.length) %
+                nebulaColors.length
+            ];
+
+          // Multi-layer nebula effect
+          for (let layer = 0; layer < 3; layer++) {
+            const layerRadius = radius * (1 + layer * 0.3);
+            const nebulaGradient = ctx.createRadialGradient(
+              centerX,
+              centerY,
+              0,
+              centerX,
+              centerY,
+              layerRadius
+            );
+            nebulaGradient.addColorStop(0, color + "40");
+            nebulaGradient.addColorStop(0.7, color + "20");
+            nebulaGradient.addColorStop(1, "transparent");
+
+            ctx.fillStyle = nebulaGradient;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, layerRadius, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          ctx.restore();
+        } else if (obstacle.type === "space-debris") {
+          // Space Debris - satellites and space junk
+          const centerX = obstacle.x + obstacle.width / 2;
+          const centerY = obstacle.y + obstacle.height / 2;
+
+          ctx.save();
+
+          // Rotating debris
+          ctx.translate(centerX, centerY);
+          ctx.rotate(currentTime * 0.002 + obstacle.animationPhase!);
+
+          // Metallic debris shape
+          ctx.fillStyle = "#708090";
+          ctx.strokeStyle = "#2F4F4F";
+          ctx.lineWidth = 1;
+
+          // Random debris shape
+          ctx.fillRect(
+            -obstacle.width / 2,
+            -obstacle.height / 2,
+            obstacle.width,
+            obstacle.height
+          );
+          ctx.strokeRect(
+            -obstacle.width / 2,
+            -obstacle.height / 2,
+            obstacle.width,
+            obstacle.height
+          );
+
+          // Blinking light
+          if (Math.sin(currentTime * 0.01 + obstacle.animationPhase!) > 0.5) {
+            ctx.fillStyle = "#FF0000";
+            ctx.fillRect(-2, -2, 4, 4);
+          }
+
+          ctx.restore();
+        } else if (obstacle.type === "laser-grid") {
+          // Laser Grid - thin laser lines
+          const animatedAlpha =
+            obstacle.glowIntensity! *
+            (0.8 +
+              Math.sin(currentTime * 0.008 + obstacle.animationPhase!) * 0.2);
+
+          ctx.save();
+          ctx.globalAlpha = animatedAlpha;
+          ctx.shadowColor = "#FF0000";
+          ctx.shadowBlur = 8;
+
+          // Red laser beam
+          ctx.fillStyle = "#FF0000";
+          ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+
+          // Laser pulse effect
+          const pulse = Math.sin(currentTime * 0.01 + obstacle.animationPhase!);
+          if (pulse > 0.7) {
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillRect(
+              obstacle.x + 0.5,
+              obstacle.y,
+              obstacle.width - 1,
+              obstacle.height
+            );
+          }
+
+          ctx.restore();
+        } else if (obstacle.type === "dust-particle") {
+          // Optimized space dust particles rendering
+          const centerX = obstacle.x + obstacle.width / 2;
+          const centerY = obstacle.y + obstacle.height / 2;
+          const radius = obstacle.width / 2;
+
+          ctx.save();
+
+          // Dust particle with subtle glow - reduced shadow blur for performance
+          ctx.globalAlpha = 0.85;
+          ctx.fillStyle = "#87CEEB"; // Sky blue dust
+
+          // Only add glow effect occasionally for performance
+          if (Math.random() > 0.7) {
+            ctx.shadowColor = "#87CEEB";
+            ctx.shadowBlur = 2;
+          }
+
+          // Small glowing dot
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Add tiny sparkle effect less frequently for performance
+          if (Math.random() > 0.98) {
             ctx.globalAlpha = 1;
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillRect(centerX - 0.5, centerY - 0.5, 1, 1);
+          }
+
+          ctx.restore();
+          ctx.shadowBlur = 0;
+        } else if (obstacle.type === "coin") {
+          // Animated coin (frame-rate independent)
+          const time = currentTime * 0.005;
+          const scale = 1 + Math.sin(time) * 0.2;
+
+          ctx.save();
+          ctx.translate(
+            obstacle.x + obstacle.width / 2,
+            obstacle.y + obstacle.height / 2
+          );
+          ctx.scale(scale, scale);
+
+          ctx.fillStyle = "#FFD700";
+          ctx.shadowColor = "#FFD700";
+          ctx.shadowBlur = 10;
+
+          // Star shape
+          ctx.beginPath();
+          for (let i = 0; i < 5; i++) {
+            const angle = (i * Math.PI * 2) / 5 - Math.PI / 2;
+            const x = Math.cos(angle) * 10;
+            const y = Math.sin(angle) * 10;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+
+            const innerAngle = ((i + 0.5) * Math.PI * 2) / 5 - Math.PI / 2;
+            const innerX = Math.cos(innerAngle) * 5;
+            const innerY = Math.sin(innerAngle) * 5;
+            ctx.lineTo(innerX, innerY);
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+          ctx.shadowBlur = 0;
         }
+      });
 
-        // UI - Score on left, Stars on right with highlighted number boxes
-        const isMobile = canvas.width < 600;
-        const fontSize = isMobile ? 20 : 24;
-        const boxPadding = isMobile ? 6 : 8;
-        const yPosition = isMobile ? 35 : 45;
+      // Draw UFO with consistent rendering across all devices
+      ctx.save();
+      ctx.translate(state.ufo.x + 30, state.ufo.y + 25);
+      ctx.rotate((state.ufo.rotation * Math.PI) / 180);
 
-        ctx.font = `bold ${fontSize}px Arial, sans-serif`;
-        ctx.textBaseline = 'alphabetic'; // Use default baseline for consistent alignment
+      // Draw custom UFO shape instead of emoji for consistency
+      // This ensures no glow effects and identical appearance on all devices
+      ctx.fillStyle = "#C0C0C0"; // Silver color for UFO body
+      ctx.strokeStyle = "#808080"; // Darker silver for outline
+      ctx.lineWidth = 2;
 
-        // Score display on the left
-        const scoreIcon = '🛸';
-        const scoreLabel = 'Score: ';
-        const scoreNumber = state.score.toString();
+      // UFO main body (ellipse)
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 25, 12, 0, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.stroke();
 
-        // Measure text widths for positioning
-        ctx.fillStyle = '#FFFFFF';
-        const scoreLabelWidth = ctx.measureText(scoreLabel).width;
-        const scoreNumberWidth = ctx.measureText(scoreNumber).width;
+      // UFO dome (top circle)
+      ctx.fillStyle = "#E0E0E0"; // Lighter silver for dome
+      ctx.beginPath();
+      ctx.ellipse(0, -8, 15, 8, 0, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.stroke();
 
-        // Draw score icon and label (no background) - all use same yPosition for alignment
+      // UFO lights (small circles)
+      ctx.fillStyle = "#00F5FF"; // Cyan lights
+      for (let i = 0; i < 5; i++) {
+        const angle = (i * 2 * Math.PI) / 5;
+        const x = Math.cos(angle) * 18;
+        const y = Math.sin(angle) * 6;
+        ctx.beginPath();
+        ctx.arc(x, y, 2, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+
+      ctx.restore();
+
+      // Optimized particle rendering with better visual effects
+      if (state.particles.length > 0) {
+        state.particles.forEach((particle) => {
+          const alpha = particle.life / particle.maxLife;
+          ctx.globalAlpha = alpha * 0.9; // Slightly more transparent
+
+          // Different colors based on particle age for better visual effect
+          if (alpha > 0.7) {
+            ctx.fillStyle = "#00BFFF"; // Bright cyan when fresh
+          } else if (alpha > 0.4) {
+            ctx.fillStyle = "#87CEEB"; // Sky blue when aging
+          } else {
+            ctx.fillStyle = "#4682B4"; // Steel blue when fading
+          }
+
+          ctx.fillRect(particle.x, particle.y, particle.size, particle.size);
+        });
+        ctx.globalAlpha = 1;
+      }
+
+      // UI - Score on left, Stars on right with highlighted number boxes
+      const isMobile = canvas.width < 600;
+      const fontSize = isMobile ? 20 : 24;
+      const boxPadding = isMobile ? 6 : 8;
+      const yPosition = isMobile ? 35 : 45;
+
+      ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+      ctx.textBaseline = "alphabetic"; // Use default baseline for consistent alignment
+
+      // Score display on the left
+      const scoreIcon = "🛸";
+      const scoreLabel = "Score: ";
+      const scoreNumber = state.score.toString();
+
+      // Measure text widths for positioning
+      ctx.fillStyle = "#FFFFFF";
+      const scoreLabelWidth = ctx.measureText(scoreLabel).width;
+      const scoreNumberWidth = ctx.measureText(scoreNumber).width;
+
+      // Draw score icon and label (no background) - all use same yPosition for alignment
+      ctx.shadowBlur = 0;
+      ctx.fillText(scoreIcon, 15, yPosition);
+      const scoreIconWidth = ctx.measureText(scoreIcon).width;
+      ctx.fillText(scoreLabel, 15 + scoreIconWidth + 8, yPosition);
+
+      // Draw score number with black background box
+      const scoreBoxX = 15 + scoreIconWidth + 8 + scoreLabelWidth;
+      const scoreBoxY = yPosition - fontSize;
+      const scoreBoxWidth = scoreNumberWidth + boxPadding * 2;
+      const scoreBoxHeight = fontSize + boxPadding;
+
+      // Black background box for score number
+      ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+      ctx.fillRect(
+        scoreBoxX - boxPadding,
+        scoreBoxY,
+        scoreBoxWidth,
+        scoreBoxHeight
+      );
+
+      // Cyan score number
+      ctx.fillStyle = "#00FFFF";
+      ctx.shadowColor = "#00FFFF";
+      ctx.shadowBlur = 6;
+      ctx.fillText(scoreNumber, scoreBoxX, yPosition);
+
+      // Stars display on the right
+      const starsIcon = "⭐";
+      const starsNumber = state.coins.toString();
+
+      // Measure text widths for right alignment
+      ctx.fillStyle = "#FFFFFF";
+      ctx.shadowBlur = 0;
+      const starsIconWidth = ctx.measureText(starsIcon).width;
+      const starsNumberWidth = ctx.measureText(starsNumber).width;
+
+      // Calculate positions from right edge
+      const starsNumberX = canvas.width - 15 - starsNumberWidth - boxPadding;
+      const starsIconX = starsNumberX - boxPadding - starsIconWidth - 8;
+
+      // Draw stars icon (no background)
+      ctx.fillStyle = "#FFD700";
+      ctx.fillText(starsIcon, starsIconX, yPosition);
+
+      // Draw stars number with black background box
+      const starsBoxX = starsNumberX - boxPadding;
+      const starsBoxY = yPosition - fontSize;
+      const starsBoxWidth = starsNumberWidth + boxPadding * 2;
+      const starsBoxHeight = fontSize + boxPadding;
+
+      // Black background box for stars number
+      ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+      ctx.fillRect(starsBoxX, starsBoxY, starsBoxWidth, starsBoxHeight);
+
+      // Cyan stars number
+      ctx.fillStyle = "#00FFFF";
+      ctx.shadowColor = "#00FFFF";
+      ctx.shadowBlur = 6;
+      ctx.fillText(starsNumber, starsNumberX, yPosition);
+
+      ctx.shadowBlur = 0; // Game status
+      if (state.gameStatus === "ready") {
+        ctx.font = "bold 32px Arial, sans-serif";
+        ctx.fillStyle = "#FFFFFF";
+        ctx.textAlign = "center";
+        ctx.shadowColor = "#FFFFFF";
+        ctx.shadowBlur = 8;
+        ctx.fillText("TAP TO START", canvas.width / 2, canvas.height / 2);
         ctx.shadowBlur = 0;
-        ctx.fillText(scoreIcon, 15, yPosition);
-        const scoreIconWidth = ctx.measureText(scoreIcon).width;
-        ctx.fillText(scoreLabel, 15 + scoreIconWidth + 8, yPosition);
+        ctx.textAlign = "left";
+      }
 
-        // Draw score number with black background box
-        const scoreBoxX = 15 + scoreIconWidth + 8 + scoreLabelWidth;
-        const scoreBoxY = yPosition - fontSize;
-        const scoreBoxWidth = scoreNumberWidth + boxPadding * 2;
-        const scoreBoxHeight = fontSize + boxPadding;
+      if (state.gameStatus === "gameOver") {
+        // Don't render any game over text - let the parent modal handle it
+        // Just continue with normal rendering but frozen state
+      }
 
-        // Black background box for score number
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-        ctx.fillRect(scoreBoxX - boxPadding, scoreBoxY, scoreBoxWidth, scoreBoxHeight);
+      setGameState({ ...state });
 
-        // Cyan score number
-        ctx.fillStyle = '#00FFFF';
-        ctx.shadowColor = '#00FFFF';
-        ctx.shadowBlur = 6;
-        ctx.fillText(scoreNumber, scoreBoxX, yPosition);
-
-        // Stars display on the right
-        const starsIcon = '⭐';
-        const starsNumber = state.coins.toString();
-
-        // Measure text widths for right alignment
-        ctx.fillStyle = '#FFFFFF';
-        ctx.shadowBlur = 0;
-        const starsIconWidth = ctx.measureText(starsIcon).width;
-        const starsNumberWidth = ctx.measureText(starsNumber).width;
-
-        // Calculate positions from right edge
-        const starsNumberX = canvas.width - 15 - starsNumberWidth - boxPadding;
-        const starsIconX = starsNumberX - boxPadding - starsIconWidth - 8;
-
-        // Draw stars icon (no background)
-        ctx.fillStyle = '#FFD700';
-        ctx.fillText(starsIcon, starsIconX, yPosition);
-
-        // Draw stars number with black background box
-        const starsBoxX = starsNumberX - boxPadding;
-        const starsBoxY = yPosition - fontSize;
-        const starsBoxWidth = starsNumberWidth + boxPadding * 2;
-        const starsBoxHeight = fontSize + boxPadding;
-
-        // Black background box for stars number
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-        ctx.fillRect(starsBoxX, starsBoxY, starsBoxWidth, starsBoxHeight);
-
-        // Cyan stars number
-        ctx.fillStyle = '#00FFFF';
-        ctx.shadowColor = '#00FFFF';
-        ctx.shadowBlur = 6;
-        ctx.fillText(starsNumber, starsNumberX, yPosition);
-
-        ctx.shadowBlur = 0;        // Game status
-        if (state.gameStatus === 'ready') {
-            ctx.font = 'bold 32px Arial, sans-serif';
-            ctx.fillStyle = '#FFFFFF';
-            ctx.textAlign = 'center';
-            ctx.shadowColor = '#FFFFFF';
-            ctx.shadowBlur = 8;
-            ctx.fillText('TAP TO START', canvas.width / 2, canvas.height / 2);
-            ctx.shadowBlur = 0;
-            ctx.textAlign = 'left';
-        }
-
-        if (state.gameStatus === 'gameOver') {
-            // Don't render any game over text - let the parent modal handle it
-            // Just continue with normal rendering but frozen state
-        }
-
-        setGameState({ ...state });
-
-        // Continue game loop - restart if needed
-        if (state.gameStatus !== 'gameOver') {
-            gameLoopRef.current = requestAnimationFrame(gameLoop);
-        } else {
-            // Game is over, but we still need to render one more time to show the final state
-            // The parent component will show the modal
-        }
-    }, [checkCollisions, createObstacles, createParticles, onGameEnd, globalAssets]);
-
-    // Input handlers
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-
-        const handleTouch = (e: TouchEvent) => {
-            e.preventDefault();
-
-            // Only handle input if game is not over
-            if (gameStateRef.current.gameStatus !== 'gameOver') {
-                handleJump();
-            }
-        };
-
-        const handleClick = (e: MouseEvent) => {
-            e.preventDefault();
-
-            // Only handle input if game is not over  
-            if (gameStateRef.current.gameStatus !== 'gameOver') {
-                handleJump();
-            }
-        };
-
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.code === 'Space' || e.code === 'ArrowUp') {
-                e.preventDefault();
-                // Only handle input if game is not over
-                if (gameStateRef.current.gameStatus !== 'gameOver') {
-                    handleJump();
-                }
-            }
-            // Remove Escape key handling - let parent modal handle everything
-        };
-
-        canvas.addEventListener('touchstart', handleTouch, { passive: false });
-        canvas.addEventListener('click', handleClick);
-        window.addEventListener('keydown', handleKeyDown);
-
-        return () => {
-            canvas.removeEventListener('touchstart', handleTouch);
-            canvas.removeEventListener('click', handleClick);
-            window.removeEventListener('keydown', handleKeyDown);
-        };
-    }, [handleJump, onGameEnd]);
-
-    // Start game loop
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-
-        const handleResize = () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        };
-
-        window.addEventListener('resize', handleResize);
-
-        // Always start a new game loop when this effect runs
-        if (gameLoopRef.current) {
-            cancelAnimationFrame(gameLoopRef.current);
-        }
+      // Continue game loop - restart if needed
+      if (state.gameStatus !== "gameOver") {
         gameLoopRef.current = requestAnimationFrame(gameLoop);
+      } else {
+        // Game is over, but we still need to render one more time to show the final state
+        // The parent component will show the modal
+      }
+    },
+    [checkCollisions, createObstacles, createParticles, onGameEnd, globalAssets]
+  );
 
-        return () => {
-            window.removeEventListener('resize', handleResize);
-            if (gameLoopRef.current) {
-                cancelAnimationFrame(gameLoopRef.current);
-            }
-        };
-    }, [gameLoop, gameMode, continueFromScore]); // Added dependencies to restart loop when game restarts
+  // Input handlers
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    return (
-        <Page>
-            {/* Loading Screen - Show while global assets are preloading */}
-            {globalAssets.isLoading || !globalAssets.allLoaded ? (
+    const handleTouch = (e: TouchEvent) => {
+      e.preventDefault();
+
+      // Only handle input if game is not over
+      if (gameStateRef.current.gameStatus !== "gameOver") {
+        handleJump();
+      }
+    };
+
+    const handleClick = (e: MouseEvent) => {
+      e.preventDefault();
+
+      // Only handle input if game is not over
+      if (gameStateRef.current.gameStatus !== "gameOver") {
+        handleJump();
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === "Space" || e.code === "ArrowUp") {
+        e.preventDefault();
+        // Only handle input if game is not over
+        if (gameStateRef.current.gameStatus !== "gameOver") {
+          handleJump();
+        }
+      }
+      // Remove Escape key handling - let parent modal handle everything
+    };
+
+    canvas.addEventListener("touchstart", handleTouch, { passive: false });
+    canvas.addEventListener("click", handleClick);
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      canvas.removeEventListener("touchstart", handleTouch);
+      canvas.removeEventListener("click", handleClick);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [handleJump, onGameEnd]);
+
+  // Start game loop
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const handleResize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    // Always start a new game loop when this effect runs
+    if (gameLoopRef.current) {
+      cancelAnimationFrame(gameLoopRef.current);
+    }
+    gameLoopRef.current = requestAnimationFrame(gameLoop);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      if (gameLoopRef.current) {
+        cancelAnimationFrame(gameLoopRef.current);
+      }
+    };
+  }, [gameLoop, gameMode, continueFromScore]); // Added dependencies to restart loop when game restarts
+
+  return (
+    <Page>
+      {/* Loading Screen - Show while global assets are preloading */}
+      {globalAssets.isLoading || !globalAssets.allLoaded ? (
+        <div
+          className="fixed inset-0 flex flex-col items-center justify-center z-50"
+          style={{
+            background:
+              "linear-gradient(135deg, #0B1426 0%, #1a237e 50%, #0B1426 100%)",
+            backdropFilter: "blur(10px)",
+          }}
+        >
+          <div className="text-center space-y-8 max-w-sm px-6">
+            {/* Game Title */}
+            <div className="space-y-4">
+              <h1 className="text-4xl font-bold text-white mb-2">
+                🛸 Flappy UFO
+              </h1>
+              <p className="text-cyan-300 text-lg font-medium">
+                Loading Space Assets...
+              </p>
+            </div>
+
+            {/* Circular Progress Indicator - Single Circle Design */}
+            <div className="flex flex-col items-center">
+              <div className="relative w-36 h-36">
+                {/* Outer glow effect with subtle pulse */}
                 <div
-                    className="fixed inset-0 flex flex-col items-center justify-center z-50"
-                    style={{
-                        background: 'linear-gradient(135deg, #0B1426 0%, #1a237e 50%, #0B1426 100%)',
-                        backdropFilter: 'blur(10px)'
-                    }}
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background:
+                      "radial-gradient(circle, rgba(0, 245, 255, 0.15) 0%, transparent 70%)",
+                    filter: "blur(8px)",
+                    animation: "pulse 3s ease-in-out infinite",
+                  }}
+                />
+
+                <svg
+                  className="w-36 h-36 transform -rotate-90"
+                  viewBox="0 0 36 36"
                 >
-                    <div className="text-center space-y-8 max-w-sm px-6">
-                        {/* Game Title */}
-                        <div className="space-y-4">
-                            <h1 className="text-4xl font-bold text-white mb-2">
-                                🛸 Flappy UFO
-                            </h1>
-                            <p className="text-cyan-300 text-lg font-medium">
-                                Loading Space Assets...
-                            </p>
-                        </div>
-
-                        {/* Circular Progress Indicator - Single Circle Design */}
-                        <div className="flex flex-col items-center">
-                            <div className="relative w-36 h-36">
-                                {/* Outer glow effect with subtle pulse */}
-                                <div
-                                    className="absolute inset-0 rounded-full"
-                                    style={{
-                                        background: 'radial-gradient(circle, rgba(0, 245, 255, 0.15) 0%, transparent 70%)',
-                                        filter: 'blur(8px)',
-                                        animation: 'pulse 3s ease-in-out infinite'
-                                    }}
-                                />
-
-                                <svg className="w-36 h-36 transform -rotate-90" viewBox="0 0 36 36">
-                                    {/* Background circle */}
-                                    <path
-                                        stroke="rgba(255, 255, 255, 0.1)"
-                                        strokeWidth="2.5"
-                                        fill="transparent"
-                                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                    />
-                                    {/* Progress circle with animated gradient */}
-                                    <path
-                                        stroke="url(#progressGradient)"
-                                        strokeWidth="3"
-                                        strokeLinecap="round"
-                                        fill="transparent"
-                                        strokeDasharray={`${globalAssets.loadingProgress}, 100`}
-                                        style={{
-                                            filter: 'drop-shadow(0 0 8px #00f5ff)',
-                                            transition: 'stroke-dasharray 0.3s ease-out'
-                                        }}
-                                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                    />
-                                    {/* Define gradient for progress circle */}
-                                    <defs>
-                                        <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                            <stop offset="0%" style={{ stopColor: '#00f5ff', stopOpacity: 1 }} />
-                                            <stop offset="50%" style={{ stopColor: '#9333ea', stopOpacity: 1 }} />
-                                            <stop offset="100%" style={{ stopColor: '#ec4899', stopOpacity: 1 }} />
-                                        </linearGradient>
-                                    </defs>
-                                </svg>
-
-                                {/* Percentage text in center */}
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="text-center">
-                                        <span className="text-3xl font-bold text-white block mb-1">
-                                            {globalAssets.loadingProgress}%
-                                        </span>
-                                        <span className="text-xs text-cyan-300 uppercase tracking-widest font-medium">
-                                            COMPLETE
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Error Messages */}
-                        {globalAssets.errors.length > 0 && (
-                            <div className="mt-4 p-3 bg-red-900 bg-opacity-30 rounded-lg border border-red-500 border-opacity-30">
-                                <p className="text-red-300 text-sm">
-                                    Some images couldn&apos;t load, but the game will work with fallbacks.
-                                </p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            ) : null}
-
-            {/* Game Canvas */}
-            <canvas
-                ref={canvasRef}
-                className="game-canvas"
-                style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    width: '100vw',
-                    height: '100vh',
-                    background: 'transparent',
-                    touchAction: 'none',
-                    zIndex: 5,
-                    // Hide canvas while loading
-                    opacity: globalAssets.isLoading || !globalAssets.allLoaded ? 0 : 1,
-                    transition: 'opacity 0.5s ease-in-out'
-                }}
-            />
-
-            {/* Grace Period Warning Overlay */}
-            {isGracePeriod && gameMode === 'tournament' && (
-                <div
+                  {/* Background circle */}
+                  <path
+                    stroke="rgba(255, 255, 255, 0.1)"
+                    strokeWidth="2.5"
+                    fill="transparent"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  />
+                  {/* Progress circle with animated gradient */}
+                  <path
+                    stroke="url(#progressGradient)"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    fill="transparent"
+                    strokeDasharray={`${globalAssets.loadingProgress}, 100`}
                     style={{
-                        position: 'fixed',
-                        top: '20px',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        backgroundColor: 'rgba(255, 165, 0, 0.95)',
-                        color: '#000',
-                        padding: '12px 20px',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        fontWeight: 'bold',
-                        zIndex: 1000,
-                        textAlign: 'center',
-                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-                        maxWidth: '90vw',
-                        border: '2px solid #ff6b35'
+                      filter: "drop-shadow(0 0 8px #00f5ff)",
+                      transition: "stroke-dasharray 0.3s ease-out",
                     }}
-                >
-                    ⚠️ {gracePeriodMessage}
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  />
+                  {/* Define gradient for progress circle */}
+                  <defs>
+                    <linearGradient
+                      id="progressGradient"
+                      x1="0%"
+                      y1="0%"
+                      x2="100%"
+                      y2="100%"
+                    >
+                      <stop
+                        offset="0%"
+                        style={{ stopColor: "#00f5ff", stopOpacity: 1 }}
+                      />
+                      <stop
+                        offset="50%"
+                        style={{ stopColor: "#9333ea", stopOpacity: 1 }}
+                      />
+                      <stop
+                        offset="100%"
+                        style={{ stopColor: "#ec4899", stopOpacity: 1 }}
+                      />
+                    </linearGradient>
+                  </defs>
+                </svg>
+
+                {/* Percentage text in center */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-center">
+                    <span className="text-3xl font-bold text-white block mb-1">
+                      {globalAssets.loadingProgress}%
+                    </span>
+                    <span className="text-xs text-cyan-300 uppercase tracking-widest font-medium">
+                      COMPLETE
+                    </span>
+                  </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Error Messages */}
+            {globalAssets.errors.length > 0 && (
+              <div className="mt-4 p-3 bg-red-900 bg-opacity-30 rounded-lg border border-red-500 border-opacity-30">
+                <p className="text-red-300 text-sm">
+                  Some images couldn&apos;t load, but the game will work with
+                  fallbacks.
+                </p>
+              </div>
             )}
-        </Page>
-    );
+          </div>
+        </div>
+      ) : null}
+
+      {/* Game Canvas */}
+      <canvas
+        ref={canvasRef}
+        className="game-canvas"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100vw",
+          height: "100vh",
+          background: "transparent",
+          touchAction: "none",
+          zIndex: 5,
+          // Hide canvas while loading
+          opacity: globalAssets.isLoading || !globalAssets.allLoaded ? 0 : 1,
+          transition: "opacity 0.5s ease-in-out",
+        }}
+      />
+
+      {/* Grace Period Warning Overlay */}
+      {isGracePeriod && gameMode === "tournament" && (
+        <div
+          style={{
+            position: "fixed",
+            top: "20px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            backgroundColor: "rgba(255, 165, 0, 0.95)",
+            color: "#000",
+            padding: "12px 20px",
+            borderRadius: "8px",
+            fontSize: "14px",
+            fontWeight: "bold",
+            zIndex: 1000,
+            textAlign: "center",
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+            maxWidth: "90vw",
+            border: "2px solid #ff6b35",
+          }}
+        >
+          ⚠️ {gracePeriodMessage}
+        </div>
+      )}
+    </Page>
+  );
 }
