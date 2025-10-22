@@ -75,8 +75,9 @@ export async function POST(req: NextRequest) {
         // Update tournament total_players count (sign-ins for THIS tournament)
         await updateTournamentSignInCount(supabase, tournamentId);
 
-        // Create user_tournament_record for this tournament (if doesn't exist)
-        await ensureUserTournamentRecord(supabase, wallet, username, worldId, tournamentId);
+        // REMOVED: Do NOT create user_tournament_record on sign-in
+        // REASON: user_tournament_record should ONLY be created when user PAYS in /api/tournament/entry
+        // This prevents counting sign-ins as tournament players in leaderboard
 
         return NextResponse.json({
             success: true,
@@ -90,68 +91,6 @@ export async function POST(req: NextRequest) {
             { success: false, error: 'Internal server error' },
             { status: 500 }
         );
-    }
-}
-
-// Helper function to ensure user_tournament_record exists (user should already exist in users table)
-async function ensureUserTournamentRecord(supabase: SupabaseClient, wallet: string, username: string, worldId: string, tournamentId: string) {
-    try {
-        // Get tournament info
-        const { data: tournament, error: tournamentError } = await supabase
-            .from('tournaments')
-            .select('tournament_day')
-            .eq('id', tournamentId)
-            .single();
-
-        if (tournamentError) {
-            console.error('❌ Error getting tournament for record creation:', tournamentError);
-            return;
-        }
-
-        // Get user ID from users table (user should exist from /api/users call)
-        const { data: user, error: userError } = await supabase
-            .from('users')
-            .select('id')
-            .eq('wallet', wallet)
-            .single();
-
-        if (userError) {
-            console.error('❌ User not found in users table:', userError);
-            console.error('❌ Make sure /api/users was called first');
-            return;
-        }
-
-        // Check if user_tournament_record already exists
-        const { error: recordCheckError } = await supabase
-            .from('user_tournament_records')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('tournament_id', tournamentId)
-            .single();
-
-        if (recordCheckError && recordCheckError.code === 'PGRST116') {
-            // Record doesn't exist, create it
-            const { error: createRecordError } = await supabase
-                .from('user_tournament_records')
-                .insert({
-                    user_id: user.id,
-                    tournament_id: tournamentId,
-                    username,
-                    wallet,
-                    tournament_day: tournament.tournament_day
-                });
-
-            if (createRecordError) {
-                console.error('❌ Error creating user tournament record:', createRecordError);
-            } else {
-            }
-        } else if (recordCheckError) {
-            console.error('❌ Error checking user tournament record:', recordCheckError);
-        } else {
-        }
-
-    } catch (error) {
-        console.error('❌ Error in ensureUserTournamentRecord:', error);
     }
 }
 
