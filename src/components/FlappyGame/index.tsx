@@ -1062,17 +1062,31 @@ export default function FlappyGame({
             }
         });
 
-        // Draw simple UFO emoji
+        // Draw consistent UFO (not emoji - renders same on all devices)
         ctx.save();
         ctx.translate(state.ufo.x + 30, state.ufo.y + 25);
         ctx.rotate(state.ufo.rotation * Math.PI / 180);
 
-        // UFO emoji
-        ctx.font = '60px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillText('🛸', 0, 0);
+        // Draw UFO body (consistent across all devices)
+        ctx.fillStyle = '#C0C0C0'; // Silver body
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 30, 15, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw UFO dome
+        ctx.fillStyle = '#87CEEB'; // Sky blue dome
+        ctx.beginPath();
+        ctx.ellipse(0, -8, 15, 12, 0, 0, Math.PI, true);
+        ctx.fill();
+        
+        // Draw UFO lights (animated)
+        const lightColor = state.score % 20 < 10 ? '#00BFFF' : '#00FF00';
+        ctx.fillStyle = lightColor;
+        [-15, 0, 15].forEach(x => {
+            ctx.beginPath();
+            ctx.arc(x, 5, 3, 0, Math.PI * 2);
+            ctx.fill();
+        });
 
         ctx.restore();
 

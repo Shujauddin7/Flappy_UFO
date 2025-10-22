@@ -520,7 +520,10 @@ export default function GameHomepage() {
 
         } catch (error) {
             console.error('Error during tournament entry:', error);
-            showNotification('error', 'Entry Failed', 'Tournament entry failed. Please try again.');
+            // Don't show generic error - specific errors are already shown in handleWorldIDVerification
+            if (entryType !== 'verify') {
+                showNotification('error', 'Entry Failed', 'Tournament entry failed. Please try again.');
+            }
             setIsProcessingPayment(false); // Re-enable navigation on error
         } finally {
             setIsProcessingEntry(false);
@@ -530,6 +533,7 @@ export default function GameHomepage() {
     // Handle World ID verification for verified entry
     const handleWorldIDVerification = async () => {
         try {
+            setIsProcessingEntry(true); // Show processing immediately
             const { MiniKit, VerificationLevel } = await import('@worldcoin/minikit-js');
 
             // Use MiniKit to verify World ID with Orb verification level
@@ -614,6 +618,9 @@ export default function GameHomepage() {
                 showNotification('error', 'Verification Failed', 
                     `${miniKitError || errorMessage}. Try again or use Standard Entry (1.0 WLD).`);
             }
+        } finally {
+            setIsProcessingEntry(false);
+            setIsProcessingPayment(false);
         }
     };
 

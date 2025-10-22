@@ -686,7 +686,7 @@ body {
 }
 
 .feature {
-  font-size: 1.5rem;
+  font-size: 1.01rem;
   /* Location: Line 688 - Increased from 1rem for better readability */
   /* Adjust here if text breaks layout on small screens */
   color: rgba(255, 255, 255, 0.8);
