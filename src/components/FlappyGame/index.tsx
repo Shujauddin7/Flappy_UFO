@@ -1067,11 +1067,14 @@ export default function FlappyGame({
         ctx.translate(state.ufo.x + 30, state.ufo.y + 25);
         ctx.rotate(state.ufo.rotation * Math.PI / 180);
 
-        // Simple UFO emoji - no effects
-        ctx.font = '60px Arial';
+        // Simple UFO emoji - plain rendering without any effects
+        // Using basic sans-serif to avoid device-specific emoji rendering
+        ctx.font = '60px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#FFFFFF';
+        // Disable smooth rendering to prevent glow effects
+        ctx.imageSmoothingEnabled = false;
         ctx.fillText('🛸', 0, 0);
 
         ctx.restore();

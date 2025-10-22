@@ -138,7 +138,7 @@ body {
   font-size: 1.2em;
   vertical-align: middle;
   margin: 0 0.05em;
-  filter: drop-shadow(0 0 8px #00F5FF);
+  /* No filter/glow - plain emoji for consistency across devices */
 }
 
 .info-btn {
@@ -214,7 +214,7 @@ body {
 
 .info-modal-ufo {
   font-size: 1.5rem;
-  filter: drop-shadow(0 0 8px #00F5FF);
+  /* No filter/glow - plain emoji for consistency */
 }
 
 .info-modal-title {
@@ -686,8 +686,8 @@ body {
 }
 
 .feature {
-  font-size: 0.95rem;
-  /* Balanced size - not too big (1.05rem) not too small (0.9rem) */
+  font-size: 0.88rem;
+  /* Reduced further to prevent overflow on all devices */
   /* Responsive adjustments in media queries below for different devices */
   color: rgba(255, 255, 255, 0.8);
   font-weight: 500;
@@ -1133,8 +1133,8 @@ body {
   }
 
   .feature {
-    font-size: 0.82rem;
-    /* Slightly smaller for 500px and below to prevent overflow */
+    font-size: 0.78rem;
+    /* Smaller for 500px and below to prevent overflow */
     padding: 0.2rem 0;
   }
 
@@ -1728,7 +1728,7 @@ body {
   }
 
   .mode-features .feature {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     /* Slightly larger for tablet/large phone screens */
   }
 
