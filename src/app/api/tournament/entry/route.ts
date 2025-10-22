@@ -51,10 +51,10 @@ async function updateTournamentPlayerCountFallback(supabase: SupabaseClient, tou
         }
 
         // CRITICAL FIX: Only count users who have actually PAID (not just signed in)
-        const paidPlayers = data?.filter((record: { verified_entry_paid?: boolean; standard_entry_paid?: boolean }) => 
+        const paidPlayers = data?.filter((record: { verified_entry_paid?: boolean; standard_entry_paid?: boolean }) =>
             record.verified_entry_paid === true || record.standard_entry_paid === true
         ) || [];
-        
+
         const uniquePlayerCount = paidPlayers.length;
         const totalRevenue = paidPlayers.reduce((sum: number, record: { verified_paid_amount?: number; standard_paid_amount?: number; total_continue_payments?: number }) => {
             const entryPayments = (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0);

@@ -543,8 +543,8 @@ export default function GameHomepage() {
             // 🔥 CHECK RESULT STATUS IMMEDIATELY - MiniKit doesn't throw errors!
             if (result.finalPayload.status !== 'success') {
                 // Extract error information from MiniKit response
-                const miniKitError = result.finalPayload.error_code || 
-                                   'Verification failed';
+                const miniKitError = result.finalPayload.error_code ||
+                    'Verification failed';
                 throw new Error(miniKitError);
             }
 
@@ -580,53 +580,53 @@ export default function GameHomepage() {
             const errorString = errorMessage.toLowerCase();
 
             // Check MiniKit response status if available
-            const miniKitError = (error as { finalPayload?: { error_code?: string; message?: string } })?.finalPayload?.error_code || 
-                               (error as { finalPayload?: { error_code?: string; message?: string } })?.finalPayload?.message || '';
+            const miniKitError = (error as { finalPayload?: { error_code?: string; message?: string } })?.finalPayload?.error_code ||
+                (error as { finalPayload?: { error_code?: string; message?: string } })?.finalPayload?.message || '';
             const miniKitErrorLower = miniKitError.toLowerCase();
 
             // 1. ORB VERIFICATION NOT COMPLETED
-            if (errorString.includes('credentialunavailable') || 
+            if (errorString.includes('credentialunavailable') ||
                 errorString.includes('verification level') ||
                 errorString.includes('not verified') ||
                 errorString.includes('orb') ||
                 miniKitErrorLower.includes('verification') ||
                 miniKitErrorLower.includes('orb')) {
-                showNotification('warning', '🌍 Orb Verification Required', 
+                showNotification('warning', '🌍 Orb Verification Required',
                     'Please complete Orb verification at worldcoin.org first, then try again. Or choose Standard Entry (1.0 WLD).');
-            } 
+            }
             // 2. ALREADY VERIFIED TODAY
-            else if (errorString.includes('maxverificationsreached') || 
-                     errorString.includes('already verified') ||
-                     errorString.includes('duplicate') ||
-                     miniKitErrorLower.includes('already') ||
-                     miniKitErrorLower.includes('duplicate')) {
-                showNotification('info', '✅ Already Verified Today', 
+            else if (errorString.includes('maxverificationsreached') ||
+                errorString.includes('already verified') ||
+                errorString.includes('duplicate') ||
+                miniKitErrorLower.includes('already') ||
+                miniKitErrorLower.includes('duplicate')) {
+                showNotification('info', '✅ Already Verified Today',
                     'You can only verify once per tournament. Your discount is already active!');
-            } 
+            }
             // 3. NETWORK/TIMEOUT ISSUES
-            else if (errorString.includes('network') || 
-                     errorString.includes('timeout') ||
-                     errorString.includes('connection') ||
-                     miniKitErrorLower.includes('network') ||
-                     miniKitErrorLower.includes('timeout')) {
-                showNotification('error', '🌐 Connection Issue', 
+            else if (errorString.includes('network') ||
+                errorString.includes('timeout') ||
+                errorString.includes('connection') ||
+                miniKitErrorLower.includes('network') ||
+                miniKitErrorLower.includes('timeout')) {
+                showNotification('error', '🌐 Connection Issue',
                     'Network error. Check your internet and try again, or use Standard Entry.');
-            } 
+            }
             // 4. USER CANCELLED
-            else if (errorString.includes('cancel') || 
-                     errorString.includes('rejected') ||
-                     errorString.includes('error') ||
-                     miniKitErrorLower.includes('cancel') ||
-                     miniKitErrorLower.includes('error')) {
-                showNotification('info', 'Verification Cancelled', 
+            else if (errorString.includes('cancel') ||
+                errorString.includes('rejected') ||
+                errorString.includes('error') ||
+                miniKitErrorLower.includes('cancel') ||
+                miniKitErrorLower.includes('error')) {
+                showNotification('info', 'Verification Cancelled',
                     'You cancelled the verification. Choose Standard Entry to continue.');
             }
             // 5. GENERIC ERROR WITH DETAILS
             else {
-                showNotification('error', 'Verification Failed', 
+                showNotification('error', 'Verification Failed',
                     `${miniKitError || errorMessage}. Try again or use Standard Entry (1.0 WLD).`);
             }
-            
+
             // Don't throw - let the notification be visible
             // The error is already handled and user is informed
         } finally {
