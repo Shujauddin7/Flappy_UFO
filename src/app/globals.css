@@ -138,7 +138,8 @@ body {
   font-size: 1.2em;
   vertical-align: middle;
   margin: 0 0.05em;
-  /* No filter/glow - plain emoji for consistency across devices */
+  filter: drop-shadow(0 0 8px #00F5FF);
+  /* Glow effect for home screen only - makes it stand out */
 }
 
 .info-btn {
@@ -686,9 +687,8 @@ body {
 }
 
 .feature {
-  font-size: 0.88rem;
-  /* Reduced further to prevent overflow on all devices */
-  /* Responsive adjustments in media queries below for different devices */
+  font-size: 0.9rem;
+  /* Stable production value - works across all devices */
   color: rgba(255, 255, 255, 0.8);
   font-weight: 500;
 }
@@ -1133,8 +1133,8 @@ body {
   }
 
   .feature {
-    font-size: 0.78rem;
-    /* Smaller for 500px and below to prevent overflow */
+    font-size: 0.85rem;
+    /* Stable size from production */
     padding: 0.2rem 0;
   }
 
@@ -1725,11 +1725,6 @@ body {
 
   .mode-card {
     padding: 1.5rem;
-  }
-
-  .mode-features .feature {
-    font-size: 0.85rem;
-    /* Slightly larger for tablet/large phone screens */
   }
 
   .choose-word {
