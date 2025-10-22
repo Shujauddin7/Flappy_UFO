@@ -138,6 +138,7 @@ export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
                                                 : 'GET VERIFIED & PLAY (0.9 WLD)'
                                     }
                                 </button>
+                                <p className="orb-requirement-text">Requires Orb verification</p>
                             </div>
                         </div>
 

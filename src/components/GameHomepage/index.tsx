@@ -549,17 +549,11 @@ export default function GameHomepage() {
             if (!result || !result.finalPayload || result.finalPayload.status !== 'success') {
                 console.log('MiniKit verification failed or cancelled');
                 
-                // Reset processing states BEFORE showing notification
+                // Reset processing states and silently return
                 setIsProcessingEntry(false);
                 setIsProcessingPayment(false);
                 
-                // Wait a tiny bit to ensure states are updated, then show notification
-                await new Promise(resolve => setTimeout(resolve, 100));
-                
-                // Show popup for ANY non-success result (including cancellation)
-                showNotification('warning', '🌍 Orb Verification Required',
-                    'Please complete Orb verification at worldcoin.org first, then try again. Or choose Standard Entry (1.0 WLD).');
-                
+                // No popup - user can try again or use standard entry
                 return; // Exit early
             }
 
@@ -598,39 +592,8 @@ export default function GameHomepage() {
             setIsProcessingEntry(false);
             setIsProcessingPayment(false);
 
-            // Check if this is a user cancellation or Orb verification issue
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            const errorString = errorMessage.toLowerCase();
-            
-            console.log('Error details:', {
-                message: errorMessage,
-                error: error
-            });
-
-            // Show popup for Orb verification issues or user cancellation
-            const isOrbVerificationIssue = 
-                errorString.includes('credentialunavailable') ||
-                errorString.includes('verification level') ||
-                errorString.includes('not verified') ||
-                errorString.includes('orb') ||
-                errorString.includes('verification') ||
-                errorString.includes('credential') ||
-                errorString.includes('cancelled') ||
-                errorString.includes('canceled') ||
-                errorString.includes('user_cancelled') ||
-                errorString.includes('user_canceled') ||
-                errorString.includes('rejected') ||
-                errorString.includes('denied');
-            
-            if (isOrbVerificationIssue) {
-                // Show popup immediately for Orb verification issues
-                showNotification('warning', '🌍 Orb Verification Required',
-                    'Please complete Orb verification at worldcoin.org first, then try again. Or choose Standard Entry (1.0 WLD).');
-            } else {
-                // For other errors, still show the popup as it might be an Orb issue
-                showNotification('warning', '🌍 Orb Verification Required',
-                    'Please complete Orb verification at worldcoin.org first, then try again. Or choose Standard Entry (1.0 WLD).');
-            }
+            // No popup - just log the error and let user try again
+            console.log('Verification process failed:', error);
         }
     };
 
@@ -2199,13 +2162,7 @@ export default function GameHomepage() {
                 type={notification.type}
                 title={notification.title}
                 message={notification.message}
-                onClose={() => {
-                    setNotification({ ...notification, show: false });
-                    // If this was an Orb verification warning, redirect back to tournament entry
-                    if (notification.type === 'warning' && notification.title.includes('Orb Verification')) {
-                        setCurrentScreen('tournamentEntry');
-                    }
-                }}
+                onClose={() => setNotification({ ...notification, show: false })}
             />
         </>
     );
