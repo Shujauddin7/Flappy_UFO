@@ -122,6 +122,13 @@ body {
   letter-spacing: 0.03em;
 }
 
+/* Ensure UFO icons in title have no inherited effects */
+.game-title .ufo-icon {
+  filter: none !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+}
+
 .flappy-text {
   color: #00F5FF;
   text-shadow: 0 0 12px #00F5FF, 0 0 24px #00F5FF;
@@ -138,7 +145,12 @@ body {
   font-size: 1.2em;
   vertical-align: middle;
   margin: 0 0.05em;
-  /* No glow effect - simple emoji */
+  /* Explicitly remove any glow effects */
+  filter: none !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+  -webkit-filter: none !important;
+  -webkit-text-shadow: none !important;
 }
 
 .info-btn {

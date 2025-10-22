@@ -1672,9 +1672,8 @@ export default function GameHomepage() {
                         <div className="header-section">
                             <h1 className="game-title">
                                 <span className="ufo-icon">🛸</span>
-                                <span className="flappy-text">Flappy</span>{''}
+                                <span className="flappy-text">Flappy</span>
                                 <span className="ufo-text">UFO</span>
-                                <span className="ufo-icon">🛸</span>
                             </h1>
                         </div>
                         <div className="play-section">
