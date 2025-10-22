@@ -1062,22 +1062,17 @@ export default function FlappyGame({
             }
         });
 
-        // Draw UFO emoji (consistent rendering across devices)
+        // Draw UFO emoji (no glow - consistent on all devices)
         ctx.save();
         ctx.translate(state.ufo.x + 30, state.ufo.y + 25);
         ctx.rotate(state.ufo.rotation * Math.PI / 180);
 
-        // Force consistent emoji rendering
-        ctx.font = '60px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", Arial';
+        // Simple UFO emoji - no effects
+        ctx.font = '60px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        
-        // Add glow effect for consistency
-        ctx.shadowColor = 'rgba(0, 191, 255, 0.5)';
-        ctx.shadowBlur = 10;
         ctx.fillStyle = '#FFFFFF';
         ctx.fillText('🛸', 0, 0);
-        ctx.shadowBlur = 0;
 
         ctx.restore();
 

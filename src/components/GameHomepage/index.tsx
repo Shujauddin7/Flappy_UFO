@@ -617,7 +617,9 @@ export default function GameHomepage() {
             // 4. USER CANCELLED
             else if (errorString.includes('cancel') || 
                      errorString.includes('rejected') ||
-                     miniKitErrorLower.includes('cancel')) {
+                     errorString.includes('error') ||
+                     miniKitErrorLower.includes('cancel') ||
+                     miniKitErrorLower.includes('error')) {
                 showNotification('info', 'Verification Cancelled', 
                     'You cancelled the verification. Choose Standard Entry to continue.');
             }
@@ -626,6 +628,9 @@ export default function GameHomepage() {
                 showNotification('error', 'Verification Failed', 
                     `${miniKitError || errorMessage}. Try again or use Standard Entry (1.0 WLD).`);
             }
+            
+            // Throw error to stop execution
+            throw error;
         } finally {
             setIsProcessingEntry(false);
             setIsProcessingPayment(false);
