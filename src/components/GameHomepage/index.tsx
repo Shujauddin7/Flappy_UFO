@@ -545,13 +545,16 @@ export default function GameHomepage() {
             console.log('MiniKit verification result:', result); // Debug log
             console.log('Full result object:', JSON.stringify(result, null, 2));
 
-            // Reset processing states immediately after MiniKit call
-            setIsProcessingEntry(false);
-            setIsProcessingPayment(false);
-
-            // 🔥 CHECK RESULT STATUS - Handle ALL non-success cases
+            // 🔥 CHECK RESULT STATUS FIRST - Handle ALL non-success cases
             if (!result || !result.finalPayload || result.finalPayload.status !== 'success') {
                 console.log('MiniKit verification failed or cancelled');
+                
+                // Reset processing states BEFORE showing notification
+                setIsProcessingEntry(false);
+                setIsProcessingPayment(false);
+                
+                // Wait a tiny bit to ensure states are updated, then show notification
+                await new Promise(resolve => setTimeout(resolve, 100));
                 
                 // Show popup for ANY non-success result (including cancellation)
                 showNotification('warning', '🌍 Orb Verification Required',
@@ -559,6 +562,10 @@ export default function GameHomepage() {
                 
                 return; // Exit early
             }
+
+            // Reset processing states for successful verification
+            setIsProcessingEntry(false);
+            setIsProcessingPayment(false);
 
             // Send proof to backend for verification
             const response = await fetch('/api/verify-proof', {
