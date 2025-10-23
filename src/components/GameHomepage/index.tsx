@@ -579,6 +579,12 @@ export default function GameHomepage() {
                     verificationData.nullifier_hash,
                     verificationData.verification_level
                 );
+                
+                // Refresh verification status from database to update UI
+                console.log('Refreshing verification status after successful verification...');
+                await checkVerificationStatus();
+                console.log('Verification status refreshed, isVerifiedToday should now be true');
+                
                 // Proceed with 0.9 WLD payment
                 await handlePayment(0.9, true);
             } else {
