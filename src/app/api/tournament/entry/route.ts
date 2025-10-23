@@ -42,7 +42,7 @@ async function updateTournamentPlayerCountFallback(supabase: SupabaseClient, tou
     try {
         const { data, error } = await supabase
             .from('user_tournament_records')
-            .select('user_id, verified_paid_amount, standard_paid_amount, total_continue_payments')
+            .select('user_id, verified_paid_amount, standard_paid_amount, total_continue_payments, verified_entry_paid, standard_entry_paid')
             .eq('tournament_id', tournamentId);
 
         if (error) {
@@ -50,8 +50,13 @@ async function updateTournamentPlayerCountFallback(supabase: SupabaseClient, tou
             return;
         }
 
-        const uniquePlayerCount = data?.length || 0;
-        const totalRevenue = data?.reduce((sum: number, record: { verified_paid_amount?: number; standard_paid_amount?: number; total_continue_payments?: number }) => {
+        // CRITICAL FIX: Only count users who have actually PAID (not just signed in)
+        const paidPlayers = data?.filter((record: { verified_entry_paid?: boolean; standard_entry_paid?: boolean }) =>
+            record.verified_entry_paid === true || record.standard_entry_paid === true
+        ) || [];
+
+        const uniquePlayerCount = paidPlayers.length;
+        const totalRevenue = paidPlayers.reduce((sum: number, record: { verified_paid_amount?: number; standard_paid_amount?: number; total_continue_payments?: number }) => {
             const entryPayments = (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0);
             const continuePayments = record.total_continue_payments || 0;
             return sum + entryPayments + continuePayments;

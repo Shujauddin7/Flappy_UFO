@@ -118,7 +118,6 @@ export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
                                 <div className="mode-features">
                                     <span className="feature">💰 0.9 WLD entry fee</span>
                                     <span className="feature">🔒 World ID verification</span>
-                                    <span className="feature">🎁 Save 0.1 WLD</span>
                                 </div>
                                 <button
                                     className="mode-button verify-button"
@@ -139,6 +138,7 @@ export const TournamentEntryModal: React.FC<TournamentEntryModalProps> = ({
                                                 : 'GET VERIFIED & PLAY (0.9 WLD)'
                                     }
                                 </button>
+                                <p className="orb-requirement-text">Requires Orb verification</p>
                             </div>
                         </div>
 

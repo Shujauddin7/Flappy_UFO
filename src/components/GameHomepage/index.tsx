@@ -520,7 +520,8 @@ export default function GameHomepage() {
 
         } catch (error) {
             console.error('Error during tournament entry:', error);
-            showNotification('error', 'Entry Failed', 'Tournament entry failed. Please try again.');
+            // Error notification already shown in handleWorldIDVerification or handlePayment
+            // Just ensure payment processing state is reset
             setIsProcessingPayment(false); // Re-enable navigation on error
         } finally {
             setIsProcessingEntry(false);
@@ -530,13 +531,35 @@ export default function GameHomepage() {
     // Handle World ID verification for verified entry
     const handleWorldIDVerification = async () => {
         try {
+            setIsProcessingEntry(true); // Show processing immediately
             const { MiniKit, VerificationLevel } = await import('@worldcoin/minikit-js');
 
             // Use MiniKit to verify World ID with Orb verification level
+            console.log('Starting MiniKit verification...');
+            
             const result = await MiniKit.commandsAsync.verify({
                 action: 'flappy-ufo', // World ID app identifier from developer portal
                 verification_level: VerificationLevel.Orb, // Require Orb verification for discount
             });
+
+            console.log('MiniKit verification result:', result); // Debug log
+            console.log('Full result object:', JSON.stringify(result, null, 2));
+
+            // 🔥 CHECK RESULT STATUS FIRST - Handle ALL non-success cases
+            if (!result || !result.finalPayload || result.finalPayload.status !== 'success') {
+                console.log('MiniKit verification failed or cancelled');
+                
+                // Reset processing states and silently return
+                setIsProcessingEntry(false);
+                setIsProcessingPayment(false);
+                
+                // No popup - user can try again or use standard entry
+                return; // Exit early
+            }
+
+            // Reset processing states for successful verification
+            setIsProcessingEntry(false);
+            setIsProcessingPayment(false);
 
             // Send proof to backend for verification
             const response = await fetch('/api/verify-proof', {
@@ -551,12 +574,20 @@ export default function GameHomepage() {
             const verificationData = await response.json();
 
             if (verificationData.success) {
-                // Update user's verification status in database
-                await updateUserVerificationStatus(
+                // Update verification status INSTANTLY in UI (no waiting for API)
+                setIsVerifiedToday(true);
+                console.log('Verification status updated instantly in UI');
+                
+                // Update user's verification status in database (background)
+                updateUserVerificationStatus(
                     verificationData.nullifier_hash,
                     verificationData.verification_level
-                );
-                // Proceed with 0.9 WLD payment
+                ).catch(error => {
+                    console.error('Failed to update verification in database:', error);
+                    // Don't revert UI state - user is still verified
+                });
+                
+                // Proceed with 0.9 WLD payment immediately
                 await handlePayment(0.9, true);
             } else {
                 throw new Error(verificationData.error || 'Verification failed');
@@ -564,19 +595,13 @@ export default function GameHomepage() {
 
         } catch (error) {
             console.error('World ID verification error:', error);
+            
+            // Reset processing states immediately
+            setIsProcessingEntry(false);
+            setIsProcessingPayment(false);
 
-            // Provide more specific error messages
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-            if (errorMessage.includes('CredentialUnavailable') || errorMessage.includes('verification level')) {
-                showNotification('warning', 'Orb Required', 'Orb verification is required for the discounted entry. Please use an Orb to verify your World ID, or choose Standard Entry (1.0 WLD).');
-            } else if (errorMessage.includes('MaxVerificationsReached')) {
-                showNotification('error', 'Max Verifications', 'You have already verified the maximum number of times for this tournament. Please try again in the next tournament.');
-            } else if (errorMessage.includes('network') || errorMessage.includes('timeout')) {
-                showNotification('error', 'Network Error', 'Network error during verification. Please check your connection and try again, or use Standard Entry.');
-            } else {
-                showNotification('error', 'Verification Failed', 'World ID verification failed. Please try again or use Standard Entry (1.0 WLD).');
-            }
+            // No popup - just log the error and let user try again
+            console.log('Verification process failed:', error);
         }
     };
 
@@ -688,28 +713,20 @@ export default function GameHomepage() {
             });
 
             if (result.finalPayload.status === 'success') {
-                try {
-                    // Create tournament entry after successful payment
-                    await createTournamentEntry(result.finalPayload.reference, amount, isVerified);
+                // ⚡ OPTIMIZED: Start game immediately, create entry in background
+                setTournamentEntryAmount(amount);
+                setTournamentContinueUsed(false);
+                setGameMode('tournament');
+                setCurrentScreen('playing');
+                setIsProcessingPayment(false);
 
-                    // Track entry amount and reset continue status for new game
-                    setTournamentEntryAmount(amount);
-                    setTournamentContinueUsed(false);
-
-                    // Start the game directly (only if entry creation succeeds)
-                    setGameMode('tournament');
-                    setCurrentScreen('playing');
-
-                    // Re-enable navigation after game starts
-                    setIsProcessingPayment(false);
-                } catch (entryError) {
-                    // Payment succeeded but entry creation failed
-                    // Don't throw error here to avoid double alert
+                // Create tournament entry in background (fire and forget)
+                createTournamentEntry(result.finalPayload.reference, amount, isVerified).catch((entryError) => {
                     console.error('❌ Tournament entry creation failed after successful payment:', entryError);
-                    // The error message is already shown in createTournamentEntry function
-                    setIsProcessingPayment(false); // Re-enable navigation on error
-                    return;
-                }
+                    // Entry creation failed but user already paid and started game
+                    // Log error but don't interrupt game experience
+                });
+
             } else {
                 setIsProcessingPayment(false); // Re-enable navigation if payment cancelled
                 throw new Error('Payment failed or was cancelled');
@@ -761,33 +778,22 @@ export default function GameHomepage() {
             });
 
             if (result.finalPayload.status === 'success') {
-                // Record continue payment in database (only continue-specific columns)
-                try {
-                    const continueAmount = tournamentEntryAmount * 0.5;
-                    const continueResponse = await fetch('/api/tournament/continue', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            continue_amount: continueAmount
-                        }),
-                    });
-
-                    const continueData = await continueResponse.json();
-
-                    if (!continueData.success) {
-                        // Don't fail the continue - just log the warning
-                    }
-                } catch {
-                    // Don't fail the continue - just log the warning
-                }
-
-                // Mark continue as used and continue the game from current score
+                // ⚡ OPTIMIZED: Continue game immediately, record payment in background
                 setTournamentContinueUsed(true);
                 setContinueFromScore(score);
                 setGameResult({ show: false, score: 0, coins: 0, mode: '' });
-
-                // Re-enable navigation after game restarts
                 setIsProcessingPayment(false);
+
+                // Record continue payment in database (fire and forget - don't wait)
+                fetch('/api/tournament/continue', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        continue_amount: continueAmount
+                    }),
+                }).catch(() => {
+                    // Silent fail - don't block user experience
+                });
 
             } else {
                 setIsProcessingPayment(false); // Re-enable navigation if payment cancelled
@@ -1244,12 +1250,10 @@ export default function GameHomepage() {
                                     </div>
                                 )}
 
-                                {/* Practice Mode coin info */}
+                                {/* Practice Mode star info */}
                                 {gameMode === 'practice' && (
                                     <div className="practice-info">
-                                        💰 You have {getCoins()} coins
-                                        <br />
-                                        <small>Collect ⭐ stars to earn 1 coin each • Use 10 coins to continue</small>
+                                        <small>Collect ⭐ stars to earn more • Use 10 ⭐ to continue</small>
                                     </div>
                                 )}
                             </div>
@@ -1269,12 +1273,20 @@ export default function GameHomepage() {
                                                 // Insufficient coins - show error in game result instead of alert
                                                 setGameResult(prev => ({
                                                     ...prev,
-                                                    error: 'Not enough coins to continue! You need 10 coins.'
+                                                    error: 'Not enough stars to continue! You need 10 stars.'
                                                 }));
                                             }
                                         }}
+                                        style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '4px',
+                                            padding: '16px 24px',
+                                            lineHeight: '1.4'
+                                        }}
                                     >
-                                        Continue (10 ⭐) - {getCoins()} coins available
+                                        <span style={{ fontSize: '16px', fontWeight: 'bold' }}>CONTINUE (10 ⭐)</span>
+                                        <span style={{ fontSize: '13px', opacity: 0.9 }}>{getCoins()} stars available</span>
                                     </button>
                                 )}
 
@@ -1288,8 +1300,16 @@ export default function GameHomepage() {
                                             setIsProcessingPayment(true); // Disable navigation during payment
                                             await handleTournamentContinue(gameResult.score);
                                         }}
+                                        style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '4px',
+                                            padding: '16px 24px',
+                                            lineHeight: '1.4'
+                                        }}
                                     >
-                                        Continue ({tournamentEntryAmount * 0.5} WLD) - One continue per game
+                                        <span style={{ fontSize: '16px', fontWeight: 'bold' }}>CONTINUE ({tournamentEntryAmount * 0.5} WLD)</span>
+                                        <span style={{ fontSize: '13px', opacity: 0.9 }}>One continue per game</span>
                                     </button>
                                 )}
 
@@ -1622,9 +1642,8 @@ export default function GameHomepage() {
                         <div className="header-section">
                             <h1 className="game-title">
                                 <span className="ufo-icon">🛸</span>
-                                <span className="flappy-text">Flappy</span>{''}
+                                <span className="flappy-text">Flappy</span>
                                 <span className="ufo-text">UFO</span>
-                                <span className="ufo-icon">🛸</span>
                             </h1>
                         </div>
                         <div className="play-section">
@@ -1726,7 +1745,7 @@ export default function GameHomepage() {
                                 <p className="mode-desc">Conquer for glory</p>
                                 <div className="mode-features">
                                     <span className="feature">💰 Win WLD prizes</span>
-                                    <span className="feature">🏆 Daily challenges</span>
+                                    <span className="feature">🏆 Weekly challenges</span>
                                 </div>
                                 <button
                                     className="mode-button tournament-button"
