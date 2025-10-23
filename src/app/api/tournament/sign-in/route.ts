@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
 
         }
 
-        // Update tournament total_players count (sign-ins for THIS tournament)
+        // Update tournament total_players count (ALL sign-ins for admin reference)
         await updateTournamentSignInCount(supabase, tournamentId);
 
         // REMOVED: Do NOT create user_tournament_record on sign-in
@@ -94,28 +94,54 @@ export async function POST(req: NextRequest) {
     }
 }
 
-// Helper function to update tournament sign-in count
+// Helper function to update tournament total_players count (ALL sign-ins)
 async function updateTournamentSignInCount(supabase: SupabaseClient, tournamentId: string) {
     try {
-        // Count unique users who have tournament records for this tournament
-        // This is the correct way based on database.md schema
-        const { data: userRecords, error: countError } = await supabase
+        // Count DISTINCT users who have user_tournament_records OR sign-ins for this tournament
+        // Strategy: Count all unique wallets that either paid OR signed in for this tournament
+        
+        // Get unique wallets who paid (from user_tournament_records)
+        const { data: paidUsers, error: paidError } = await supabase
             .from('user_tournament_records')
-            .select('user_id')
+            .select('wallet')
             .eq('tournament_id', tournamentId);
 
-        if (countError) {
-            console.error('❌ Error counting tournament sign-ins:', countError);
+        if (paidError) {
+            console.error('❌ Error counting paid users:', paidError);
             return;
         }
 
-        const signInCount = userRecords?.length || 0;
+        // Get unique wallets from tournament_sign_ins who signed in for this tournament
+        // This captures users who signed in but may not have paid yet
+        const { data: signedInUsers, error: signInError } = await supabase
+            .from('tournament_sign_ins')
+            .select('wallet, first_tournament_id')
+            .eq('first_tournament_id', tournamentId);
 
-        // REMOVED: No longer updating tournament table from sign-ins
-        // REASON: PROD_4 script dropped 'total_players' column from tournaments table
-        // Tournament uses 'total_tournament_players' which is updated by entry/route.ts when users PAY
-        // Sign-ins are tracked separately in tournament_sign_ins table for analytics only
-        console.log(`✅ Sign-in count for tournament ${tournamentId}: ${signInCount} (analytics only, not saved to tournament table)`);
+        if (signInError) {
+            console.error('❌ Error counting signed-in users:', signInError);
+            return;
+        }
+
+        // Combine both lists and get unique wallets
+        const allWallets = new Set<string>();
+        paidUsers?.forEach(u => allWallets.add(u.wallet));
+        signedInUsers?.forEach(u => allWallets.add(u.wallet));
+        
+        const totalSignIns = allWallets.size;
+
+        // Update tournaments.total_players column (admin reference for ALL sign-ins)
+        const { error: updateError } = await supabase
+            .from('tournaments')
+            .update({ total_players: totalSignIns })
+            .eq('id', tournamentId);
+
+        if (updateError) {
+            console.error('❌ Error updating tournament total_players:', updateError);
+            return;
+        }
+
+        console.log(`✅ Updated tournament ${tournamentId} total_players: ${totalSignIns} unique users (sign-ins + paid)`);
 
     } catch (error) {
         console.error('❌ Error in updateTournamentSignInCount:', error);

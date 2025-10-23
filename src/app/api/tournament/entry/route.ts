@@ -406,17 +406,17 @@ export async function POST(req: NextRequest) {
         // Update user's total tournament count
         await updateUserTournamentCount(supabase, user.id);
 
-        // 🔄 SYNC: Update tournament_sign_ins aggregates (no fake data; real user-only)
+        // 🔄 SYNC: Update tournament_sign_ins aggregates (payment tracking only)
         try {
             // Check if sign-in row exists
             const { data: signInRow } = await supabase
                 .from('tournament_sign_ins')
-                .select('wallet, total_tournaments_visited, total_amount_paid, first_tournament_id')
+                .select('wallet, total_amount_paid, first_tournament_id')
                 .eq('wallet', wallet)
                 .single();
 
             if (!signInRow) {
-                // Create initial row
+                // User paid without signing in first (shouldn't happen, but handle it)
                 await supabase
                     .from('tournament_sign_ins')
                     .insert({
@@ -428,17 +428,17 @@ export async function POST(req: NextRequest) {
                         total_amount_paid: paid_amount
                     });
             } else {
+                // ONLY update payment amount, DON'T change first_tournament_id
                 await supabase
                     .from('tournament_sign_ins')
                     .update({
-                        total_tournaments_visited: (signInRow.total_tournaments_visited || 0) + 1,
                         total_amount_paid: (Number(signInRow.total_amount_paid) || 0) + Number(paid_amount),
-                        first_tournament_id: signInRow.first_tournament_id || finalTournament.id,
                         username: user.username
                     })
                     .eq('wallet', wallet);
             }
-        } catch {
+        } catch (updateError) {
+            console.error('❌ Error updating tournament_sign_ins:', updateError);
         }
 
         // 🚨 INSTANT SSE BROADCAST: New tournament entry affects prize pool + total players

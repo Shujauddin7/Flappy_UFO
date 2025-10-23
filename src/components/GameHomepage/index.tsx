@@ -536,7 +536,7 @@ export default function GameHomepage() {
 
             // Use MiniKit to verify World ID with Orb verification level
             console.log('Starting MiniKit verification...');
-            
+
             const result = await MiniKit.commandsAsync.verify({
                 action: 'flappy-ufo', // World ID app identifier from developer portal
                 verification_level: VerificationLevel.Orb, // Require Orb verification for discount
@@ -548,11 +548,11 @@ export default function GameHomepage() {
             // 🔥 CHECK RESULT STATUS FIRST - Handle ALL non-success cases
             if (!result || !result.finalPayload || result.finalPayload.status !== 'success') {
                 console.log('MiniKit verification failed or cancelled');
-                
+
                 // Reset processing states and silently return
                 setIsProcessingEntry(false);
                 setIsProcessingPayment(false);
-                
+
                 // No popup - user can try again or use standard entry
                 return; // Exit early
             }
@@ -577,7 +577,7 @@ export default function GameHomepage() {
                 // Update verification status INSTANTLY in UI (no waiting for API)
                 setIsVerifiedToday(true);
                 console.log('Verification status updated instantly in UI');
-                
+
                 // Update user's verification status in database (background)
                 updateUserVerificationStatus(
                     verificationData.nullifier_hash,
@@ -586,7 +586,7 @@ export default function GameHomepage() {
                     console.error('Failed to update verification in database:', error);
                     // Don't revert UI state - user is still verified
                 });
-                
+
                 // Proceed with 0.9 WLD payment immediately
                 await handlePayment(0.9, true);
             } else {
@@ -595,7 +595,7 @@ export default function GameHomepage() {
 
         } catch (error) {
             console.error('World ID verification error:', error);
-            
+
             // Reset processing states immediately
             setIsProcessingEntry(false);
             setIsProcessingPayment(false);
