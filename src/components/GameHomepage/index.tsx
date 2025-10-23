@@ -574,18 +574,20 @@ export default function GameHomepage() {
             const verificationData = await response.json();
 
             if (verificationData.success) {
-                // Update user's verification status in database
-                await updateUserVerificationStatus(
+                // Update verification status INSTANTLY in UI (no waiting for API)
+                setIsVerifiedToday(true);
+                console.log('Verification status updated instantly in UI');
+                
+                // Update user's verification status in database (background)
+                updateUserVerificationStatus(
                     verificationData.nullifier_hash,
                     verificationData.verification_level
-                );
+                ).catch(error => {
+                    console.error('Failed to update verification in database:', error);
+                    // Don't revert UI state - user is still verified
+                });
                 
-                // Refresh verification status from database to update UI
-                console.log('Refreshing verification status after successful verification...');
-                await checkVerificationStatus();
-                console.log('Verification status refreshed, isVerifiedToday should now be true');
-                
-                // Proceed with 0.9 WLD payment
+                // Proceed with 0.9 WLD payment immediately
                 await handlePayment(0.9, true);
             } else {
                 throw new Error(verificationData.error || 'Verification failed');
