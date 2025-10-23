@@ -886,11 +886,11 @@ body {
 /* Orb requirement text under verify button */
 .orb-requirement-text {
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: #ffffff;
+  font-weight: bold;
   text-align: center;
   margin-top: 0.5rem;
   margin-bottom: 0;
-  font-style: italic;
 }
 
 /* Tournament Entry Screen Mobile Responsive */
