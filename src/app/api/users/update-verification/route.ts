@@ -120,68 +120,28 @@ export async function POST(req: NextRequest) {
 
         const user = userData;
 
-        // IMPORTANT: Safely get or create user tournament record using ON CONFLICT
-        // Don't use the database function as it uses CURRENT_DATE instead of tournament boundary logic
-        const { error: recordError } = await supabase
+        // ✅ CRITICAL FIX: DO NOT create user_tournament_records on verification!
+        // REASON: Records should ONLY be created when user PAYS in /api/tournament/entry
+        // Verification only updates the users table with verification status
+        // The entry API will check users.last_verified_date to determine pricing (0.9 vs 1.0 WLD)
+        
+        // If user already has a tournament record (paid before verifying), update it with verification info
+        const { error: updateRecordError } = await supabase
             .from('user_tournament_records')
-            .upsert({
-                user_id: user.id,
-                tournament_id: tournament.id,
-                username: user.username,
-                wallet: wallet,
-                tournament_day: today, // Use the correct tournament boundary date
+            .update({
                 world_id_proof: {
                     nullifier_hash,
-                    verification_level: verification_level || 'Device' // Store verification level
+                    verification_level: verification_level || 'Device'
                 },
-                verified_at: new Date(verification_date).toISOString(), // Store full timestamp
+                verified_at: new Date(verification_date).toISOString(),
                 updated_at: new Date().toISOString()
-            }, {
-                onConflict: 'user_id,tournament_id',
-                ignoreDuplicates: false // Update existing record
             })
-            .select('id')
-            .single();
+            .eq('user_id', user.id)
+            .eq('tournament_id', tournament.id);
 
-        if (recordError) {
-            console.error('❌ Error upserting tournament record:', recordError);
-            return NextResponse.json({
-                success: false,
-                error: `Failed to create/update tournament record: ${recordError.message}`
-            }, { status: 500 });
-        }
-
-        // Update tournament table with player count and prize pool
-        try {
-            // Count unique users in user_tournament_records for this tournament
-            const { data: playerData, error: playerCountError } = await supabase
-                .from('user_tournament_records')
-                .select('user_id, verified_paid_amount, standard_paid_amount')
-                .eq('tournament_id', tournament.id);
-
-            if (!playerCountError && playerData) {
-                const uniquePlayerCount = playerData.length;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const totalPrizePool = playerData.reduce((sum: number, record: any) =>
-                    sum + (record.verified_paid_amount || 0) + (record.standard_paid_amount || 0), 0
-                ) * 0.7; // 70% goes to prize pool
-
-                // Update tournament with player count and prize pool
-                const { error: updateError } = await supabase
-                    .from('tournaments')
-                    .update({
-                        total_tournament_players: uniquePlayerCount, // Fixed: use correct column name
-                        total_prize_pool: totalPrizePool
-                    })
-                    .eq('id', tournament.id);
-
-                if (updateError) {
-                    console.error('❌ Error updating tournament stats:', updateError);
-                } else {
-                }
-            }
-        } catch (error) {
-            console.error('❌ Error updating tournament stats:', error);
+        // It's OK if update fails (record doesn't exist yet) - record will be created on payment
+        if (updateRecordError && updateRecordError.code !== 'PGRST116') {
+            console.error('⚠️ Could not update existing tournament record:', updateRecordError);
         }
 
         return NextResponse.json({
