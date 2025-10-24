@@ -99,7 +99,7 @@ async function updateTournamentSignInCount(supabase: SupabaseClient, tournamentI
     try {
         // Count DISTINCT users who have user_tournament_records OR sign-ins for this tournament
         // Strategy: Count all unique wallets that either paid OR signed in for this tournament
-        
+
         // Get unique wallets who paid (from user_tournament_records)
         const { data: paidUsers, error: paidError } = await supabase
             .from('user_tournament_records')
@@ -127,7 +127,7 @@ async function updateTournamentSignInCount(supabase: SupabaseClient, tournamentI
         const allWallets = new Set<string>();
         paidUsers?.forEach(u => allWallets.add(u.wallet));
         signedInUsers?.forEach(u => allWallets.add(u.wallet));
-        
+
         const totalSignIns = allWallets.size;
 
         // Update tournaments.total_players column (admin reference for ALL sign-ins)
