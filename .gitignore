@@ -97,6 +97,8 @@ PROD_FUNCTIONS_ANALYSIS.md
 OPTIMIZATION.MD
 
 SOCKETIO_WEBSOCKET_FIX.md
+GUARANTEE_SYSTEM.md
+
 # SQL migration scripts (internal deployment only)
 sql-scripts/
 

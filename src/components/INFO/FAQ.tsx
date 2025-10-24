@@ -69,6 +69,10 @@ Rank 10 → 2%.`
         answer: "Practice Mode: Use 10 coins per continue (unlimited). Tournament Mode: Pay the same entry fee once per game to continue, then game over on second crash."
     },
     {
+        question: "What is the prize guarantee?",
+        answer: "For early tournaments with low participation, we guarantee each top 10 winner gets at least 1 WLD bonus to ensure you never lose money even if you win! This protection applies automatically when tournament revenue is below 72 WLD."
+    },
+    {
         question: "How is the leaderboard ranked?",
         answer: "Players are ranked by their highest score. In case of ties, the player who achieved the score first wins. Only your best score across all entries counts."
     },
