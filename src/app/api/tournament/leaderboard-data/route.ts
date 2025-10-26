@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 
             const dbPlayers = await getLeaderboardData(tournament.tournament_day, {
                 limit: 1000,
-                includeZeroScores: false
+                includeZeroScores: true
             });
 
             const playersWithRank = dbPlayers.map((player, index) => ({
@@ -94,7 +94,7 @@ export async function GET(request: Request) {
         // 🎯 STEP 3: Get leaderboard data from database
         const dbPlayers = await getLeaderboardData(tournamentDay, {
             limit: 1000,
-            includeZeroScores: false
+            includeZeroScores: true
         });
         //         const queryTime = Date.now() - queryStartTime;
         // 🎯 STEP 4: Build the response
