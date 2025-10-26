@@ -59,19 +59,7 @@ export async function GET(request: Request) {
             });
         }
 
-        // 🎯 STEP 1: Check for cached response first (INSTANT if available)
-        const cacheKey = 'tournament_leaderboard_response';
-        const cachedResponse = await getCached(cacheKey);
-
-        if (cachedResponse) {
-            return NextResponse.json({
-                ...cachedResponse,
-                cached: true,
-                fetched_at: new Date().toISOString()
-            });
-        }
-
-        // 🎯 STEP 2: Get current tournament
+        // 🎯 STEP 1: Get current tournament FIRST to build tournament-specific cache key
         const currentTournament = await getCurrentActiveTournament();
 
         if (!currentTournament) {
@@ -83,12 +71,26 @@ export async function GET(request: Request) {
                 fetched_at: new Date().toISOString()
             };
 
-            // Cache the "no tournament" response for 1 minute
+            // Cache the "no tournament" response for 1 minute with generic key
+            const cacheKey = 'tournament_leaderboard_response_no_tournament';
             await setCached(cacheKey, noTournamentResponse, 60);
             return NextResponse.json(noTournamentResponse);
         }
 
         const tournamentDay = currentTournament.tournament_day;
+
+        // 🎯 STEP 2: Check for TOURNAMENT-SPECIFIC cached response (prevents old data on tournament reset)
+        const cacheKey = `tournament_leaderboard_response:${tournamentDay}`;
+        const cachedResponse = await getCached(cacheKey);
+
+        if (cachedResponse) {
+            return NextResponse.json({
+                ...cachedResponse,
+                cached: true,
+                fetched_at: new Date().toISOString()
+            });
+        }
+
         // 🎯 STEP 3: Get leaderboard data from database
         const dbPlayers = await getLeaderboardData(tournamentDay, {
             limit: 1000,
@@ -111,7 +113,7 @@ export async function GET(request: Request) {
             fetched_at: new Date().toISOString()
         };
 
-        // 🎯 STEP 5: Cache the complete response for 2 minutes (fast refresh for active tournaments)
+        // 🎯 STEP 5: Cache the complete response with TOURNAMENT-SPECIFIC key for 2 minutes (fast refresh for active tournaments)
         await setCached(cacheKey, responseData, 120); // 2 minutes
 
         return NextResponse.json(responseData);
