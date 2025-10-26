@@ -63,6 +63,9 @@ export default function AdminDashboard() {
     // Password authentication state (no session storage)
     const [isPasswordAuthenticated, setIsPasswordAuthenticated] = useState(false);
 
+    // State for custom guarantee amounts per winner rank
+    const [customGuarantees, setCustomGuarantees] = useState<Record<number, number>>({});
+
     // Notification state for GameNotification modal
     const [notification, setNotification] = useState<{
         show: boolean;
@@ -284,10 +287,14 @@ export default function AdminDashboard() {
         loadCurrentTournament();
     }, [session, isAdmin, router, params?.adminPath, isValidAdminPath, validAdminWallets.length, isPasswordAuthenticated, isWalletAdmin]);
 
-    // Early return if not a valid admin path - prevents any admin content from rendering
-    if (!isValidAdminPath) {
-        return null; // No admin content rendered for invalid paths
-    }
+    // Calculate final amount with custom guarantee
+    const getFinalAmount = (winner: Winner) => {
+        const basePrize = (winner.final_amount || 0) - (winner.guarantee_bonus || 0);
+        const guarantee = customGuarantees[winner.rank] !== undefined 
+            ? customGuarantees[winner.rank] 
+            : (winner.guarantee_bonus || 0);
+        return basePrize + guarantee;
+    };
 
     // Simple callback handlers for the AdminPayout component
     const handlePaymentSuccess = async (winnerAddress: string, transactionId: string) => {
@@ -328,23 +335,36 @@ export default function AdminDashboard() {
                         })
                     );
                 } else {
+                    console.error('❌ Failed to reload paid winners from database');
                 }
             } catch (error) {
-                console.error('Failed to reload payment status from database:', error);
+                console.error('❌ Error reloading paid winners:', error);
             }
         }
+
+        // Show success notification
+        setNotification({
+            show: true,
+            type: 'success',
+            title: 'Payment Successful',
+            message: `Successfully paid ${winnerAddress.slice(0, 6)}...${winnerAddress.slice(-4)}. Transaction ID: ${transactionId.slice(0, 8)}...`
+        });
     };
 
-    const handlePaymentError = (winnerAddress: string) => {
-        // Update winner status to failed
-        setWinners(prevWinners =>
-            prevWinners.map(winner =>
-                winner.wallet_address === winnerAddress
-                    ? { ...winner, payment_status: 'failed' as const }
-                    : winner
-            )
-        );
+    const handlePaymentError = (winnerAddress: string, error: string) => {
+        // Show error notification
+        setNotification({
+            show: true,
+            type: 'error',
+            title: 'Payment Failed',
+            message: `Failed to pay ${winnerAddress.slice(0, 6)}...${winnerAddress.slice(-4)}. Error: ${error}`
+        });
     };
+
+    // Early return if not a valid admin path - prevents any admin content from rendering
+    if (!isValidAdminPath) {
+        return null; // No admin content rendered for invalid paths
+    }
 
     // Load previous tournament data
     const handleLoadPreviousTournament = async () => {
@@ -963,8 +983,24 @@ export default function AdminDashboard() {
                                                     </td>
                                                     <td className="py-3 px-4">{(winner.score || 0).toLocaleString()}</td>
                                                     <td className="py-3 px-4">{((winner.final_amount || 0) - (winner.guarantee_bonus || 0)).toFixed(4)} WLD</td>
-                                                    <td className="py-3 px-4">{(winner.guarantee_bonus || 0).toFixed(4)} WLD</td>
-                                                    <td className="py-3 px-4 font-bold text-yellow-400">{(winner.final_amount || 0).toFixed(4)} WLD</td>
+                                                    <td className="py-3 px-4">
+                                                        <input
+                                                            type="number"
+                                                            step="0.01"
+                                                            min="0"
+                                                            defaultValue={(winner.guarantee_bonus || 0).toFixed(4)}
+                                                            onChange={(e) => {
+                                                                const newValue = parseFloat(e.target.value) || 0;
+                                                                setCustomGuarantees(prev => ({
+                                                                    ...prev,
+                                                                    [winner.rank]: newValue
+                                                                }));
+                                                            }}
+                                                            className="w-24 bg-white/10 border border-cyan-400/30 rounded px-2 py-1 text-white text-sm focus:border-cyan-400 focus:outline-none"
+                                                        />
+                                                        <span className="ml-1 text-white">WLD</span>
+                                                    </td>
+                                                    <td className="py-3 px-4 font-bold text-yellow-400">{getFinalAmount(winner).toFixed(4)} WLD</td>
                                                     <td className="py-3 px-4">
                                                         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${winner.payment_status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' :
                                                             winner.payment_status === 'sent' ? 'bg-blue-500/20 text-blue-300' :
@@ -979,7 +1015,7 @@ export default function AdminDashboard() {
                                                             <AdminPayout
                                                                 key={`payout-${winner.wallet_address}-${winner.rank}`}
                                                                 winnerAddress={winner.wallet_address}
-                                                                amount={winner.final_amount || 0}
+                                                                amount={getFinalAmount(winner)}
                                                                 rank={winner.rank}
                                                                 username={winner.username || `Player ${winner.rank}`}
                                                                 selectedAdminWallet={selectedAdminWallet || ''}
