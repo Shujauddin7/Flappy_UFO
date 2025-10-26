@@ -374,7 +374,7 @@ export const TournamentLeaderboard = ({
         <div className="tournament-leaderboard">
             {isGracePeriod && (
                 <div className="grace-period-banner">
-                    ⏳ Tournament is ending - Calculating prizes...
+                    ⏳ Tournament ending soon - Final rankings being finalized!
                 </div>
             )}
 
