@@ -10,8 +10,33 @@ import { getCurrentActiveTournament } from '@/utils/database';
 export async function GET() {
     const startTime = Date.now();
     try {
-        // 🎯 STEP 1: ALWAYS try cache first - This API prioritizes speed over freshness
-        const cacheKey = 'tournament_stats_instant';
+        // 🔄 STEP 1: Get current tournament FIRST to build tournament-specific cache key
+        const currentTournament = await getCurrentActiveTournament();
+
+        if (!currentTournament) {
+            // Cache the "no tournament" response for instant future responses with generic key
+            const noTournamentCacheKey = 'tournament_stats_instant_no_tournament';
+            const noTournamentResponse = {
+                tournament_day: null,
+                total_players: 0,
+                total_prize_pool: 0,
+                has_active_tournament: false,
+                is_empty: true // Flag to distinguish from loading state
+            };
+
+            await setCached(noTournamentCacheKey, noTournamentResponse, 60); // Cache for 1 minute
+
+            return NextResponse.json({
+                ...noTournamentResponse,
+                cached: false,
+                fetched_at: new Date().toISOString()
+            });
+        }
+
+        const tournamentDay = currentTournament.tournament_day;
+
+        // 🎯 STEP 2: Check for TOURNAMENT-SPECIFIC cached stats (prevents old data on tournament reset)
+        const cacheKey = `tournament_stats_instant:${tournamentDay}`;
         const cachedStats = await getCached(cacheKey);
 
         if (cachedStats && typeof cachedStats === 'object') {
@@ -31,15 +56,13 @@ export async function GET() {
             }
         }
 
-        // 🚀 STEP 2: Try optimized database query first
+        // 🚀 STEP 3: Try optimized database query first
         try {
             const { getOptimizedTournamentStats } = await import('@/utils/optimized-database');
-            const optimizedStats = await getOptimizedTournamentStats(
-                new Date().toISOString().split('T')[0] // Today's date as tournament_day
-            );
+            const optimizedStats = await getOptimizedTournamentStats(tournamentDay);
 
             if (optimizedStats) {
-                // Cache the optimized result immediately
+                // Cache the optimized result immediately with tournament-specific key
                 await setCached(cacheKey, optimizedStats, 30); // 30 seconds cache
 
                 const responseTime = Date.now() - startTime;
@@ -53,31 +76,7 @@ export async function GET() {
         } catch {
         }
 
-        // 🔄 STEP 3: Fallback to legacy method if optimized query fails
-        const currentTournament = await getCurrentActiveTournament();
-
-
-        if (!currentTournament) {
-            // Cache the "no tournament" response for instant future responses
-            const noTournamentResponse = {
-                tournament_day: null,
-                total_players: 0,
-                total_prize_pool: 0,
-                has_active_tournament: false,
-                is_empty: true // Flag to distinguish from loading state
-            };
-
-            await setCached(cacheKey, noTournamentResponse, 60); // Cache for 1 minute
-
-            return NextResponse.json({
-                ...noTournamentResponse,
-                cached: false,
-                fetched_at: new Date().toISOString()
-            });
-        }
-
-        // 🚀 STEP 3: Use stored tournament values instead of recalculating
-        const tournamentDay = currentTournament.tournament_day;
+        // 🚀 STEP 4: Use stored tournament values instead of recalculating
 
         // Use stored values from tournaments table (more accurate and faster)
         const stats = {
@@ -110,7 +109,8 @@ export async function GET() {
             tournament_status: 'active'
         };
 
-        // Cache for 30 seconds (balance between freshness and performance)\n        \n        await setCached(cacheKey, responseData, 30); // 30 seconds cache for better real-time feel
+        // Cache with TOURNAMENT-SPECIFIC key for 30 seconds (balance between freshness and performance)
+        await setCached(cacheKey, responseData, 30); // 30 seconds cache for better real-time feel
 
         const responseTime = Date.now() - startTime;
         return NextResponse.json({
