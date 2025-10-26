@@ -829,12 +829,6 @@ export default function AdminDashboard() {
                                         </p>
                                     </div>
                                 </div>
-                                {(tournamentView === 'current' ? prizePool : previousPrizePool)?.guarantee_needed && (
-                                    <div className="mt-4 p-3 bg-yellow-500/20 border border-yellow-500/50 rounded-lg">
-                                        <p className="text-yellow-300 font-semibold">⚠️ Guarantee Bonus Active</p>
-                                        <p className="text-sm text-yellow-200">Revenue below 72 WLD threshold. Adding 1 WLD guarantee per top 10 winner.</p>
-                                    </div>
-                                )}
                             </div>
                         )}
 
