@@ -118,4 +118,35 @@ GRANT_FINAL_CLEAN.md
 HONEST_GRANT_DATA.md
 REPEAT_VISITOR_ANALYSIS.md
 DAU_WAU_SOLUTION.md
-INTERVIEW_PREP.md 
+INTERVIEW_PREP.md
+final.md
+
+# Funding strategy (private reference only)
+funds.md
+GRAND_12_MONTH_PLAN.md
+USER_GROWTH_PLAN.md
+APPLY_GRANTS.md
+
+# Internal technical documentation (development reference only)
+Redis.md
+SOCKETIO_WEBSOCKET_FIX.md
+SOCKETIO_MIGRATION_COMPLETE.md
+SECURITY_REEVALUATION.md
+PROD_DEPLOYMENT_SUMMARY.md
+PROD_FUNCTIONS_ANALYSIS.md
+QUICK_START_PROD.md
+HOW_TO_BACKUP_SUPABASE.md
+BACKUP_QUICK_START.md
+FINAL_ANSWERS.md
+GUARANTEE_SYSTEM.md
+
+# Build/deployment triggers
+.vercel-build-trigger.txt
+.vercelignore
+
+# Test files (development only)
+test-websocket.html
+*.bak
+*.backup
+*.old
+*.test.html
