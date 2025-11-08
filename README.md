@@ -174,5 +174,18 @@ MIT License - Free to use, modify, distribute commercially. See [LICENSE](LICENS
 
 ---
 
+## 💝 Support This Project
+
+Flappy UFO is an open-source public good. If this project helps you or you believe in fair Web3 gaming:
+
+- ⭐ **Star this repo** - Helps others discover the project
+- 🔄 **Share with friends** - Grow the player base
+- 💻 **Contribute code** - Check our [issues](https://github.com/Shujauddin7/Flappy_UFO/issues)
+- ☕ **Sponsor development** - [Support via GitHub Sponsors](https://github.com/sponsors/Shujauddin7)
+
+Every contribution helps build a fairer gaming ecosystem. Thank you! 🙏
+
+---
+
 **Built with ❤️ by a solo developer in India**  
 *Making Web3 gaming fair, transparent, and accessible.*
