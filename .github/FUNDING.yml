@@ -1,6 +1,5 @@
-custom: [
-  'upi://pay?pa=7892119416-2@ybl',
-  'https://www.paypal.com/paypalme/7892119416',
-  'https://bscscan.com/address/0xd08cdf6946cf7b63b94a23ffca1539fe521f0714',
-  'ethereum:0xd08cdf6946cf7b63b94a23ffca1539fe521f0714'
-]
+# GitHub Sponsors - direct payment through GitHub )
+github: Shujauddin7
+
+# Alternative payment option
+custom: ["https://www.paypal.com/paypalme/7892119416"]
