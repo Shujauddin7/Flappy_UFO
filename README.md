@@ -4,8 +4,8 @@
 
 A competitive gaming platform where players compete in weekly WLD tournaments. Winners are determined purely by skill, not luck. Built on World Chain (Optimism L2) with World ID verification to prevent Sybil attacks and ensure fair competition.
 
-[![Live on World App](https://img.shields.io/badge/World%20App-Live-green)](https://world.org/flappy-ufo)
-[![Verified](https://img.shields.io/badge/Verified-Oct%2024%202025-blue)](https://world.org/flappy-ufo)
+[![Live on World App](https://img.shields.io/badge/World%20App-Live-green)](https://worldcoin.org/mini-app?app_id=app_be50be72114b4758d4cbc0d2fce3aafa&app_mode=mini-app)
+[![Verified](https://img.shields.io/badge/Verified-Oct%2024%202025-blue)](https://worldcoin.org/mini-app?app_id=app_be50be72114b4758d4cbc0d2fce3aafa&app_mode=mini-app)
 
 ---
 
@@ -152,7 +152,7 @@ MIT License - Free to use, modify, distribute commercially. See [LICENSE](LICENS
 
 **Developer**: Shujauddin  
 **GitHub**: [@Shujauddin7](https://github.com/Shujauddin7)  
-**Live App**: [world.org/flappy-ufo](https://world.org/flappy-ufo)
+**Live App**: [Flappy UFO on World App](https://worldcoin.org/mini-app?app_id=app_be50be72114b4758d4cbc0d2fce3aafa&app_mode=mini-app)
 
 ---
 
