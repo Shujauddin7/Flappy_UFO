@@ -372,12 +372,6 @@ export const TournamentLeaderboard = ({
 
     return (
         <div className="tournament-leaderboard">
-            {isGracePeriod && (
-                <div className="grace-period-banner">
-                    ⏳ Tournament ending soon - Final rankings being finalized!
-                </div>
-            )}
-
             <div className="leaderboard-list" ref={listRef} style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                 {visiblePlayers.map((player) => {
                     // Check if this player is the current user using same matching logic as above

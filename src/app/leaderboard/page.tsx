@@ -852,6 +852,24 @@ export default function LeaderboardPage() {
                     </div>
 
                     <div className="leaderboard-section">
+                        {/* Grace Period Banner */}
+                        {timeRemaining?.status === 'grace' && (
+                            <div className="grace-period-banner">
+                                ⏳ Tournament ending soon - Final rankings being finalized!
+                            </div>
+                        )}
+
+                        {/* Bonus Payout Banner - Shows when pool < 72 WLD and not in grace period */}
+                        {timeRemaining?.status !== 'grace' && currentTournament?.total_prize_pool !== undefined && currentTournament.total_prize_pool < 72 && (
+                            <div className="bonus-payout-banner">
+                                <span className="bonus-icon">💎</span>
+                                <div className="bonus-text">
+                                    <div>Winners receive bonus payouts when needed</div>
+                                    <div className="bonus-subtext">(amount varies by standings)</div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Sticky Header Row for Leaderboard */}
                         <div className="leaderboard-header-row">
                             <div className="header-rank">Rank</div>

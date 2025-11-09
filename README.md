@@ -174,16 +174,166 @@ MIT License - Free to use, modify, distribute commercially. See [LICENSE](LICENS
 
 ---
 
-## 💝 Support This Project
+**Built with ❤️ by a solo developer in India**  
+*Making Web3 gaming fair, transparent, and accessible.*
+ntion**: Multiple users with 10-27 repeat visits
+- **Growing conversion**: 2.3% → 5.9% proves product-market fit
+- **Real demand**: Organic growth without paid marketing
 
-Flappy UFO is an open-source public good. If this project helps you or you believe in fair Web3 gaming:
+---
 
-- ⭐ **Star this repo** - Helps others discover the project
-- 🔄 **Share with friends** - Grow the player base
-- 💻 **Contribute code** - Check our [issues](https://github.com/Shujauddin7/Flappy_UFO/issues)
-- ☕ **Sponsor development** - [Support via GitHub Sponsors](https://github.com/sponsors/Shujauddin7)
+## 💰 How Tournaments Work
 
-Every contribution helps build a fairer gaming ecosystem. Thank you! 🙏
+### Entry Fees:
+- **Standard Entry**: 1.0 WLD
+- **Verified Entry**: 0.9 WLD (World ID Orb verified users)
+- **Continue Fee**: 50% of entry fee (one continue per game)
+
+### Prize Distribution (Top 10):
+- **1st**: 40% | **2nd**: 22% | **3rd**: 14%
+- **4th**: 6% | **5th**: 5% | **6th**: 4%
+- **7th**: 3% | **8th-10th**: 2% each
+
+**Revenue Split:**
+- 70% → Prize pool for top 10 winners
+- 30% → Admin fee (infrastructure + development)
+
+
+---
+
+## 🏗️ Tech Stack
+
+**Frontend:** Next.js 14, React 18, TypeScript, Tailwind CSS  
+**Backend:** Supabase (PostgreSQL), Railway (WebSocket), Upstash Redis  
+**Blockchain:** World Chain (Optimism L2), World ID, MiniKit  
+**Infrastructure:** Vercel, Netlify
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js 18+
+- World App developer account
+- Required services: Supabase, Railway, Upstash Redis
+- World Chain wallet for testing
+
+### Installation
+
+```bash
+# Clone repository
+git clone https://github.com/Shujauddin7/Flappy_UFO.git
+cd Flappy_UFO
+
+# Install dependencies
+npm install
+
+# Configure environment variables
+# Create .env.local with required credentials:
+# - Supabase (database, auth)
+# - World ID (app_id, action)
+# - MiniKit configuration
+# - Payment endpoints
+# See .env.sample for structure
+
+# Run development server
+npm run dev
+```
+
+### Configuration
+- Set up Supabase database schema (PostgreSQL)
+- Configure World ID verification actions
+- Set up MiniKit payment flows
+- Deploy WebSocket server for real-time updates
+- Configure tournament scheduling system
+
+**Note**: Full setup requires configuring multiple external services. Review the codebase for integration details.
+
+---
+
+## 🎯 How It Works
+
+1. **Authenticate** with World ID in World App
+2. **Pay entry fee** (1.0 or 0.9 WLD) via MiniKit
+3. **Play game** - fly UFO, avoid obstacles, collect stars
+4. **Submit score** - recorded automatically
+5. **Win prizes** - Top 10 split 70% of prize pool
+6. **Receive payout** - WLD automatically distributed
+
+**Schedule**: Sunday 15:30 UTC to Sunday 15:30 UTC (weekly)
+
+---
+
+## 🛡️ Security & Fair Play
+
+- **World ID Verification**: Prevents Sybil attacks & multi-accounting
+- **Weekly Re-verification**: Resets every Sunday
+- **On-chain Transparency**: All transactions on World Chain
+- **No Private Keys Stored**: MiniKit handles wallets
+- **Rate Limiting**: Prevents spam/abuse
+- **Score Validation**: Server-side anti-cheat
+
+---
+
+## 🤝 Contributing
+
+Contributions welcome! Fork, create feature branch, submit PR.
+
+**Areas for help**: New game modes, UI/UX, performance, docs, bug fixes
+
+---
+
+## 📜 License
+
+MIT License - Free to use, modify, distribute commercially. See [LICENSE](LICENSE).
+
+---
+
+## 📞 Contact
+
+**Developer**: Shujauddin  
+**GitHub**: [@Shujauddin7](https://github.com/Shujauddin7)  
+**Live App**: [world.org/flappy-ufo](https://world.org/flappy-ufo)
+
+---
+
+## 🎯 Roadmap
+
+**Current (Nov 2025):**
+- ✅ Launched Oct 24, 2025
+- ✅ 2 tournaments completed
+- ✅ 659 users, 196 verified humans
+- 🔄 Scaling to 1000+ active users
+
+**Q1 2026:**
+- Daily tournament schedule
+- Enhanced anti-cheat systems
+- Smart contract prize automation
+- Community features (leaderboards, achievements)
+
+**Q2 2026:**
+- Multi-game tournament platform
+- Tournament creator tools
+- Cross-chain expansion
+- DAO governance for prize pools
+
+---
+
+## 💡 Why Flappy UFO?
+
+**Problem**: Most play-to-earn games are luck-based gambling with hidden house edges.
+
+**Solution**: 100% skill-based, transparent, fair competition with World ID verification.
+
+**Vision**: Build the fairest play-to-earn platform on World Chain.
+
+---
+
+## 📊 Public Good Impact
+
+- **Players**: Fair skill-based competition, transparent prizes
+- **Developers**: Open source reference for World App gaming
+- **Ecosystem**: Demonstrates World Chain viability, drives World ID adoption
 
 ---
 
