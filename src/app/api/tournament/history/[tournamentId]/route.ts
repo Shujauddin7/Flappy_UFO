@@ -59,6 +59,8 @@ export async function GET(
             .select('user_id, final_rank, prize_amount')
             .eq('tournament_id', tournamentId);
 
+        console.log(`Tournament ${tournamentId} - Found ${prizes?.length || 0} prize records`);
+
         // Create a map of user_id to prize info
         const prizeMap = new Map(
             (prizes || []).map(p => [p.user_id, { rank: p.final_rank, amount: p.prize_amount }])
@@ -68,6 +70,10 @@ export async function GET(
         const formattedWinners = (topPlayers || []).map((player, index) => {
             const rank = index + 1;
             const prizeInfo = prizeMap.get(player.user_id);
+            
+            if (rank <= 3) {
+                console.log(`Rank ${rank}: user_id=${player.user_id}, has_prize=${!!prizeInfo}, amount=${prizeInfo?.amount}`);
+            }
 
             return {
                 id: player.id,

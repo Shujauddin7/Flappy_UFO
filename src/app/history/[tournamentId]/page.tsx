@@ -10,6 +10,8 @@ interface Tournament {
     id: string;
     serial_no: number;
     tournament_day: string;
+    start_time: string;
+    end_time: string;
     total_tournament_players: number;
     total_prize_pool: string;
 }
@@ -137,6 +139,17 @@ export default function TournamentHistoryDetailPage({
         });
     };
 
+    const formatDateTime = (dateString: string) => {
+        const date = new Date(dateString);
+        return date.toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+    };
+
     if (loading) {
         return (
             <Page>
@@ -215,12 +228,24 @@ export default function TournamentHistoryDetailPage({
                     <div className="tournament-info-box">
                         <div className="prize-pool-info">
                             <div className="prize-pool-text">
-                                <span>Tournament Date:</span>
+                                <span>Tournament:</span>
                                 <span className="prize-pool-highlight">
                                     {formatDate(tournament.tournament_day)}
                                 </span>
                             </div>
-                            <div className="prize-pool-text" style={{ marginTop: '0.5rem' }}>
+                            <div className="prize-pool-text" style={{ marginTop: '0.5rem', fontSize: '0.85rem', opacity: 0.9 }}>
+                                <span>Start:</span>
+                                <span className="prize-pool-highlight">
+                                    {formatDateTime(tournament.start_time)}
+                                </span>
+                            </div>
+                            <div className="prize-pool-text" style={{ marginTop: '0.25rem', fontSize: '0.85rem', opacity: 0.9 }}>
+                                <span>End:</span>
+                                <span className="prize-pool-highlight">
+                                    {formatDateTime(tournament.end_time)}
+                                </span>
+                            </div>
+                            <div className="prize-pool-text" style={{ marginTop: '0.75rem' }}>
                                 <span>Prize Pool:</span>
                                 <span className="prize-pool-highlight">
                                     {Number(tournament.total_prize_pool).toFixed(2)} WLD
