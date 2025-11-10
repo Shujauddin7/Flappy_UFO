@@ -23,13 +23,13 @@ export async function GET() {
         // Filter by end_time (when tournament finished) not tournament_day
         const startDate = isDev ? '2000-01-01' : '2025-10-24'; // DEV: all, PROD: tournaments that ended after Oct 24, 2025
 
-        // Fetch all past tournaments (is_active = false) ordered by most recent first
+        // Fetch all past tournaments (is_active = false) ordered by oldest first (bottom to top = 1, 2, 3...)
         const { data: tournaments, error } = await supabase
             .from('tournaments')
             .select('*')
             .eq('is_active', false)
             .gte('end_time', startDate) // Filter by END time (when tournament finished)
-            .order('end_time', { ascending: false }); // Order by END time (most recently ended first)
+            .order('end_time', { ascending: true }); // Order by END time (oldest first = Tournament 1)
 
         if (error) {
             console.error('Error fetching tournament history:', error);
