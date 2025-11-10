@@ -70,7 +70,7 @@ export async function GET(
         const formattedWinners = (topPlayers || []).map((player, index) => {
             const rank = index + 1;
             const prizeInfo = prizeMap.get(player.user_id);
-            
+
             if (rank <= 3) {
                 console.log(`Rank ${rank}: user_id=${player.user_id}, has_prize=${!!prizeInfo}, amount=${prizeInfo?.amount}`);
             }
