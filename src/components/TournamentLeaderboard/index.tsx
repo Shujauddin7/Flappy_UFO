@@ -33,6 +33,7 @@ interface TournamentLeaderboardProps {
     preloadedData?: LeaderboardApiResponse | null; // NEW: Accept pre-loaded leaderboard data to skip API call
     onUserRankUpdate?: (userRank: LeaderboardPlayer | null) => void; // Callback for user rank
     onUserCardVisibility?: (isVisible: boolean) => void; // Callback for user card visibility
+    showScores?: boolean; // NEW: Show/hide scores (default true for current, false for history)
 }
 
 export const TournamentLeaderboard = ({
@@ -43,7 +44,8 @@ export const TournamentLeaderboard = ({
     totalPrizePool = 0,
     preloadedData = null, // NEW: Accept pre-loaded data
     onUserRankUpdate,
-    onUserCardVisibility
+    onUserCardVisibility,
+    showScores = true // NEW: Default to showing scores (current leaderboard)
 }: TournamentLeaderboardProps) => {
     const [topPlayers, setTopPlayers] = useState<LeaderboardPlayer[]>([]);
     const [allPlayers, setAllPlayers] = useState<LeaderboardPlayer[]>([]);
@@ -372,6 +374,12 @@ export const TournamentLeaderboard = ({
 
     return (
         <div className="tournament-leaderboard">
+            {isGracePeriod && (
+                <div className="grace-period-banner">
+                    ⏳ Tournament ending soon - Final rankings being finalized!
+                </div>
+            )}
+
             <div className="leaderboard-list" ref={listRef} style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                 {visiblePlayers.map((player) => {
                     // Check if this player is the current user using same matching logic as above
@@ -392,6 +400,7 @@ export const TournamentLeaderboard = ({
                                 prizeAmount={player.rank && player.rank <= 10 ? getPrizeAmount(player.rank, totalPrizePool) : null}
                                 isCurrentUser={Boolean(isCurrentUser)}
                                 isTopThree={player.rank !== undefined && player.rank <= 10}
+                                showScore={showScores}
                             />
                         </div>
                     );

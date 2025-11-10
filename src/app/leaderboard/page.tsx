@@ -940,6 +940,13 @@ export default function LeaderboardPage() {
                     >
                         <div className="space-icon">🏆</div>
                     </button>
+                    <button
+                        className="space-nav-btn history-nav"
+                        onClick={() => window.location.href = '/history'}
+                        aria-label="Tournament History"
+                    >
+                        <div className="space-icon">📜</div>
+                    </button>
                 </div>
             </div>
         </Page>
