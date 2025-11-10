@@ -68,7 +68,7 @@ export async function GET(
         const formattedWinners = (topPlayers || []).map((player, index) => {
             const rank = index + 1;
             const prizeInfo = prizeMap.get(player.user_id);
-            
+
             return {
                 id: player.id,
                 user_id: player.user_id,

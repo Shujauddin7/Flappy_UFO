@@ -39,7 +39,7 @@ export default function TournamentHistoryDetailPage({
 }) {
     const router = useRouter();
     const { tournamentId } = use(params);
-    
+
     // INSTANT LOAD: Initialize with cached data
     const [tournament, setTournament] = useState<Tournament | null>(() => {
         if (typeof window !== 'undefined') {
@@ -57,7 +57,7 @@ export default function TournamentHistoryDetailPage({
         }
         return null;
     });
-    
+
     const [leaderboardData, setLeaderboardData] = useState<LeaderboardApiResponse | null>(() => {
         if (typeof window !== 'undefined') {
             try {
@@ -78,7 +78,7 @@ export default function TournamentHistoryDetailPage({
         }
         return null;
     });
-    
+
     const [loading, setLoading] = useState(tournament === null);
     const [error, setError] = useState<string | null>(null);
 
@@ -99,7 +99,7 @@ export default function TournamentHistoryDetailPage({
                 }
 
                 setTournament(data.tournament);
-                
+
                 // Format data for TournamentLeaderboard component
                 const leaderboard = {
                     players: data.winners || [],
