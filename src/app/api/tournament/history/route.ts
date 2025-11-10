@@ -29,7 +29,7 @@ export async function GET() {
             .select('*')
             .eq('is_active', false)
             .gte('end_time', startDate) // Filter by END time (when tournament finished)
-            .order('tournament_day', { ascending: false });
+            .order('end_time', { ascending: false }); // Order by END time (most recently ended first)
 
         if (error) {
             console.error('Error fetching tournament history:', error);
