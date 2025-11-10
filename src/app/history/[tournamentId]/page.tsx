@@ -23,7 +23,7 @@ interface Winner {
     tournament_day: string;
     created_at: string;
     rank: number;
-    prize_amount: string;
+    prize_amount: number | null; // Change from string to number to match API
 }
 
 interface LeaderboardApiResponse {

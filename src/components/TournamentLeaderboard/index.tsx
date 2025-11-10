@@ -12,6 +12,7 @@ interface LeaderboardPlayer {
     tournament_day: string;
     created_at: string;
     rank?: number;
+    prize_amount?: number | null; // Actual prize amount from database (null if not paid yet)
 }
 
 interface LeaderboardApiResponse {
@@ -388,6 +389,14 @@ export const TournamentLeaderboard = ({
                         (player.wallet && currentUserId && player.wallet.toLowerCase() === currentUserId.toLowerCase())
                     ) || (currentUsername && player.username === currentUsername);
 
+                    // Use actual prize_amount from database if available, otherwise calculate
+                    // This ensures history shows actual paid amounts (with guarantees)
+                    const prizeDisplay = player.rank && player.rank <= 10
+                        ? (player.prize_amount !== undefined && player.prize_amount !== null
+                            ? player.prize_amount.toFixed(2)
+                            : getPrizeAmount(player.rank, totalPrizePool))
+                        : null;
+
                     return (
                         <div
                             key={player.id}
@@ -397,7 +406,7 @@ export const TournamentLeaderboard = ({
                         >
                             <PlayerRankCard
                                 player={player}
-                                prizeAmount={player.rank && player.rank <= 10 ? getPrizeAmount(player.rank, totalPrizePool) : null}
+                                prizeAmount={prizeDisplay}
                                 isCurrentUser={Boolean(isCurrentUser)}
                                 isTopThree={player.rank !== undefined && player.rank <= 10}
                                 showScore={showScores}
@@ -405,6 +414,7 @@ export const TournamentLeaderboard = ({
                         </div>
                     );
                 })}
+
                 {displayCount < allPlayers.length && (
                     <div style={{ textAlign: 'center', padding: '1rem', color: '#888' }}>
                         Showing {displayCount} of {allPlayers.length} players...
