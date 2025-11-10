@@ -233,16 +233,13 @@ export default function TournamentHistoryDetailPage({
                                     {formatDate(tournament.tournament_day)}
                                 </span>
                             </div>
-                            <div className="prize-pool-text" style={{ marginTop: '0.5rem', fontSize: '0.85rem', opacity: 0.9 }}>
-                                <span>Start:</span>
-                                <span className="prize-pool-highlight">
-                                    {formatDateTime(tournament.start_time)}
+                            <div className="prize-pool-text" style={{ marginTop: '0.5rem', fontSize: '0.85rem', opacity: 0.9, display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'center' }}>
+                                <span style={{ whiteSpace: 'nowrap' }}>
+                                    Start: <span className="prize-pool-highlight">{formatDateTime(tournament.start_time)}</span>
                                 </span>
-                            </div>
-                            <div className="prize-pool-text" style={{ marginTop: '0.25rem', fontSize: '0.85rem', opacity: 0.9 }}>
-                                <span>End:</span>
-                                <span className="prize-pool-highlight">
-                                    {formatDateTime(tournament.end_time)}
+                                <span style={{ opacity: 0.5 }}>•</span>
+                                <span style={{ whiteSpace: 'nowrap' }}>
+                                    End: <span className="prize-pool-highlight">{formatDateTime(tournament.end_time)}</span>
                                 </span>
                             </div>
                             <div className="prize-pool-text" style={{ marginTop: '0.75rem' }}>
