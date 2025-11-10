@@ -1678,6 +1678,15 @@ export default function GameHomepage() {
                                     <div className="space-icon">🏆</div>
 
                                 </button>
+                                <button
+                                    className="space-nav-btn history-nav"
+                                    onClick={() => window.location.href = '/history'}
+                                    aria-label="Tournament History"
+                                    style={{ touchAction: 'manipulation', cursor: 'pointer' }}
+                                >
+                                    <div className="space-icon">📜</div>
+
+                                </button>
                             </div>
                         </div>
                     </Page.Main>
@@ -1775,6 +1784,14 @@ export default function GameHomepage() {
                                 aria-label="Leaderboard"
                             >
                                 <div className="space-icon">🏆</div>
+
+                            </button>
+                            <button
+                                className="space-nav-btn history-nav"
+                                onClick={() => window.location.href = '/history'}
+                                aria-label="Tournament History"
+                            >
+                                <div className="space-icon">📜</div>
 
                             </button>
                         </div>

@@ -12,6 +12,7 @@ interface LeaderboardPlayer {
     tournament_day: string;
     created_at: string;
     rank?: number;
+    prize_amount?: number | null; // Actual prize amount from database (null if not paid yet)
 }
 
 interface LeaderboardApiResponse {
@@ -33,6 +34,8 @@ interface TournamentLeaderboardProps {
     preloadedData?: LeaderboardApiResponse | null; // NEW: Accept pre-loaded leaderboard data to skip API call
     onUserRankUpdate?: (userRank: LeaderboardPlayer | null) => void; // Callback for user rank
     onUserCardVisibility?: (isVisible: boolean) => void; // Callback for user card visibility
+    showScores?: boolean; // NEW: Show/hide scores (default true for current, false for history)
+    isHistoryView?: boolean; // NEW: Disable prize calculations for history (show only DB values)
 }
 
 export const TournamentLeaderboard = ({
@@ -43,7 +46,9 @@ export const TournamentLeaderboard = ({
     totalPrizePool = 0,
     preloadedData = null, // NEW: Accept pre-loaded data
     onUserRankUpdate,
-    onUserCardVisibility
+    onUserCardVisibility,
+    showScores = true, // NEW: Default to showing scores (current leaderboard)
+    isHistoryView = false // NEW: Default to false (current leaderboard calculates prizes)
 }: TournamentLeaderboardProps) => {
     const [topPlayers, setTopPlayers] = useState<LeaderboardPlayer[]>([]);
     const [allPlayers, setAllPlayers] = useState<LeaderboardPlayer[]>([]);
@@ -372,6 +377,12 @@ export const TournamentLeaderboard = ({
 
     return (
         <div className="tournament-leaderboard">
+            {isGracePeriod && (
+                <div className="grace-period-banner">
+                    ⏳ Tournament ending soon - Final rankings being finalized!
+                </div>
+            )}
+
             <div className="leaderboard-list" ref={listRef} style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                 {visiblePlayers.map((player) => {
                     // Check if this player is the current user using same matching logic as above
@@ -379,6 +390,15 @@ export const TournamentLeaderboard = ({
                         player.wallet === currentUserId ||
                         (player.wallet && currentUserId && player.wallet.toLowerCase() === currentUserId.toLowerCase())
                     ) || (currentUsername && player.username === currentUsername);
+
+                    // Use actual prize_amount from database if available
+                    // For history: NEVER calculate, only show DB values (null = "-")
+                    // For current: Calculate if DB value missing
+                    const prizeDisplay = player.rank && player.rank <= 10
+                        ? (player.prize_amount !== undefined && player.prize_amount !== null
+                            ? player.prize_amount.toFixed(2)
+                            : isHistoryView ? null : getPrizeAmount(player.rank, totalPrizePool))
+                        : null;
 
                     return (
                         <div
@@ -389,13 +409,15 @@ export const TournamentLeaderboard = ({
                         >
                             <PlayerRankCard
                                 player={player}
-                                prizeAmount={player.rank && player.rank <= 10 ? getPrizeAmount(player.rank, totalPrizePool) : null}
+                                prizeAmount={prizeDisplay}
                                 isCurrentUser={Boolean(isCurrentUser)}
                                 isTopThree={player.rank !== undefined && player.rank <= 10}
+                                showScore={showScores}
                             />
                         </div>
                     );
                 })}
+
                 {displayCount < allPlayers.length && (
                     <div style={{ textAlign: 'center', padding: '1rem', color: '#888' }}>
                         Showing {displayCount} of {allPlayers.length} players...

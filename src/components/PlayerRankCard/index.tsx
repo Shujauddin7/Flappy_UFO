@@ -19,6 +19,7 @@ interface PlayerRankCardProps {
     isCurrentUser: boolean;
     isTopThree: boolean;
     isLoading?: boolean; // Add loading prop for blur effects
+    showScore?: boolean; // Show/hide score column (default true for current, false for history)
 }
 
 export const PlayerRankCard: React.FC<PlayerRankCardProps> = ({
@@ -26,7 +27,8 @@ export const PlayerRankCard: React.FC<PlayerRankCardProps> = ({
     prizeAmount,
     isCurrentUser,
     isTopThree,
-    isLoading = false // Default to false
+    isLoading = false, // Default to false
+    showScore = true // Default to true (show scores in current leaderboard)
 }) => {
     const getRankEmoji = (rank?: number) => {
         if (!rank) return '🏆';
@@ -79,11 +81,13 @@ export const PlayerRankCard: React.FC<PlayerRankCardProps> = ({
                 </div>
             </div>
 
-            <div className="score-section">
-                <div className="player-score">
-                    {(player.highest_score || 0).toLocaleString()}
+            {showScore && (
+                <div className="score-section">
+                    <div className="player-score">
+                        {(player.highest_score || 0).toLocaleString()}
+                    </div>
                 </div>
-            </div>
+            )}
 
             <div className="prize-section">
                 {isLoading ? (
