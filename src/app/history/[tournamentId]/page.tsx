@@ -251,6 +251,7 @@ export default function TournamentHistoryDetailPage({
                                 totalPrizePool={Number(tournament.total_prize_pool)}
                                 preloadedData={leaderboardData}
                                 showScores={false} // CRITICAL: Hide scores in history
+                                isHistoryView={true} // CRITICAL: Show only DB prizes, no calculations
                             />
                         ) : (
                             <div style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>

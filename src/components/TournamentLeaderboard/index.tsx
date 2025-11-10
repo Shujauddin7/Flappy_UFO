@@ -35,6 +35,7 @@ interface TournamentLeaderboardProps {
     onUserRankUpdate?: (userRank: LeaderboardPlayer | null) => void; // Callback for user rank
     onUserCardVisibility?: (isVisible: boolean) => void; // Callback for user card visibility
     showScores?: boolean; // NEW: Show/hide scores (default true for current, false for history)
+    isHistoryView?: boolean; // NEW: Disable prize calculations for history (show only DB values)
 }
 
 export const TournamentLeaderboard = ({
@@ -46,7 +47,8 @@ export const TournamentLeaderboard = ({
     preloadedData = null, // NEW: Accept pre-loaded data
     onUserRankUpdate,
     onUserCardVisibility,
-    showScores = true // NEW: Default to showing scores (current leaderboard)
+    showScores = true, // NEW: Default to showing scores (current leaderboard)
+    isHistoryView = false // NEW: Default to false (current leaderboard calculates prizes)
 }: TournamentLeaderboardProps) => {
     const [topPlayers, setTopPlayers] = useState<LeaderboardPlayer[]>([]);
     const [allPlayers, setAllPlayers] = useState<LeaderboardPlayer[]>([]);
@@ -389,12 +391,13 @@ export const TournamentLeaderboard = ({
                         (player.wallet && currentUserId && player.wallet.toLowerCase() === currentUserId.toLowerCase())
                     ) || (currentUsername && player.username === currentUsername);
 
-                    // Use actual prize_amount from database if available, otherwise calculate
-                    // This ensures history shows actual paid amounts (with guarantees)
+                    // Use actual prize_amount from database if available
+                    // For history: NEVER calculate, only show DB values (null = "-")
+                    // For current: Calculate if DB value missing
                     const prizeDisplay = player.rank && player.rank <= 10
                         ? (player.prize_amount !== undefined && player.prize_amount !== null
                             ? player.prize_amount.toFixed(2)
-                            : getPrizeAmount(player.rank, totalPrizePool))
+                            : isHistoryView ? null : getPrizeAmount(player.rank, totalPrizePool))
                         : null;
 
                     return (

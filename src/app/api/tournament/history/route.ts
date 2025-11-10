@@ -20,7 +20,6 @@ export async function GET() {
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
         // Determine environment - show all in DEV, filter by date in PROD
-        const isDev = process.env.NODE_ENV === 'development';
         const startDate = isDev ? '2000-01-01' : '2024-10-24'; // DEV: all, PROD: from Oct 24, 2024
 
         // Fetch all past tournaments (is_active = false) ordered by most recent first
