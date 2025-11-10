@@ -20,14 +20,15 @@ export async function GET() {
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
         // Determine environment - show all in DEV, filter by date in PROD
-        const startDate = isDev ? '2000-01-01' : '2025-10-24'; // DEV: all, PROD: from Oct 24, 2025 (app verification date)
+        // Filter by end_time (when tournament finished) not tournament_day
+        const startDate = isDev ? '2000-01-01' : '2025-10-24'; // DEV: all, PROD: tournaments that ended after Oct 24, 2025
 
         // Fetch all past tournaments (is_active = false) ordered by most recent first
         const { data: tournaments, error } = await supabase
             .from('tournaments')
             .select('*')
             .eq('is_active', false)
-            .gte('tournament_day', startDate) // Filter by start date
+            .gte('end_time', startDate) // Filter by END time (when tournament finished)
             .order('tournament_day', { ascending: false });
 
         if (error) {
