@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Page } from '@/components/PageLayout';
 import { TournamentLeaderboard } from '@/components/TournamentLeaderboard';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { use } from 'react';
 
 interface Tournament {
@@ -40,7 +40,9 @@ export default function TournamentHistoryDetailPage({
     params: Promise<{ tournamentId: string }>;
 }) {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { tournamentId } = use(params);
+    const position = searchParams.get('position') || null;
 
     // INSTANT LOAD: Initialize with cached data
     const [tournament, setTournament] = useState<Tournament | null>(() => {
@@ -220,7 +222,7 @@ export default function TournamentHistoryDetailPage({
         <Page>
             <Page.Main className="leaderboard-container">
                 <div className="tournament-main-title">
-                    <h1>🏆 TOURNAMENT {tournament.serial_no}</h1>
+                    <h1>🏆 TOURNAMENT {position || tournament.serial_no}</h1>
                 </div>
 
                 <div className="leaderboard-scroll-content">
