@@ -208,10 +208,10 @@ export default function HistoryPage() {
                         padding: '1rem',
                         gridTemplateColumns: '1fr'
                     }}>
-                        {tournaments.map((tournament) => (
+                        {tournaments.map((tournament, index) => (
                             <div
                                 key={tournament.id}
-                                onClick={() => router.push(`/history/${tournament.id}`)}
+                                onClick={() => router.push(`/history/${tournament.id}?position=${index + 1}`)}
                                 style={{
                                     background: 'linear-gradient(135deg, rgba(0, 245, 255, 0.1), rgba(138, 43, 226, 0.1))',
                                     border: '2px solid rgba(0, 245, 255, 0.3)',
@@ -231,7 +231,7 @@ export default function HistoryPage() {
                             >
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                     <h3 style={{ margin: 0, fontSize: '1.3rem', color: '#00F5FF' }}>
-                                        Tournament {tournament.serial_no}
+                                        Tournament {index + 1}
                                     </h3>
                                     <span style={{ fontSize: '1.5rem' }}>📜</span>
                                 </div>
