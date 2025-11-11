@@ -29,8 +29,8 @@ export default function HistoryPage() {
                 const cached = localStorage.getItem('tournament_history_cache');
                 if (cached) {
                     const { data, timestamp } = JSON.parse(cached);
-                    // Cache valid for 7 days (history doesn't change often)
-                    if (Date.now() - timestamp < 7 * 24 * 60 * 60 * 1000) {
+                    // Cache valid for 1 hour (balance between speed and freshness)
+                    if (Date.now() - timestamp < 60 * 60 * 1000) {
                         return data;
                     }
                 }
@@ -59,10 +59,11 @@ export default function HistoryPage() {
                     throw new Error(data.error || 'Failed to fetch tournaments');
                 }
 
+                // API returns sorted by end_time ascending (oldest first)
                 const tournamentData = data.tournaments || [];
                 setTournaments(tournamentData);
 
-                // Cache for 7 days
+                // Cache for 1 hour
                 try {
                     localStorage.setItem('tournament_history_cache', JSON.stringify({
                         data: tournamentData,
@@ -208,10 +209,16 @@ export default function HistoryPage() {
                         padding: '1rem',
                         gridTemplateColumns: '1fr'
                     }}>
-                        {tournaments.map((tournament, index) => (
+                        {[...tournaments].reverse().map((tournament, index) => {
+                            // API returns oldest first (ascending by end_time)
+                            // Reverse for display (newest at top)
+                            // But calculate position from original array: oldest = #1
+                            const tournamentNumber = tournaments.length - index;
+                            
+                            return (
                             <div
                                 key={tournament.id}
-                                onClick={() => router.push(`/history/${tournament.id}?position=${tournaments.length - index}`)}
+                                onClick={() => router.push(`/history/${tournament.id}?position=${tournamentNumber}`)}
                                 style={{
                                     background: 'linear-gradient(135deg, rgba(0, 245, 255, 0.1), rgba(138, 43, 226, 0.1))',
                                     border: '2px solid rgba(0, 245, 255, 0.3)',
@@ -231,7 +238,7 @@ export default function HistoryPage() {
                             >
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                     <h3 style={{ margin: 0, fontSize: '1.3rem', color: '#00F5FF' }}>
-                                        Tournament {tournaments.length - index}
+                                        Tournament {tournamentNumber}
                                     </h3>
                                     <span style={{ fontSize: '1.5rem' }}>📜</span>
                                 </div>
@@ -268,7 +275,7 @@ export default function HistoryPage() {
                                     Tap to view winners →
                                 </div>
                             </div>
-                        ))}
+                        )})}
                     </div>
                 </div>
 
