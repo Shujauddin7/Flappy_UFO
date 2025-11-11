@@ -1664,9 +1664,11 @@ export default function GameHomepage() {
 
                         <div className="header-section">
                             <h1 className="game-title">
-                                <span className="ufo-icon">🛸</span>
+                                {/* <span className="ufo-icon">🛸</span> */}
                                 <span className="flappy-text">Flappy</span>
                                 <span className="ufo-text">UFO</span>
+
+
                             </h1>
                         </div>
                         <div className="play-section">
@@ -1740,59 +1742,24 @@ export default function GameHomepage() {
 
                             <div className="social-modal-content">
                                 <p className="social-description">
-                                    Connect with us and stay updated on tournaments, prizes, and game updates!
+                                    Connect with us and stay updated on tournaments, prizes and game updates!
                                 </p>
 
                                 <div className="social-links">
                                     <a
-                                        href="https://twitter.com/YourTwitterHandle"
+                                        href="https://t.me/Flappy_UFO_Official"
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="social-link-btn"
                                     >
-                                        <div className="social-icon">🐦</div>
-                                        <div className="social-link-text">
-                                            <div className="social-link-title">Twitter</div>
-                                            <div className="social-link-desc">Follow for updates & announcements</div>
+                                        <div className="social-icon">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295-.002 0-.003 0-.005 0l.213-3.054 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.654-.64.135-.954l11.566-4.458c.538-.196 1.006.128.832.941z" />
+                                            </svg>
                                         </div>
-                                    </a>
-
-                                    <a
-                                        href="https://t.me/YourTelegramChannel"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="social-link-btn"
-                                    >
-                                        <div className="social-icon">✈️</div>
                                         <div className="social-link-text">
                                             <div className="social-link-title">Telegram</div>
                                             <div className="social-link-desc">Join our community chat</div>
-                                        </div>
-                                    </a>
-
-                                    <a
-                                        href="https://discord.gg/YourDiscordServer"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="social-link-btn"
-                                    >
-                                        <div className="social-icon">💬</div>
-                                        <div className="social-link-text">
-                                            <div className="social-link-title">Discord</div>
-                                            <div className="social-link-desc">Connect with other players</div>
-                                        </div>
-                                    </a>
-
-                                    <a
-                                        href="https://github.com/Shujauddin7/Flappy_UFO"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="social-link-btn"
-                                    >
-                                        <div className="social-icon">⚡</div>
-                                        <div className="social-link-text">
-                                            <div className="social-link-title">GitHub</div>
-                                            <div className="social-link-desc">View source code & contribute</div>
                                         </div>
                                     </a>
                                 </div>
