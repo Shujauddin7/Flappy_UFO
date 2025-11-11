@@ -46,6 +46,7 @@ export default function GameHomepage() {
     const [currentScreen, setCurrentScreen] = useState<'home' | 'gameSelect' | 'tournamentEntry' | 'playing'>('home');
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
     const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+    const [isSocialModalOpen, setIsSocialModalOpen] = useState(false);
     const [isGracePeriodModalOpen, setIsGracePeriodModalOpen] = useState(false);
     const [gracePeriodEndTime, setGracePeriodEndTime] = useState<string | undefined>();
 
@@ -426,6 +427,12 @@ export default function GameHomepage() {
         e.preventDefault();
         e.stopPropagation();
         setIsInfoModalOpen(true);
+    }, []);
+
+    const handleSocialClick = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsSocialModalOpen(true);
     }, []);
 
     const handlePlayClick = useCallback(async (e: React.MouseEvent | React.TouchEvent) => {
@@ -1623,7 +1630,23 @@ export default function GameHomepage() {
                 <Page>
                     <canvas ref={canvasRef} className="starfield-canvas" />
                     <Page.Main className="main-container">
-                        {/* Info button positioned absolutely outside header section */}
+                        {/* Social button on left */}
+                        <button
+                            onClick={handleSocialClick}
+                            className="info-btn social-btn-left"
+                            aria-label="Social Links"
+                            style={{
+                                position: 'absolute',
+                                top: '10px',
+                                left: '10px',
+                                zIndex: 1000,
+                                pointerEvents: 'auto'
+                            }}
+                        >
+                            🔗
+                        </button>
+
+                        {/* Info button on right */}
                         <button
                             onClick={handleInfoClick}
                             className="info-btn"
@@ -1698,6 +1721,84 @@ export default function GameHomepage() {
                         isOpen={isInfoModalOpen}
                         onClose={() => setIsInfoModalOpen(false)}
                     />
+                )}
+
+                {/* Social Links Modal */}
+                {isSocialModalOpen && (
+                    <div className="social-modal-overlay" onClick={() => setIsSocialModalOpen(false)}>
+                        <div className="social-modal" onClick={(e) => e.stopPropagation()}>
+                            <div className="social-modal-header">
+                                <h2 className="social-modal-title">Join Our Community! 🚀</h2>
+                                <button
+                                    className="social-close-btn"
+                                    onClick={() => setIsSocialModalOpen(false)}
+                                    aria-label="Close"
+                                >
+                                    ×
+                                </button>
+                            </div>
+
+                            <div className="social-modal-content">
+                                <p className="social-description">
+                                    Connect with us and stay updated on tournaments, prizes, and game updates!
+                                </p>
+
+                                <div className="social-links">
+                                    <a
+                                        href="https://twitter.com/YourTwitterHandle"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="social-link-btn"
+                                    >
+                                        <div className="social-icon">🐦</div>
+                                        <div className="social-link-text">
+                                            <div className="social-link-title">Twitter</div>
+                                            <div className="social-link-desc">Follow for updates & announcements</div>
+                                        </div>
+                                    </a>
+
+                                    <a
+                                        href="https://t.me/YourTelegramChannel"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="social-link-btn"
+                                    >
+                                        <div className="social-icon">✈️</div>
+                                        <div className="social-link-text">
+                                            <div className="social-link-title">Telegram</div>
+                                            <div className="social-link-desc">Join our community chat</div>
+                                        </div>
+                                    </a>
+
+                                    <a
+                                        href="https://discord.gg/YourDiscordServer"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="social-link-btn"
+                                    >
+                                        <div className="social-icon">💬</div>
+                                        <div className="social-link-text">
+                                            <div className="social-link-title">Discord</div>
+                                            <div className="social-link-desc">Connect with other players</div>
+                                        </div>
+                                    </a>
+
+                                    <a
+                                        href="https://github.com/Shujauddin7/Flappy_UFO"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="social-link-btn"
+                                    >
+                                        <div className="social-icon">⚡</div>
+                                        <div className="social-link-text">
+                                            <div className="social-link-title">GitHub</div>
+                                            <div className="social-link-desc">View source code & contribute</div>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 {/* Grace Period Modal */}
