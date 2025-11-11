@@ -46,6 +46,7 @@ export default function GameHomepage() {
     const [currentScreen, setCurrentScreen] = useState<'home' | 'gameSelect' | 'tournamentEntry' | 'playing'>('home');
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
     const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+    const [isSocialModalOpen, setIsSocialModalOpen] = useState(false);
     const [isGracePeriodModalOpen, setIsGracePeriodModalOpen] = useState(false);
     const [gracePeriodEndTime, setGracePeriodEndTime] = useState<string | undefined>();
 
@@ -426,6 +427,12 @@ export default function GameHomepage() {
         e.preventDefault();
         e.stopPropagation();
         setIsInfoModalOpen(true);
+    }, []);
+
+    const handleSocialClick = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsSocialModalOpen(true);
     }, []);
 
     const handlePlayClick = useCallback(async (e: React.MouseEvent | React.TouchEvent) => {
@@ -1623,7 +1630,23 @@ export default function GameHomepage() {
                 <Page>
                     <canvas ref={canvasRef} className="starfield-canvas" />
                     <Page.Main className="main-container">
-                        {/* Info button positioned absolutely outside header section */}
+                        {/* Social button on left */}
+                        <button
+                            onClick={handleSocialClick}
+                            className="info-btn social-btn-left"
+                            aria-label="Social Links"
+                            style={{
+                                position: 'absolute',
+                                top: '10px',
+                                left: '10px',
+                                zIndex: 1000,
+                                pointerEvents: 'auto'
+                            }}
+                        >
+                            🔗
+                        </button>
+
+                        {/* Info button on right */}
                         <button
                             onClick={handleInfoClick}
                             className="info-btn"
@@ -1641,9 +1664,11 @@ export default function GameHomepage() {
 
                         <div className="header-section">
                             <h1 className="game-title">
-                                <span className="ufo-icon">🛸</span>
+                                {/* <span className="ufo-icon">🛸</span> */}
                                 <span className="flappy-text">Flappy</span>
                                 <span className="ufo-text">UFO</span>
+
+
                             </h1>
                         </div>
                         <div className="play-section">
@@ -1698,6 +1723,49 @@ export default function GameHomepage() {
                         isOpen={isInfoModalOpen}
                         onClose={() => setIsInfoModalOpen(false)}
                     />
+                )}
+
+                {/* Social Links Modal */}
+                {isSocialModalOpen && (
+                    <div className="social-modal-overlay" onClick={() => setIsSocialModalOpen(false)}>
+                        <div className="social-modal" onClick={(e) => e.stopPropagation()}>
+                            <div className="social-modal-header">
+                                <h2 className="social-modal-title">Join Our Community! 🚀</h2>
+                                <button
+                                    className="social-close-btn"
+                                    onClick={() => setIsSocialModalOpen(false)}
+                                    aria-label="Close"
+                                >
+                                    ×
+                                </button>
+                            </div>
+
+                            <div className="social-modal-content">
+                                <p className="social-description">
+                                    Connect with us and stay updated on tournaments, prizes and game updates!
+                                </p>
+
+                                <div className="social-links">
+                                    <a
+                                        href="https://t.me/Flappy_UFO_Official"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="social-link-btn"
+                                    >
+                                        <div className="social-icon">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295-.002 0-.003 0-.005 0l.213-3.054 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.654-.64.135-.954l11.566-4.458c.538-.196 1.006.128.832.941z" />
+                                            </svg>
+                                        </div>
+                                        <div className="social-link-text">
+                                            <div className="social-link-title">Telegram</div>
+                                            <div className="social-link-desc">Join our community chat</div>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 {/* Grace Period Modal */}

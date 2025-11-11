@@ -107,19 +107,21 @@ body {
   align-items: flex-start;
   position: relative;
   margin-top: 0.5rem;
-  /* Removed padding-right since info button is now positioned absolutely */
+  padding-left: 70px;
+  padding-right: 70px;
   flex-shrink: 0;
-  /* Prevent shrinking on small screens */
 }
 
 .game-title {
   font-family: 'Orbitron', monospace;
   font-weight: 900;
-  font-size: clamp(2.2rem, 7vw, 3.2rem);
+  font-size: 2.5rem;
   text-align: center;
   margin: 0;
   line-height: 1.1;
   letter-spacing: 0.03em;
+  color: #F5A623;
+  text-shadow: 0 0 12px rgba(245, 166, 35, 0.5), 0 0 24px rgba(245, 166, 35, 0.3);
 }
 
 /* Ensure UFO icons in title have no inherited effects */
@@ -130,14 +132,14 @@ body {
 }
 
 .flappy-text {
-  color: #00F5FF;
-  text-shadow: 0 0 12px #00F5FF, 0 0 24px #00F5FF;
+  color: #F5A623;
+  text-shadow: 0 0 12px rgba(245, 166, 35, 0.5), 0 0 24px rgba(245, 166, 35, 0.3);
   margin-right: 0.1em;
 }
 
 .ufo-text {
-  color: #9333EA;
-  text-shadow: 0 0 12px #9333EA, 0 0 24px #9333EA;
+  color: #F5A623;
+  text-shadow: 0 0 12px rgba(245, 166, 35, 0.5), 0 0 24px rgba(245, 166, 35, 0.3);
   margin-left: 0.1em;
 }
 
@@ -176,6 +178,198 @@ body {
   background: rgba(0, 245, 255, 0.3);
   border-color: #00F5FF;
   transform: scale(1.05);
+}
+
+/* Social button on left - matches info button style */
+.social-btn-left {
+  /* Inherits all styles from .info-btn */
+}
+
+/* Social Modal Styles - Matches Info Modal */
+.social-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(11, 12, 16, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+  backdrop-filter: blur(8px);
+  animation: fadeIn 0.2s ease-out;
+}
+
+.social-modal {
+  background: linear-gradient(135deg, #1D4ED8 0%, #9333EA 100%);
+  border-radius: 16px;
+  padding: 0;
+  width: 90%;
+  max-width: 480px;
+  border: 2px solid #00F5FF;
+  box-shadow: 0 20px 40px rgba(0, 245, 255, 0.3);
+  animation: slideIn 0.3s ease-out;
+  overflow: hidden;
+}
+
+.social-modal-header {
+  background: rgba(11, 12, 16, 0.8);
+  padding: 20px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #00F5FF;
+}
+
+.social-modal-title {
+  color: #00F5FF;
+  font-size: 24px;
+  font-weight: bold;
+  margin: 0;
+  text-shadow: 0 0 10px #00F5FF;
+}
+
+.social-close-btn {
+  background: none;
+  border: none;
+  color: #E5E7EB;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  width: 40px;
+  height: 40px;
+}
+
+.social-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #00F5FF;
+  transform: rotate(90deg);
+}
+
+.social-modal-content {
+  padding: 24px;
+  background: rgba(11, 12, 16, 0.6);
+}
+
+.social-description {
+  color: #E5E7EB;
+  text-align: center;
+  margin: 0 0 24px 0;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.social-links {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.social-link-btn {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: rgba(29, 78, 216, 0.2);
+  border: 1px solid rgba(0, 245, 255, 0.3);
+  border-radius: 12px;
+  text-decoration: none;
+  color: white;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(4px);
+}
+
+.social-link-btn:hover {
+  background: rgba(0, 245, 255, 0.1);
+  border-color: #00F5FF;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 245, 255, 0.2);
+}
+
+.social-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.social-link-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.social-link-title {
+  font-weight: bold;
+  font-size: 16px;
+  color: #00F5FF;
+}
+
+.social-link-desc {
+  font-size: 14px;
+  color: #E5E7EB;
+}
+
+/* Mobile responsiveness for social modal */
+@media (max-width: 640px) {
+  .header-section {
+    padding-left: 65px;
+    padding-right: 65px;
+  }
+
+  .game-title {
+    font-size: 2.2rem;
+  }
+
+  .social-modal {
+    width: 95%;
+    margin: 20px;
+  }
+
+  .social-modal-header {
+    padding: 16px 20px;
+  }
+
+  .social-modal-title {
+    font-size: 20px;
+  }
+
+  .social-modal-content {
+    padding: 20px;
+  }
+
+  .social-link-btn {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .social-icon {
+    font-size: 20px;
+  }
+
+  .social-link-title {
+    font-size: 15px;
+  }
+
+  .social-link-desc {
+    font-size: 13px;
+  }
+}
+
+/* Extra small screens - ensure no overlap */
+@media (max-width: 400px) {
+  .header-section {
+    padding-left: 60px;
+    padding-right: 60px;
+  }
+
+  .game-title {
+    font-size: 2rem;
+  }
 }
 
 /* Info Modal Styles */
